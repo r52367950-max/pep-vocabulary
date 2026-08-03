@@ -4,6 +4,8 @@
 
 > 当前数据版本是 `1.0.0-rc.1` 发布候选，不是人工终审后的正式终版。自动审计通过硬性安全规则，但仍有 333 个高中短语/专名缺少许可清楚的开放英文简义、153 个词条的 IPA 不完整、7 个单元存在字段级未解析记录。详见 [VOCAB_AUDIT_REPORT.md](./VOCAB_AUDIT_REPORT.md) 与 [data/audit-summary.json](./data/audit-summary.json)。
 
+仅所有者可访问的 Sites 部署：[pep-vocab-studio.namizore.chatgpt.site](https://pep-vocab-studio.namizore.chatgpt.site)。访问策略经 Sites 接口核验为 `custom`，仅包含站点所有者，无外部访客或授权群组。
+
 ## 已实现
 
 - 4,681 条可操作发布候选，初中核心、高中必修、高中选择性必修、课标差集分层；稳定 ID、来源位置与字段审核状态可追溯。
