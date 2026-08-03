@@ -1,0 +1,152 @@
+export const USER_DATA_SCHEMA_VERSION = "1.0.0";
+const DB_NAME = "pep-vocab-studio";
+const DB_VERSION = 1;
+const stores = ["cards", "events", "lists", "settings", "meta"] as const;
+type StoreName = (typeof stores)[number];
+
+export type SkillName = "meaning" | "listening" | "spelling" | "context" | "collocation" | "output";
+export type SkillVector = Record<SkillName, number>;
+
+export type StoredCard = {
+  id: string;
+  fsrs: Record<string, unknown>;
+  skills: SkillVector;
+  status: "unseen" | "learning" | "weak" | "mastered" | "paused";
+  due: string;
+  lastReviewed: string | null;
+  updatedAt: string;
+  note?: string;
+  tags?: string[];
+  favorite?: boolean;
+};
+
+export type ReviewEvent = {
+  eventType?: "review" | "undo";
+  eventId: string;
+  cardId: string;
+  timestampUtc: string;
+  localDate: string;
+  timezone: string;
+  questionType: string;
+  skill: SkillName;
+  rating: 1 | 2 | 3 | 4;
+  correct: boolean;
+  responseMs: number;
+  hints: number;
+  errorType: string | null;
+  before: StoredCard | null;
+  after: StoredCard;
+  schedulerLog: Record<string, unknown>;
+  undoneBy?: string;
+  targetEventId?: string;
+};
+
+export type AppSettings = {
+  key: "app";
+  dailyMinutes: number;
+  desiredRetention: number;
+  selectedBooks: string[];
+  mode: "normal" | "unit" | "review-only" | "exam" | "browse";
+  theme: "light" | "dark" | "system";
+  aiEnabled: boolean;
+  diagnosisComplete: boolean;
+  examDate: string | null;
+  updatedAt: string;
+};
+
+export const defaultSettings: AppSettings = {
+  key: "app",
+  dailyMinutes: 25,
+  desiredRetention: 0.9,
+  selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
+  mode: "normal",
+  theme: "system",
+  aiEnabled: false,
+  diagnosisComplete: false,
+  examDate: null,
+  updatedAt: new Date(0).toISOString(),
+};
+
+function openDatabase() {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    if (typeof indexedDB === "undefined") return reject(new Error("IndexedDB unavailable"));
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      for (const store of stores) {
+        if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: store === "events" ? "eventId" : store === "settings" || store === "meta" ? "key" : "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+  });
+}
+
+async function transaction<T>(storeName: StoreName, mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>) {
+  const db = await openDatabase();
+  return new Promise<T>((resolve, reject) => {
+    const tx = db.transaction(storeName, mode);
+    const request = work(tx.objectStore(storeName));
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB request failed"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export const getOne = <T>(store: StoreName, key: IDBValidKey) => transaction<T | undefined>(store, "readonly", (target) => target.get(key));
+export const getAll = <T>(store: StoreName) => transaction<T[]>(store, "readonly", (target) => target.getAll());
+export const putOne = <T>(store: StoreName, value: T) => transaction<IDBValidKey>(store, "readwrite", (target) => target.put(value));
+export const deleteOne = (store: StoreName, key: IDBValidKey) => transaction<undefined>(store, "readwrite", (target) => target.delete(key));
+
+export async function loadSettings() {
+  try {
+    return (await getOne<AppSettings>("settings", "app")) || defaultSettings;
+  } catch {
+    return defaultSettings;
+  }
+}
+
+export async function saveSettings(settings: AppSettings) {
+  const next = { ...settings, key: "app" as const, updatedAt: new Date().toISOString() };
+  await putOne("settings", next);
+  return next;
+}
+
+export async function exportBackup() {
+  const [cards, events, lists, settings] = await Promise.all([
+    getAll<StoredCard>("cards"), getAll<ReviewEvent>("events"), getAll<Record<string, unknown>>("lists"), getAll<AppSettings>("settings"),
+  ]);
+  return { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards, events, lists, settings };
+}
+
+export async function restoreBackup(payload: unknown) {
+  if (!payload || typeof payload !== "object") throw new Error("备份不是有效对象");
+  const data = payload as Record<string, unknown>;
+  if (data.schemaVersion !== USER_DATA_SCHEMA_VERSION) throw new Error(`不支持的 schema 版本：${String(data.schemaVersion || "缺失")}`);
+  if (!["cards", "events", "lists", "settings"].every((key) => Array.isArray(data[key]))) throw new Error("备份结构损坏或字段缺失");
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(["cards", "events", "lists", "settings"], "readwrite");
+    for (const name of ["cards", "events", "lists", "settings"] as const) {
+      const store = tx.objectStore(name);
+      store.clear();
+      for (const row of data[name] as object[]) store.put(row);
+    }
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => reject(tx.error || new Error("恢复失败"));
+  });
+}
+
+export async function clearUserData() {
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(stores, "readwrite");
+    stores.forEach((name) => tx.objectStore(name).clear());
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => reject(tx.error || new Error("清空失败"));
+  });
+}
+
+export function emptySkills(): SkillVector {
+  return { meaning: 0, listening: 0, spelling: 0, context: 0, collocation: 0, output: 0 };
+}
