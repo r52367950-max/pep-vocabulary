@@ -34,7 +34,8 @@ function normalizeIpa(value = "") {
   out = out.replace(/I/g, "ɪ").replace(/N/g, "ŋ").replace(/O/g, "ɔ").replace(/@/g, "ə")
     .replace(/Q/g, "ɒ").replace(/A/g, "ɑ").replace(/D/g, "ð").replace(/T/g, "θ")
     .replace(/S/g, "ʃ").replace(/Z/g, "ʒ").replace(/V/g, "ʌ").replace(/3/g, "ɜ")
-    .replace(/:/g, "ː").replace(/\s+/g, " ").trim();
+    .replace(/\{/g, "æ").replace(/%/g, "ˌ").replace(/'/g, "ˈ").replace(/ә/g, "ə")
+    .replace(/:/g, "ː").replace(/\//g, "").replace(/\s+/g, " ").trim();
   return out;
 }
 

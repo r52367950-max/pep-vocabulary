@@ -18,6 +18,7 @@ for (const entry of entries) {
   if (ids.has(entry.id)) errors.push(`duplicate-id:${entry.id}`);
   ids.add(entry.id);
   if (/[\uE000-\uF8FF]/.test(`${entry.headword}${entry.britishIpa}${entry.americanIpa}`)) errors.push(`private-use-character:${entry.id}`);
+  if (/[{}%@/]/.test(`${entry.britishIpa}${entry.americanIpa}`)) errors.push(`malformed-ipa:${entry.id}`);
   const rights = JSON.stringify(entry.license).toLowerCase();
   if (rights.includes("unknown") || rights.includes("prohibited")) errors.push(`unsafe-rights:${entry.id}`);
 }
@@ -60,4 +61,3 @@ writeFileSync(join(root, "data/audit-summary.json"), `${JSON.stringify(summary, 
 console.log(JSON.stringify(summary.counts, null, 2));
 console.log(`audit status: ${summary.status}`);
 if (errors.length) process.exitCode = 1;
-

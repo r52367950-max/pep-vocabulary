@@ -34,6 +34,7 @@ import { buildQuestion, gradeQuestion, localSentenceCheck, QUESTION_CATALOG, typ
 import { isDue, newStoredCard, scheduleReview, workloadEstimate } from "@/lib/scheduler";
 import {
   clearUserData,
+  createLocalId,
   defaultSettings,
   deleteOne,
   exportBackup,
@@ -194,6 +195,10 @@ export default function VocabApp() {
     root.dataset.theme = settings.theme;
   }, [settings.theme]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [view]);
+
   const activeEvents = useMemo(() => {
     const undone = new Set(events.filter((event) => event.eventType === "undo" && event.targetEventId).map((event) => event.targetEventId));
     return events.filter((event) => event.eventType !== "undo" && !undone.has(event.eventId));
@@ -326,7 +331,7 @@ export default function VocabApp() {
   const undoLast = useCallback(async () => {
     if (!lastReview) return;
     const { event, entry } = lastReview;
-    const undoId = crypto.randomUUID();
+    const undoId = createLocalId();
     if (event.before) await putOne("cards", event.before);
     else await deleteOne("cards", event.cardId);
     const undoEvent: ReviewEvent = { ...event, eventType: "undo", eventId: undoId, targetEventId: event.eventId, timestampUtc: new Date().toISOString(), localDate: new Date().toLocaleDateString("sv-SE") };
@@ -339,8 +344,21 @@ export default function VocabApp() {
     });
     setEvents((previous) => [...previous, undoEvent]);
     setToast(`已撤销 ${entry.headword} 的上一次评分`);
+    setSession((previous) => {
+      if (!previous) return previous;
+      const position = previous.queue.findIndex((candidate) => candidate.id === entry.id);
+      return {
+        ...previous,
+        position: position >= 0 ? position : previous.position,
+        reviewed: Math.max(0, previous.reviewed - 1),
+        correct: Math.max(0, previous.correct - (event.correct ? 1 : 0)),
+        endedAt: undefined,
+      };
+    });
+    setSessionComplete(false);
+    resetQuestion();
     setLastReview(null);
-  }, [lastReview]);
+  }, [lastReview, resetQuestion]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -792,7 +810,7 @@ function StudySession({ session, complete, entry, detail, question, answer, setA
 }) {
   if (complete) {
     const elapsed = ((session.endedAt || session.startedAt) - session.startedAt) / 60000;
-    return <main className="session-shell complete-shell"><div className="session-complete"><span className="completion-mark"><Check size={30} /></span><p className="eyebrow">SESSION COMPLETE</p><h1>{session.kind === "diagnostic" ? "诊断样本已写入计划。" : "这一轮已经收好。"}</h1><p>没有额外塞入新词；下一次仍从到期与薄弱项开始。</p><div className="completion-metrics"><Metric label="完成" value={session.reviewed} note="主学习状态更新" /><Metric label="正确" value={`${Math.round(session.correct / Math.max(1, session.reviewed) * 100)}%`} note="客观题 + 翻卡" /><Metric label="用时" value={formatMinutes(elapsed)} note="含思考与反馈" /></div><div className="button-row center"><button className="secondary-button" onClick={onRestart}><RotateCcw size={17} />再练一轮</button><button className="primary-button" onClick={onExit}>返回今日</button></div></div></main>;
+    return <main className="session-shell complete-shell"><div className="session-complete"><span className="completion-mark"><Check size={30} /></span><p className="eyebrow">SESSION COMPLETE</p><h1>{session.kind === "diagnostic" ? "诊断样本已写入计划。" : "这一轮已经收好。"}</h1><p>没有额外塞入新词；下一次仍从到期与薄弱项开始。</p><div className="completion-metrics"><Metric label="完成" value={session.reviewed} note="主学习状态更新" /><Metric label="正确" value={`${Math.round(session.correct / Math.max(1, session.reviewed) * 100)}%`} note="客观题 + 翻卡" /><Metric label="用时" value={formatMinutes(elapsed)} note="含思考与反馈" /></div><div className="button-row center">{canUndo && <button className="secondary-button" onClick={onUndo}><Undo2 size={17} />撤销最后一次评分</button>}<button className="secondary-button" onClick={onRestart}><RotateCcw size={17} />再练一轮</button><button className="primary-button" onClick={onExit}>返回今日</button></div></div></main>;
   }
   if (!entry || !question) return null;
   const sentenceCheck = question.type === "sentence-output" && answer ? localSentenceCheck(answer, entry.headword) : null;

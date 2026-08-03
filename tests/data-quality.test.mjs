@@ -35,6 +35,7 @@ test("release records have stable unique IDs and traceable required fields", () 
 test("release contains no private-use glyphs or unsafe rights labels", () => {
   for (const entry of entries) {
     assert.doesNotMatch(`${entry.headword}${entry.britishIpa}${entry.americanIpa}`, /[\uE000-\uF8FF]/);
+    assert.doesNotMatch(`${entry.britishIpa}${entry.americanIpa}`, /[{}%@/]/);
     assert.doesNotMatch(JSON.stringify(entry.license), /unknown|prohibited/i);
   }
 });
@@ -52,4 +53,3 @@ test("official high-school curriculum extraction is deterministic", () => {
   assert.deepEqual([...new Set(rows.map((row) => row.curriculumLevel))].sort(), ["compulsory-baseline", "required", "selective-required"]);
   assert.ok(rows.every((row) => row.sourceStatus === "verified-primary"));
 });
-

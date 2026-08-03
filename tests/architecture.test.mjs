@@ -43,3 +43,20 @@ test("destructive reset and AI degradation are explicit", () => {
   assert.match(app, /AI.*关闭|关闭.*AI/s);
   assert.match(app, /系统语音/);
 });
+
+test("accessibility fallbacks and exact viewport QA harness stay wired", () => {
+  const css = source("app/globals.css");
+  const storage = source("lib/storage.ts");
+  const scheduler = source("lib/scheduler.ts");
+  const viewportHarness = source("public/qa-viewport.html");
+
+  assert.match(css, /:focus-visible\s*\{/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /@media \(forced-colors: active\)/);
+  assert.match(storage, /export function createLocalId\(\)/);
+  assert.match(storage, /randomUUID|getRandomValues/);
+  assert.doesNotMatch(scheduler, /crypto\.randomUUID/);
+  assert.match(viewportHarness, /name="viewport"/);
+  assert.match(viewportHarness, /<iframe[^>]+title="词迹真实应用视口"/);
+  assert.match(viewportHarness, /noindex/);
+});

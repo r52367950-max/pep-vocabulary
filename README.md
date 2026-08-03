@@ -47,7 +47,7 @@ npm run dev
 - `public/data/v1/`：版本化轻量索引和详情分片。
 - `db/`, `drizzle/`：可选私有同步 schema 与迁移。
 - `tests/`：可重复的自动化证据。
-- `artifacts/`：真实运行截图和测试日志（完成浏览器验收后生成）。
+- `artifacts/screenshots/`：手机、iPad、桌面和主要流程的真实运行截图及索引。
 
 ## 数据与隐私边界
 
@@ -61,4 +61,3 @@ npm run dev
 - [TEST_REPORT.md](./TEST_REPORT.md)
 - [PROJECT_STATE.md](./PROJECT_STATE.md)
 - [LEXICON_VERSIONING_AND_MIGRATIONS.md](./LEXICON_VERSIONING_AND_MIGRATIONS.md)
-
