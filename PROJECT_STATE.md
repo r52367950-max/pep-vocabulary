@@ -29,6 +29,7 @@
 - `npm run lint` → 通过。
 - `npm test` → 数据审计、12 项自动测试、生产构建和 Sites 产物验证全部通过。
 - Vocab Redesign → 208 px 控制台导航、52 px 工具栏、今日工作台/检查器、密集词库与深色学习台均已接入真实 IndexedDB/FSRS 数据；不是静态设计稿。
+- Vocab Redesign checkpoint → 提交 `e59a0a9`，Sites 版本 3 部署终态 `succeeded`；平台桌面截图已复核，新版手机/iPad 真实视口因本轮浏览器控制不可用仍保留为复测项。
 - 真实浏览器 → 36/36 分层诊断完成且中途恢复有效；组合筛选、学习评分、完成页撤销、计划负担、分析、备份恢复、schema 拒绝、AI/D1 降级通过。
 - 精确视口 → 390×844、820×1180、1440×900；真实截图位于 `artifacts/screenshots/`。
 - Sites checkpoint → 提交 `475dfde` 构建和托管产物验证通过；生产部署终态 `succeeded`。
