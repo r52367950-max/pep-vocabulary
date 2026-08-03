@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>词迹视口验收框</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: #f4f7f5; overflow: hidden; }
+      iframe { display: block; border: 0; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <iframe title="词迹真实应用视口" src="/?qa-viewport=1"></iframe>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const width = Math.max(320, Math.min(1600, Number(params.get("w")) || 390));
+      const height = Math.max(480, Math.min(1400, Number(params.get("h")) || 844));
+      const frame = document.querySelector("iframe");
+      frame.width = String(width);
+      frame.height = String(height);
+      document.documentElement.style.width = `${width}px`;
+      document.documentElement.style.height = `${height}px`;
+      document.body.style.width = `${width}px`;
+      document.body.style.height = `${height}px`;
+    </script>
+  </body>
+</html>

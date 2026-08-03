@@ -1,0 +1,923 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-08-03T05:49:20.435Z",
+  "sourceRoot": "/workspace/source-cache/pep-vocab",
+  "policy": {
+    "rawTextbooksCommitted": false,
+    "formalReleaseUnknownRightsAllowed": false,
+    "ocrMayDirectlyPublish": false
+  },
+  "entries": [
+    {
+      "id": "HS-R1",
+      "title": "普通高中教科书 英语 必修 第一册",
+      "fileName": "HS-R1.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-R1.pdf",
+      "bytes": 14704146,
+      "sha256": "ffe985a370964820aa003008f48c7cf17b5e0dff8eb29fe54cd4743b0c4e8c79",
+      "pages": 138,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "必修第一册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2019-04",
+      "wordListPages": {
+        "firstPhysicalPage": 119,
+        "lastPhysicalPage": 124,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "HS-R2",
+      "title": "普通高中教科书 英语 必修 第二册",
+      "fileName": "HS-R2.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-R2.pdf",
+      "bytes": 14270612,
+      "sha256": "33b74bf42b22b32fdbe3201e6f61cf8099be047ef0af8a1740f6013dee4a619d",
+      "pages": 126,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "必修第二册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2019-04",
+      "wordListPages": {
+        "firstPhysicalPage": 108,
+        "lastPhysicalPage": 113,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "HS-R3",
+      "title": "普通高中教科书 英语 必修 第三册",
+      "fileName": "HS-R3.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-R3.pdf",
+      "bytes": 14202806,
+      "sha256": "fe9c8e15e62f4aec56efc60b8de43f4a55d40f3114d6505affaef78a8b7a1af2",
+      "pages": 130,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "必修第三册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2019-04",
+      "wordListPages": {
+        "firstPhysicalPage": 109,
+        "lastPhysicalPage": 115,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "HS-S1",
+      "title": "普通高中教科书 英语 选择性必修 第一册",
+      "fileName": "HS-S1.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-S1.pdf",
+      "bytes": 12809514,
+      "sha256": "94ec493439239c436326e228e3d3ad78c7053ac5abc005db5739119f6a98c33d",
+      "pages": 130,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "选择性必修第一册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2019-04",
+      "wordListPages": {
+        "firstPhysicalPage": 113,
+        "lastPhysicalPage": 118,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "HS-S2",
+      "title": "普通高中教科书 英语 选择性必修 第二册",
+      "fileName": "HS-S2.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-S2.pdf",
+      "bytes": 9968316,
+      "sha256": "cafaee5fe508dfced31ba02877251ffeb01e98b1a48767fe30b2b7187edb0050",
+      "pages": 134,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "选择性必修第二册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2019-04",
+      "wordListPages": {
+        "firstPhysicalPage": 115,
+        "lastPhysicalPage": 121,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "HS-S3",
+      "title": "普通高中教科书 英语 选择性必修 第三册",
+      "fileName": "HS-S3.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-S3.pdf",
+      "bytes": 12684455,
+      "sha256": "ed8eb9e5988b44a1ff4f8bc11ed3cfae406decefae7982477362720788e1998b",
+      "pages": 130,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "选择性必修第三册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2020-04",
+      "wordListPages": {
+        "firstPhysicalPage": 113,
+        "lastPhysicalPage": 118,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "HS-S4",
+      "title": "普通高中教科书 英语 选择性必修 第四册",
+      "fileName": "HS-S4.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/high-school/HS-S4.pdf",
+      "bytes": 12330614,
+      "sha256": "2ad7555a13eb420aa70497f9faa2541fdb502b7ffc4e063e87c60cce88f1b4a3",
+      "pages": 130,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/高中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社",
+      "volume": "选择性必修第四册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": null,
+      "editorialDate": "2019-04",
+      "wordListPages": {
+        "firstPhysicalPage": 113,
+        "lastPhysicalPage": 117,
+        "printedPageOffset": 7
+      }
+    },
+    {
+      "id": "JH-7A",
+      "title": "义务教育教科书 英语 七年级 上册",
+      "fileName": "JH-7A.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/middle-school/JH-7A.pdf",
+      "bytes": 12005272,
+      "sha256": "4cdfd213e2c54164b6b97bcd6d15e93b71e6b243e8aea958f330e6bf8822f46e",
+      "pages": 138,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/初中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社 / Cengage Learning",
+      "volume": "七年级上册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": 2012,
+      "editorialDate": null,
+      "wordListPages": {
+        "firstPhysicalPage": 117,
+        "lastPhysicalPage": 125,
+        "printedPageOffset": 23
+      }
+    },
+    {
+      "id": "JH-7B",
+      "title": "义务教育教科书 英语 七年级 下册",
+      "fileName": "JH-7B.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/middle-school/JH-7B.pdf",
+      "bytes": 17821241,
+      "sha256": "7041d787738bdf5f4f556765acdfe8033ac2f69d03e67ccc62516375f6a46f37",
+      "pages": 152,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat 11.0 Image Conversion Plug-in",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/初中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "page-image + OCR candidate + visual cross-check",
+      "versionStatus": "verified-candidate-ocr",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "原 PDF 无可用文本层；OCR 仅作候选，正式字段需与页图或独立来源一致。"
+      ],
+      "publisher": "人民教育出版社 / Cengage Learning",
+      "volume": "七年级下册",
+      "isbn": null,
+      "edition": "2012-10 第1版",
+      "printing": null,
+      "copyrightYear": 2012,
+      "editorialDate": null,
+      "wordListPages": {
+        "firstPhysicalPage": 130,
+        "lastPhysicalPage": 139,
+        "printedPageOffset": 10
+      }
+    },
+    {
+      "id": "JH-8A",
+      "title": "义务教育教科书 英语 八年级 上册",
+      "fileName": "JH-8A.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/middle-school/JH-8A.pdf",
+      "bytes": 9469090,
+      "sha256": "b6aede721a90f5e18420e01a9030709ebf3d9231121db71f8474d0034a10e781",
+      "pages": 158,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/初中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社 / Cengage Learning",
+      "volume": "八年级上册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": 2013,
+      "editorialDate": null,
+      "wordListPages": {
+        "firstPhysicalPage": 132,
+        "lastPhysicalPage": 142,
+        "printedPageOffset": 18
+      }
+    },
+    {
+      "id": "JH-8B",
+      "title": "义务教育教科书 英语 八年级 下册",
+      "fileName": "JH-8B.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/middle-school/JH-8B.pdf",
+      "bytes": 18208880,
+      "sha256": "1be886980dc0833b9c87ced7c9de0c8e3e7e19d990c1172f62504576d2554284",
+      "pages": 147,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat 11.0 Image Conversion Plug-in",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/初中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "page-image + OCR candidate + visual cross-check",
+      "versionStatus": "verified-candidate-ocr",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "原 PDF 无可用文本层；OCR 仅作候选，正式字段需与页图或独立来源一致。"
+      ],
+      "publisher": "人民教育出版社 / Cengage Learning",
+      "volume": "八年级下册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": 2013,
+      "editorialDate": null,
+      "wordListPages": {
+        "firstPhysicalPage": 123,
+        "lastPhysicalPage": 134,
+        "printedPageOffset": 9
+      }
+    },
+    {
+      "id": "JH-9",
+      "title": "义务教育教科书 英语 九年级 全一册",
+      "fileName": "JH-9.pdf",
+      "path": "/workspace/source-cache/pep-vocab/textbooks/middle-school/JH-9.pdf",
+      "bytes": 11088578,
+      "sha256": "9c4118021048d901610b673f590ed28c39c04cb2d4f7fd940f83a2d8b2741af7",
+      "pages": 201,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": "https://github.com/TapXWorld/ChinaTextbook/tree/master/初中/人教版/英语",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + page-image visual cross-check",
+      "versionStatus": "verified-candidate",
+      "rights": "copyrighted-reference-only; do-not-redistribute",
+      "knownIssues": [
+        "Poppler 报告部分 Marked Content 参数异常；词表文本和页图仍可读取。"
+      ],
+      "publisher": "人民教育出版社 / Cengage Learning",
+      "volume": "九年级全一册",
+      "isbn": null,
+      "edition": null,
+      "printing": null,
+      "copyrightYear": 2014,
+      "editorialDate": null,
+      "wordListPages": {
+        "firstPhysicalPage": 170,
+        "lastPhysicalPage": 184,
+        "printedPageOffset": 14
+      }
+    },
+    {
+      "id": "STD-HS-EN-2017-2020",
+      "title": "普通高中英语课程标准（2017年版2020年修订）",
+      "fileName": "high-school-english-2017-2020.pdf",
+      "path": "/workspace/source-cache/pep-vocab/standards/high-school-english-2017-2020.pdf",
+      "bytes": 7750611,
+      "sha256": "8ebd6bb12e9eb1c58e422ee01b540a4a71d2e681a4c4a764a36ee3a34b21c1be",
+      "pages": 220,
+      "encrypted": "no",
+      "producer": "Founder PDF Library",
+      "sourceUrl": "https://www.pep.com.cn/xw/zt/rjwy/gzkb2020/202205/P020220517522153664167.pdf",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF text layer + appendix reconciliation",
+      "versionStatus": "verified-primary",
+      "rights": "official-reference; extracted word list only",
+      "knownIssues": []
+    },
+    {
+      "id": "STD-COMPULSORY-EN-2022",
+      "title": "义务教育英语课程标准（2022年版）",
+      "fileName": "compulsory-english-2022.pdf",
+      "path": "/workspace/source-cache/pep-vocab/standards/compulsory-english-2022.pdf",
+      "bytes": 31502213,
+      "sha256": "59ec3971e0dbd6ca487c4e4972cbc80effaf2fd62418d07e5f62c6698fa222fb",
+      "pages": 201,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat 18.11 Image Conversion Plug-in",
+      "sourceUrl": "https://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582349487953.pdf",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "PDF image/text extraction + visual inspection",
+      "versionStatus": "verified-primary",
+      "rights": "official-reference; extracted requirements only",
+      "knownIssues": []
+    },
+    {
+      "id": "OEWN-2025-PLUS",
+      "title": "Open English WordNet 2025 plus JSON",
+      "fileName": "english-wordnet-2025-plus-json.zip",
+      "path": "/workspace/source-cache/pep-vocab/open-data/oewn/english-wordnet-2025-plus-json.zip",
+      "bytes": 11298794,
+      "sha256": "8832b8fa26a14c0ba8c99bb1ef8db6f9e122a6d9193b65ca9e0ef572580fee7e",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": "https://en-word.net/downloads/english-wordnet-2025-plus-json.zip",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "JSON entry/synset join",
+      "versionStatus": "verified-primary",
+      "rights": "CC BY 4.0; Open English WordNet contributors",
+      "knownIssues": []
+    },
+    {
+      "id": "IPA-DICT-EN-UK",
+      "title": "ipa-dict English UK pronunciation list",
+      "fileName": "en_UK.txt",
+      "path": "/workspace/source-cache/pep-vocab/open-data/ipa-dict/en_UK.txt",
+      "bytes": 1684124,
+      "sha256": "221394caef0cf723b4f2df81a98ac33191293257b88aed5b1fb89466d3a0dc77",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": "https://github.com/open-dict-data/ipa-dict/blob/master/data/en_UK.txt",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "tab-separated pronunciation lookup",
+      "versionStatus": "verified-primary",
+      "rights": "MIT; open-dict-data/ipa-dict",
+      "knownIssues": []
+    },
+    {
+      "id": "IPA-DICT-EN-US",
+      "title": "ipa-dict English US pronunciation list",
+      "fileName": "en_US.txt",
+      "path": "/workspace/source-cache/pep-vocab/open-data/ipa-dict/en_US.txt",
+      "bytes": 3180267,
+      "sha256": "2af6f154a5c363275f052d1f85acedef38ed185ca9745aa4314be77f6b70de67",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": "https://github.com/open-dict-data/ipa-dict/blob/master/data/en_US.txt",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "tab-separated pronunciation lookup",
+      "versionStatus": "verified-primary",
+      "rights": "MIT; open-dict-data/ipa-dict",
+      "knownIssues": []
+    },
+    {
+      "id": "ECDICT-2025",
+      "title": "ECDICT free English-Chinese dictionary database",
+      "fileName": "ecdict.csv",
+      "path": "/workspace/source-cache/pep-vocab/open-data/ecdict/ecdict.csv",
+      "bytes": 65933428,
+      "sha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": "https://github.com/skywind3000/ECDICT/blob/master/ecdict.csv",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "CSV lookup; core translation and phonetic fields only",
+      "versionStatus": "verified-primary",
+      "rights": "MIT; Copyright (c) 2025 Linwei",
+      "knownIssues": [
+        "只取核心释义与音标；商业词典标识列和不可追溯扩展内容不作为权威来源。"
+      ]
+    },
+    {
+      "id": "DRIVE-ARCHITECTURE-RECOMMENDATIONS",
+      "title": "VOCAB_APP_ARCHITECTURE_AND_FEATURE_RECOMMENDATIONS.md",
+      "fileName": "VOCAB_APP_ARCHITECTURE_AND_FEATURE_RECOMMENDATIONS.md",
+      "path": "Google Drive file 1I7ZVvsxtAklPZHNMoT6SZpR-cwiacGH3",
+      "bytes": 32451,
+      "sha256": null,
+      "pages": null,
+      "kind": "project-brief",
+      "sourceUrl": "https://drive.google.com/file/d/1I7ZVvsxtAklPZHNMoT6SZpR-cwiacGH3",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "Google Drive text fetch",
+      "versionStatus": "verified-user-source",
+      "rights": "private project material",
+      "knownIssues": [
+        "Drive connector supplied complete text but not a local byte-identical copy; SHA-256 is unavailable."
+      ]
+    },
+    {
+      "id": "MIKIGO-MIDDLE-CROSSCHECK",
+      "title": "english-chinese-words 人教版初中词表",
+      "fileName": "32 scoped Markdown/meta files",
+      "path": "/workspace/source-cache/pep-vocab/open-data/mikigo-middle",
+      "bytes": null,
+      "sha256": null,
+      "pages": null,
+      "kind": "cross-check-word-list",
+      "sourceUrl": "https://github.com/mikigo/english-chinese-words/tree/main/docs/人教版初中",
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "Markdown headings and first bold gloss only",
+      "versionStatus": "verified-cross-source",
+      "rights": "Apache-2.0 repository; examples and expanded notes excluded because upstream provenance is not field-level",
+      "knownIssues": [
+        "只用于核对词头和核心中文义；不使用仓库中的例句、同义词或扩展短语。"
+      ]
+    },
+    {
+      "id": "UPLOAD-01",
+      "title": "03_暑期滚动七周主计划.md",
+      "fileName": ".codex-upload-42434ebcf6104f269151ae94f61c95f0",
+      "path": "/workspace/scratch/242015b76399/project_sources/.codex-upload-42434ebcf6104f269151ae94f61c95f0",
+      "bytes": 5459968,
+      "sha256": "dcd70c14fa9d25fe5339ae449d5028a98df2e8f898501451e94087331521bd77",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-02",
+      "title": "06_记录与复盘模板.md",
+      "fileName": ".codex-upload-77c1367dfee94043a777544656ebcbad",
+      "path": "/workspace/scratch/242015b76399/project_sources/.codex-upload-77c1367dfee94043a777544656ebcbad",
+      "bytes": 11816960,
+      "sha256": "f6ffca50aaab507a8ff20d3e944f4f5e846f2107400a06f0729c9369a5b25e6b",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-03",
+      "title": "04_六科学科路线图.md",
+      "fileName": ".codex-upload-7b613520c46c4b2884eb862a4b106285",
+      "path": "/workspace/scratch/242015b76399/project_sources/.codex-upload-7b613520c46c4b2884eb862a4b106285",
+      "bytes": 12812288,
+      "sha256": "20ba2137f461f067279b9528fff06ae0051400bb92a245121461964de9c663ff",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-04",
+      "title": "2026暑期学习项目核心文件.md",
+      "fileName": ".codex-upload-b5c49a31c62c49269f8f87ef17a11d03",
+      "path": "/workspace/scratch/242015b76399/project_sources/.codex-upload-b5c49a31c62c49269f8f87ef17a11d03",
+      "bytes": 4844521,
+      "sha256": "5cba38afba1399c1133b5f6c5831676f583901a622f48ea8e8e1ebe7c4b83a9b",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-05",
+      "title": "08_诊断与测评蓝图.md",
+      "fileName": ".codex-upload-ead83b32c49043c18d6f17cfe8d62370",
+      "path": "/workspace/scratch/242015b76399/project_sources/.codex-upload-ead83b32c49043c18d6f17cfe8d62370",
+      "bytes": 4157440,
+      "sha256": "45ef303b46ea7ee971ea2ef07dfd7e0072cb0627bf90500f36956955eff21bc0",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-06",
+      "title": "00_新项目启用说明.md",
+      "fileName": "01-03_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/01-03_-.md",
+      "bytes": 6959,
+      "sha256": "3d741518372d186e4fd0c3cf3ad1fbfbabeb9d2df065d2c7d57093b7801e39c6",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-07",
+      "title": "01_项目总指令_粘贴到项目设置.md",
+      "fileName": "02-06_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/02-06_-.md",
+      "bytes": 4706,
+      "sha256": "38af886472573473e29ee9fc61ceddf07386be1bcfa7d02edb7ec6cf9aaa0447",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-08",
+      "title": "02_学生档案与项目状态.md",
+      "fileName": "03-04_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/03-04_-.md",
+      "bytes": 16913,
+      "sha256": "b70c71f0c5dd88d34fb5c5839453e87da15bdea5eb39087cc7aae6cdcd8b16f5",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-09",
+      "title": "05_首周启动包.md",
+      "fileName": "04-2026-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/04-2026-.md",
+      "bytes": 68652,
+      "sha256": "912354ccc39a1ae1e26e868b538ac46c3c7d874c30d43fb1f88640e559fb83b8",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-10",
+      "title": "07_资料与来源索引.md",
+      "fileName": "05-08_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/05-08_-.md",
+      "bytes": 6438,
+      "sha256": "8f80b85b6a0101e6b4f6da17b7c2df321a882880181067b3577321be333de9cd",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-11",
+      "title": "09_GPT-Live-1英语口语教练提示词.md",
+      "fileName": "06-00_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/06-00_-.md",
+      "bytes": 3069,
+      "sha256": "f70a43534671b007a88d64f0049d3dc62e030f9f2f74b9aa68bb64754a2c3100",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-12",
+      "title": "biology_required_1.pdf",
+      "fileName": "07-01_-_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/07-01_-_-.md",
+      "bytes": 6800,
+      "sha256": "fe4fe1c0503f524f99c0a5f0c41504d8078905936bb26a8b6a49517ecec107eb",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-13",
+      "title": "biology_selective_1.pdf",
+      "fileName": "08-02_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/08-02_-.md",
+      "bytes": 4848,
+      "sha256": "b7612dcb8cfae5de47ff3f60153355ec8e7b0a837e098f072dab18e32b410186",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-14",
+      "title": "biology_selective_2.pdf",
+      "fileName": "09-05_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/09-05_-.md",
+      "bytes": 6869,
+      "sha256": "6c21962c7d5cb1d7eb2fd7ab8c976b60d4760f267b2b032290d76237f57743e8",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-15",
+      "title": "biology_required_2.pdf",
+      "fileName": "10-07_-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/10-07_-.md",
+      "bytes": 6676,
+      "sha256": "467250b30a10e07c02fc80faa758e4a55a4ce49786582d87350fbc52c4b4ddf1",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-16",
+      "title": "chemistry_selective_1.pdf",
+      "fileName": "11-09_GPT-Live-1-.md",
+      "path": "/workspace/scratch/242015b76399/project_sources/11-09_GPT-Live-1-.md",
+      "bytes": 11653,
+      "sha256": "06aed349276515bbfda7eca39fee604e2da5228ead388d3e201e725571a2ce0e",
+      "pages": null,
+      "encrypted": null,
+      "producer": null,
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "UTF-8 text scan",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-17",
+      "title": "12-biology_required_1.pdf",
+      "fileName": "12-biology_required_1.pdf",
+      "path": "/workspace/scratch/242015b76399/project_sources/12-biology_required_1.pdf",
+      "bytes": 19106333,
+      "sha256": "5d225c4b321014e08ea90bbc6d4601255a98bb846d03834c6a1e264127770eed",
+      "pages": 141,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "metadata scan only",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-18",
+      "title": "13-biology_selective_1.pdf",
+      "fileName": "13-biology_selective_1.pdf",
+      "path": "/workspace/scratch/242015b76399/project_sources/13-biology_selective_1.pdf",
+      "bytes": 21801973,
+      "sha256": "23b8efd35561f891ecf9f9cb7f3b4e8277bd03ee189d47e342962597438272b6",
+      "pages": 123,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "metadata scan only",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-19",
+      "title": "14-biology_selective_2.pdf",
+      "fileName": "14-biology_selective_2.pdf",
+      "path": "/workspace/scratch/242015b76399/project_sources/14-biology_selective_2.pdf",
+      "bytes": 28148776,
+      "sha256": "c9245089c2babf9928e6527656f56b0747de9206c2367282e9a47741dcd6d201",
+      "pages": 126,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "metadata scan only",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-20",
+      "title": "15-biology_required_2.pdf",
+      "fileName": "15-biology_required_2.pdf",
+      "path": "/workspace/scratch/242015b76399/project_sources/15-biology_required_2.pdf",
+      "bytes": 28807227,
+      "sha256": "aca3c826dd2db97283fcf3dedd5517421944b279bf7446d04392c7fe7232d660",
+      "pages": 138,
+      "encrypted": "no",
+      "producer": "Adobe Acrobat Pro 11.0.0",
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "metadata scan only",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    },
+    {
+      "id": "UPLOAD-21",
+      "title": "16-chemistry_selective_1.pdf",
+      "fileName": "16-chemistry_selective_1.pdf",
+      "path": "/workspace/scratch/242015b76399/project_sources/16-chemistry_selective_1.pdf",
+      "bytes": 4844521,
+      "sha256": "5cba38afba1399c1133b5f6c5831676f583901a622f48ea8e8e1ebe7c4b83a9b",
+      "pages": 148,
+      "encrypted": "no",
+      "producer": "Adobe PDF Library 10.0.1",
+      "sourceUrl": null,
+      "acquiredAt": "2026-08-03",
+      "parsingMethod": "metadata scan only",
+      "versionStatus": "verified-user-source",
+      "rights": "private user material; not redistributed",
+      "knownIssues": [
+        "已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "version": "1.0.0-rc.1",
+  "generatedAt": "2026-08-03T06:06:25.288Z",
+  "schemaVersion": "1.0.0",
+  "sourceRecords": 7938,
+  "normalizedRecords": 7936,
+  "uniqueEntries": 4759,
+  "releasedEntries": 4681,
+  "middleEntries": 2216,
+  "highRequiredEntries": 1190,
+  "highSelectiveEntries": 1422,
+  "curriculumNotTextbookEntries": 94,
+  "tierCounts": {
+    "A": 2436,
+    "B": 202,
+    "C": 2043
+  },
+  "chunks": [
+    {
+      "file": "chunks/lexicon-00.json",
+      "first": "pep-88eaacdd5efc7e30",
+      "last": "pep-bce0337ffdc5648f",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-01.json",
+      "first": "pep-4512b72a0654ab2d",
+      "last": "pep-6a9f955c7e1eeed5",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-02.json",
+      "first": "pep-d98ce0bd099ce7fd",
+      "last": "pep-243d5268592212c5",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-03.json",
+      "first": "pep-349175b1693a7406",
+      "last": "pep-527c4423003c9f47",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-04.json",
+      "first": "pep-e2daf4a7ce3e4b4e",
+      "last": "pep-07af8f4463d26da7",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-05.json",
+      "first": "pep-c1b83567b81cc79f",
+      "last": "pep-cf786bb44c361a5f",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-06.json",
+      "first": "pep-548e40ad5aa10fd2",
+      "last": "pep-c3d49a10e2a8c853",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-07.json",
+      "first": "pep-8670d4b97a77aedf",
+      "last": "pep-51c7a31a66990a77",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-08.json",
+      "first": "pep-bab2c79b1d4d2737",
+      "last": "pep-a564514687fdb46f",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-09.json",
+      "first": "pep-a8aaa04d283f9bf5",
+      "last": "pep-67101262abd3c6b7",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-10.json",
+      "first": "pep-c0eeeae93dbc459b",
+      "last": "pep-70dc8f56a9360ed3",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-11.json",
+      "first": "pep-6c007d733d85a2fc",
+      "last": "pep-75f042269bb62a64",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-12.json",
+      "first": "pep-6d3672ee8e0eb2fa",
+      "last": "pep-91f94e405f4fb4bc",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-13.json",
+      "first": "pep-47eedc1c4de24295",
+      "last": "pep-a945093297c5fc6d",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-14.json",
+      "first": "pep-10ec099b5b1fa214",
+      "last": "pep-741bfe27184e0d7d",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-15.json",
+      "first": "pep-24516a42d637bf51",
+      "last": "pep-c37e69c340e623dc",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-16.json",
+      "first": "pep-d9e1032f540a36a0",
+      "last": "pep-563a798f0eb6c2cc",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-17.json",
+      "first": "pep-b261cdfa28b0cfbf",
+      "last": "pep-6df709ee2540a7ab",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-18.json",
+      "first": "pep-d41dd73d9922a20a",
+      "last": "pep-dafbd7f3ee90f52d",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-19.json",
+      "first": "pep-0bba26ddc9d421ca",
+      "last": "pep-f695d69e4558e77c",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-20.json",
+      "first": "pep-9ea0898fb33440fb",
+      "last": "pep-279ab4e5b9415043",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-21.json",
+      "first": "pep-3803ed92563725c3",
+      "last": "pep-6b145bd1794114d7",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-22.json",
+      "first": "pep-001343d0f3aac263",
+      "last": "pep-ec18b8d0a0b48eca",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-23.json",
+      "first": "pep-39434d9447462e86",
+      "last": "pep-190c5ba2ca18ddeb",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-24.json",
+      "first": "pep-b1a4c2db0c5284f2",
+      "last": "pep-8e0b59a848ad7518",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-25.json",
+      "first": "pep-451ebfded19037eb",
+      "last": "pep-0d7d90a9b38c0287",
+      "count": 180
+    },
+    {
+      "file": "chunks/lexicon-26.json",
+      "first": "pep-447cd8100b3f41a6",
+      "last": "pep-447cd8100b3f41a6",
+      "count": 1
+    }
+  ]
+}
