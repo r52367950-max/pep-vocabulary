@@ -49,21 +49,22 @@ flowchart TD
 
 ## 用户数据
 
-IndexedDB：`pep-vocab-studio`，版本 1。
+IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
 
 - `cards`：每词一个 `StoredCard`；FSRS 序列化状态、六项能力、状态、到期时间、收藏/注释/标签。
-- `events`：追加式 `ReviewEvent`；UTC、当地日期、时区、题型、能力、评分、正误、反应时间、提示、错误类型、调度前后状态和 scheduler log。
+- `events`：追加式 `ReviewEvent`；UTC、当地日期、时区、题型、题目、实际作答、期望答案、来源行、能力、评分、正误、反应时间、提示、错误类型、调度前后间隔/稳定度/难度、完整卡片快照和 scheduler log。
 - `lists`：自定义词单。
 - `settings`：每日时间、目标保持率、教材范围、模式、主题、AI 开关、诊断状态、考试日期。
 - `meta`：schema 与迁移元数据。
 
 撤销不会删除原事件，而是追加 `eventType: undo` 并指向 `targetEventId`；分析与重放时排除已撤销事件。
 
+`1.0.0` JSON 备份恢复前会确定性迁移为 `1.1.0`，补入新增证据字段并合并当前设置默认值；未知 schema 仍在写入前拒绝。
+
 ## D1 同步
 
-`sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是站点身份邮箱的 SHA-256；payload 上限 2 MB；客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
+`sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是站点身份邮箱的 SHA-256；payload 上限 5 MB；服务端同时校验请求与备份 payload 的 schema。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
 
 ## 审核状态
 
 允许值：`verified-primary`、`verified-cross-source`、`editorial-reviewed`、`provisional`、`conflicted`、`rejected`。模型生成内容只能是 `provisional`。发布审计不允许 `unknown` 或 `prohibited` 权利内容。
-

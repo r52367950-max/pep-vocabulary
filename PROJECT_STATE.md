@@ -6,7 +6,7 @@
 
 词库版本：`1.0.0-rc.1`
 
-用户数据 schema：`1.0.0`
+用户数据 schema：`1.1.0`（兼容迁移 `1.0.0` 备份）
 
 ## 关卡状态与证据
 
@@ -16,8 +16,8 @@
 | B 单元闭环 | 完成 | 必修一 Unit 1 可抽取、浏览、学习、评分、FSRS 复习、撤销和分析；对应 JSONL 与单元对账 |
 | C 教材与课标覆盖 | 发布候选完成 | 高中 7 册、初中 5 册、官方高中课标附录 2,997 词头；逐册逐单元对账 |
 | D 学习内核 | 完成 | `lib/scheduler.ts`、`lib/storage.ts`、`lib/questions.ts`；FSRS v6、一个主状态、六项能力、追加事件 |
-| E 完整产品 | 完成 | 今日、词库、计划、学习、分析、数据；备份恢复、CSV/TSV、文章对齐、PWA |
-| F 测试 | 主要门禁完成 | `npm test`、`npm run lint` 通过；10/10 自动测试；三种精确视口和主要真实流程通过；部署后设备验收项见 `TEST_REPORT.md` |
+| E 完整产品 | 完成 | Vocab Redesign 控制台；实时今日队列、密集词库、常驻学习上下文、真实评分间隔、备份恢复、CSV/TSV、文章对齐、PWA |
+| F 测试 | 主要门禁完成 | `npm test`、`npm run lint` 通过；12/12 自动测试；旧版三种精确视口证据保留，新版浏览器复测见 `TEST_REPORT.md` |
 | G 私有部署与最终审计 | 部分完成 | [Sites 部署](https://pep-vocab-studio.namizore.chatgpt.site) 成功；策略为 `custom`，仅 owner 1 人、外部访客 0、群组 0；HTTPS 离线与实际身份同步仍需用户设备复测 |
 
 ## 最新可重复证据
@@ -25,9 +25,10 @@
 - `node scripts/build-source-manifest.mjs` → 41 项来源，12 册教材。
 - `node scripts/build-lexicon.mjs` → 7,938 原始记录、7,936 规范化记录、4,759 稳定词条、4,681 发布候选。
 - `npm run data:audit` → 硬错误 0，状态 `release-candidate-with-declared-gaps`。
-- `npm run test:unit` → 10/10 通过。
+- `npm run test:unit` → 12/12 通过；新增新版界面契约与用户数据迁移契约。
 - `npm run lint` → 通过。
-- `npm test` → 数据审计、10 项自动测试、生产构建和 Sites 产物验证全部通过。
+- `npm test` → 数据审计、12 项自动测试、生产构建和 Sites 产物验证全部通过。
+- Vocab Redesign → 208 px 控制台导航、52 px 工具栏、今日工作台/检查器、密集词库与深色学习台均已接入真实 IndexedDB/FSRS 数据；不是静态设计稿。
 - 真实浏览器 → 36/36 分层诊断完成且中途恢复有效；组合筛选、学习评分、完成页撤销、计划负担、分析、备份恢复、schema 拒绝、AI/D1 降级通过。
 - 精确视口 → 390×844、820×1180、1440×900；真实截图位于 `artifacts/screenshots/`。
 - Sites checkpoint → 提交 `475dfde` 构建和托管产物验证通过；生产部署终态 `succeeded`。

@@ -11,10 +11,10 @@
 | 来源清单 | `node scripts/build-source-manifest.mjs` | 通过：41 项，12/12 目标教材 |
 | 词库构建 | `node scripts/build-lexicon.mjs` | 通过：7,938 raw、7,936 normalized、4,759 unique、4,681 release candidate |
 | 数据审计 | `npm run data:audit` | 硬错误 0；状态 `release-candidate-with-declared-gaps` |
-| 自动测试 | `npm run test:unit` | 10/10 通过 |
+| 自动测试 | `npm run test:unit` | 12/12 通过 |
 | ESLint | `npm run lint` | 通过 |
 | 生产构建 | `npm run build` | 通过；Worker export 与 D1 hosting manifest 验证通过 |
-| 全量门禁 | `npm test` | 通过：数据审计 → 10 项测试 → 生产构建 |
+| 全量门禁 | `npm test` | 通过：数据审计 → 12 项测试 → 生产构建 |
 
 ## 自动覆盖
 
@@ -25,6 +25,15 @@
 - FSRS v6 对 0.85/0.95 保持率产生不同间隔；一个主卡状态 + 六项能力。
 - 14 种题型目录、PWA shell、详情懒加载、JSON 备份、D1 revision 冲突、AI 安全降级和清空确认。
 - 非安全预览环境下的本地 ID 回退、可见焦点、forced-colors、`prefers-reduced-motion` 与精确视口验收框。
+- Vocab Redesign 控制台壳、移动底栏、密集词库、常驻学习上下文、真实 FSRS 间隔预览、14 天负担预测与 `1.0.0 → 1.1.0` 备份迁移契约。
+
+## Vocab Redesign 回归（2026-08-03）
+
+- `npm run lint`：通过，无警告。
+- `npm run test:unit`：12/12 通过。
+- `npm run build`：通过，Worker export 与 D1 hosting manifest 均存在。
+- 个人数据事件新增题目、实际作答、期望答案、来源行、前后间隔、稳定度与难度；同步接口同时校验外层与 payload 的 `1.1.0` schema，限制为 5 MB。
+- 下方旧截图用于证明先前完整流程，不得冒充新版视觉证据；新版精确视口结果将在本次 checkpoint 浏览器验收后补录。
 
 ## 真实浏览器验收
 

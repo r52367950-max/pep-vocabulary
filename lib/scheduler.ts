@@ -36,6 +36,10 @@ export function scheduleReview({
   responseMs,
   hints,
   errorType,
+  prompt,
+  answerGiven,
+  expectedAnswer,
+  sourceLine,
   now = new Date(),
 }: {
   stored: StoredCard | null;
@@ -47,6 +51,10 @@ export function scheduleReview({
   responseMs: number;
   hints: number;
   errorType: string | null;
+  prompt?: string;
+  answerGiven?: string | null;
+  expectedAnswer?: string | null;
+  sourceLine?: string | null;
   now?: Date;
 }) {
   const before = stored ? structuredClone(stored) : null;
@@ -79,11 +87,54 @@ export function scheduleReview({
     responseMs,
     hints,
     errorType,
+    prompt,
+    answerGiven,
+    expectedAnswer,
+    sourceLine,
+    intervalBeforeDays: current.lastReviewed ? Math.max(0, (new Date(current.due).getTime() - new Date(current.lastReviewed).getTime()) / 86400000) : null,
+    intervalAfterDays: Math.max(0, (result.card.due.getTime() - now.getTime()) / 86400000),
+    stabilityBefore: typeof current.fsrs.stability === "number" ? current.fsrs.stability : null,
+    stabilityAfter: result.card.stability,
+    difficultyBefore: typeof current.fsrs.difficulty === "number" ? current.fsrs.difficulty : null,
+    difficultyAfter: result.card.difficulty,
     before,
     after,
     schedulerLog: { ...result.log, due: result.log.due.toISOString(), review: result.log.review.toISOString() },
   };
   return { after, event };
+}
+
+export type ReviewIntervalPreview = { rating: 1 | 2 | 3 | 4; due: string; days: number; label: string };
+
+function intervalLabel(due: Date, now: Date) {
+  const minutes = Math.max(1, Math.round((due.getTime() - now.getTime()) / 60000));
+  if (minutes < 60) return `${minutes} 分钟后`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} 小时后`;
+  const days = Math.max(1, Math.round(hours / 24));
+  if (days < 30) return `+${days} 天`;
+  return `+${Math.max(1, Math.round(days / 30))} 个月`;
+}
+
+export function previewReviewIntervals(stored: StoredCard | null | undefined, retention: number, now = new Date()): ReviewIntervalPreview[] {
+  const current = stored || newStoredCard("preview", now);
+  const scheduler = fsrs(generatorParameters({ request_retention: retention, enable_fuzz: false, enable_short_term: true }));
+  return ([1, 2, 3, 4] as const).map((rating) => {
+    const due = scheduler.next(hydrateCard(current.fsrs), now, rating as Rating).card.due;
+    return { rating, due: due.toISOString(), days: Math.max(0, (due.getTime() - now.getTime()) / 86400000), label: intervalLabel(due, now) };
+  });
+}
+
+export type WorkloadDay = { date: string; count: number; minutes: number };
+export function forecastDueLoad(cards: Iterable<StoredCard>, days = 14, now = new Date()): WorkloadDay[] {
+  const start = new Date(now); start.setHours(0, 0, 0, 0);
+  const result = Array.from({ length: days }, (_, offset) => { const date = new Date(start); date.setDate(start.getDate() + offset); return { date: date.toLocaleDateString("sv-SE"), count: 0, minutes: 0 }; });
+  for (const card of cards) {
+    if (card.status === "paused") continue;
+    const offset = Math.max(0, Math.min(days - 1, Math.floor((new Date(card.due).getTime() - start.getTime()) / 86400000)));
+    result[offset].count += 1;
+  }
+  return result.map((day) => ({ ...day, minutes: Math.max(day.count ? 2 : 0, Math.round(day.count * .62)) }));
 }
 
 export function workloadEstimate(minutesAtNinety: number, retention: number) {

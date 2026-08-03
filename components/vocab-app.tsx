@@ -29,9 +29,11 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ConsoleLexicon from "@/components/console-lexicon";
+import ConsoleStudySession from "@/components/console-study-session";
 import { loadDetails, loadLexicon, speakSystem, type LexiconDetail, type LexiconIndexEntry, type LexiconManifest, type Scope } from "@/lib/lexicon";
 import { buildQuestion, gradeQuestion, localSentenceCheck, QUESTION_CATALOG, type Question, type QuestionType } from "@/lib/questions";
-import { isDue, newStoredCard, scheduleReview, workloadEstimate } from "@/lib/scheduler";
+import { forecastDueLoad, isDue, newStoredCard, scheduleReview, workloadEstimate } from "@/lib/scheduler";
 import {
   clearUserData,
   createLocalId,
@@ -43,6 +45,7 @@ import {
   putOne,
   restoreBackup,
   saveSettings,
+  USER_DATA_SCHEMA_VERSION,
   type AppSettings,
   type ReviewEvent,
   type SkillName,
@@ -51,7 +54,7 @@ import {
 
 type View = "today" | "lexicon" | "plan" | "analysis" | "data";
 type SessionKind = "daily" | "diagnostic" | "free";
-type SessionState = {
+export type SessionState = {
   kind: SessionKind;
   queue: LexiconIndexEntry[];
   details: Map<string, LexiconDetail>;
@@ -102,6 +105,18 @@ function formatMinutes(value: number) {
   return value < 60 ? `${Math.round(value)} 分钟` : `${Math.floor(value / 60)} 小时 ${Math.round(value % 60)} 分`;
 }
 
+function calculateStreak(events: ReviewEvent[]) {
+  if (!events.length) return 0;
+  const days = new Set(events.map((event) => event.localDate));
+  const cursor = new Date();
+  let streak = 0;
+  while (days.has(cursor.toLocaleDateString("sv-SE"))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 function statusLabel(status?: StoredCard["status"]) {
   return ({ unseen: "未学", learning: "学习中", weak: "薄弱", mastered: "已掌握", paused: "暂停" } as const)[status || "unseen"];
 }
@@ -150,11 +165,12 @@ export default function VocabApp() {
   const [toast, setToast] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<LexiconIndexEntry | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<LexiconDetail | null>(null);
+  const [visibleDetails, setVisibleDetails] = useState<Map<string, LexiconDetail>>(new Map());
   const [query, setQuery] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<Scope | "all">("all");
+  const [scopeFilters, setScopeFilters] = useState<Scope[]>([]);
   const [bookFilter, setBookFilter] = useState("all");
   const [unitFilter, setUnitFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [articleText, setArticleText] = useState("");
   const [articleMatches, setArticleMatches] = useState<LexiconIndexEntry[]>([]);
   const importRef = useRef<HTMLInputElement>(null);
@@ -199,33 +215,74 @@ export default function VocabApp() {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [view]);
 
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (session) return;
+      const target = event.target as HTMLElement;
+      const editing = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k" || (!editing && event.key === "/")) {
+        event.preventDefault();
+        setView("lexicon");
+        window.setTimeout(() => document.querySelector<HTMLInputElement>("#lexicon-search")?.focus(), 0);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [session]);
+
   const activeEvents = useMemo(() => {
     const undone = new Set(events.filter((event) => event.eventType === "undo" && event.targetEventId).map((event) => event.targetEventId));
     return events.filter((event) => event.eventType !== "undo" && !undone.has(event.eventId));
   }, [events]);
 
-  const dueCards = useMemo(() => [...cards.values()].filter((card) => isDue(card)), [cards]);
+  const dueCards = useMemo(() => [...cards.values()].filter((card) => isDue(card)).sort((a, b) => {
+    if (a.status === "weak" && b.status !== "weak") return -1;
+    if (b.status === "weak" && a.status !== "weak") return 1;
+    return a.due.localeCompare(b.due);
+  }), [cards]);
   const backlog = dueCards.length;
   const newBudget = Math.max(0, Math.min(14, Math.floor((settings.dailyMinutes - Math.min(settings.dailyMinutes, backlog * 0.55)) / 1.5)));
-  const todayNew = backlog > 28 ? 0 : newBudget;
+  const todayNew = backlog > 28 || ["review-only", "browse"].includes(settings.mode) ? 0 : newBudget;
   const todayReviews = Math.min(backlog, Math.max(8, Math.floor(settings.dailyMinutes / 0.6)));
 
-  const eligibleNew = useMemo(() => index.filter((entry) => !cards.has(entry.id) && entry.sources.some((source) => settings.selectedBooks.includes(source.bookId)) && !entry.flags.properName), [index, cards, settings.selectedBooks]);
+  const eligibleNew = useMemo(() => index
+    .filter((entry) => !cards.has(entry.id) && entry.sources.some((source) => settings.selectedBooks.includes(source.bookId)) && !entry.flags.properName)
+    .sort((a, b) => Number(b.flags.highValue) - Number(a.flags.highValue) || a.tier.localeCompare(b.tier) || a.headword.localeCompare(b.headword)), [index, cards, settings.selectedBooks]);
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return index.filter((entry) => {
       const card = cards.get(entry.id);
       const queryHit = !normalized || `${entry.headword} ${entry.lookup} ${entry.chineseCore}`.toLowerCase().includes(normalized) || entry.headword.toLowerCase().startsWith(normalized.replace(/[^a-z]/g, ""));
-      const scopeHit = scopeFilter === "all" || entry.scopes.includes(scopeFilter);
+      const scopeHit = !scopeFilters.length || scopeFilters.some((scope) => entry.scopes.includes(scope));
       const bookHit = bookFilter === "all" || entry.sources.some((source) => source.bookId === bookFilter);
       const unitHit = unitFilter === "all" || entry.sources.some((source) => source.unit === unitFilter && (bookFilter === "all" || source.bookId === bookFilter));
-      const statusHit = statusFilter === "all" || (statusFilter === "favorite" ? card?.favorite : (card?.status || "unseen") === statusFilter);
+      const statusHit = !statusFilters.length || statusFilters.some((status) => status === "favorite" ? card?.favorite : (card?.status || "unseen") === status);
       return queryHit && scopeHit && bookHit && unitHit && statusHit;
     });
-  }, [index, query, scopeFilter, bookFilter, unitFilter, statusFilter, cards]);
+  }, [index, query, scopeFilters, bookFilter, unitFilter, statusFilters, cards]);
+
+  useEffect(() => {
+    const ids = filteredEntries.slice(0, 90).map((entry) => entry.id).filter((id) => !visibleDetails.has(id));
+    if (!ids.length) return;
+    let active = true;
+    loadDetails(ids).then((rows) => {
+      if (!active) return;
+      setVisibleDetails((previous) => {
+        const next = new Map(previous);
+        rows.forEach((row) => next.set(row.id, row));
+        return next;
+      });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [filteredEntries, visibleDetails]);
 
   const availableUnits = useMemo(() => [...new Set(index.flatMap((entry) => entry.sources.filter((source) => bookFilter === "all" || source.bookId === bookFilter).map((source) => source.unit)))].sort(), [index, bookFilter]);
+  const dailyQueuePreview = useMemo(() => {
+    const due = dueCards.map((card) => index.find((entry) => entry.id === card.id)).filter(Boolean) as LexiconIndexEntry[];
+    return [...due.slice(0, todayReviews), ...eligibleNew.slice(0, todayNew)];
+  }, [dueCards, index, todayReviews, eligibleNew, todayNew]);
+  const workload = useMemo(() => forecastDueLoad(cards.values(), 14), [cards]);
 
   const currentEntry = session?.queue[session.position] || null;
   const currentDetail = currentEntry ? session?.details.get(currentEntry.id) : undefined;
@@ -265,8 +322,7 @@ export default function VocabApp() {
         const high = index.filter((entry) => entry.scopes.includes("high-required") && !entry.flags.properName).slice(30, 54);
         queue = [...middle, ...high];
       } else if (!queue.length) {
-        const due = dueCards.map((card) => index.find((entry) => entry.id === card.id)).filter(Boolean) as LexiconIndexEntry[];
-        queue = [...due.slice(0, todayReviews), ...eligibleNew.slice(0, todayNew)];
+        queue = dailyQueuePreview;
         if (!queue.length) queue = index.filter((entry) => entry.scopes.includes("high-required") && !entry.flags.properName).slice(0, 12);
       }
       const details = await loadDetails(queue.map((entry) => entry.id));
@@ -279,7 +335,7 @@ export default function VocabApp() {
     } finally {
       setLoading(false);
     }
-  }, [index, dueCards, todayReviews, eligibleNew, todayNew, resetQuestion]);
+  }, [index, dailyQueuePreview, resetQuestion]);
 
   const checkAnswer = useCallback(() => {
     if (!question) return;
@@ -310,6 +366,10 @@ export default function VocabApp() {
       responseMs: Date.now() - questionStartedAt,
       hints,
       errorType: correct ? null : question.skill === "spelling" ? "spelling" : question.skill === "listening" ? "listening" : "recall",
+      prompt: question.prompt,
+      answerGiven: answer.trim() || null,
+      expectedAnswer: question.answer,
+      sourceLine: sourceLine(currentEntry),
     });
     await Promise.all([putOne("cards", after), putOne("events", { ...event, eventType: "review" as const })]);
     setCards((previous) => new Map(previous).set(after.id, after));
@@ -326,7 +386,7 @@ export default function VocabApp() {
     }
     setSession((previous) => previous ? { ...previous, position: previous.position + 1, reviewed: previous.reviewed + 1, correct: previous.correct + (correct ? 1 : 0) } : previous);
     resetQuestion();
-  }, [session, currentEntry, question, cards, questionStartedAt, objectiveResult, settings, hints, resetQuestion]);
+  }, [session, currentEntry, question, cards, questionStartedAt, objectiveResult, settings, hints, answer, resetQuestion]);
 
   const undoLast = useCallback(async () => {
     if (!lastReview) return;
@@ -369,6 +429,11 @@ export default function VocabApp() {
       if (revealed && ["1", "2", "3", "4"].includes(event.key)) rate(Number(event.key) as 1 | 2 | 3 | 4);
       if (event.key.toLowerCase() === "r" && currentEntry) speakSystem(currentEntry.headword);
       if (event.key.toLowerCase() === "z") undoLast();
+      if (event.key.toLowerCase() === "t") setForcedType((current) => {
+        const index = current ? QUESTION_CATALOG.findIndex((item) => item.id === current) : -1;
+        return QUESTION_CATALOG[(index + 1) % QUESTION_CATALOG.length].id;
+      });
+      if (event.key === "Escape") { setSession(null); setSessionComplete(false); setView("today"); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -428,7 +493,7 @@ export default function VocabApp() {
       if (direction === "push") {
         const payload = await exportBackup();
         const baseRevision = Number(localStorage.getItem("pep-vocab-sync-revision") || 0);
-        const response = await fetch("/api/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ schemaVersion: "1.0.0", baseRevision, clientUpdatedAt: new Date().toISOString(), payload }) });
+        const response = await fetch("/api/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ schemaVersion: USER_DATA_SCHEMA_VERSION, baseRevision, clientUpdatedAt: new Date().toISOString(), payload }) });
         const result = await response.json() as { revision?: number; error?: string };
         if (!response.ok) throw new Error(result.error === "revision-conflict" ? "云端已有更新：请先拉取，或导出本机备份后再处理冲突。" : result.error || "私有同步不可用");
         localStorage.setItem("pep-vocab-sync-revision", String(result.revision || 0));
@@ -473,11 +538,16 @@ export default function VocabApp() {
 
   if (session) {
     return (
-      <StudySession
+      <ConsoleStudySession
         session={session}
         complete={sessionComplete}
         entry={currentEntry}
         detail={currentDetail}
+        card={currentCard}
+        events={activeEvents}
+        index={index}
+        desiredRetention={settings.desiredRetention}
+        dailyMinutes={settings.dailyMinutes}
         question={question}
         answer={answer}
         setAnswer={setAnswer}
@@ -498,22 +568,23 @@ export default function VocabApp() {
     );
   }
 
+  const streak = calculateStreak(activeEvents);
+  const modeLabel = ({ normal: "普通学习", unit: "单元同步", "review-only": "只复习", exam: "考前强化", browse: "自由浏览" } as const)[settings.mode];
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <button className="brand" onClick={() => setView("today")} aria-label="词迹首页">
-          <span className="brand-mark">词迹</span><span className="brand-sub">PEP VOCABULARY</span>
-        </button>
-        <nav className="desktop-nav" aria-label="主导航">
-          {navItems.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={17} />{item.label}</button>)}
+    <div className="console-app">
+      <aside className="console-sidebar">
+        <button className="console-brand" onClick={() => setView("today")} aria-label="词迹首页"><strong>词迹</strong><span>VOCAB CONSOLE</span></button>
+        <nav className="console-nav" aria-label="主导航">
+          <span className="nav-group-label">WORKSPACE</span>
+          {navItems.slice(0, 3).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "today" ? backlog : item.id === "lexicon" ? index.length.toLocaleString() : ""}</em></button>)}
+          <span className="nav-group-label evidence">EVIDENCE</span>
+          {navItems.slice(3).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "analysis" ? activeEvents.length : ""}</em></button>)}
         </nav>
-        <div className="top-actions">
-          <span className={`status-pill ${online ? "" : "offline"}`}>{online ? <ShieldCheck size={14} /> : <CloudOff size={14} />}{online ? "本地已就绪" : "离线可用"}</span>
-          {lastReview && <button className="icon-button" onClick={undoLast} aria-label="撤销上一次评分" title="撤销上一次评分"><Undo2 size={18} /></button>}
-        </div>
-      </header>
-
-      <main className={`main-view view-${view}`}>
+        <div className="sidebar-foot"><div className="streak-line"><Target size={16} /><strong>{streak}</strong><span>连续学习天</span></div><div className="streak-cells" aria-label={`连续学习 ${streak} 天`}>{Array.from({ length: 14 }, (_, position) => <i key={position} className={position >= 14 - Math.min(streak, 14) ? "filled" : ""} />)}</div><div className="local-line">{online ? <ShieldCheck size={13} /> : <CloudOff size={13} />}<span>{online ? "本地数据已就绪" : "当前离线 · 核心可用"}</span></div></div>
+      </aside>
+      <section className="console-workspace">
+        <header className="console-toolbar"><div className="toolbar-context"><span>{new Date().toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", weekday: "short" })}</span><i /><strong>{modeLabel}</strong><span>{settings.dailyMinutes} 分钟 / 日</span><span>保持率 {Math.round(settings.desiredRetention * 100)}%</span></div><div className="toolbar-actions"><button className="command-search" onClick={() => { setView("lexicon"); window.setTimeout(() => document.querySelector<HTMLInputElement>("#lexicon-search")?.focus(), 0); }}><Search size={15} /><span>查词或跳转</span><kbd>⌘K</kbd></button>{lastReview && <button className="square-icon" onClick={undoLast} aria-label="撤销上一次评分"><Undo2 size={16} /></button>}<button className="square-icon mobile-data-trigger" onClick={() => setView("data")} aria-label="数据与设置"><Settings2 size={16} /></button></div></header>
+        <main className={`console-main view-${view}`}>
         {view === "today" && (
           <TodayView
             settings={settings}
@@ -522,6 +593,10 @@ export default function VocabApp() {
             todayNew={todayNew}
             todayReviews={todayReviews}
             events={activeEvents}
+            cards={cards}
+            index={index}
+            queue={dailyQueuePreview}
+            workload={workload}
             diagnosisComplete={settings.diagnosisComplete}
             onStart={() => startSession("daily")}
             onDiagnostic={() => startSession("diagnostic")}
@@ -534,22 +609,25 @@ export default function VocabApp() {
           />
         )}
         {view === "lexicon" && (
-          <LexiconView
+          <ConsoleLexicon
             entries={filteredEntries}
             total={index.length}
             selected={selectedEntry}
             detail={selectedDetail}
+            visibleDetails={visibleDetails}
             cards={cards}
+            events={activeEvents}
+            allEntries={index}
             query={query}
             setQuery={setQuery}
-            scopeFilter={scopeFilter}
-            setScopeFilter={setScopeFilter}
+            scopeFilters={scopeFilters}
+            setScopeFilters={setScopeFilters}
             bookFilter={bookFilter}
             setBookFilter={(value) => { setBookFilter(value); setUnitFilter("all"); }}
             unitFilter={unitFilter}
             setUnitFilter={setUnitFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            statusFilters={statusFilters}
+            setStatusFilters={setStatusFilters}
             availableUnits={availableUnits}
             onSelect={setSelectedEntry}
             onFavorite={toggleFavorite}
@@ -557,7 +635,7 @@ export default function VocabApp() {
             onStudy={(entry) => startSession("free", [entry, ...filteredEntries.filter((candidate) => candidate.id !== entry.id).slice(0, 9)])}
           />
         )}
-        {view === "plan" && <PlanView settings={settings} backlog={backlog} cards={cards} onUpdate={updateSettings} />}
+        {view === "plan" && <PlanView settings={settings} backlog={backlog} cards={cards} workload={workload} onUpdate={updateSettings} />}
         {view === "analysis" && <AnalysisView manifest={manifest} cards={cards} events={activeEvents} index={index} onTask={(skill) => {
           const candidates = index.filter((entry) => (cards.get(entry.id)?.skills[skill] ?? 0) < 0.5 && !entry.flags.properName).slice(0, 15);
           const typeMap: Record<SkillName, QuestionType> = { meaning: "meaning-recall", listening: "dictation", spelling: "spelling", context: "context-choice", collocation: "collocation-gap", output: "sentence-output" };
@@ -584,11 +662,9 @@ export default function VocabApp() {
             }}
           />
         )}
-      </main>
-
-      <nav className="mobile-nav" aria-label="移动端主导航">
-        {navItems.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={20} /><span>{item.label}</span></button>)}
-      </nav>
+        </main>
+      </section>
+      <nav className="console-mobile-nav" aria-label="移动端主导航">{navItems.slice(0, 4).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={19} /><span>{item.label}</span></button>)}</nav>
       <input ref={importRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && handleImport(event.target.files[0])} />
       <div className="sr-live" aria-live="polite">{toast}</div>
       {toast && <div className="toast" role="status">{toast}</div>}
@@ -596,60 +672,48 @@ export default function VocabApp() {
   );
 }
 
-function TodayView({ settings, manifest, backlog, todayNew, todayReviews, events, diagnosisComplete, onStart, onDiagnostic, onPlan, onQuick }: {
+function TodayView({ settings, manifest, backlog, todayNew, todayReviews, events, cards, index, queue, workload, diagnosisComplete, onStart, onDiagnostic, onPlan, onQuick }: {
   settings: AppSettings; manifest: LexiconManifest | null; backlog: number; todayNew: number; todayReviews: number; events: ReviewEvent[];
+  cards: Map<string, StoredCard>; index: LexiconIndexEntry[]; queue: LexiconIndexEntry[]; workload: ReturnType<typeof forecastDueLoad>;
   diagnosisComplete: boolean; onStart: () => void; onDiagnostic: () => void; onPlan: () => void; onQuick: (type: "spelling" | "middle") => void;
 }) {
   const today = new Date().toLocaleDateString("sv-SE");
   const todayEvents = events.filter((event) => event.localDate === today);
   const todayMinutes = todayEvents.reduce((sum, event) => sum + event.responseMs, 0) / 60000;
   const correct = todayEvents.length ? Math.round(todayEvents.filter((event) => event.correct).length / todayEvents.length * 100) : 0;
-  return (
-    <div className="page-frame today-frame">
-      <section className="today-heading">
-        <div><p className="eyebrow">{new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</p><h1>先把到期词稳住。</h1><p>时间预算控制在 {settings.dailyMinutes} 分钟；积压增多时，新词会自动让路。</p></div>
-        <button className="text-button" onClick={onPlan}>调整计划 <ChevronRight size={16} /></button>
-      </section>
-
-      {!diagnosisComplete && (
-        <section className="diagnostic-banner">
-          <div className="number-stamp">36</div>
-          <div><span className="section-kicker">可跳过的冷启动</span><h2>用 36 词分层快筛，避免从头机械背。</h2><p>12 个初中基础词 + 24 个高一教材词，交替检查识义、听辨与拼写。</p></div>
-          <button className="secondary-button" onClick={onDiagnostic}>开始诊断</button>
-        </section>
-      )}
-
-      <section className="daily-plan">
-        <div className="plan-primary">
-          <div className="plan-overline"><Clock3 size={16} /> 今日计划 · {settings.mode === "review-only" ? "只复习" : "普通学习"}</div>
-          <div className="plan-numbers"><strong>{todayReviews}</strong><span>到期 / 薄弱复习</span><i /> <strong>{todayNew}</strong><span>新词上限</span></div>
-          <p className={backlog > 28 ? "plan-explain warning" : "plan-explain"}>{backlog > 28 ? `当前有 ${backlog} 个到期词，今天暂停新词，先消化积压。` : `预计 ${Math.min(settings.dailyMinutes, Math.round(todayReviews * 0.55 + todayNew * 1.5))} 分钟；剩余时间留给造句或听写。`}</p>
-          <button className="primary-button large" onClick={onStart}><Play size={18} fill="currentColor" />开始今日学习</button>
-        </div>
-        <div className="plan-side">
-          <div className="quiet-metric"><span>目标保持率</span><strong>{Math.round(settings.desiredRetention * 100)}%</strong><small>FSRS v6 · 可调整</small></div>
-          <div className="load-gauge"><span>未来 7 天负担</span><div className="mini-bars" aria-label="未来七天预计负担"><i style={{ height: "48%" }} /><i style={{ height: "70%" }} /><i style={{ height: "58%" }} /><i style={{ height: "82%" }} /><i style={{ height: "54%" }} /><i style={{ height: "44%" }} /><i style={{ height: "62%" }} /></div><small>预计 18–27 分钟 / 日</small></div>
-        </div>
-      </section>
-
-      <section className="today-stats" aria-label="今日统计">
-        <Metric label="已复习" value={todayEvents.length} note={`到期 ${Math.max(0, backlog - todayEvents.length)}`} />
-        <Metric label="正确率" value={`${correct}%`} note={todayEvents.length ? "按客观题与翻卡评分" : "尚未开始"} />
-        <Metric label="专注用时" value={formatMinutes(todayMinutes)} note="仅计答题反应时间" />
-        <Metric label="正式词条" value={(manifest?.releasedEntries || 0).toLocaleString()} note="初高中分离" />
-      </section>
-
-      <section className="recommended-section">
-        <div className="section-heading"><div><span className="section-kicker">短任务</span><h2>还有 10–15 分钟时</h2></div><p>理由来自最近薄弱能力，不以签到凑数量。</p></div>
-        <div className="task-list">
-          <button onClick={() => onQuick("spelling")}><span className="task-index">01</span><div><strong>拼写回收</strong><small>优先“眼熟但写不出”的词</small></div><span>约 12 分钟</span><ChevronRight size={18} /></button>
-          <button onClick={() => onQuick("middle")}><span className="task-index">02</span><div><strong>初中基础快扫</strong><small>只显示核心义，不加载长解释</small></div><span>约 10 分钟</span><ChevronRight size={18} /></button>
-        </div>
-      </section>
-    </div>
-  );
+  const reviewedCards = [...cards.values()].filter((card) => card.lastReviewed);
+  const skills = (Object.keys(skillLabels) as SkillName[]).map((skill) => ({ skill, value: reviewedCards.length ? reviewedCards.reduce((sum, card) => sum + card.skills[skill], 0) / reviewedCards.length : 0 }));
+  const mix = [...new Set(events.map((event) => event.questionType))].slice(0, 4).map((type) => ({ type, count: events.filter((event) => event.questionType === type).length }));
+  const mixMax = Math.max(1, ...mix.map((item) => item.count));
+  const loadMax = Math.max(1, ...workload.slice(0, 7).map((day) => day.count));
+  const byId = new Map(index.map((entry) => [entry.id, entry]));
+  const queueMinutes = Math.min(settings.dailyMinutes, Math.round(todayReviews * .55 + todayNew * 1.5));
+  const dueLabel = (entry: LexiconIndexEntry) => {
+    const card = cards.get(entry.id);
+    if (!card?.lastReviewed) return "新词";
+    const days = Math.floor((new Date(`${today}T00:00:00`).getTime() - new Date(card.due).getTime()) / 86400000);
+    return days > 0 ? `逾期 ${days} 天` : "今天到期";
+  };
+  const questionName = (value: string) => QUESTION_CATALOG.find((item) => item.id === value)?.label || value;
+  return <div className="console-today">
+    <section className="today-workbench">
+      {!diagnosisComplete && <section className="console-diagnostic"><span>36</span><div><strong>分层快筛尚未完成</strong><small>12 个初中基础词 + 24 个高一词，识义、听辨、拼写交替检查</small></div><button onClick={onDiagnostic}>开始诊断</button></section>}
+      <section className="queue-blueprint"><i className="corner tl"/><i className="corner tr"/><i className="corner bl"/><i className="corner br"/><div><span className="console-kicker">TODAY QUEUE · FSRS V6</span><div className="queue-numbers"><strong>{todayReviews}</strong><small>到期 / 薄弱</small><b>+</b><strong>{todayNew}</strong><small>新词上限</small><i/><strong className="minutes">{queueMinutes}<em> min</em></strong><small>预计用时</small></div><p className={backlog > 28 ? "queue-reason warning" : "queue-reason"}>{backlog > 28 ? `积压 ${backlog} 个：已暂停新词，先消化到期队列。` : `先处理到期与薄弱词，再按教材进度补入 ${todayNew} 个新词。`}</p></div><button className="console-primary" onClick={onStart}><Play size={17} fill="currentColor"/>开始今日学习</button></section>
+      <section className="queue-preview"><header><span className="console-kicker">QUEUE PREVIEW</span><i/><small>实时顺序 · 薄弱优先</small></header><div className="queue-table"><div className="queue-row queue-head"><span>词头</span><span>核心义</span><span>层级</span><span>来源</span><span>状态</span></div>{queue.slice(0, 7).map((entry) => <div className="queue-row" key={entry.id}><strong>{entry.headword}</strong><span>{entry.chineseCore}</span><em>{entry.tier} 层</em><small>{sourceLine(entry)}</small><b>{dueLabel(entry)}</b></div>)}{!queue.length && <EmptyState title="今日没有到期任务" text="可以自由查词，或从短任务开始一轮练习。"/>}</div></section>
+      <section className="console-quick-tasks"><header><span className="console-kicker">QUICK TASKS</span><i/><small>来自薄弱能力，不按签到凑数</small></header><div><button onClick={() => onQuick("spelling")}><span>01</span><span><strong>拼写回收</strong><small>眼熟但写不出 · 约 12 分钟</small></span><em>弱项优先</em><ChevronRight size={15}/></button><button onClick={() => onQuick("middle")}><span>02</span><span><strong>初中基础快扫</strong><small>核心义主动回忆 · 约 10 分钟</small></span><em>基础保持</em><ChevronRight size={15}/></button></div></section>
+    </section>
+    <aside className="today-inspector">
+      <section className="inspector-summary"><span>TODAY</span><div><strong>{todayEvents.length}</strong><small> 次完成</small><em>{correct}% 正确</em></div><div className="inspector-progress"><i style={{ width: `${Math.min(100, todayMinutes / Math.max(1, settings.dailyMinutes) * 100)}%` }}/></div><p>{formatMinutes(todayMinutes)} / {settings.dailyMinutes} 分钟预算</p></section>
+      <section><header><span>7 DAY LOAD</span><small>{workload.slice(0, 7).reduce((sum, day) => sum + day.count, 0)} 次预计</small></header><div className="load-bars">{workload.slice(0, 7).map((day, position) => <i key={day.date} style={{ height: `${Math.max(7, day.count / loadMax * 100)}%` }}>{position === 0 && <span>{day.count}</span>}</i>)}</div><div className="load-axis"><span>今天</span><span>+6 天</span></div></section>
+      <section><header><span>SIX CAPABILITIES</span><small>真实卡片均值</small></header><div className="inspector-skills">{skills.map(({ skill, value }) => <div key={skill}><span>{skillLabels[skill]}</span><i><b style={{ width: `${value * 100}%` }}/></i><strong>{Math.round(value * 100)}</strong></div>)}</div></section>
+      <section><header><span>QUESTION MIX</span><small>历史事件</small></header><div className="question-mix">{mix.length ? mix.map((item) => <div key={item.type}><span>{questionName(item.type)}</span><i><b style={{ width: `${item.count / mixMax * 100}%` }}/></i><strong>{item.count}</strong></div>) : <p>完成首轮学习后显示题型分布。</p>}</div></section>
+      <section><header><span>RECENT EVENTS</span><small>追加式日志</small></header><div className="recent-events">{events.slice(-4).reverse().map((event) => <div key={event.eventId}><strong>{byId.get(event.cardId)?.headword || "已迁移词条"} · {event.correct ? "正确" : "未命中"}</strong><span>{skillLabels[event.skill]} · {event.answerGiven || `评分 ${event.rating}`}</span><time>{new Date(event.timestampUtc).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time></div>)}</div></section>
+      <section className="inspector-footer"><button onClick={onPlan}><span>调整计划与保持率</span><ChevronRight size={14}/></button><span>词库 {manifest?.version || "—"} · 数据 schema {USER_DATA_SCHEMA_VERSION}</span></section>
+    </aside>
+  </div>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function LexiconView({ entries, total, selected, detail, cards, query, setQuery, scopeFilter, setScopeFilter, bookFilter, setBookFilter, unitFilter, setUnitFilter, statusFilter, setStatusFilter, availableUnits, onSelect, onFavorite, onNote, onStudy }: {
   entries: LexiconIndexEntry[]; total: number; selected: LexiconIndexEntry | null; detail: LexiconDetail | null; cards: Map<string, StoredCard>;
   query: string; setQuery: (value: string) => void; scopeFilter: Scope | "all"; setScopeFilter: (value: Scope | "all") => void;
@@ -713,7 +777,7 @@ function LexiconView({ entries, total, selected, detail, cards, query, setQuery,
   );
 }
 
-function PlanView({ settings, backlog, cards, onUpdate }: { settings: AppSettings; backlog: number; cards: Map<string, StoredCard>; onUpdate: (patch: Partial<AppSettings>) => void }) {
+function PlanView({ settings, backlog, cards, workload, onUpdate }: { settings: AppSettings; backlog: number; cards: Map<string, StoredCard>; workload: ReturnType<typeof forecastDueLoad>; onUpdate: (patch: Partial<AppSettings>) => void }) {
   const estimated = workloadEstimate(settings.dailyMinutes, settings.desiredRetention);
   const activeCount = [...cards.values()].filter((card) => card.status !== "paused").length;
   const modes: Array<[AppSettings["mode"], string, string]> = [
@@ -749,8 +813,8 @@ function PlanView({ settings, backlog, cards, onUpdate }: { settings: AppSetting
 
         <section className="forecast-section span-two">
           <div><span className="section-kicker">未来 14 天</span><h2>负担预测</h2><p>{backlog ? `目前 ${backlog} 个到期词；计划会压低新词，直到积压回落。` : "当前没有逾期；仍保留缓冲，不把空闲全部塞成新词。"}</p></div>
-          <div className="forecast-chart" role="img" aria-label="未来十四天复习负担条形图">{[42, 58, 74, 50, 66, 45, 39, 61, 72, 53, 46, 68, 57, 43].map((height, index) => <span key={index}><i style={{ height: `${height}%` }} /><small>{index % 2 === 0 ? `${index + 1}` : ""}</small></span>)}</div>
-          <div className="forecast-summary"><Metric label="主学习状态" value={activeCount} note="跨词书不复制" /><Metric label="预计峰值" value={`${Math.max(estimated, settings.dailyMinutes)} 分钟`} note="可由保持率调整" /></div>
+          <div className="forecast-chart" role="img" aria-label="未来十四天复习负担条形图">{workload.map((day, index) => <span key={day.date}><i style={{ height: `${Math.max(4, day.count / Math.max(1, ...workload.map((row) => row.count)) * 100)}%` }} /><small>{index % 2 === 0 ? `${index + 1}` : ""}</small></span>)}</div>
+          <div className="forecast-summary"><Metric label="主学习状态" value={activeCount} note="跨词书不复制" /><Metric label="预计峰值" value={`${Math.max(estimated, ...workload.map((day) => day.minutes))} 分钟`} note="来自当前到期时间" /></div>
         </section>
       </div>
     </div>
@@ -793,7 +857,7 @@ function DataView({ settings, manifest, articleText, setArticleText, articleMatc
     <div className="page-frame data-frame">
       <header className="page-title"><p className="eyebrow">LOCAL FIRST</p><h1>你的学习数据，先在本机。</h1><p>词库版本与个人状态分离；JSON 备份可完整恢复，AI 关闭时核心功能不受影响。</p></header>
       <div className="data-grid">
-        <section className="data-panel"><Database size={22} /><div><span className="section-kicker">个人数据</span><h2>备份、恢复与私有同步</h2><p>包含卡片主状态、六项能力、追加式事件、词单、注释和设置。</p></div><div className="button-row"><button className="primary-button" onClick={onBackup}><Download size={17} />导出 JSON</button><button className="secondary-button" onClick={onImport}><Upload size={17} />恢复备份</button><button className="secondary-button" onClick={() => onSync("push")}>同步本机</button><button className="secondary-button" onClick={() => onSync("pull")}>从私有同步恢复</button></div><small>当前 schema：1.0.0。冲突不会静默覆盖；本地预览没有站点身份时安全降级。</small></section>
+        <section className="data-panel"><Database size={22} /><div><span className="section-kicker">个人数据</span><h2>备份、恢复与私有同步</h2><p>包含卡片主状态、六项能力、追加式事件、词单、注释和设置。</p></div><div className="button-row"><button className="primary-button" onClick={onBackup}><Download size={17} />导出 JSON</button><button className="secondary-button" onClick={onImport}><Upload size={17} />恢复备份</button><button className="secondary-button" onClick={() => onSync("push")}>同步本机</button><button className="secondary-button" onClick={() => onSync("pull")}>从私有同步恢复</button></div><small>当前 schema：{USER_DATA_SCHEMA_VERSION}；1.0.0 备份会先迁移再恢复。冲突不会静默覆盖。</small></section>
         <section className="data-panel"><FileText size={22} /><div><span className="section-kicker">词库与 Anki</span><h2>CSV / TSV</h2><p>导出当前正式词库筛选结果；TSV 可映射到 Anki 的 Word、IPA、Meaning、Source 字段。</p></div><div className="button-row"><button className="secondary-button" onClick={() => onExportLexicon("csv")}>导出 CSV</button><button className="secondary-button" onClick={() => onExportLexicon("tsv")}>Anki TSV</button></div><small>发布版本 {manifest?.version || "—"}；不会导出教材 PDF 或未授权音频。</small></section>
         <section className="data-panel article-panel"><Search size={22} /><div><span className="section-kicker">文章生词对齐</span><h2>粘贴一段英文</h2><p>只在本机分词，并与正式索引对齐；文本不会上传。</p></div><textarea value={articleText} onChange={(event) => setArticleText(event.target.value)} placeholder="Paste an English article here…" /><button className="primary-button" onClick={onAlign}>提取并对齐</button>{articleMatches.length > 0 && <div className="match-list">{articleMatches.map((entry) => <span key={entry.id}><strong>{entry.headword}</strong>{entry.chineseCore}</span>)}</div>}</section>
         <section className="data-panel settings-panel"><Settings2 size={22} /><div><span className="section-kicker">阅读与增强</span><h2>应用设置</h2></div><label><span>阅读方案</span><select value={settings.theme} onChange={(event) => onUpdate({ theme: event.target.value as AppSettings["theme"] })}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label className="switch-row"><div><strong>AI 增强层</strong><small>解释、造句检查与易混小课；核心学习不依赖它</small></div><input type="checkbox" checked={settings.aiEnabled} onChange={(event) => onUpdate({ aiEnabled: event.target.checked })} /><span className="switch" /></label>{settings.aiEnabled && <p className="inline-warning"><Sparkles size={15} />当前部署未配置模型密钥，增强层会安全降级到本地检查。</p>}<div className="settings-divider" /><button className="danger-button" onClick={onClear}><RotateCcw size={16} />清空本机个人数据</button></section>
@@ -803,6 +867,7 @@ function DataView({ settings, manifest, articleText, setArticleText, articleMatc
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function StudySession({ session, complete, entry, detail, question, answer, setAnswer, revealed, objectiveResult, hints, setHints, onCheck, onRate, onExit, onRestart, onSpeak, onUndo, canUndo, forcedType, setForcedType }: {
   session: SessionState; complete: boolean; entry: LexiconIndexEntry | null; detail?: LexiconDetail; question: Question | null; answer: string; setAnswer: (value: string) => void;
   revealed: boolean; objectiveResult: boolean | null; hints: number; setHints: (value: number) => void; onCheck: () => void; onRate: (rating: 1 | 2 | 3 | 4) => void;
