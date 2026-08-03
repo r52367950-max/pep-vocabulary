@@ -65,6 +65,16 @@ IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
 
 `sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是站点身份邮箱的 SHA-256；payload 上限 5 MB；服务端同时校验请求与备份 payload 的 schema。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
 
+## AI 接口配置
+
+`ai_configs` 与学习备份分表存放，只保存以下服务端配置：
+
+- 站点身份的 SHA-256 键；
+- 固定白名单 `https://api.deepseek.com`、模型、每日调用上限和超时；
+- API Key 的 AES-GCM 密文、随机 96-bit IV 与加密版本。
+
+AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`，不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；连通测试只调用 DeepSeek 官方 `/models`，不会消耗生成 token，也不把上游错误正文写回页面。
+
 ## 审核状态
 
 允许值：`verified-primary`、`verified-cross-source`、`editorial-reviewed`、`provisional`、`conflicted`、`rejected`。模型生成内容只能是 `provisional`。发布审计不允许 `unknown` 或 `prohibited` 权利内容。

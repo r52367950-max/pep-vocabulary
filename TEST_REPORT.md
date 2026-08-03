@@ -11,10 +11,10 @@
 | 来源清单 | `node scripts/build-source-manifest.mjs` | 通过：41 项，12/12 目标教材 |
 | 词库构建 | `node scripts/build-lexicon.mjs` | 通过：7,938 raw、7,936 normalized、4,759 unique、4,681 release candidate |
 | 数据审计 | `npm run data:audit` | 硬错误 0；状态 `release-candidate-with-declared-gaps` |
-| 自动测试 | `npm run test:unit` | 12/12 通过 |
+| 自动测试 | `npm run test:unit` | 13/13 通过 |
 | ESLint | `npm run lint` | 通过 |
 | 生产构建 | `npm run build` | 通过；Worker export 与 D1 hosting manifest 验证通过 |
-| 全量门禁 | `npm test` | 通过：数据审计 → 12 项测试 → 生产构建 |
+| 全量门禁 | `npm test` | 通过：数据审计 → 13 项测试 → 生产构建 |
 
 ## 自动覆盖
 
@@ -26,6 +26,17 @@
 - 14 种题型目录、PWA shell、详情懒加载、JSON 备份、D1 revision 冲突、AI 安全降级和清空确认。
 - 非安全预览环境下的本地 ID 回退、可见焦点、forced-colors、`prefers-reduced-motion` 与精确视口验收框。
 - Vocab Redesign 控制台壳、移动底栏、密集词库、常驻学习上下文、真实 FSRS 间隔预览、14 天负担预测与 `1.0.0 → 1.1.0` 备份迁移契约。
+- 设置页分类导航、密码字段不回显、AES-GCM 服务端加密、同源写入校验、DeepSeek 官方域名白名单、`no-store` 响应、备份与客户端存储中不存在模型密钥。
+
+## 设置与 API 配置回归（2026-08-03）
+
+- 新增“常规、学习、AI 接口、数据与安全、关于”五类标准设置页；桌面左栏和手机横向分类均有响应式契约。
+- API Key 写入独立 `ai_configs` 表；只返回 `hasApiKey`，不返回明文、密文、IV 或 Key 尾号。
+- 生产部署已配置独立 256-bit 加密 Secret；Secret 不在仓库和构建产物中。
+- 写入/删除接口要求已认证站点身份、同源 Origin 与 `x-vocab-action`；请求体上限 4 KB，模型、每日限额、超时均做范围校验。
+- Base URL 固定为 `https://api.deepseek.com`；连通测试调用官方 `/models`，不会产生文本生成费用。
+- `npm run lint`、13/13 单元测试和生产构建通过；API 路由 `/api/ai/config`、`/api/ai/test` 均进入 Worker 产物。
+- Sites 版本 5 私有部署终态 `succeeded`。本轮 agent preview 的云浏览器连接再次超时，且预览期间工作区曾被平台回收；源码已从站点版本恢复并在部署前重新通过全量检查。因此本报告不把设置页桌面/手机真实截图标为已完成。
 
 ## Vocab Redesign 回归（2026-08-03）
 

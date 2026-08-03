@@ -16,7 +16,8 @@
 - `ts-fsrs` v5.2.3 / FSRS v6 适配层；每词一个主调度状态，默认保持率 0.90，可查看负担变化。
 - 词库搜索与教材/单元/状态筛选、懒加载详情、收藏、注释、系统 TTS、趋势和负担分析。
 - IndexedDB 本地状态、追加式复习事件、JSON 备份恢复、CSV/TSV、文章生词对齐、Service Worker 离线。
-- 可选 D1 私有同步；AI 关闭或不可用时核心功能不受影响。
+- 独立设置中心：外观、学习参数、数据边界与 DeepSeek API 配置分栏管理。
+- 可选 D1 私有同步；DeepSeek API Key 只在服务端以 AES-GCM 加密保存，前端、备份和 Git 均不含明文；AI 关闭或不可用时核心功能不受影响。
 
 ## 本地运行
 
@@ -55,7 +56,9 @@ npm run dev
 
 ## 数据与隐私边界
 
-学习数据默认只在浏览器 IndexedDB。私有同步需要站点身份，并只在 D1 保存经过 SHA-256 处理的身份键和 2 MB 以内的用户备份；发生 revision 冲突时拒绝静默覆盖。应用不收集核心学习以外的个人信息，不在前端放模型密钥，不捆绑真人音频。完整权利说明见 [LICENSES_AND_RIGHTS.md](./LICENSES_AND_RIGHTS.md)。
+学习数据默认只在浏览器 IndexedDB。私有同步需要站点身份，并只在 D1 保存经过 SHA-256 处理的身份键和 5 MB 以内的用户备份；发生 revision 冲突时拒绝静默覆盖。AI 配置同样绑定站点身份，密钥以部署级 256-bit 密钥加密后进入独立 D1 表，读取接口只返回配置状态。完整权利说明见 [LICENSES_AND_RIGHTS.md](./LICENSES_AND_RIGHTS.md)。
+
+生产环境必须通过 Sites Secret 提供 `AI_CONFIG_ENCRYPTION_KEY`。本地开发只参考 `.env.example` 生成独立值，任何真实密钥都不得提交到仓库。
 
 ## 相关证据
 
