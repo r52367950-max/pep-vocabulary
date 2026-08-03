@@ -1,21 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { syncStates } from "@/db/schema";
-import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { USER_DATA_SCHEMA_VERSION } from "@/lib/storage";
+import { authenticatedUserKey } from "@/lib/server-user";
 
 const MAX_PAYLOAD_BYTES = 5_000_000;
 
-async function userKey() {
-  const user = await getChatGPTUser();
-  if (!user) return null;
-  const bytes = new TextEncoder().encode(user.email.trim().toLowerCase());
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
-}
-
 export async function GET() {
-  const key = await userKey();
+  const key = await authenticatedUserKey();
   if (!key) return Response.json({ error: "Private sync requires the authenticated site identity." }, { status: 401 });
   try {
     const [row] = await getDb().select().from(syncStates).where(eq(syncStates.userKey, key)).limit(1);
@@ -26,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const key = await userKey();
+  const key = await authenticatedUserKey();
   if (!key) return Response.json({ error: "Private sync requires the authenticated site identity." }, { status: 401 });
   let body: { schemaVersion?: string; baseRevision?: number; clientUpdatedAt?: string; payload?: unknown };
   try {

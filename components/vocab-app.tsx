@@ -21,7 +21,6 @@ import {
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Target,
   Undo2,
   Upload,
@@ -30,6 +29,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ConsoleLexicon from "@/components/console-lexicon";
+import ConsoleSettings from "@/components/console-settings";
 import ConsoleStudySession from "@/components/console-study-session";
 import { loadDetails, loadLexicon, speakSystem, type LexiconDetail, type LexiconIndexEntry, type LexiconManifest, type Scope } from "@/lib/lexicon";
 import { buildQuestion, gradeQuestion, localSentenceCheck, QUESTION_CATALOG, type Question, type QuestionType } from "@/lib/questions";
@@ -52,7 +52,7 @@ import {
   type StoredCard,
 } from "@/lib/storage";
 
-type View = "today" | "lexicon" | "plan" | "analysis" | "data";
+type View = "today" | "lexicon" | "plan" | "analysis" | "data" | "settings";
 type SessionKind = "daily" | "diagnostic" | "free";
 export type SessionState = {
   kind: SessionKind;
@@ -89,7 +89,8 @@ const navItems: Array<{ id: View; label: string; icon: typeof BookOpen }> = [
   { id: "lexicon", label: "词库", icon: BookOpen },
   { id: "plan", label: "计划", icon: CalendarRange },
   { id: "analysis", label: "分析", icon: BarChart3 },
-  { id: "data", label: "数据", icon: Settings2 },
+  { id: "data", label: "数据", icon: Database },
+  { id: "settings", label: "设置", icon: Settings2 },
 ];
 
 function downloadFile(name: string, content: string, type: string) {
@@ -578,12 +579,17 @@ export default function VocabApp() {
           <span className="nav-group-label">WORKSPACE</span>
           {navItems.slice(0, 3).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "today" ? backlog : item.id === "lexicon" ? index.length.toLocaleString() : ""}</em></button>)}
           <span className="nav-group-label evidence">EVIDENCE</span>
-          {navItems.slice(3).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "analysis" ? activeEvents.length : ""}</em></button>)}
+          {navItems.slice(3, 5).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "analysis" ? activeEvents.length : ""}</em></button>)}
+          <span className="nav-group-label evidence">SYSTEM</span>
+          {navItems.slice(5).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16}/><span>{item.label}</span><em/></button>)}
         </nav>
         <div className="sidebar-foot"><div className="streak-line"><Target size={16} /><strong>{streak}</strong><span>连续学习天</span></div><div className="streak-cells" aria-label={`连续学习 ${streak} 天`}>{Array.from({ length: 14 }, (_, position) => <i key={position} className={position >= 14 - Math.min(streak, 14) ? "filled" : ""} />)}</div><div className="local-line">{online ? <ShieldCheck size={13} /> : <CloudOff size={13} />}<span>{online ? "本地数据已就绪" : "当前离线 · 核心可用"}</span></div></div>
       </aside>
       <section className="console-workspace">
-        <header className="console-toolbar"><div className="toolbar-context"><span>{new Date().toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", weekday: "short" })}</span><i /><strong>{modeLabel}</strong><span>{settings.dailyMinutes} 分钟 / 日</span><span>保持率 {Math.round(settings.desiredRetention * 100)}%</span></div><div className="toolbar-actions"><button className="command-search" onClick={() => { setView("lexicon"); window.setTimeout(() => document.querySelector<HTMLInputElement>("#lexicon-search")?.focus(), 0); }}><Search size={15} /><span>查词或跳转</span><kbd>⌘K</kbd></button>{lastReview && <button className="square-icon" onClick={undoLast} aria-label="撤销上一次评分"><Undo2 size={16} /></button>}<button className="square-icon mobile-data-trigger" onClick={() => setView("data")} aria-label="数据与设置"><Settings2 size={16} /></button></div></header>
+        <header className="console-toolbar">
+          <div className="toolbar-context"><span>{new Date().toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", weekday: "short" })}</span><i/><strong>{modeLabel}</strong><span>{settings.dailyMinutes} 分钟 / 日</span><span>保持率 {Math.round(settings.desiredRetention * 100)}%</span></div>
+          <div className="toolbar-actions"><button className="command-search" onClick={() => { setView("lexicon"); window.setTimeout(() => document.querySelector<HTMLInputElement>("#lexicon-search")?.focus(), 0); }}><Search size={15}/><span>查词或跳转</span><kbd>⌘K</kbd></button>{lastReview && <button className="square-icon" onClick={undoLast} aria-label="撤销上一次评分"><Undo2 size={16}/></button>}<button className={view === "settings" ? "square-icon mobile-data-trigger active" : "square-icon mobile-data-trigger"} onClick={() => setView("settings")} aria-label="设置"><Settings2 size={16}/></button></div>
+        </header>
         <main className={`console-main view-${view}`}>
         {view === "today" && (
           <TodayView
@@ -644,7 +650,6 @@ export default function VocabApp() {
         }} />}
         {view === "data" && (
           <DataView
-            settings={settings}
             manifest={manifest}
             articleText={articleText}
             setArticleText={setArticleText}
@@ -654,13 +659,15 @@ export default function VocabApp() {
             onImport={() => importRef.current?.click()}
             onSync={handleSync}
             onExportLexicon={exportLexicon}
-            onUpdate={updateSettings}
-            onClear={async () => {
+            onOpenSettings={() => setView("settings")}
+          />
+        )}
+        {view === "settings" && (
+          <ConsoleSettings settings={settings} onUpdate={updateSettings} onOpenData={() => setView("data")} onClear={async () => {
               if (!window.confirm("将清空本机的学习记录、词单、注释和设置。此操作只能通过已有备份恢复。确定继续？")) return;
               await clearUserData();
               setCards(new Map()); setEvents([]); setSettings(defaultSettings); setToast("本机个人数据已清空");
-            }}
-          />
+            }}/>
         )}
         </main>
       </section>
@@ -849,18 +856,18 @@ function AnalysisView({ manifest, cards, events, index, onTask }: { manifest: Le
   );
 }
 
-function DataView({ settings, manifest, articleText, setArticleText, articleMatches, onAlign, onBackup, onImport, onSync, onExportLexicon, onUpdate, onClear }: {
-  settings: AppSettings; manifest: LexiconManifest | null; articleText: string; setArticleText: (value: string) => void; articleMatches: LexiconIndexEntry[];
-  onAlign: () => void; onBackup: () => void; onImport: () => void; onSync: (direction: "push" | "pull") => void; onExportLexicon: (format: "csv" | "tsv") => void; onUpdate: (patch: Partial<AppSettings>) => void; onClear: () => void;
+function DataView({ manifest, articleText, setArticleText, articleMatches, onAlign, onBackup, onImport, onSync, onExportLexicon, onOpenSettings }: {
+  manifest: LexiconManifest | null; articleText: string; setArticleText: (value: string) => void; articleMatches: LexiconIndexEntry[];
+  onAlign: () => void; onBackup: () => void; onImport: () => void; onSync: (direction: "push" | "pull") => void; onExportLexicon: (format: "csv" | "tsv") => void; onOpenSettings: () => void;
 }) {
   return (
     <div className="page-frame data-frame">
-      <header className="page-title"><p className="eyebrow">LOCAL FIRST</p><h1>你的学习数据，先在本机。</h1><p>词库版本与个人状态分离；JSON 备份可完整恢复，AI 关闭时核心功能不受影响。</p></header>
+      <header className="page-title"><p className="eyebrow">LOCAL FIRST</p><h1>你的学习数据，先在本机。</h1><p>词库版本与个人状态分离；JSON 备份可完整恢复，应用偏好与 API 接口已集中到设置页。</p></header>
       <div className="data-grid">
         <section className="data-panel"><Database size={22} /><div><span className="section-kicker">个人数据</span><h2>备份、恢复与私有同步</h2><p>包含卡片主状态、六项能力、追加式事件、词单、注释和设置。</p></div><div className="button-row"><button className="primary-button" onClick={onBackup}><Download size={17} />导出 JSON</button><button className="secondary-button" onClick={onImport}><Upload size={17} />恢复备份</button><button className="secondary-button" onClick={() => onSync("push")}>同步本机</button><button className="secondary-button" onClick={() => onSync("pull")}>从私有同步恢复</button></div><small>当前 schema：{USER_DATA_SCHEMA_VERSION}；1.0.0 备份会先迁移再恢复。冲突不会静默覆盖。</small></section>
         <section className="data-panel"><FileText size={22} /><div><span className="section-kicker">词库与 Anki</span><h2>CSV / TSV</h2><p>导出当前正式词库筛选结果；TSV 可映射到 Anki 的 Word、IPA、Meaning、Source 字段。</p></div><div className="button-row"><button className="secondary-button" onClick={() => onExportLexicon("csv")}>导出 CSV</button><button className="secondary-button" onClick={() => onExportLexicon("tsv")}>Anki TSV</button></div><small>发布版本 {manifest?.version || "—"}；不会导出教材 PDF 或未授权音频。</small></section>
         <section className="data-panel article-panel"><Search size={22} /><div><span className="section-kicker">文章生词对齐</span><h2>粘贴一段英文</h2><p>只在本机分词，并与正式索引对齐；文本不会上传。</p></div><textarea value={articleText} onChange={(event) => setArticleText(event.target.value)} placeholder="Paste an English article here…" /><button className="primary-button" onClick={onAlign}>提取并对齐</button>{articleMatches.length > 0 && <div className="match-list">{articleMatches.map((entry) => <span key={entry.id}><strong>{entry.headword}</strong>{entry.chineseCore}</span>)}</div>}</section>
-        <section className="data-panel settings-panel"><Settings2 size={22} /><div><span className="section-kicker">阅读与增强</span><h2>应用设置</h2></div><label><span>阅读方案</span><select value={settings.theme} onChange={(event) => onUpdate({ theme: event.target.value as AppSettings["theme"] })}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label className="switch-row"><div><strong>AI 增强层</strong><small>解释、造句检查与易混小课；核心学习不依赖它</small></div><input type="checkbox" checked={settings.aiEnabled} onChange={(event) => onUpdate({ aiEnabled: event.target.checked })} /><span className="switch" /></label>{settings.aiEnabled && <p className="inline-warning"><Sparkles size={15} />当前部署未配置模型密钥，增强层会安全降级到本地检查。</p>}<div className="settings-divider" /><button className="danger-button" onClick={onClear}><RotateCcw size={16} />清空本机个人数据</button></section>
+        <section className="data-panel"><Settings2 size={22}/><div><span className="section-kicker">应用设置</span><h2>外观、学习与 API</h2><p>API Key 由服务端加密保管，不进入学习备份；接口状态和安全边界可在设置页查看。</p></div><button className="secondary-button" onClick={onOpenSettings}>打开设置<ChevronRight size={16}/></button><small>数据页不读取、显示或导出任何 API Key。</small></section>
       </div>
       <section className="privacy-strip"><ShieldCheck size={20} /><div><strong>数据边界</strong><p>词库作为版本化静态资源；学习状态进入 IndexedDB。私有同步启用时只上传个人状态，不复制整份词库。系统 TTS 不等于真人音频。</p></div></section>
     </div>

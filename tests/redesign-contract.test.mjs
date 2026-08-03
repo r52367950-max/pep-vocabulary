@@ -5,11 +5,12 @@ import test from "node:test";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("Vocab Redesign console shell is wired to live application state", async () => {
-  const [app, styles, study, lexicon] = await Promise.all([
+  const [app, styles, study, lexicon, settings] = await Promise.all([
     read("components/vocab-app.tsx"),
     read("app/console.css"),
     read("components/console-study-session.tsx"),
     read("components/console-lexicon.tsx"),
+    read("components/console-settings.tsx"),
   ]);
   assert.match(app, /className="console-app"/);
   assert.match(app, /dailyQueuePreview/);
@@ -21,6 +22,7 @@ test("Vocab Redesign console shell is wired to live application state", async ()
   assert.match(study, /左滑忘记 · 右滑记得 · 上滑轻松/);
   assert.match(lexicon, /visibleDetails/);
   assert.match(lexicon, /FSRS 主状态/);
+  assert.match(app, /<ConsoleSettings/); assert.match(settings, /AI 接口/); assert.match(styles, /settings-layout/);
 });
 
 test("review event schema preserves learning evidence and supports 1.0 migration", async () => {
