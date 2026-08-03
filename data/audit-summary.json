@@ -1,0 +1,1761 @@
+{
+  "auditedAt": "2026-08-03T06:33:30.230Z",
+  "status": "release-candidate-with-declared-gaps",
+  "counts": {
+    "targetTextbooks": 12,
+    "sourceManifestEntries": 41,
+    "curriculumHeadwordRows": 2997,
+    "releasedEntries": 4681,
+    "missingEnglishDefinitions": 333,
+    "missingCompleteIpa": 153,
+    "unitRowsWithUnresolvedFields": 7
+  },
+  "errors": [],
+  "warnings": [
+    "333 high-scope entries lack an open English definition",
+    "153 entries rely on system TTS without complete IPA",
+    "7 unit rows contain field-level unresolved records"
+  ],
+  "gapSamples": {
+    "missingEnglishDefinitions": [
+      {
+        "id": "pep-147fa2f762f2743f",
+        "headword": "a bunch of",
+        "sources": [
+          {
+            "recordId": "HS-S2:119:257",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 119,
+            "printedPage": 112,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-207e815313c8e8c7",
+        "headword": "a chest of drawers",
+        "sources": [
+          {
+            "recordId": "HS-S4:117:270",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 5",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-1e3e7e41accdc5f7",
+        "headword": "a chorus of",
+        "sources": [
+          {
+            "recordId": "HS-S4:116:206",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 4",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-aff29e4714a0ffba",
+        "headword": "a flock",
+        "sources": [
+          {
+            "recordId": "HS-S4:114:114",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 2",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-cea0a967e842ab82",
+        "headword": "a great deal (of)",
+        "sources": [
+          {
+            "recordId": "HS-R3:111:180",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 2",
+            "physicalPage": 111,
+            "printedPage": 104,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-406e23985493b911",
+        "headword": "a handful of",
+        "sources": [
+          {
+            "recordId": "HS-S4:114:132",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 2",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-04d051766fd3b06c",
+        "headword": "Achilles’",
+        "sources": [
+          {
+            "recordId": "HS-R2:111:245",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 111,
+            "printedPage": 104,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-936daf942fe8261a",
+        "headword": "adapt to",
+        "sources": [
+          {
+            "recordId": "HS-R2:110:121",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 110,
+            "printedPage": 103,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-60ec767b7c650022",
+        "headword": "addicted to",
+        "sources": [
+          {
+            "recordId": "HS-R1:120:106",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 1",
+            "physicalPage": 120,
+            "printedPage": 113,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-ae71bca8b4d7191e",
+        "headword": "Administration (",
+        "sources": [
+          {
+            "recordId": "HS-R3:114:358",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 4",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-25bc90579dbfc252",
+        "headword": "Aisha",
+        "sources": [
+          {
+            "recordId": "HS-S2:117:159",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-8e38676c299a011c",
+        "headword": "all over the world",
+        "sources": [
+          {
+            "recordId": "HS-R2:109:67",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 1",
+            "physicalPage": 109,
+            "printedPage": 102,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-1ef3c6fb1bd29e9e",
+        "headword": "apart from",
+        "sources": [
+          {
+            "recordId": "HS-R3:112:231",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 3",
+            "physicalPage": 112,
+            "printedPage": 105,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-69d717fef2dc9389",
+        "headword": "app",
+        "sources": [
+          {
+            "recordId": "HS-R2:108:12",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 1",
+            "physicalPage": 108,
+            "printedPage": 101,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-4d82048cfb5dba5a",
+        "headword": "appeal to",
+        "sources": [
+          {
+            "recordId": "HS-S1:116:201",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 3",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3df250f903a92ec7",
+        "headword": "apply for",
+        "sources": [
+          {
+            "recordId": "HS-R1:120:112",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 2",
+            "physicalPage": 120,
+            "printedPage": 113,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-2553b63dfb02a8b6",
+        "headword": "artemisinin",
+        "sources": [
+          {
+            "recordId": "HS-S1:113:2",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 1",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-14bcaf61b0b7b466",
+        "headword": "artificial intelligence (AI)",
+        "sources": [
+          {
+            "recordId": "HS-S1:115:131",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 2",
+            "physicalPage": 115,
+            "printedPage": 108,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-e9e54bddcb7f5a4c",
+        "headword": "as a result",
+        "sources": [
+          {
+            "recordId": "HS-R3:113:336",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 4",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-7185b5562ae8c5aa",
+        "headword": "as far as I am concerned",
+        "sources": [
+          {
+            "recordId": "HS-S2:117:154",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-402ec91f6c2ae152",
+        "headword": "as far as I know",
+        "sources": [
+          {
+            "recordId": "HS-S2:117:153",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          },
+          {
+            "recordId": "JH-8B:crosscheck:297",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 7",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-e083670d9169a391",
+        "headword": "as if",
+        "sources": [
+          {
+            "recordId": "HS-R1:123:257",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 123,
+            "printedPage": 116,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3801c5de10c35800",
+        "headword": "as well as",
+        "sources": [
+          {
+            "recordId": "HS-R2:112:254",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 112,
+            "printedPage": 105,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-fb5dab711de8d472",
+        "headword": "aware of",
+        "sources": [
+          {
+            "recordId": "HS-R2:109:110",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 109,
+            "printedPage": 102,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-990956fa4afdcdea",
+        "headword": "Bank of Canton",
+        "sources": [
+          {
+            "recordId": "HS-R3:112:272",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 3",
+            "physicalPage": 112,
+            "printedPage": 105,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-50efadcd0784cce3",
+        "headword": "be about to do sth",
+        "sources": [
+          {
+            "recordId": "HS-R3:114:392",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 5",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-b57868f9b36da010",
+        "headword": "be attracted to",
+        "sources": [
+          {
+            "recordId": "HS-R1:120:101",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 1",
+            "physicalPage": 120,
+            "printedPage": 113,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-40cb8bacf9df587d",
+        "headword": "be composed of",
+        "sources": [
+          {
+            "recordId": "HS-S3:114:111",
+            "bookId": "HS-S3",
+            "volume": "选择性必修第三册",
+            "unit": "Unit 2",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-393fbf3b6bad6964",
+        "headword": "be comprised of",
+        "sources": [
+          {
+            "recordId": "HS-S1:118:324",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 5",
+            "physicalPage": 118,
+            "printedPage": 111,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-4fb5e7b45cc06d0d",
+        "headword": "be fond of",
+        "sources": [
+          {
+            "recordId": "HS-S3:113:32",
+            "bookId": "HS-S3",
+            "volume": "选择性必修第三册",
+            "unit": "Unit 1",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-fa2b733a231b078e",
+        "headword": "be made up of",
+        "sources": [
+          {
+            "recordId": "HS-S3:117:298",
+            "bookId": "HS-S3",
+            "volume": "选择性必修第三册",
+            "unit": "Unit 5",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-895fa11944faffcc",
+        "headword": "be responsible for",
+        "sources": [
+          {
+            "recordId": "HS-R1:120:89",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 1",
+            "physicalPage": 120,
+            "printedPage": 113,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          },
+          {
+            "recordId": "JH-9:crosscheck:545",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 14",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-a4e10fb1aa77c549",
+        "headword": "be willing to do sth",
+        "sources": [
+          {
+            "recordId": "HS-R3:115:427",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 5",
+            "physicalPage": 115,
+            "printedPage": 108,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-77026b94f9f4f5c4",
+        "headword": "be worthy of",
+        "sources": [
+          {
+            "recordId": "HS-S3:114:69",
+            "bookId": "HS-S3",
+            "volume": "选择性必修第三册",
+            "unit": "Unit 1",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-db29d573dded8ae5",
+        "headword": "bird field guide",
+        "sources": [
+          {
+            "recordId": "HS-R2:110:163",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 110,
+            "printedPage": 103,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-f5dcbb0c8fec6945",
+        "headword": "blog post",
+        "sources": [
+          {
+            "recordId": "HS-R2:110:176",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 3",
+            "physicalPage": 110,
+            "printedPage": 103,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-73c1c78724c86abc",
+        "headword": "Bondi",
+        "sources": [
+          {
+            "recordId": "HS-S4:115:138",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 2",
+            "physicalPage": 115,
+            "printedPage": 108,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-980f6fb9edda5e88",
+        "headword": "bounce around",
+        "sources": [
+          {
+            "recordId": "HS-S4:116:263",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 5",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-37eac2eccb1f4d3d",
+        "headword": "Braille (also braille)",
+        "sources": [
+          {
+            "recordId": "HS-S4:114:70",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 1",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-b3dfb2a656604a51",
+        "headword": "break away (from sb",
+        "sources": [
+          {
+            "recordId": "HS-R2:111:251",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 111,
+            "printedPage": 104,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3cff26ba5f9ccbb6",
+        "headword": "break out （",
+        "sources": [
+          {
+            "recordId": "HS-S2:116:52",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 1",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-6559824fb418ade4",
+        "headword": "Brillat-Savarin",
+        "sources": [
+          {
+            "recordId": "HS-S2:118:228",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 3",
+            "physicalPage": 118,
+            "printedPage": 111,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-b709d490efe46c49",
+        "headword": "bring … to life",
+        "sources": [
+          {
+            "recordId": "HS-S3:114:65",
+            "bookId": "HS-S3",
+            "volume": "选择性必修第三册",
+            "unit": "Unit 1",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-0ecbdec3c1552c37",
+        "headword": "Butchart",
+        "sources": [
+          {
+            "recordId": "HS-S2:119:295",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 119,
+            "printedPage": 112,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-5289b01ba591783c",
+        "headword": "by accident",
+        "sources": [
+          {
+            "recordId": "HS-R3:114:382",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 5",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          },
+          {
+            "recordId": "JH-9:crosscheck:207",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 6",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-77f0d8c11482311e",
+        "headword": "by comparison （",
+        "sources": [
+          {
+            "recordId": "HS-S1:116:242",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3dedaabd47881b98",
+        "headword": "by contrast",
+        "sources": [
+          {
+            "recordId": "HS-S1:116:233",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-55bfb1dbb6eaad79",
+        "headword": "call on （",
+        "sources": [
+          {
+            "recordId": "HS-S1:117:287",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-34b48e610ee5ca7f",
+        "headword": "Carla",
+        "sources": [
+          {
+            "recordId": "HS-R3:110:94",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 1",
+            "physicalPage": 110,
+            "printedPage": 103,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          },
+          {
+            "recordId": "JH-9:crosscheck:312",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 8",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-9eda724f486c3249",
+        "headword": "carry sb through sth",
+        "sources": [
+          {
+            "recordId": "HS-R3:110:110",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 2",
+            "physicalPage": 110,
+            "printedPage": 103,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      }
+    ],
+    "incompleteIpa": [
+      {
+        "id": "pep-147fa2f762f2743f",
+        "headword": "a bunch of",
+        "sources": [
+          {
+            "recordId": "HS-S2:119:257",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 119,
+            "printedPage": 112,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-207e815313c8e8c7",
+        "headword": "a chest of drawers",
+        "sources": [
+          {
+            "recordId": "HS-S4:117:270",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 5",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-1e3e7e41accdc5f7",
+        "headword": "a chorus of",
+        "sources": [
+          {
+            "recordId": "HS-S4:116:206",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 4",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-bbe474621fcfc6b4",
+        "headword": "a couple of",
+        "sources": [
+          {
+            "recordId": "JH-8B:crosscheck:399",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 9",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-406e23985493b911",
+        "headword": "a handful of",
+        "sources": [
+          {
+            "recordId": "HS-S4:114:132",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 2",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-965cbee83db19936",
+        "headword": "a little",
+        "sources": [
+          {
+            "recordId": "JH-7B:crosscheck:339",
+            "bookId": "JH-7B",
+            "volume": "七年级下册",
+            "unit": "Unit 9",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-f5a9222b418d49e7",
+        "headword": "a little bit",
+        "sources": [
+          {
+            "recordId": "JH-8B:crosscheck:245",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 6",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-b992c9adb36e93ad",
+        "headword": "a pair of",
+        "sources": [
+          {
+            "recordId": "JH-7A:crosscheck:322",
+            "bookId": "JH-7A",
+            "volume": "七年级上册",
+            "unit": "Unit 7",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-06975cdd3cd79ef3",
+        "headword": "a set of",
+        "sources": [
+          {
+            "recordId": "JH-7A:crosscheck:171",
+            "bookId": "JH-7A",
+            "volume": "七年级上册",
+            "unit": "Unit 3",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-2a4e6ca23d18bdd3",
+        "headword": "Alexander Graham Bell",
+        "sources": [
+          {
+            "recordId": "JH-9:crosscheck:34",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 1",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3df250f903a92ec7",
+        "headword": "apply for",
+        "sources": [
+          {
+            "recordId": "HS-R1:120:112",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 2",
+            "physicalPage": 120,
+            "printedPage": 113,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-26b90e35d4f6a78c",
+        "headword": "as a matter of fact",
+        "sources": [
+          {
+            "recordId": "HS-R3:114:381",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 5",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-e9e54bddcb7f5a4c",
+        "headword": "as a result",
+        "sources": [
+          {
+            "recordId": "HS-R3:113:336",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 4",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-7185b5562ae8c5aa",
+        "headword": "as far as I am concerned",
+        "sources": [
+          {
+            "recordId": "HS-S2:117:154",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-402ec91f6c2ae152",
+        "headword": "as far as I know",
+        "sources": [
+          {
+            "recordId": "HS-S2:117:153",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          },
+          {
+            "recordId": "JH-8B:crosscheck:297",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 7",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-40b7cd9e4a91b9a6",
+        "headword": "as for",
+        "sources": [
+          {
+            "recordId": "JH-8B:crosscheck:446",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 10",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-e083670d9169a391",
+        "headword": "as if",
+        "sources": [
+          {
+            "recordId": "HS-R1:123:257",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 123,
+            "printedPage": 116,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3e9e108f36d81f7b",
+        "headword": "as long as",
+        "sources": [
+          {
+            "recordId": "JH-8A:crosscheck:111",
+            "bookId": "JH-8A",
+            "volume": "八年级上册",
+            "unit": "Unit 3",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-744a2b795bb39518",
+        "headword": "as soon as",
+        "sources": [
+          {
+            "recordId": "JH-8B:crosscheck:124",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 3",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3801c5de10c35800",
+        "headword": "as well as",
+        "sources": [
+          {
+            "recordId": "HS-R2:112:254",
+            "bookId": "HS-R2",
+            "volume": "必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 112,
+            "printedPage": 105,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-9e59891f6e5e8135",
+        "headword": "be used to",
+        "sources": [
+          {
+            "recordId": "JH-8B:crosscheck:42",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 1",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3cff26ba5f9ccbb6",
+        "headword": "break out （",
+        "sources": [
+          {
+            "recordId": "HS-S2:116:52",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 1",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-77f0d8c11482311e",
+        "headword": "by comparison （",
+        "sources": [
+          {
+            "recordId": "HS-S1:116:242",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-3dedaabd47881b98",
+        "headword": "by contrast",
+        "sources": [
+          {
+            "recordId": "HS-S1:116:233",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-55bfb1dbb6eaad79",
+        "headword": "call on （",
+        "sources": [
+          {
+            "recordId": "HS-S1:117:287",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 4",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-1353548fe2de408a",
+        "headword": "centimeter )",
+        "sources": [
+          {
+            "recordId": "HS-R3:113:279",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 4",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-c9d1b54f4231566e",
+        "headword": "Charles Dickens",
+        "sources": [
+          {
+            "recordId": "JH-9:crosscheck:74",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 2",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-2341be0c75a6682e",
+        "headword": "check in （",
+        "sources": [
+          {
+            "recordId": "HS-R1:121:154",
+            "bookId": "HS-R1",
+            "volume": "必修第一册",
+            "unit": "Unit 2",
+            "physicalPage": 121,
+            "printedPage": 114,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-97dd093fef9370cd",
+        "headword": "Chelsea Lanmon",
+        "sources": [
+          {
+            "recordId": "JH-9:crosscheck:239",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 6",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-c8e1c3249cb024a2",
+        "headword": "close to",
+        "sources": [
+          {
+            "recordId": "JH-8B:crosscheck:465",
+            "bookId": "JH-8B",
+            "volume": "八年级下册",
+            "unit": "Unit 10",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-9bd9f1d70646197e",
+        "headword": "Colombia VmbI",
+        "sources": [
+          {
+            "recordId": "JH-9:crosscheck:393",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 10",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-f344b53a2ad6250f",
+        "headword": "Coming-of-Age Day",
+        "sources": [
+          {
+            "recordId": "HS-R3:110:92",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 1",
+            "physicalPage": 110,
+            "printedPage": 103,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-7a918cef0f97dc49",
+        "headword": "conflict with",
+        "sources": [
+          {
+            "recordId": "HS-S4:113:38",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 1",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-650d0380a90e682b",
+        "headword": "consist of",
+        "sources": [
+          {
+            "recordId": "HS-S2:117:165",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 3",
+            "physicalPage": 117,
+            "printedPage": 110,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-a1a44ff1ecf1bbbf",
+        "headword": "contrary to",
+        "sources": [
+          {
+            "recordId": "HS-S2:119:268",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 4",
+            "physicalPage": 119,
+            "printedPage": 112,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-f8501a251af28a35",
+        "headword": "CPR abbr. （ cardiopulmonary resuscitation ）",
+        "sources": [
+          {
+            "recordId": "HS-S2:121:376",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 5",
+            "physicalPage": 121,
+            "printedPage": 114,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-e4eb563264e7a4fe",
+        "headword": "daily routine",
+        "sources": [
+          {
+            "recordId": "HS-S1:114:100",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 2",
+            "physicalPage": 114,
+            "printedPage": 107,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-644e32f82e471cbb",
+        "headword": "DDT n.",
+        "sources": [
+          {
+            "recordId": "HS-S1:118:369",
+            "bookId": "HS-S1",
+            "volume": "选择性必修第一册",
+            "unit": "Unit 5",
+            "physicalPage": 118,
+            "printedPage": 111,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-708f17831b36dde4",
+        "headword": "do (one’s) homework",
+        "sources": [
+          {
+            "recordId": "JH-7B:crosscheck:68",
+            "bookId": "JH-7B",
+            "volume": "七年级下册",
+            "unit": "Unit 2",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-e4a287a089a62605",
+        "headword": "do a good job",
+        "sources": [
+          {
+            "recordId": "JH-8A:crosscheck:220",
+            "bookId": "JH-8A",
+            "volume": "八年级上册",
+            "unit": "Unit 5",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-5607085369c40c7f",
+        "headword": "do the dishes",
+        "sources": [
+          {
+            "recordId": "JH-7B:crosscheck:142",
+            "bookId": "JH-7B",
+            "volume": "七年级下册",
+            "unit": "Unit 4",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-62b0f8f20db5d56d",
+        "headword": "earn a living",
+        "sources": [
+          {
+            "recordId": "HS-R3:112:219",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 3",
+            "physicalPage": 112,
+            "printedPage": 105,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-8447e8c413b09188",
+        "headword": "engage in （",
+        "sources": [
+          {
+            "recordId": "HS-S2:116:101",
+            "bookId": "HS-S2",
+            "volume": "选择性必修第二册",
+            "unit": "Unit 2",
+            "physicalPage": 116,
+            "printedPage": 109,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-f0a9ba2d3f2dc2de",
+        "headword": "enjoy reading",
+        "sources": [
+          {
+            "recordId": "JH-7B:crosscheck:324",
+            "bookId": "JH-7B",
+            "volume": "七年级下册",
+            "unit": "Unit 8",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-f04a6ff4ecd41a8c",
+        "headword": "excuse me",
+        "sources": [
+          {
+            "recordId": "JH-7A:crosscheck:138",
+            "bookId": "JH-7A",
+            "volume": "七年级上册",
+            "unit": "Unit 3",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-7fa26578114fc7d3",
+        "headword": "fall away （",
+        "sources": [
+          {
+            "recordId": "HS-S4:113:53",
+            "bookId": "HS-S4",
+            "volume": "选择性必修第四册",
+            "unit": "Unit 1",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-1da83124befe0589",
+        "headword": "fine art ( also fine arts)",
+        "sources": [
+          {
+            "recordId": "HS-S3:113:33",
+            "bookId": "HS-S3",
+            "volume": "选择性必修第三册",
+            "unit": "Unit 1",
+            "physicalPage": 113,
+            "printedPage": 106,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-d626e90c4893bd95",
+        "headword": "fly a kite",
+        "sources": [
+          {
+            "recordId": "JH-7B:crosscheck:472",
+            "bookId": "JH-7B",
+            "volume": "七年级下册",
+            "unit": "Unit 12",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-6edbbe38bb8cc4e1",
+        "headword": "George Crum",
+        "sources": [
+          {
+            "recordId": "JH-9:crosscheck:245",
+            "bookId": "JH-9",
+            "volume": "九年级全一册",
+            "unit": "Unit 6",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-c89b9759d4b02400",
+        "headword": "get a surprise",
+        "sources": [
+          {
+            "recordId": "JH-7B:crosscheck:481",
+            "bookId": "JH-7B",
+            "volume": "七年级下册",
+            "unit": "Unit 12",
+            "physicalPage": null,
+            "printedPage": null,
+            "status": "verified-cross-source",
+            "curriculumLevel": null
+          }
+        ]
+      }
+    ],
+    "unresolvedUnitRows": [
+      {
+        "bookId": "HS-R1",
+        "volume": "必修第一册",
+        "unit": "Unit 4",
+        "extracted": 75,
+        "normalized": 75,
+        "released": 74,
+        "duplicates": 0,
+        "conflicts": 0,
+        "unresolved": 1,
+        "nominalCount": null
+      },
+      {
+        "bookId": "HS-R2",
+        "volume": "必修第二册",
+        "unit": "Unit 5",
+        "extracted": 76,
+        "normalized": 76,
+        "released": 75,
+        "duplicates": 0,
+        "conflicts": 0,
+        "unresolved": 1,
+        "nominalCount": null
+      },
+      {
+        "bookId": "HS-R3",
+        "volume": "必修第三册",
+        "unit": "Unit 1",
+        "extracted": 101,
+        "normalized": 101,
+        "released": 100,
+        "duplicates": 1,
+        "conflicts": 0,
+        "unresolved": 1,
+        "nominalCount": null
+      },
+      {
+        "bookId": "HS-R3",
+        "volume": "必修第三册",
+        "unit": "Unit 4",
+        "extracted": 91,
+        "normalized": 91,
+        "released": 89,
+        "duplicates": 0,
+        "conflicts": 0,
+        "unresolved": 2,
+        "nominalCount": null
+      },
+      {
+        "bookId": "HS-S1",
+        "volume": "选择性必修第一册",
+        "unit": "Unit 3",
+        "extracted": 71,
+        "normalized": 71,
+        "released": 71,
+        "duplicates": 0,
+        "conflicts": 0,
+        "unresolved": 1,
+        "nominalCount": null
+      },
+      {
+        "bookId": "HS-S2",
+        "volume": "选择性必修第二册",
+        "unit": "Unit 3",
+        "extracted": 70,
+        "normalized": 70,
+        "released": 69,
+        "duplicates": 0,
+        "conflicts": 0,
+        "unresolved": 3,
+        "nominalCount": null
+      },
+      {
+        "bookId": "HS-S3",
+        "volume": "选择性必修第三册",
+        "unit": "Unit 1",
+        "extracted": 86,
+        "normalized": 86,
+        "released": 85,
+        "duplicates": 0,
+        "conflicts": 0,
+        "unresolved": 1,
+        "nominalCount": null
+      }
+    ]
+  }
+}
