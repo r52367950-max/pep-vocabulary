@@ -69,13 +69,24 @@ export class AssistantUpstreamError extends Error {
   readonly code: string;
   readonly status: number;
   readonly retryable: boolean;
+  readonly providerStatus: number | null;
+  readonly networkReason: "dns" | "tls" | "connection" | "invalid_header" | "unknown" | null;
 
-  constructor(code: string, message: string, status: number, retryable: boolean) {
+  constructor(
+    code: string,
+    message: string,
+    status: number,
+    retryable: boolean,
+    providerStatus: number | null = null,
+    networkReason: "dns" | "tls" | "connection" | "invalid_header" | "unknown" | null = null,
+  ) {
     super(message);
     this.name = "AssistantUpstreamError";
     this.code = code;
     this.status = status;
     this.retryable = retryable;
+    this.providerStatus = providerStatus;
+    this.networkReason = networkReason;
   }
 }
 
@@ -246,11 +257,26 @@ export function normalizeBaseUrl(raw: string, allowInsecureLocal = false): strin
   return url.toString().replace(/\/$/, "");
 }
 
-export function chatCompletionsUrl(baseUrl: string): string {
+export function chatCompletionsUrl(baseUrl: string, provider?: AiProvider): string {
   const url = new URL(baseUrl);
   const path = url.pathname.replace(/\/+$/, "");
-  url.pathname = path.endsWith("/chat/completions") ? path : `${path}/chat/completions`;
+  if (provider === "deepseek" && url.hostname === "api.deepseek.com" && (path === "" || path === "/v1")) {
+    url.pathname = "/v1/chat/completions";
+  } else {
+    url.pathname = path.endsWith("/chat/completions") ? path : `${path}/chat/completions`;
+  }
   return url.toString();
+}
+
+export function connectionEndpointCandidates(provider: AiProvider, baseUrl: string): string[] {
+  const primary = chatCompletionsUrl(baseUrl, provider);
+  const url = new URL(baseUrl);
+  const path = url.pathname.replace(/\/+$/, "");
+  if (provider !== "deepseek" || url.hostname !== "api.deepseek.com" || (path !== "" && path !== "/v1")) {
+    return [primary];
+  }
+  url.pathname = "/chat/completions";
+  return [...new Set([primary, url.toString()])];
 }
 
 export function sameAiCredentialScope(
@@ -461,7 +487,7 @@ export function sanitizeModelResult(task: AssistantTask, content: string, eviden
   return result;
 }
 
-export function upstreamPayload(model: string, prompt: { system: string; user: string }, task: AssistantTask) {
+export function upstreamPayload(model: string, prompt: { system: string; user: string }, task: AssistantTask, provider?: AiProvider) {
   return {
     model,
     messages: [
@@ -472,7 +498,138 @@ export function upstreamPayload(model: string, prompt: { system: string; user: s
     max_tokens: task === "generate-practice" ? 2200 : 1600,
     response_format: { type: "json_object" },
     stream: false,
+    ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
   };
+}
+
+export function connectionTestPayload(provider: AiProvider, model: string, structured: boolean) {
+  if (structured) {
+    return {
+      model,
+      messages: [
+        { role: "system", content: "Return a JSON object only. Do not include Markdown." },
+        { role: "user", content: 'Return exactly {"ok":true}.' },
+      ],
+      max_tokens: 64,
+      response_format: { type: "json_object" },
+      stream: false,
+      ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
+    };
+  }
+  return {
+    model,
+    messages: [
+      { role: "system", content: "Reply with exactly OK." },
+      { role: "user", content: "Connection test." },
+    ],
+    max_tokens: 16,
+    stream: false,
+    ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
+  };
+}
+
+function networkFailure(error: unknown): AssistantUpstreamError {
+  const name = error instanceof Error ? error.name : "";
+  const message = error instanceof Error ? error.message : "";
+  const cause = error instanceof Error && error.cause && typeof error.cause === "object"
+    ? String((error.cause as { code?: unknown }).code || "")
+    : "";
+  const diagnostic = `${name} ${message} ${cause}`.toLowerCase();
+  if (/header|bytestring|invalid character|non[- ]ascii/.test(diagnostic)) {
+    return new AssistantUpstreamError(
+      "credential_header_invalid",
+      "API Key 含有接口请求头不支持的字符，请重新复制并保存密钥。",
+      400,
+      false,
+      null,
+      "invalid_header",
+    );
+  }
+  if (/dns|enotfound|eai_again|name resolution/.test(diagnostic)) {
+    return new AssistantUpstreamError(
+      "upstream_network_error",
+      "站点服务器无法解析模型服务域名，未收到 HTTP 响应。",
+      502,
+      true,
+      null,
+      "dns",
+    );
+  }
+  if (/tls|ssl|certificate|cert_/.test(diagnostic)) {
+    return new AssistantUpstreamError(
+      "upstream_network_error",
+      "站点服务器与模型服务建立 HTTPS 连接失败，未收到 HTTP 响应。",
+      502,
+      true,
+      null,
+      "tls",
+    );
+  }
+  if (/connect|network|socket|reset|refused|fetch failed/.test(diagnostic)) {
+    return new AssistantUpstreamError(
+      "upstream_network_error",
+      "站点服务器无法建立到模型服务的网络连接，未收到 HTTP 响应。",
+      502,
+      true,
+      null,
+      "connection",
+    );
+  }
+  return new AssistantUpstreamError(
+    "upstream_network_error",
+    "站点服务器未能连接模型服务，且没有收到 HTTP 响应。",
+    502,
+    true,
+    null,
+    "unknown",
+  );
+}
+
+export async function probeConnectionEndpoint(
+  fetcher: typeof fetch,
+  candidates: string[],
+  timeoutMs: number,
+): Promise<{ url: string; status: number; latencyMs: number }> {
+  let lastError: AssistantUpstreamError | null = null;
+  for (const url of candidates) {
+    const controller = new AbortController();
+    const startedAt = Date.now();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetcher(url, {
+        method: "GET",
+        redirect: "manual",
+        headers: { accept: "application/json" },
+        signal: controller.signal,
+      });
+      response.body?.cancel().catch(() => undefined);
+      if (response.status >= 300 && response.status < 400) {
+        lastError = new AssistantUpstreamError(
+          "provider_redirect_rejected",
+          "模型接口返回了重定向；为防止密钥被转发，词迹没有继续请求。",
+          502,
+          false,
+          response.status,
+        );
+        continue;
+      }
+      return { url, status: response.status, latencyMs: Date.now() - startedAt };
+    } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+        lastError = new AssistantUpstreamError(
+          "upstream_timeout",
+          "模型服务网络探测超时，未收到 HTTP 响应。",
+          504,
+          true,
+        );
+      } else {
+        lastError = networkFailure(error);
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw lastError || new AssistantUpstreamError("upstream_network_error", "没有可测试的模型接口地址。", 502, false);
 }
 
 export async function fetchChatCompletionWithTimeout(
@@ -484,24 +641,28 @@ export async function fetchChatCompletionWithTimeout(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetcher(url, { ...init, signal: controller.signal, redirect: "error" });
+    const response = await fetcher(url, { ...init, signal: controller.signal, redirect: "manual" });
     return await readChatCompletion(response, controller.signal);
   } catch (error) {
     if (error instanceof AssistantUpstreamError) throw error;
     if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
       throw new AssistantUpstreamError("upstream_timeout", "模型服务响应超时，请稍后重试。", 504, true);
     }
-    throw new AssistantUpstreamError("upstream_unavailable", "暂时无法连接模型服务，请稍后重试。", 502, true);
+    throw networkFailure(error);
   } finally {
     clearTimeout(timeout);
   }
 }
 
 function mappedUpstreamFailure(status: number): AssistantUpstreamError {
-  if (status === 401 || status === 403) return new AssistantUpstreamError("provider_auth_failed", "服务端模型密钥无效或无权使用该模型。", 503, false);
-  if (status === 408 || status === 429) return new AssistantUpstreamError("provider_busy", "模型服务当前繁忙，请稍后重试。", 503, true);
-  if (status >= 500) return new AssistantUpstreamError("provider_unavailable", "模型服务暂时不可用，请稍后重试。", 502, true);
-  return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了这次请求，请检查服务端配置。", 502, false);
+  if (status >= 300 && status < 400) return new AssistantUpstreamError("provider_redirect_rejected", "模型接口返回了重定向；为防止密钥被转发，词迹没有继续请求。", 502, false, status);
+  if (status === 401 || status === 403) return new AssistantUpstreamError("provider_auth_failed", "API Key 无效，或当前密钥无权调用该模型。", 503, false, status);
+  if (status === 402) return new AssistantUpstreamError("provider_payment_required", "模型账户余额不足，或尚未开通 API 计费。", 503, false, status);
+  if (status === 404 || status === 405) return new AssistantUpstreamError("provider_endpoint_not_found", "Chat Completions 地址或模型名不正确。", 502, false, status);
+  if (status === 408 || status === 429) return new AssistantUpstreamError("provider_busy", "模型服务当前繁忙或已达到服务商限额，请稍后重试。", 503, true, status);
+  if (status === 400 || status === 422) return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了请求参数，请检查模型名和接口兼容性。", 502, false, status);
+  if (status >= 500) return new AssistantUpstreamError("provider_unavailable", "模型服务暂时不可用，请稍后重试。", 502, true, status);
+  return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了这次请求，请检查服务端配置。", 502, false, status);
 }
 
 export async function readChatCompletion(response: Response, signal?: AbortSignal): Promise<string> {

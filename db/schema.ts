@@ -10,14 +10,17 @@ export const syncStates = sqliteTable("sync_states", {
   serverUpdatedAt: text("server_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const aiProviderConfig = sqliteTable("ai_provider_config", {
-  id: text("id").primaryKey(),
-  provider: text("provider").notNull(),
-  baseUrl: text("base_url").notNull(),
-  model: text("model").notNull(),
-  apiKeyCiphertext: text("api_key_ciphertext").notNull(),
-  apiKeyIv: text("api_key_iv").notNull(),
-  updatedBy: text("updated_by").notNull(),
+export const aiConfigs = sqliteTable("ai_configs", {
+  userKey: text("user_key").primaryKey(),
+  provider: text("provider").notNull().default("deepseek"),
+  baseUrl: text("base_url").notNull().default("https://api.deepseek.com/v1"),
+  model: text("model").notNull().default("deepseek-v4-flash"),
+  dailyLimit: integer("daily_limit").notNull().default(30),
+  timeoutSeconds: integer("timeout_seconds").notNull().default(25),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  keyIv: text("key_iv").notNull(),
+  encryptionVersion: integer("encryption_version").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

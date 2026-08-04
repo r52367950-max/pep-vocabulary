@@ -1,14 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/barlow/latin-400.css";
-import "@fontsource/barlow/latin-500.css";
-import "@fontsource/barlow/latin-600.css";
-import "@fontsource/barlow/latin-700.css";
-import "@fontsource/barlow-condensed/latin-500.css";
-import "@fontsource/barlow-condensed/latin-600.css";
+import "@fontsource/barlow/400.css";
+import "@fontsource/barlow/500.css";
+import "@fontsource/barlow/600.css";
+import "@fontsource/barlow/700.css";
+import "@fontsource/barlow-condensed/500.css";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/barlow-condensed/700.css";
 import "@fontsource-variable/noto-sans";
 import "@fontsource-variable/noto-sans-sc";
 import "@fontsource-variable/source-serif-4";
 import "./globals.css";
+import "./console.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",
