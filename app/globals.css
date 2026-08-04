@@ -291,6 +291,7 @@ kbd { border: 1px solid var(--rule); color: var(--faint); background: var(--bg);
 .match-list span { border: 1px solid var(--rule); padding: 6px 8px; display: inline-flex; flex-direction: column; font-size: 10px; color: var(--muted); }
 .match-list strong { color: var(--ink); font-family: var(--font-reading); font-size: 14px; }
 .settings-panel label:not(.switch-row) { width: 100%; display: grid; grid-template-columns: 130px 1fr; align-items: center; }
+.settings-note { font-size: 11px; margin: -5px 0 0 !important; }
 .switch-row { width: 100%; display: grid; grid-template-columns: 1fr auto; position: relative; align-items: center; cursor: pointer; }
 .switch-row div { display: flex; flex-direction: column; gap: 3px; }
 .switch-row small { color: var(--muted); font-size: 10px; }
@@ -300,6 +301,29 @@ kbd { border: 1px solid var(--rule); color: var(--faint); background: var(--bg);
 .switch-row input:checked + .switch { background: var(--accent); }
 .switch-row input:checked + .switch::after { transform: translateX(18px); }
 .inline-warning { display: flex; align-items: flex-start; gap: 8px; padding: 10px; background: var(--warning-pale); color: var(--warning) !important; font-size: 11px; }
+.ai-settings-panel { min-height: 0; }
+.ai-settings-heading { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.ai-settings-heading > div { max-width: 720px; }
+.config-status { flex: 0 0 auto; border: 1px solid var(--rule); color: var(--muted); border-radius: 999px; padding: 6px 10px; font-size: 10px; }
+.config-status.ready { color: var(--accent-dark); border-color: color-mix(in srgb, var(--accent) 45%, var(--rule)); background: var(--accent-pale); }
+.ai-config-grid { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; padding-top: 2px; }
+.ai-config-grid label { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.ai-config-grid label > span { color: var(--faint); font-size: 10px; letter-spacing: .04em; }
+.ai-config-grid input, .ai-config-grid select { width: 100%; min-height: 42px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); color: var(--ink); padding: 0 11px; outline: 0; }
+.ai-config-grid input:focus, .ai-config-grid select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 17%, transparent); }
+.ai-config-grid input:disabled, .ai-config-grid select:disabled { color: var(--faint); opacity: .72; }
+.secret-field { display: grid; grid-template-columns: 35px 1fr; align-items: center; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); }
+.secret-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 17%, transparent); }
+.secret-field svg { color: var(--faint); justify-self: end; }
+.secret-field input { border: 0; box-shadow: none !important; }
+.ai-settings-actions { width: 100%; display: flex; align-items: center; gap: 18px; }
+.ai-settings-actions > span { display: flex; align-items: flex-start; gap: 7px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.config-message { width: 100%; margin: 0 !important; padding: 10px 12px; font-size: 11px; }
+.config-message.success { color: var(--accent-dark); background: var(--accent-pale); }
+.config-message.error { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--surface)); }
+.inline-warning code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.spin { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .privacy-strip { margin-top: 22px; border: 1px solid var(--rule); padding: 20px 24px; display: flex; gap: 14px; color: var(--accent-dark); }
 .privacy-strip p { color: var(--muted); margin: 5px 0 0; line-height: 1.65; font-size: 12px; }
 
@@ -450,6 +474,8 @@ kbd { border: 1px solid var(--rule); color: var(--faint); background: var(--bg);
   .analysis-grid { gap: 14px; }
   .trend-chart { height: 170px; }
   .data-panel { min-height: 0; }
+  .ai-settings-heading, .ai-settings-actions { align-items: flex-start; flex-direction: column; }
+  .ai-config-grid { grid-template-columns: 1fr; }
   .privacy-strip { padding: 17px; }
   .session-topbar { height: 60px; grid-template-columns: 40px 1fr 40px; gap: 10px; padding: 0 10px; }
   .study-stage { width: calc(100% - 24px); padding-top: 15px; }

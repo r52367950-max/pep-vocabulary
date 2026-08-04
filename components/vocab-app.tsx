@@ -21,7 +21,6 @@ import {
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Target,
   Undo2,
   Upload,
@@ -29,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AiSettingsPanel from "@/components/ai-settings";
 import { loadDetails, loadLexicon, speakSystem, type LexiconDetail, type LexiconIndexEntry, type LexiconManifest, type Scope } from "@/lib/lexicon";
 import { buildQuestion, gradeQuestion, localSentenceCheck, QUESTION_CATALOG, type Question, type QuestionType } from "@/lib/questions";
 import { isDue, newStoredCard, scheduleReview, workloadEstimate } from "@/lib/scheduler";
@@ -796,7 +796,8 @@ function DataView({ settings, manifest, articleText, setArticleText, articleMatc
         <section className="data-panel"><Database size={22} /><div><span className="section-kicker">个人数据</span><h2>备份、恢复与私有同步</h2><p>包含卡片主状态、六项能力、追加式事件、词单、注释和设置。</p></div><div className="button-row"><button className="primary-button" onClick={onBackup}><Download size={17} />导出 JSON</button><button className="secondary-button" onClick={onImport}><Upload size={17} />恢复备份</button><button className="secondary-button" onClick={() => onSync("push")}>同步本机</button><button className="secondary-button" onClick={() => onSync("pull")}>从私有同步恢复</button></div><small>当前 schema：1.0.0。冲突不会静默覆盖；本地预览没有站点身份时安全降级。</small></section>
         <section className="data-panel"><FileText size={22} /><div><span className="section-kicker">词库与 Anki</span><h2>CSV / TSV</h2><p>导出当前正式词库筛选结果；TSV 可映射到 Anki 的 Word、IPA、Meaning、Source 字段。</p></div><div className="button-row"><button className="secondary-button" onClick={() => onExportLexicon("csv")}>导出 CSV</button><button className="secondary-button" onClick={() => onExportLexicon("tsv")}>Anki TSV</button></div><small>发布版本 {manifest?.version || "—"}；不会导出教材 PDF 或未授权音频。</small></section>
         <section className="data-panel article-panel"><Search size={22} /><div><span className="section-kicker">文章生词对齐</span><h2>粘贴一段英文</h2><p>只在本机分词，并与正式索引对齐；文本不会上传。</p></div><textarea value={articleText} onChange={(event) => setArticleText(event.target.value)} placeholder="Paste an English article here…" /><button className="primary-button" onClick={onAlign}>提取并对齐</button>{articleMatches.length > 0 && <div className="match-list">{articleMatches.map((entry) => <span key={entry.id}><strong>{entry.headword}</strong>{entry.chineseCore}</span>)}</div>}</section>
-        <section className="data-panel settings-panel"><Settings2 size={22} /><div><span className="section-kicker">阅读与增强</span><h2>应用设置</h2></div><label><span>阅读方案</span><select value={settings.theme} onChange={(event) => onUpdate({ theme: event.target.value as AppSettings["theme"] })}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label className="switch-row"><div><strong>AI 增强层</strong><small>解释、造句检查与易混小课；核心学习不依赖它</small></div><input type="checkbox" checked={settings.aiEnabled} onChange={(event) => onUpdate({ aiEnabled: event.target.checked })} /><span className="switch" /></label>{settings.aiEnabled && <p className="inline-warning"><Sparkles size={15} />当前部署未配置模型密钥，增强层会安全降级到本地检查。</p>}<div className="settings-divider" /><button className="danger-button" onClick={onClear}><RotateCcw size={16} />清空本机个人数据</button></section>
+        <section className="data-panel settings-panel"><Settings2 size={22} /><div><span className="section-kicker">阅读与增强</span><h2>应用设置</h2></div><label><span>阅读方案</span><select value={settings.theme} onChange={(event) => onUpdate({ theme: event.target.value as AppSettings["theme"] })}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label className="switch-row"><div><strong>AI 增强层</strong><small>解释、造句检查与易混小课；核心学习不依赖它</small></div><input type="checkbox" checked={settings.aiEnabled} onChange={(event) => onUpdate({ aiEnabled: event.target.checked })} /><span className="switch" /></label><p className="settings-note">关闭后不会调用模型接口；学习、复习、搜索和统计保持可用。</p><div className="settings-divider" /><button className="danger-button" onClick={onClear}><RotateCcw size={16} />清空本机个人数据</button></section>
+        {settings.aiEnabled && <AiSettingsPanel />}
       </div>
       <section className="privacy-strip"><ShieldCheck size={20} /><div><strong>数据边界</strong><p>词库作为版本化静态资源；学习状态进入 IndexedDB。私有同步启用时只上传个人状态，不复制整份词库。系统 TTS 不等于真人音频。</p></div></section>
     </div>
