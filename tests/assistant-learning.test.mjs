@@ -3,11 +3,13 @@ import test from "node:test";
 import {
   LEARNING_ASSISTANT_TASKS,
   LEARNING_MAX_OUTPUT_TOKENS,
+  LEARNING_OUTPUT_TOKEN_RANGES,
   LEARNING_RESPONSE_CACHE_POLICY,
   LEARNING_SYSTEM_PREFIX,
   buildLearningPrompt,
   canonicalLearningJson,
   learningResponseCacheKey,
+  learningOutputTokenBudget,
   learningUpstreamPayload,
   parseLearningRequest,
   sanitizeLearningResult,
@@ -97,7 +99,7 @@ test("system prefix is identical for every task and user JSON is deterministic",
   const systems = requests.map((request) => buildLearningPrompt(request, [evidence[0]]).system);
   assert.equal(new Set(systems).size, 1);
   assert.equal(systems[0], LEARNING_SYSTEM_PREFIX);
-  assert.match(systems[0], /只返回一个紧凑 JSON 对象/);
+  assert.match(systems[0], /只返回一个 JSON 对象/);
   assert.match(systems[0], /suppliedEvidence/);
   assert.match(systems[0], /不得在自然语言中声明教材页码/);
 
@@ -111,18 +113,29 @@ test("system prefix is identical for every task and user JSON is deterministic",
   assert.throws(() => buildLearningPrompt(requests[3], [evidence[1]]), /证据必须与请求词条完全一致/);
 });
 
-test("all payloads have small task budgets, JSON mode and no default DeepSeek thinking", () => {
+test("search, analysis and plan use distinct dynamic budgets of at least 5k", () => {
   assert.deepEqual(LEARNING_ASSISTANT_TASKS, ["search", "analyze-learning", "plan-study", "memorize"]);
-  for (const task of LEARNING_ASSISTANT_TASKS) {
-    assert.ok(LEARNING_MAX_OUTPUT_TOKENS[task] <= 640);
-    const payload = learningUpstreamPayload("deepseek-v4-flash", { system: "json", user: "{}" }, task, "deepseek");
-    assert.equal(payload.max_tokens, LEARNING_MAX_OUTPUT_TOKENS[task]);
+  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES.search, { min: 5_000, max: 8_000 });
+  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES["analyze-learning"], { min: 7_000, max: 12_000 });
+  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES["plan-study"], { min: 9_000, max: 16_000 });
+  const requests = [
+    parseLearningRequest("search", { query: "abandon and give up", wordIds: [wordA, wordB], limit: 2 }),
+    parseLearningRequest("analyze-learning", { wordIds: [wordA, wordB], periodDays: 30, reviewCount: 800, uniqueWords: 200, retentionPercent: 81, averageSeconds: 9, skillStats: [{ skill: "meaning", attempts: 40, accuracyPercent: 75 }] }),
+    parseLearningRequest("plan-study", { wordIds: [wordA, wordB], days: 7, minutesPerDay: 30, newWordsPerDay: 4, dueByDay: [5, 4, 6, 3, 2, 2, 1], skillStats: [{ skill: "spelling", attempts: 25, accuracyPercent: 68 }] }),
+    parseLearningRequest("memorize", { wordIds: [wordA] }),
+  ];
+  for (const request of requests) {
+    const payload = learningUpstreamPayload("deepseek-v4-flash", { system: "json", user: "{}" }, request, "deepseek");
+    assert.equal(payload.max_tokens, learningOutputTokenBudget(request));
+    assert.ok(payload.max_tokens >= LEARNING_OUTPUT_TOKEN_RANGES[request.task].min);
+    assert.ok(payload.max_tokens <= LEARNING_MAX_OUTPUT_TOKENS[request.task]);
     assert.equal(payload.temperature, 0.1);
     assert.deepEqual(payload.response_format, { type: "json_object" });
     assert.deepEqual(payload.thinking, { type: "disabled" });
     assert.equal(payload.stream, false);
   }
-  const compatible = learningUpstreamPayload("provider-flash", { system: "json", user: "{}" }, "search", "openai-compatible");
+  assert.ok(learningOutputTokenBudget(requests[0]) < learningOutputTokenBudget(parseLearningRequest("search", { query: "a detailed query about abandon, desert, forsake and give up in context".slice(0, 80), wordIds: [wordA, wordB], limit: 2 })));
+  const compatible = learningUpstreamPayload("provider-flash", { system: "json", user: "{}" }, requests[0], "openai-compatible");
   assert.equal("thinking" in compatible, false);
 });
 

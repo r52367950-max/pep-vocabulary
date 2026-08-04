@@ -468,6 +468,12 @@ kbd { border: 1px solid var(--rule); color: var(--faint); background: var(--bg);
   .toast { bottom: 82px; }
 }
 
+.deep-explain-result { max-height: min(68vh, 760px); overflow: auto; gap: 8px; padding-right: 6px; }
+.deep-explain-result > p { white-space: pre-wrap; line-height: 1.7; }
+.deep-explain-result > h4 { margin: 9px 0 0; color: #94bce3; font-size: 10px; letter-spacing: .06em; }
+.deep-explain-result > span { white-space: pre-wrap; line-height: 1.7; }
+.deep-explain-result blockquote { white-space: pre-wrap; line-height: 1.65; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

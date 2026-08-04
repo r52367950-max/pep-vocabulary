@@ -40,7 +40,14 @@ export class AssistantClientError extends Error {
   }
 }
 
-export async function postAssistant<T>(task: string, body: Record<string, unknown>, timeoutMs = 35_000): Promise<AssistantResponse<T>> {
+const TASK_TIMEOUT_MS: Readonly<Record<string, number>> = Object.freeze({
+  explain: 285_000,
+  search: 140_000,
+  "analyze-learning": 190_000,
+  "plan-study": 240_000,
+});
+
+export async function postAssistant<T>(task: string, body: Record<string, unknown>, timeoutMs = TASK_TIMEOUT_MS[task] ?? 35_000): Promise<AssistantResponse<T>> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {

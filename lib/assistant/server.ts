@@ -15,6 +15,7 @@ import { authenticatedUserKey } from "@/lib/server-user";
 import {
   AssistantInputError,
   AssistantUpstreamError,
+  assistantTimeoutForOutputTokens,
   buildAssistantPrompt,
   chatCompletionsUrl,
   connectionEndpointCandidates,
@@ -32,10 +33,10 @@ import {
   type LexiconEvidence,
 } from "./core";
 import {
-  LEARNING_MAX_OUTPUT_TOKENS,
   LEARNING_RESPONSE_CACHE_POLICY,
   buildLearningPrompt,
   learningResponseCacheKey,
+  learningOutputTokenBudget,
   learningUpstreamPayload,
   parseLearningRequest,
   sanitizeLearningResult,
@@ -436,6 +437,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     apiKey = config.apiKey;
     const evidence = resolveLexiconEvidence(await releaseIndex(request), parsed.wordIds);
     const prompt = buildAssistantPrompt(parsed, evidence);
+    const outputBudget = ASSISTANT_TOKEN_BUDGETS[task];
     const completion = await fetchChatCompletionDetailedWithTimeout(
       fetch,
       chatCompletionsUrl(config.baseUrl, config.provider),
@@ -449,7 +451,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
         },
         body: JSON.stringify(upstreamPayload(config.model, prompt, task, config.provider)),
       },
-      config.timeoutMs,
+      assistantTimeoutForOutputTokens(config.timeoutMs, outputBudget),
     );
     const maximumItems = parsed.task === "generate-practice" ? parsed.count : 8;
     const result = sanitizeModelResult(task, completion.content, evidence, maximumItems);
@@ -463,7 +465,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
         result,
         meta: {
           durationMs: Date.now() - startedAt,
-          maxOutputTokens: ASSISTANT_TOKEN_BUDGETS[task],
+          maxOutputTokens: outputBudget,
           usage: completion.usage,
         },
       },
@@ -487,6 +489,7 @@ export async function handleLearningAssistantRequest(request: Request, task: Lea
     apiKey = config.apiKey;
     const evidence = resolveLexiconEvidence(await releaseIndex(request), parsed.wordIds);
     const prompt = buildLearningPrompt(parsed, evidence);
+    const outputBudget = learningOutputTokenBudget(parsed);
     const cacheKey = await learningResponseCacheKey(config.provider, config.model, parsed, evidence, config.baseUrl);
     if (cacheKey) {
       const cachedContent = await readLearningCache(cacheKey);
@@ -502,7 +505,7 @@ export async function handleLearningAssistantRequest(request: Request, task: Lea
             result,
             meta: {
               durationMs: Date.now() - startedAt,
-              maxOutputTokens: LEARNING_MAX_OUTPUT_TOKENS[task],
+              maxOutputTokens: outputBudget,
               usage: EMPTY_USAGE,
               cache: "hit",
             },
@@ -523,9 +526,9 @@ export async function handleLearningAssistantRequest(request: Request, task: Lea
           "content-type": "application/json",
           accept: "application/json",
         },
-        body: JSON.stringify(learningUpstreamPayload(config.model, prompt, task, config.provider)),
+        body: JSON.stringify(learningUpstreamPayload(config.model, prompt, parsed, config.provider)),
       },
-      config.timeoutMs,
+      assistantTimeoutForOutputTokens(config.timeoutMs, outputBudget),
     );
     const result = sanitizeLearningResult(parsed, completion.content, evidence);
     if (cacheKey) {
@@ -541,7 +544,7 @@ export async function handleLearningAssistantRequest(request: Request, task: Lea
         result,
         meta: {
           durationMs: Date.now() - startedAt,
-          maxOutputTokens: LEARNING_MAX_OUTPUT_TOKENS[task],
+          maxOutputTokens: outputBudget,
           usage: completion.usage,
           cache: cacheKey ? "miss" : "bypass",
         },
