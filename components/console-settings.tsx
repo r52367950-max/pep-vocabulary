@@ -8,9 +8,9 @@ type Section = "general" | "learning" | "ai" | "privacy" | "about";
 type AIProvider = "deepseek" | "openai-compatible";
 type AIConfig = { provider: AIProvider; baseUrl: string; model: string; dailyLimit: number; timeoutSeconds: number; hasApiKey: boolean; updatedAt: string | null; secretStorage: "server-encrypted" };
 type ConnectionCheck = { id: string; label: string; status: "passed" | "failed" | "unknown"; detail: string; latencyMs?: number };
-type ConnectionTestResult = { ok: boolean; checkedAt?: string; latencyMs?: number; provider?: AIProvider; model?: string; endpointHost?: string; serviceStatusUrl?: string | null; checks?: ConnectionCheck[]; error?: { message?: string; code?: string; providerStatus?: number | null } | string };
+type ConnectionTestResult = { ok: boolean; checkedAt?: string; latencyMs?: number; provider?: AIProvider; model?: string; endpointHost?: string; serviceStatusUrl?: string | null; checks?: ConnectionCheck[]; error?: { message?: string; code?: string; providerStatus?: number | null; networkReason?: string | null } | string };
 const providerDefaults: Record<AIProvider, Pick<AIConfig, "baseUrl" | "model">> = {
-  deepseek: { baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash" },
+  deepseek: { baseUrl: "https://api.deepseek.com/v1", model: "deepseek-v4-flash" },
   "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
 };
 const defaultAIConfig: AIConfig = { provider: "deepseek", ...providerDefaults.deepseek, dailyLimit: 30, timeoutSeconds: 25, hasApiKey: false, updatedAt: null, secretStorage: "server-encrypted" };
@@ -87,7 +87,7 @@ export default function ConsoleSettings({ settings, onUpdate, onOpenData, onClea
               <label><span>请求超时</span><div className="suffix-input"><input type="number" min="10" max="60" value={aiConfig.timeoutSeconds} onChange={(event) => setAIConfig((current) => ({ ...current, timeoutSeconds: Number(event.target.value) }))}/><span>秒</span></div><small>建议 20–30 秒。</small></label>
             </div>
             <div className="api-actions"><button className="console-primary" onClick={saveAIConfig} disabled={saving || loadingConfig}><Save size={16}/>{saving ? "保存中…" : aiConfig.hasApiKey ? "保存更改" : "安全保存"}</button><button className="console-secondary" onClick={testAIConfig} disabled={testing || !aiConfig.hasApiKey}><PlugZap size={16}/>{testing ? "正在执行真实测试…" : "测试连接与服务"}</button>{aiConfig.hasApiKey && <button className="api-remove" onClick={removeAIConfig} disabled={saving}><Trash2 size={15}/>移除密钥</button>}</div>
-            <p className="connection-test-note">测试会发送两次极小的真实请求：先检查基础生成，再检查词迹依赖的 JSON 输出；会产生少量服务商用量。</p>
+            <p className="connection-test-note">测试先进行一次不携带密钥、不会计费的 HTTPS 探测，再发送两次极小的真实请求检查基础生成与 JSON 输出；会产生少量服务商用量。</p>
             {message && <p className={`settings-message ${message.kind}`} role="status">{message.kind === "success" ? <Check size={16}/> : <CircleAlert size={16}/>} {message.text}</p>}
             {connectionResult?.checks?.length ? <div className={`connection-diagnostic ${connectionResult.ok ? "passed" : "failed"}`} role="status">
               <div className="connection-diagnostic-head"><div>{connectionResult.ok ? <Check size={17}/> : <CircleAlert size={17}/>}<strong>{connectionResult.ok ? "连接与服务均正常" : "连接诊断未通过"}</strong></div><span>{connectionResult.endpointHost || "服务端点"}{connectionResult.latencyMs !== undefined ? ` · ${connectionResult.latencyMs} ms` : ""}</span></div>
@@ -99,7 +99,7 @@ export default function ConsoleSettings({ settings, onUpdate, onOpenData, onClea
           <section className="settings-card compact-card"><header><Eye size={19}/><div><h2>发送范围</h2><p>四类助手接口只发送当前词条 ID、必要作答文本、有限掌握标签，以及服务端重新读取的正式词库证据。</p></div></header></section>
         </>}
         {section === "privacy" && <><section className="settings-card"><header><Database size={20}/><div><h2>本地数据</h2><p>卡片状态、复习事件、词单和注释默认保存在本机。</p></div></header><button className="settings-link-row" onClick={onOpenData}><div><strong>备份、恢复与私有同步</strong><small>前往数据页管理 JSON、CSV 与同步状态</small></div><ChevronRight size={16}/></button></section><section className="settings-card danger-card"><header><RotateCcw size={20}/><div><h2>重置本机数据</h2><p>不会删除服务端 API 密钥；如需移除密钥，请在 AI 接口页单独操作。</p></div></header><button className="danger-button" onClick={onClear}><Trash2 size={16}/>清空本机个人数据</button></section></>}
-        {section === "about" && <section className="settings-card about-card"><header><Laptop size={20}/><div><h2>词迹</h2><p>人教版初高中英语词汇学习 · 本地优先</p></div></header><dl><div><dt>应用版本</dt><dd>1.3.0</dd></div><div><dt>用户数据 schema</dt><dd>1.1.0</dd></div><div><dt>词库发布状态</dt><dd>带已声明缺口的发布候选</dd></div><div><dt>AI 密钥边界</dt><dd>服务端加密，不随备份导出</dd></div></dl></section>}
+        {section === "about" && <section className="settings-card about-card"><header><Laptop size={20}/><div><h2>词迹</h2><p>人教版初高中英语词汇学习 · 本地优先</p></div></header><dl><div><dt>应用版本</dt><dd>1.3.1</dd></div><div><dt>用户数据 schema</dt><dd>1.1.0</dd></div><div><dt>词库发布状态</dt><dd>带已声明缺口的发布候选</dd></div><div><dt>AI 密钥边界</dt><dd>服务端加密，不随备份导出</dd></div></dl></section>}
       </main>
     </div>
   </div>;

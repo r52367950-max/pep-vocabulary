@@ -6,6 +6,7 @@ import { aiConfigs } from "@/db/schema";
 import {
   decryptApiKey,
   isAiProvider,
+  normalizeApiKey,
   normalizeConfiguredBaseUrl,
   normalizeConfiguredModel,
   sameOriginMutation,
@@ -16,9 +17,11 @@ import {
   AssistantUpstreamError,
   buildAssistantPrompt,
   chatCompletionsUrl,
+  connectionEndpointCandidates,
   connectionTestPayload,
   fetchChatCompletionWithTimeout,
   parseAssistantRequest,
+  probeConnectionEndpoint,
   resolveLexiconEvidence,
   sanitizeModelResult,
   upstreamPayload,
@@ -159,13 +162,13 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
   }
   let baseUrl: string;
   try {
-    baseUrl = normalizeConfiguredBaseUrl(row.baseUrl);
+    baseUrl = normalizeConfiguredBaseUrl(row.baseUrl, row.provider);
   } catch {
     throw new AiRuntimeConfigError("configuration_invalid", "服务端 AI Base URL 无效。");
   }
   let apiKey: string;
   try {
-    apiKey = await decryptApiKey(row.encryptedApiKey, row.keyIv);
+    apiKey = normalizeApiKey(await decryptApiKey(row.encryptedApiKey, row.keyIv));
   } catch {
     throw new AiRuntimeConfigError("credential_unavailable", "无法解密当前密钥，请在设置中重新保存 API Key。");
   }
@@ -266,7 +269,7 @@ async function authenticatedRuntime(request: Request) {
 }
 
 type ConnectionCheckStatus = "passed" | "failed" | "unknown";
-type ConnectionPhase = "basic" | "capability";
+type ConnectionPhase = "reachability" | "basic" | "capability";
 type ConnectionCheckId = "configuration" | "endpoint" | "authentication" | "account" | "model" | "service" | "capability";
 
 type ConnectionCheck = {
@@ -304,21 +307,28 @@ function serviceStatusUrl(provider: AiProvider) {
   return provider === "deepseek" ? "https://status.deepseek.com/" : null;
 }
 
-function failedConnectionChecks(phase: ConnectionPhase, error: AssistantUpstreamError, basicLatencyMs?: number) {
+function failedConnectionChecks(
+  phase: ConnectionPhase,
+  error: AssistantUpstreamError,
+  endpointLatencyMs?: number,
+  basicLatencyMs?: number,
+) {
   const hasProviderResponse = error.providerStatus !== null;
-  const endpointFailed = phase === "basic" && (error.code === "upstream_timeout" || error.code === "upstream_unavailable");
+  const endpointFailed = phase === "reachability";
   const authenticationFailed = error.code === "provider_auth_failed";
   const accountFailed = error.code === "provider_payment_required";
-  const serviceFailed = error.code === "provider_busy" || error.code === "provider_unavailable" || error.code === "upstream_timeout";
+  const serviceFailed = error.code === "provider_busy" || error.code === "provider_unavailable" || error.code === "upstream_timeout" || error.code === "upstream_network_error";
   const modelFailed = phase === "basic" && (error.code === "provider_endpoint_not_found" || error.code === "provider_rejected_request");
 
   return [
     connectionCheck("configuration", "passed", "已从服务端加密配置中读取；密钥没有返回浏览器。"),
     endpointFailed
       ? connectionCheck("endpoint", "failed", error.message)
-      : hasProviderResponse || basicLatencyMs !== undefined
-        ? connectionCheck("endpoint", "passed", "Chat Completions 端点可达。", basicLatencyMs)
-        : unknownConnectionCheck("endpoint"),
+      : endpointLatencyMs !== undefined
+        ? connectionCheck("endpoint", "passed", "站点服务器已收到模型接口的 HTTP 响应。", endpointLatencyMs)
+        : hasProviderResponse || basicLatencyMs !== undefined
+          ? connectionCheck("endpoint", "passed", "Chat Completions 端点可达。", basicLatencyMs)
+          : unknownConnectionCheck("endpoint"),
     authenticationFailed
       ? connectionCheck("authentication", "failed", error.message)
       : basicLatencyMs !== undefined || (hasProviderResponse && !serviceFailed)
@@ -360,6 +370,7 @@ function logConnectionTest(
     latencyMs,
     code: error?.code || "ok",
     providerStatus: error?.providerStatus ?? null,
+    networkReason: error?.networkReason ?? null,
   });
   if (outcome === "passed") console.info(event);
   else console.warn(event);
@@ -377,10 +388,10 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     const prompt = buildAssistantPrompt(parsed, evidence);
     const completion = await fetchChatCompletionWithTimeout(
       fetch,
-      chatCompletionsUrl(config.baseUrl),
+      chatCompletionsUrl(config.baseUrl, config.provider),
       {
         method: "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: {
           authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
@@ -406,7 +417,8 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
 export async function testAssistantConnection(request: Request): Promise<Response> {
   let apiKey = "";
   let config: UserRuntimeConfig | null = null;
-  let phase: ConnectionPhase = "basic";
+  let phase: ConnectionPhase = "reachability";
+  let endpointLatencyMs: number | undefined;
   let basicLatencyMs: number | undefined;
   const startedAt = Date.now();
   try {
@@ -419,13 +431,21 @@ export async function testAssistantConnection(request: Request): Promise<Respons
     await enforceConnectionTestRateLimit(authenticated.userKey);
     apiKey = config.apiKey;
 
+    const endpoint = await probeConnectionEndpoint(
+      fetch,
+      connectionEndpointCandidates(config.provider, config.baseUrl),
+      Math.min(config.timeoutMs, 8_000),
+    );
+    endpointLatencyMs = endpoint.latencyMs;
+
+    phase = "basic";
     const basicStartedAt = Date.now();
     await fetchChatCompletionWithTimeout(
       fetch,
-      chatCompletionsUrl(config.baseUrl),
+      endpoint.url,
       {
         method: "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: {
           authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
@@ -441,10 +461,10 @@ export async function testAssistantConnection(request: Request): Promise<Respons
     const capabilityStartedAt = Date.now();
     const capabilityContent = await fetchChatCompletionWithTimeout(
       fetch,
-      chatCompletionsUrl(config.baseUrl),
+      endpoint.url,
       {
         method: "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: {
           authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
@@ -488,7 +508,7 @@ export async function testAssistantConnection(request: Request): Promise<Respons
         serviceStatusUrl: serviceStatusUrl(config.provider),
         checks: [
           connectionCheck("configuration", "passed", "已从服务端加密配置中读取；密钥没有返回浏览器。"),
-          connectionCheck("endpoint", "passed", "Chat Completions 端点可达。", basicLatencyMs),
+          connectionCheck("endpoint", "passed", "站点服务器已收到模型接口的 HTTP 响应。", endpointLatencyMs),
           connectionCheck("authentication", "passed", "服务商已接受当前 API Key。"),
           connectionCheck("account", "passed", "服务商允许当前账户执行真实生成请求。"),
           connectionCheck("model", "passed", "所选模型已返回非空回答。", basicLatencyMs),
@@ -511,12 +531,13 @@ export async function testAssistantConnection(request: Request): Promise<Respons
         model: config.model,
         endpointHost: new URL(config.baseUrl).host,
         serviceStatusUrl: serviceStatusUrl(config.provider),
-        checks: failedConnectionChecks(phase, error, basicLatencyMs),
+        checks: failedConnectionChecks(phase, error, endpointLatencyMs, basicLatencyMs),
         error: {
           code: error.code,
           message: error.message,
           retryable: error.retryable,
           providerStatus: error.providerStatus,
+          networkReason: error.networkReason,
         },
       },
       { status: error.status, headers: responseHeaders() },

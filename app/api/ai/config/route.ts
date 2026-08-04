@@ -7,9 +7,9 @@ import {
   isAiProvider,
   normalizeConfiguredBaseUrl,
   normalizeConfiguredModel,
+  normalizeApiKey,
   sameOriginMutation,
   securityHeaders,
-  validApiKey,
 } from "@/lib/ai-config";
 import { sameAiCredentialScope, type AiProvider } from "@/lib/assistant/core";
 import { authenticatedUserKey } from "@/lib/server-user";
@@ -26,6 +26,12 @@ function safeProvider(value: string | undefined): AiProvider {
 
 function publicConfig(row?: typeof aiConfigs.$inferSelect) {
   const provider = safeProvider(row?.provider);
+  let baseUrl = AI_PROVIDER_DEFAULTS[provider].baseUrl;
+  try {
+    baseUrl = normalizeConfiguredBaseUrl(row?.baseUrl || baseUrl, provider);
+  } catch {
+    // Invalid legacy values are never reflected into editable settings.
+  }
   let model = AI_PROVIDER_DEFAULTS[provider].model;
   try {
     model = normalizeConfiguredModel(provider, row?.model || model);
@@ -34,7 +40,7 @@ function publicConfig(row?: typeof aiConfigs.$inferSelect) {
   }
   return {
     provider,
-    baseUrl: row?.baseUrl || AI_PROVIDER_DEFAULTS[provider].baseUrl,
+    baseUrl,
     model,
     dailyLimit: row?.dailyLimit || DEFAULT_LIMITS.dailyLimit,
     timeoutSeconds: row?.timeoutSeconds || DEFAULT_LIMITS.timeoutSeconds,
@@ -81,7 +87,7 @@ export async function POST(request: Request) {
   if (!isAiProvider(body.provider)) return json({ error: "请选择受支持的接口类型。" }, 400);
   let baseUrl: string;
   try {
-    baseUrl = normalizeConfiguredBaseUrl(body.baseUrl);
+    baseUrl = normalizeConfiguredBaseUrl(body.baseUrl, body.provider);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Base URL 格式无效。" }, 400);
   }
@@ -107,7 +113,7 @@ export async function POST(request: Request) {
   if (current) {
     let currentBaseUrl = current.baseUrl;
     try {
-      currentBaseUrl = normalizeConfiguredBaseUrl(current.baseUrl);
+      currentBaseUrl = normalizeConfiguredBaseUrl(current.baseUrl, safeProvider(current.provider));
     } catch {
       // An invalid legacy destination never receives a retained credential.
     }
@@ -120,9 +126,14 @@ export async function POST(request: Request) {
   }
 
   if (body.apiKey !== undefined && body.apiKey !== "") {
-    if (!validApiKey(body.apiKey)) return json({ error: "API Key 格式无效。" }, 400);
+    let apiKey: string;
     try {
-      encrypted = await encryptApiKey(body.apiKey);
+      apiKey = normalizeApiKey(body.apiKey);
+    } catch (error) {
+      return json({ error: error instanceof Error ? error.message : "API Key 格式无效。" }, 400);
+    }
+    try {
+      encrypted = await encryptApiKey(apiKey);
     } catch {
       return json({ error: "当前部署尚未启用安全密钥存储。" }, 503);
     }

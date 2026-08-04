@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { normalizeBaseUrl, type AiProvider } from "@/lib/assistant/core";
 
 export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: string }> = {
-  deepseek: { baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash" },
+  deepseek: { baseUrl: "https://api.deepseek.com/v1", model: "deepseek-v4-flash" },
   "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
 };
 
@@ -69,13 +69,28 @@ export function normalizeConfiguredModel(provider: AiProvider, value: unknown) {
 }
 
 export function validApiKey(value: unknown): value is string {
-  return typeof value === "string" && value.length >= 20 && value.length <= 512 && !/[\r\n]/.test(value);
+  return typeof value === "string" && value.length >= 20 && value.length <= 512 && /^[\x21-\x7E]+$/.test(value);
 }
 
-export function normalizeConfiguredBaseUrl(value: unknown) {
+export function normalizeApiKey(value: unknown) {
+  if (typeof value !== "string") throw new Error("API Key 格式无效。");
+  const normalized = value.trim();
+  if (!validApiKey(normalized)) throw new Error("API Key 只能包含可打印的 ASCII 字符，且不能包含空格或换行。");
+  return normalized;
+}
+
+export function normalizeConfiguredBaseUrl(value: unknown, provider?: AiProvider) {
   if (typeof value !== "string") throw new Error("Base URL 格式无效。");
   const allowLocal = (env as unknown as Record<string, unknown>).AI_ALLOW_INSECURE_LOCAL_BASE_URL === "true";
-  return normalizeBaseUrl(value, allowLocal);
+  const normalized = normalizeBaseUrl(value, allowLocal);
+  if (provider === "deepseek") {
+    const url = new URL(normalized);
+    if (url.hostname === "api.deepseek.com" && (url.pathname === "/" || url.pathname === "")) {
+      url.pathname = "/v1";
+      return url.toString().replace(/\/$/, "");
+    }
+  }
+  return normalized;
 }
 
 export function securityHeaders() {

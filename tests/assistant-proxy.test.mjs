@@ -7,10 +7,12 @@ import {
   AssistantUpstreamError,
   buildAssistantPrompt,
   chatCompletionsUrl,
+  connectionEndpointCandidates,
   connectionTestPayload,
   fetchChatCompletionWithTimeout,
   normalizeBaseUrl,
   parseAssistantRequest,
+  probeConnectionEndpoint,
   readChatCompletion,
   resolveLexiconEvidence,
   sameAiCredentialScope,
@@ -58,6 +60,11 @@ test("all four assistant requests accept only bounded canonical word IDs", () =>
 test("base URL validation is HTTPS-first and rejects credential or private-network targets", () => {
   assert.equal(normalizeBaseUrl("https://api.deepseek.com/"), "https://api.deepseek.com");
   assert.equal(chatCompletionsUrl("https://api.example.com/v1"), "https://api.example.com/v1/chat/completions");
+  assert.equal(chatCompletionsUrl("https://api.deepseek.com", "deepseek"), "https://api.deepseek.com/v1/chat/completions");
+  assert.deepEqual(connectionEndpointCandidates("deepseek", "https://api.deepseek.com"), [
+    "https://api.deepseek.com/v1/chat/completions",
+    "https://api.deepseek.com/chat/completions",
+  ]);
   assert.equal(chatCompletionsUrl("https://api.example.com/chat/completions"), "https://api.example.com/chat/completions");
   assert.throws(() => normalizeBaseUrl("http://api.example.com/v1"), /HTTPS/);
   assert.throws(() => normalizeBaseUrl("https://127.0.0.1/v1"), /私有网络/);
@@ -202,7 +209,7 @@ test("connection probes exercise real generation safely and DeepSeek disables de
   assert.deepEqual(basicDeepSeek.thinking, { type: "disabled" });
   assert.equal(basicDeepSeek.stream, false);
   assert.equal("response_format" in basicDeepSeek, false);
-  assert.equal("max_tokens" in basicDeepSeek, false);
+  assert.equal(basicDeepSeek.max_tokens, 16);
 
   const structuredDeepSeek = connectionTestPayload("deepseek", "deepseek-v4-pro", true);
   assert.deepEqual(structuredDeepSeek.response_format, { type: "json_object" });
@@ -215,6 +222,23 @@ test("connection probes exercise real generation safely and DeepSeek disables de
   const assistant = upstreamPayload("deepseek-v4-flash", { system: "JSON only", user: "{}" }, "explain", "deepseek");
   assert.deepEqual(assistant.thinking, { type: "disabled" });
   assert.deepEqual(assistant.response_format, { type: "json_object" });
+});
+
+test("connection reachability probe receives HTTP without sending credentials and rejects redirects", async () => {
+  const calls = [];
+  const result = await probeConnectionEndpoint(async (url, init) => {
+    calls.push({ url, init });
+    return new Response("", { status: 401 });
+  }, ["https://api.deepseek.com/v1/chat/completions"], 100);
+  assert.equal(result.status, 401);
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(new Headers(calls[0].init.headers).has("authorization"), false);
+  assert.equal(calls[0].init.redirect, "manual");
+
+  await assert.rejects(
+    probeConnectionEndpoint(async () => new Response("", { status: 307 }), ["https://api.example.com/chat/completions"], 100),
+    (error) => error instanceof AssistantUpstreamError && error.code === "provider_redirect_rejected" && error.providerStatus === 307,
+  );
 });
 
 test("routes, D1 limits, no-store responses and client secret boundaries stay wired", () => {
@@ -243,6 +267,7 @@ test("routes, D1 limits, no-store responses and client secret boundaries stay wi
   assert.match(configRoute, /encryptedApiKey/);
   assert.match(configLayer, /AES-GCM/);
   assert.match(configLayer, /deepseek-v4-flash/);
+  assert.match(configLayer, /https:\/\/api\.deepseek\.com\/v1/);
   assert.doesNotMatch(configLayer, /model: "deepseek-chat"/);
   assert.match(testRoute, /testAssistantConnection/);
   assert.match(migration, /ai_rate_limits/);
