@@ -7,6 +7,7 @@ import {
   AssistantUpstreamError,
   buildAssistantPrompt,
   chatCompletionsUrl,
+  connectionTestPayload,
   fetchChatCompletionWithTimeout,
   normalizeBaseUrl,
   parseAssistantRequest,
@@ -14,6 +15,7 @@ import {
   resolveLexiconEvidence,
   sameAiCredentialScope,
   sanitizeModelResult,
+  upstreamPayload,
 } from "../lib/assistant/core.ts";
 
 const root = resolve(import.meta.dirname, "..");
@@ -185,8 +187,34 @@ test("upstream timeout and provider errors are normalized without leaking respon
   );
   await assert.rejects(
     readChatCompletion(new Response('{"error":{"message":"test-secret-value"}}', { status: 401 })),
-    (error) => error instanceof AssistantUpstreamError && error.code === "provider_auth_failed" && !error.message.includes("test-secret-value"),
+    (error) => error instanceof AssistantUpstreamError && error.code === "provider_auth_failed" && error.providerStatus === 401 && !error.message.includes("test-secret-value"),
   );
+  for (const [status, code] of [[402, "provider_payment_required"], [404, "provider_endpoint_not_found"], [422, "provider_rejected_request"], [429, "provider_busy"], [503, "provider_unavailable"]]) {
+    await assert.rejects(
+      readChatCompletion(new Response('{"error":{"message":"do-not-return-upstream-body"}}', { status })),
+      (error) => error instanceof AssistantUpstreamError && error.code === code && error.providerStatus === status && !error.message.includes("do-not-return-upstream-body"),
+    );
+  }
+});
+
+test("connection probes exercise real generation safely and DeepSeek disables default thinking", () => {
+  const basicDeepSeek = connectionTestPayload("deepseek", "deepseek-v4-flash", false);
+  assert.deepEqual(basicDeepSeek.thinking, { type: "disabled" });
+  assert.equal(basicDeepSeek.stream, false);
+  assert.equal("response_format" in basicDeepSeek, false);
+  assert.equal("max_tokens" in basicDeepSeek, false);
+
+  const structuredDeepSeek = connectionTestPayload("deepseek", "deepseek-v4-pro", true);
+  assert.deepEqual(structuredDeepSeek.response_format, { type: "json_object" });
+  assert.deepEqual(structuredDeepSeek.thinking, { type: "disabled" });
+  assert.equal(structuredDeepSeek.max_tokens, 64);
+
+  const compatible = connectionTestPayload("openai-compatible", "provider-model", false);
+  assert.equal("thinking" in compatible, false);
+
+  const assistant = upstreamPayload("deepseek-v4-flash", { system: "JSON only", user: "{}" }, "explain", "deepseek");
+  assert.deepEqual(assistant.thinking, { type: "disabled" });
+  assert.deepEqual(assistant.response_format, { type: "json_object" });
 });
 
 test("routes, D1 limits, no-store responses and client secret boundaries stay wired", () => {
@@ -203,16 +231,26 @@ test("routes, D1 limits, no-store responses and client secret boundaries stay wi
   const client = source("components/console-settings.tsx");
   const migration = source("drizzle/0002_swift_cerise.sql");
   assert.match(server, /ai_rate_limits/);
+  assert.match(server, /connection-test:minute/);
+  assert.match(server, /connection-test:day/);
   assert.match(server, /fetchChatCompletionWithTimeout/);
+  assert.match(server, /structured_output_unsupported/);
+  assert.match(server, /providerStatus/);
+  assert.match(server, /event: "ai_connection_test"/);
   assert.match(server, /formalReleaseEligible/);
   assert.match(server, /cache-control.*no-store/s);
   assert.match(configRoute, /更换服务商或 Base URL 时必须重新填写 API Key/);
   assert.match(configRoute, /encryptedApiKey/);
   assert.match(configLayer, /AES-GCM/);
+  assert.match(configLayer, /deepseek-v4-flash/);
+  assert.doesNotMatch(configLayer, /model: "deepseek-chat"/);
   assert.match(testRoute, /testAssistantConnection/);
   assert.match(migration, /ai_rate_limits/);
   assert.doesNotMatch(storage, /apiKey|AI_API_KEY|AI_CONFIG_ENCRYPTION_KEY/);
   assert.doesNotMatch(client, /localStorage\.|sessionStorage\.|indexedDB\(|console\./);
   assert.match(client, /type="password"/);
   assert.match(client, /autoComplete="off"/);
+  assert.match(client, /测试连接与服务/);
+  assert.match(client, /DeepSeek 官方服务状态/);
+  assert.match(client, /连接与服务均正常/);
 });

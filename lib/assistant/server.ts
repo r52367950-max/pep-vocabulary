@@ -3,13 +3,20 @@ import { eq } from "drizzle-orm";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDb } from "@/db";
 import { aiConfigs } from "@/db/schema";
-import { decryptApiKey, isAiProvider, normalizeConfiguredBaseUrl } from "@/lib/ai-config";
+import {
+  decryptApiKey,
+  isAiProvider,
+  normalizeConfiguredBaseUrl,
+  normalizeConfiguredModel,
+  sameOriginMutation,
+} from "@/lib/ai-config";
 import { authenticatedUserKey } from "@/lib/server-user";
 import {
   AssistantInputError,
   AssistantUpstreamError,
   buildAssistantPrompt,
   chatCompletionsUrl,
+  connectionTestPayload,
   fetchChatCompletionWithTimeout,
   parseAssistantRequest,
   resolveLexiconEvidence,
@@ -162,10 +169,16 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
   } catch {
     throw new AiRuntimeConfigError("credential_unavailable", "无法解密当前密钥，请在设置中重新保存 API Key。");
   }
+  let model: string;
+  try {
+    model = normalizeConfiguredModel(row.provider, row.model);
+  } catch {
+    throw new AiRuntimeConfigError("configuration_invalid", "服务端模型名无效，请在设置中重新保存。");
+  }
   return {
     provider: row.provider,
     baseUrl,
-    model: row.model,
+    model,
     apiKey,
     timeoutMs: Math.min(60, Math.max(10, row.timeoutSeconds)) * 1000,
     dailyLimit: Math.min(200, Math.max(5, row.dailyLimit)),
@@ -228,15 +241,128 @@ async function enforceRateLimit(userKey: string, dailyLimit: number) {
   }
 }
 
-async function authenticatedRuntime(request: Request) {
+async function enforceConnectionTestRateLimit(userKey: string) {
+  const now = Date.now();
+  const minuteStart = Math.floor(now / 60_000) * 60_000;
+  const dayStart = Math.floor(now / 86_400_000) * 86_400_000;
+  await incrementBucket(`connection-test:minute:${userKey}:${minuteStart}`, minuteStart + 60_000, 6);
+  await incrementBucket(`connection-test:day:${userKey}:${dayStart}`, dayStart + 86_400_000, 30);
+}
+
+async function authenticatedConfig(request: Request) {
   assertSameOrigin(request);
   const user = await getChatGPTUser();
   if (!user) throw new AssistantInputError("authentication_required", "AI 助手需要经过站点身份验证。", 401);
   const userKey = await authenticatedUserKey();
   if (!userKey) throw new AssistantInputError("authentication_required", "AI 助手需要经过站点身份验证。", 401);
   const config = await loadUserRuntimeConfig(userKey);
+  return { config, userKey };
+}
+
+async function authenticatedRuntime(request: Request) {
+  const { config, userKey } = await authenticatedConfig(request);
   await enforceRateLimit(userKey, config.dailyLimit);
   return config;
+}
+
+type ConnectionCheckStatus = "passed" | "failed" | "unknown";
+type ConnectionPhase = "basic" | "capability";
+type ConnectionCheckId = "configuration" | "endpoint" | "authentication" | "account" | "model" | "service" | "capability";
+
+type ConnectionCheck = {
+  id: ConnectionCheckId;
+  label: string;
+  status: ConnectionCheckStatus;
+  detail: string;
+  latencyMs?: number;
+};
+
+const CHECK_LABELS: Record<ConnectionCheckId, string> = {
+  configuration: "服务端配置",
+  endpoint: "接口端点",
+  authentication: "身份验证",
+  account: "账户与限额",
+  model: "模型生成",
+  service: "服务状态",
+  capability: "词迹助手能力",
+};
+
+function connectionCheck(
+  id: ConnectionCheckId,
+  status: ConnectionCheckStatus,
+  detail: string,
+  latencyMs?: number,
+): ConnectionCheck {
+  return { id, label: CHECK_LABELS[id], status, detail, ...(latencyMs === undefined ? {} : { latencyMs }) };
+}
+
+function unknownConnectionCheck(id: ConnectionCheckId) {
+  return connectionCheck(id, "unknown", "前置检查未通过，本项没有继续发送请求。");
+}
+
+function serviceStatusUrl(provider: AiProvider) {
+  return provider === "deepseek" ? "https://status.deepseek.com/" : null;
+}
+
+function failedConnectionChecks(phase: ConnectionPhase, error: AssistantUpstreamError, basicLatencyMs?: number) {
+  const hasProviderResponse = error.providerStatus !== null;
+  const endpointFailed = phase === "basic" && (error.code === "upstream_timeout" || error.code === "upstream_unavailable");
+  const authenticationFailed = error.code === "provider_auth_failed";
+  const accountFailed = error.code === "provider_payment_required";
+  const serviceFailed = error.code === "provider_busy" || error.code === "provider_unavailable" || error.code === "upstream_timeout";
+  const modelFailed = phase === "basic" && (error.code === "provider_endpoint_not_found" || error.code === "provider_rejected_request");
+
+  return [
+    connectionCheck("configuration", "passed", "已从服务端加密配置中读取；密钥没有返回浏览器。"),
+    endpointFailed
+      ? connectionCheck("endpoint", "failed", error.message)
+      : hasProviderResponse || basicLatencyMs !== undefined
+        ? connectionCheck("endpoint", "passed", "Chat Completions 端点可达。", basicLatencyMs)
+        : unknownConnectionCheck("endpoint"),
+    authenticationFailed
+      ? connectionCheck("authentication", "failed", error.message)
+      : basicLatencyMs !== undefined || (hasProviderResponse && !serviceFailed)
+        ? connectionCheck("authentication", "passed", "服务商已接受当前 API Key。")
+        : unknownConnectionCheck("authentication"),
+    accountFailed
+      ? connectionCheck("account", "failed", error.message)
+      : basicLatencyMs !== undefined
+        ? connectionCheck("account", "passed", "服务商允许当前账户执行真实生成请求。")
+        : unknownConnectionCheck("account"),
+    basicLatencyMs !== undefined
+      ? connectionCheck("model", "passed", "所选模型已返回非空回答。", basicLatencyMs)
+      : modelFailed
+        ? connectionCheck("model", "failed", error.message)
+        : unknownConnectionCheck("model"),
+    serviceFailed
+      ? connectionCheck("service", "failed", error.message)
+      : hasProviderResponse || basicLatencyMs !== undefined
+        ? connectionCheck("service", "passed", "模型服务已响应本次检查。")
+        : unknownConnectionCheck("service"),
+    phase === "capability"
+      ? connectionCheck("capability", "failed", error.message)
+      : unknownConnectionCheck("capability"),
+  ];
+}
+
+function logConnectionTest(
+  outcome: "passed" | "failed",
+  provider: AiProvider,
+  phase: ConnectionPhase,
+  latencyMs: number,
+  error?: AssistantUpstreamError,
+) {
+  const event = JSON.stringify({
+    event: "ai_connection_test",
+    outcome,
+    provider,
+    phase,
+    latencyMs,
+    code: error?.code || "ok",
+    providerStatus: error?.providerStatus ?? null,
+  });
+  if (outcome === "passed") console.info(event);
+  else console.warn(event);
 }
 
 export async function handleAssistantRequest(request: Request, task: AssistantTask): Promise<Response> {
@@ -260,7 +386,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
           "content-type": "application/json",
           accept: "application/json",
         },
-        body: JSON.stringify(upstreamPayload(config.model, prompt, task)),
+        body: JSON.stringify(upstreamPayload(config.model, prompt, task, config.provider)),
       },
       config.timeoutMs,
     );
@@ -279,12 +405,21 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
 
 export async function testAssistantConnection(request: Request): Promise<Response> {
   let apiKey = "";
+  let config: UserRuntimeConfig | null = null;
+  let phase: ConnectionPhase = "basic";
+  let basicLatencyMs: number | undefined;
+  const startedAt = Date.now();
   try {
-    assertSameOrigin(request);
+    if (!sameOriginMutation(request)) {
+      throw new AssistantInputError("invalid_origin", "连接测试只能从设置页面发起。", 403);
+    }
     await readJsonRequest(request);
-    const config = await authenticatedRuntime(request);
+    const authenticated = await authenticatedConfig(request);
+    config = authenticated.config;
+    await enforceConnectionTestRateLimit(authenticated.userKey);
     apiKey = config.apiKey;
-    const startedAt = Date.now();
+
+    const basicStartedAt = Date.now();
     await fetchChatCompletionWithTimeout(
       fetch,
       chatCompletionsUrl(config.baseUrl),
@@ -296,30 +431,96 @@ export async function testAssistantConnection(request: Request): Promise<Respons
           "content-type": "application/json",
           accept: "application/json",
         },
-        body: JSON.stringify({
-          model: config.model,
-          messages: [
-            { role: "system", content: "Return only the word OK." },
-            { role: "user", content: "Connection test." },
-          ],
-          temperature: 0,
-          max_tokens: 8,
-          stream: false,
-        }),
+        body: JSON.stringify(connectionTestPayload(config.provider, config.model, false)),
       },
-      config.timeoutMs,
+      Math.min(config.timeoutMs, 20_000),
     );
+    basicLatencyMs = Date.now() - basicStartedAt;
+
+    phase = "capability";
+    const capabilityStartedAt = Date.now();
+    const capabilityContent = await fetchChatCompletionWithTimeout(
+      fetch,
+      chatCompletionsUrl(config.baseUrl),
+      {
+        method: "POST",
+        redirect: "error",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify(connectionTestPayload(config.provider, config.model, true)),
+      },
+      Math.min(config.timeoutMs, 20_000),
+    );
+    const capabilityLatencyMs = Date.now() - capabilityStartedAt;
+    let capabilityResult: unknown;
+    try {
+      capabilityResult = JSON.parse(capabilityContent);
+    } catch {
+      throw new AssistantUpstreamError(
+        "structured_output_unsupported",
+        "模型可以生成文本，但没有返回词迹所需的 JSON 对象。",
+        502,
+        false,
+      );
+    }
+    if (!capabilityResult || typeof capabilityResult !== "object" || Array.isArray(capabilityResult) || (capabilityResult as { ok?: unknown }).ok !== true) {
+      throw new AssistantUpstreamError(
+        "structured_output_unsupported",
+        "模型可以生成文本，但结构化输出与词迹不兼容。",
+        502,
+        false,
+      );
+    }
+
+    const latencyMs = Date.now() - startedAt;
+    logConnectionTest("passed", config.provider, phase, latencyMs);
     return Response.json(
       {
         ok: true,
-        latencyMs: Date.now() - startedAt,
+        checkedAt: new Date().toISOString(),
+        latencyMs,
         provider: config.provider,
-        selectedModel: config.model,
+        model: config.model,
+        endpointHost: new URL(config.baseUrl).host,
+        serviceStatusUrl: serviceStatusUrl(config.provider),
+        checks: [
+          connectionCheck("configuration", "passed", "已从服务端加密配置中读取；密钥没有返回浏览器。"),
+          connectionCheck("endpoint", "passed", "Chat Completions 端点可达。", basicLatencyMs),
+          connectionCheck("authentication", "passed", "服务商已接受当前 API Key。"),
+          connectionCheck("account", "passed", "服务商允许当前账户执行真实生成请求。"),
+          connectionCheck("model", "passed", "所选模型已返回非空回答。", basicLatencyMs),
+          connectionCheck("service", "passed", "模型服务已完成两次真实请求。"),
+          connectionCheck("capability", "passed", "JSON 结构化输出可供四类词汇助手使用。", capabilityLatencyMs),
+        ],
       },
       { status: 200, headers: responseHeaders() },
     );
   } catch (error) {
-    return assistantErrorResponse(error);
+    if (!config || !(error instanceof AssistantUpstreamError)) return assistantErrorResponse(error);
+    const latencyMs = Date.now() - startedAt;
+    logConnectionTest("failed", config.provider, phase, latencyMs, error);
+    return Response.json(
+      {
+        ok: false,
+        checkedAt: new Date().toISOString(),
+        latencyMs,
+        provider: config.provider,
+        model: config.model,
+        endpointHost: new URL(config.baseUrl).host,
+        serviceStatusUrl: serviceStatusUrl(config.provider),
+        checks: failedConnectionChecks(phase, error, basicLatencyMs),
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: error.retryable,
+          providerStatus: error.providerStatus,
+        },
+      },
+      { status: error.status, headers: responseHeaders() },
+    );
   } finally {
     apiKey = "";
   }

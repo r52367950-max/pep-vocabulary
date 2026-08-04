@@ -6,10 +6,10 @@ import {
   encryptApiKey,
   isAiProvider,
   normalizeConfiguredBaseUrl,
+  normalizeConfiguredModel,
   sameOriginMutation,
   securityHeaders,
   validApiKey,
-  validModelName,
 } from "@/lib/ai-config";
 import { sameAiCredentialScope, type AiProvider } from "@/lib/assistant/core";
 import { authenticatedUserKey } from "@/lib/server-user";
@@ -26,10 +26,16 @@ function safeProvider(value: string | undefined): AiProvider {
 
 function publicConfig(row?: typeof aiConfigs.$inferSelect) {
   const provider = safeProvider(row?.provider);
+  let model = AI_PROVIDER_DEFAULTS[provider].model;
+  try {
+    model = normalizeConfiguredModel(provider, row?.model || model);
+  } catch {
+    // Invalid legacy values are never reflected into editable settings.
+  }
   return {
     provider,
     baseUrl: row?.baseUrl || AI_PROVIDER_DEFAULTS[provider].baseUrl,
-    model: row?.model || AI_PROVIDER_DEFAULTS[provider].model,
+    model,
     dailyLimit: row?.dailyLimit || DEFAULT_LIMITS.dailyLimit,
     timeoutSeconds: row?.timeoutSeconds || DEFAULT_LIMITS.timeoutSeconds,
     hasApiKey: Boolean(row?.encryptedApiKey),
@@ -79,7 +85,12 @@ export async function POST(request: Request) {
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Base URL 格式无效。" }, 400);
   }
-  if (!validModelName(body.model)) return json({ error: "模型名格式无效。" }, 400);
+  let model: string;
+  try {
+    model = normalizeConfiguredModel(body.provider, body.model);
+  } catch {
+    return json({ error: "模型名格式无效。" }, 400);
+  }
 
   const dailyLimit = Number(body.dailyLimit);
   const timeoutSeconds = Number(body.timeoutSeconds);
@@ -124,7 +135,7 @@ export async function POST(request: Request) {
     userKey,
     provider: body.provider,
     baseUrl,
-    model: body.model,
+    model,
     dailyLimit,
     timeoutSeconds,
     ...encrypted,
@@ -133,7 +144,7 @@ export async function POST(request: Request) {
     set: {
       provider: body.provider,
       baseUrl,
-      model: body.model,
+      model,
       dailyLimit,
       timeoutSeconds,
       ...encrypted,

@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { normalizeBaseUrl, type AiProvider } from "@/lib/assistant/core";
 
 export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: string }> = {
-  deepseek: { baseUrl: "https://api.deepseek.com", model: "deepseek-chat" },
+  deepseek: { baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash" },
   "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
 };
 
@@ -58,6 +58,14 @@ export function isAiProvider(value: unknown): value is AiProvider {
 
 export function validModelName(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9._:/-]{1,160}$/.test(value);
+}
+
+export function normalizeConfiguredModel(provider: AiProvider, value: unknown) {
+  if (!validModelName(value)) throw new Error("模型名格式无效。");
+  if (provider === "deepseek" && (value === "deepseek-chat" || value === "deepseek-reasoner")) {
+    return "deepseek-v4-flash";
+  }
+  return value;
 }
 
 export function validApiKey(value: unknown): value is string {

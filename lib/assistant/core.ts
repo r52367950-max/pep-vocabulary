@@ -69,13 +69,15 @@ export class AssistantUpstreamError extends Error {
   readonly code: string;
   readonly status: number;
   readonly retryable: boolean;
+  readonly providerStatus: number | null;
 
-  constructor(code: string, message: string, status: number, retryable: boolean) {
+  constructor(code: string, message: string, status: number, retryable: boolean, providerStatus: number | null = null) {
     super(message);
     this.name = "AssistantUpstreamError";
     this.code = code;
     this.status = status;
     this.retryable = retryable;
+    this.providerStatus = providerStatus;
   }
 }
 
@@ -461,7 +463,7 @@ export function sanitizeModelResult(task: AssistantTask, content: string, eviden
   return result;
 }
 
-export function upstreamPayload(model: string, prompt: { system: string; user: string }, task: AssistantTask) {
+export function upstreamPayload(model: string, prompt: { system: string; user: string }, task: AssistantTask, provider?: AiProvider) {
   return {
     model,
     messages: [
@@ -472,6 +474,32 @@ export function upstreamPayload(model: string, prompt: { system: string; user: s
     max_tokens: task === "generate-practice" ? 2200 : 1600,
     response_format: { type: "json_object" },
     stream: false,
+    ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
+  };
+}
+
+export function connectionTestPayload(provider: AiProvider, model: string, structured: boolean) {
+  if (structured) {
+    return {
+      model,
+      messages: [
+        { role: "system", content: "Return a JSON object only. Do not include Markdown." },
+        { role: "user", content: 'Return exactly {"ok":true}.' },
+      ],
+      max_tokens: 64,
+      response_format: { type: "json_object" },
+      stream: false,
+      ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
+    };
+  }
+  return {
+    model,
+    messages: [
+      { role: "system", content: "Reply with exactly OK." },
+      { role: "user", content: "Connection test." },
+    ],
+    stream: false,
+    ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
   };
 }
 
@@ -498,10 +526,13 @@ export async function fetchChatCompletionWithTimeout(
 }
 
 function mappedUpstreamFailure(status: number): AssistantUpstreamError {
-  if (status === 401 || status === 403) return new AssistantUpstreamError("provider_auth_failed", "服务端模型密钥无效或无权使用该模型。", 503, false);
-  if (status === 408 || status === 429) return new AssistantUpstreamError("provider_busy", "模型服务当前繁忙，请稍后重试。", 503, true);
-  if (status >= 500) return new AssistantUpstreamError("provider_unavailable", "模型服务暂时不可用，请稍后重试。", 502, true);
-  return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了这次请求，请检查服务端配置。", 502, false);
+  if (status === 401 || status === 403) return new AssistantUpstreamError("provider_auth_failed", "API Key 无效，或当前密钥无权调用该模型。", 503, false, status);
+  if (status === 402) return new AssistantUpstreamError("provider_payment_required", "模型账户余额不足，或尚未开通 API 计费。", 503, false, status);
+  if (status === 404 || status === 405) return new AssistantUpstreamError("provider_endpoint_not_found", "Chat Completions 地址或模型名不正确。", 502, false, status);
+  if (status === 408 || status === 429) return new AssistantUpstreamError("provider_busy", "模型服务当前繁忙或已达到服务商限额，请稍后重试。", 503, true, status);
+  if (status === 400 || status === 422) return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了请求参数，请检查模型名和接口兼容性。", 502, false, status);
+  if (status >= 500) return new AssistantUpstreamError("provider_unavailable", "模型服务暂时不可用，请稍后重试。", 502, true, status);
+  return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了这次请求，请检查服务端配置。", 502, false, status);
 }
 
 export async function readChatCompletion(response: Response, signal?: AbortSignal): Promise<string> {
