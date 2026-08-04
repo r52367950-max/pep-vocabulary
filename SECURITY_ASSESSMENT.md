@@ -24,6 +24,7 @@
 | 8 | 🟡 Low | `next.config.ts` / `worker/index.ts` | 全站无 CSP / X-Frame-Options / HSTS（单所有者部署下优先级低，属纵深防御） |
 | 9 | 🟡 Low/Info | `lib/ai-config.ts:9,32` | 单一部署级主密钥；AAD 常量未绑定 `userKey`；`encryptionVersion` 写而不读（轮换会作废全部密钥） |
 | 10 | 🟡 Low | `README.md:56` | 文档不一致：README 写同步上限 2MB，代码与 PRIVACY.md 实为 5MB |
+| 11 | 🟠 Medium | `public/sw.js:33-38`、`lib/storage.ts:183-191` | **[修订新增]** Service Worker 把**任意**同源导航响应无条件写入 `/` 缓存键；私有 JSON 可落盘并在离线时充当应用外壳，且「清空本机数据」不清 Cache Storage |
 | — | ⚪ Info/潜在 | `lib/assistant/core.ts:311` | 助手输出服务端未转义 `< > &`；当前前端无 `dangerouslySetInnerHTML` 故不可利用，但属潜在约束 |
 
 ---
@@ -117,7 +118,9 @@ content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
 
 ### 7. 🟡 Low — `/api/sync` 缺 no-store / force-dynamic
 
-**位置**：`app/api/sync/route.ts:9-45` 两处 `Response.json(...)` 无任何头。全站其它 JSON 端点都用 `securityHeaders()`(`no-store, max-age=0`) 或 `responseHeaders()`(`no-store`)，且四个助手路由都有 `export const dynamic = "force-dynamic"`，唯独 sync 没有。**好消息**：Service Worker（`public/sw.js`）经路径前缀排除，确实**不会**缓存 `/api/sync`、`/api/ai/config`、`/api/assistant/*`（已核实），故私有数据不会落盘。但这仍是唯一返回用户完整备份却不显式声明不可缓存的端点。
+**位置**：`app/api/sync/route.ts:9-45` 两处 `Response.json(...)` 无任何头。全站其它 JSON 端点都用 `securityHeaders()`(`no-store, max-age=0`) 或 `responseHeaders()`(`no-store`)，且四个助手路由都有 `export const dynamic = "force-dynamic"`，唯独 sync 没有。这是唯一返回用户完整备份却不显式声明不可缓存的端点。
+
+> **⚠️ 修订说明（本报告初版结论有误）**：初版此处写「Service Worker 经路径前缀排除，确实不会缓存 `/api/sync`」——**这是错的**。该结论只分析了 `sw.js:41-44` 的兜底分支及其路径前缀过滤，**漏掉了 `sw.js:33-39` 的导航分支会先命中并无条件缓存**。详见新增的发现 #11。缺 `no-store` 头因此不只是「声明性瑕疵」，它与 #11 直接叠加。
 
 **修复方向**：两处 `Response.json` 复用 `securityHeaders()`；可加 `force-dynamic` 与其它路由对齐。
 
@@ -138,6 +141,27 @@ AES-256-GCM 实现正确（见"打不穿"清单）。残留：
 
 `README.md:56` 宣称私有同步上限 **2MB**，但代码 `MAX_PAYLOAD_BYTES = 5_000_000`（`app/api/sync/route.ts:7,32`）与 `PRIVACY.md:5`、`DATA_SCHEMA.md:66` 均为 **5MB**。README 把公开的"数据与隐私边界"配额少写了 2.5×。**修复**：README:56 「2 MB」→「5 MB」。
 
+### 11. 🟠 Medium —（修订新增）Service Worker 把任意导航响应无条件缓存为应用外壳
+
+**位置**：`public/sw.js:33-38`；配套 `lib/storage.ts:183-191`、`app/api/sync/route.ts:9-14`。
+
+```js
+if (event.request.mode === "navigate") {
+  event.respondWith(fetch(event.request).then((response) => {
+    const copy = response.clone();
+    caches.open(VERSION).then((cache) => cache.put("/", copy));   // ← 无条件写入 "/"
+```
+
+导航分支对**任意同源导航响应**执行 `cache.put("/", copy)`：**不检查状态码、不检查 `content-type`、不尊重 `Cache-Control: no-store`、也不管请求 URL 是不是 `/`**。因此把已安装 PWA 的浏览器导航到 `/api/sync`（GET），就会把**该用户完整的同步备份 JSON** 以持久化条目写进 Cache Storage 的 `/` 键；离线时根导航会把这份私有 JSON 当作应用外壳返回。
+
+注意它在 `sw.js:41-44` 兜底分支**之前**命中——初版报告只审了兜底分支的路径前缀过滤，因而误判为安全。
+
+**与承诺冲突**：`lib/storage.ts:183-191` 的 `clearUserData()` 只清 IndexedDB 的 `stores`，**不清 Cache Storage**。故 PRIVACY.md「可在明确确认后清空本机数据」在这条路径上不成立——落盘的私有备份在"清空"后仍然留存。
+
+**定级**：Medium。同浏览器配置内的隐私 + 可用性问题（共享设备/kiosk 场景更糟），无跨用户原语。
+
+**修复方向**：导航分支只缓存**校验过的 HTML 外壳成功响应**（查 `response.ok` + `content-type` 含 `text/html`），遇 `no-store` 跳过，不要用任意导航覆盖 `/`；并在 `clearUserData()` 里一并 `caches.delete(VERSION)`。
+
 ### ⚪ Info/潜在 — 助手输出服务端未 HTML 转义
 
 `cleanOutputText`（core.ts:311）不删 `< > &`，结果字符串可携带 HTML/脚本。**当前不可利用**：`components/`、`app/` 全无 `dangerouslySetInnerHTML`/`innerHTML`，React 自动转义，助手输出以纯文本渲染（本次前端由我编写，已核实安全）。但这是潜在约束：**若将来任何人给助手结果加 `dangerouslySetInnerHTML`，会立刻变成反射型 XSS**，因为后端不兜底。
@@ -156,7 +180,7 @@ AES-256-GCM 实现正确（见"打不穿"清单）。残留：
 - **恢复原子性**。`restoreBackup`（`lib/storage.ts:165-181`）在开库前校验 `cards/events/lists/settings` 均为数组，clear+put 在单个 IndexedDB 事务内（原子），坏行抛错则**整个事务回滚**——畸形同步载荷不会污染/半清空本地数据。
 - **前端密钥卫生**。设置页用 `type=password` + `autoComplete=off` + 瞬态 state（提交后 `setApiKey("")`），从不写 localStorage/sessionStorage/IndexedDB/console；有回归测试（`tests/assistant-proxy.test.mjs:279`）断言 `storage.ts` 不引用 `apiKey`。
 - **无提交的密钥/PII**。`.gitignore` 覆盖 `.env*`；git 历史里 `AI_CONFIG_ENCRYPTION_KEY` 只有 `.env.example` 的空占位；`examples/*`、`public/data/*` 只有词库数据，无 PII。
-- **Service Worker 不缓存私有数据**（见 #7）。
+- ~~**Service Worker 不缓存私有数据**~~ —— **此条已撤回，结论错误，见发现 #11**。
 
 ## 稳定性
 
