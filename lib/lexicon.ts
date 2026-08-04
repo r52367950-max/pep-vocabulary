@@ -61,19 +61,32 @@ export type LexiconManifest = {
 
 let indexCache: LexiconIndexEntry[] | null = null;
 let manifestCache: LexiconManifest | null = null;
+let lexiconPromise: Promise<{ index: LexiconIndexEntry[]; manifest: LexiconManifest }> | null = null;
+let indexPositionCache: Map<string, number> | null = null;
 const detailCache = new Map<string, LexiconDetail>();
 const chunkCache = new Set<number>();
+const chunkPromises = new Map<number, Promise<void>>();
 
 export async function loadLexicon() {
   if (indexCache && manifestCache) return { index: indexCache, manifest: manifestCache };
-  const [indexResponse, manifestResponse] = await Promise.all([
-    fetch("/data/v1/index.json"),
-    fetch("/data/v1/manifest.json"),
-  ]);
-  if (!indexResponse.ok || !manifestResponse.ok) throw new Error("词库索引暂时无法读取");
-  indexCache = (await indexResponse.json()) as LexiconIndexEntry[];
-  manifestCache = (await manifestResponse.json()) as LexiconManifest;
-  return { index: indexCache, manifest: manifestCache };
+  if (lexiconPromise) return lexiconPromise;
+  lexiconPromise = (async () => {
+    const [indexResponse, manifestResponse] = await Promise.all([
+      fetch("/data/v1/index.json", { cache: "force-cache" }),
+      fetch("/data/v1/manifest.json", { cache: "force-cache" }),
+    ]);
+    if (!indexResponse.ok || !manifestResponse.ok) throw new Error("词库索引暂时无法读取");
+    const index = (await indexResponse.json()) as LexiconIndexEntry[];
+    const manifest = (await manifestResponse.json()) as LexiconManifest;
+    indexCache = index;
+    manifestCache = manifest;
+    indexPositionCache = new Map(index.map((entry, position) => [entry.id, position]));
+    return { index, manifest };
+  })().catch((error) => {
+    lexiconPromise = null;
+    throw error;
+  });
+  return lexiconPromise;
 }
 
 export async function loadDetails(ids: string[]) {
@@ -81,18 +94,24 @@ export async function loadDetails(ids: string[]) {
   const neededChunks = new Set<number>();
   for (const id of ids) {
     if (detailCache.has(id)) continue;
-    const position = index.findIndex((entry) => entry.id === id);
+    const position = indexPositionCache?.get(id) ?? index.findIndex((entry) => entry.id === id);
     if (position >= 0) neededChunks.add(Math.floor(position / 180));
   }
   await Promise.all([...neededChunks].map(async (chunkIndex) => {
     if (chunkCache.has(chunkIndex)) return;
+    const pending = chunkPromises.get(chunkIndex);
+    if (pending) return pending;
     const descriptor = manifest.chunks[chunkIndex];
     if (!descriptor) return;
-    const response = await fetch(`/data/v1/${descriptor.file}`);
-    if (!response.ok) throw new Error("词条详情分片暂时无法读取");
-    const rows = (await response.json()) as LexiconDetail[];
-    rows.forEach((row) => detailCache.set(row.id, row));
-    chunkCache.add(chunkIndex);
+    const promise = (async () => {
+      const response = await fetch(`/data/v1/${descriptor.file}`, { cache: "force-cache" });
+      if (!response.ok) throw new Error("词条详情分片暂时无法读取");
+      const rows = (await response.json()) as LexiconDetail[];
+      rows.forEach((row) => detailCache.set(row.id, row));
+      chunkCache.add(chunkIndex);
+    })().finally(() => chunkPromises.delete(chunkIndex));
+    chunkPromises.set(chunkIndex, promise);
+    return promise;
   }));
   return ids.map((id) => detailCache.get(id)).filter(Boolean) as LexiconDetail[];
 }

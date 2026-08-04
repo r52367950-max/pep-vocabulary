@@ -3,6 +3,8 @@ const DB_NAME = "pep-vocab-studio";
 const DB_VERSION = 2;
 const stores = ["cards", "events", "lists", "settings", "meta"] as const;
 type StoreName = (typeof stores)[number];
+export const ACTIVE_ACQUISITION_ID = "active-acquisition";
+export type AcquisitionProgressRecord = { id: typeof ACTIVE_ACQUISITION_ID; kind: "acquisition-session"; payload: string; updatedAt: string };
 
 export type SkillName = "meaning" | "listening" | "spelling" | "context" | "collocation" | "output";
 export type SkillVector = Record<SkillName, number>;
@@ -84,14 +86,17 @@ export const defaultSettings: AppSettings = {
   selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
   mode: "normal",
   theme: "system",
-  aiEnabled: false,
+  aiEnabled: true,
   diagnosisComplete: false,
   examDate: null,
   updatedAt: new Date(0).toISOString(),
 };
 
+let databasePromise: Promise<IDBDatabase> | null = null;
+
 function openDatabase() {
-  return new Promise<IDBDatabase>((resolve, reject) => {
+  if (databasePromise) return databasePromise;
+  databasePromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === "undefined") return reject(new Error("IndexedDB unavailable"));
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
@@ -100,9 +105,15 @@ function openDatabase() {
         if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: store === "events" ? "eventId" : store === "settings" || store === "meta" ? "key" : "id" });
       }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => { db.close(); databasePromise = null; };
+      db.onclose = () => { databasePromise = null; };
+      resolve(db);
+    };
+    request.onerror = () => { databasePromise = null; reject(request.error || new Error("IndexedDB open failed")); };
   });
+  return databasePromise;
 }
 
 async function transaction<T>(storeName: StoreName, mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>) {
@@ -110,9 +121,11 @@ async function transaction<T>(storeName: StoreName, mode: IDBTransactionMode, wo
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(storeName, mode);
     const request = work(tx.objectStore(storeName));
-    request.onsuccess = () => resolve(request.result);
+    let result: T;
+    request.onsuccess = () => { result = request.result; };
     request.onerror = () => reject(request.error || new Error("IndexedDB request failed"));
-    tx.oncomplete = () => db.close();
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error || new Error("IndexedDB transaction failed"));
   });
 }
 
@@ -120,6 +133,27 @@ export const getOne = <T>(store: StoreName, key: IDBValidKey) => transaction<T |
 export const getAll = <T>(store: StoreName) => transaction<T[]>(store, "readonly", (target) => target.getAll());
 export const putOne = <T>(store: StoreName, value: T) => transaction<IDBValidKey>(store, "readwrite", (target) => target.put(value));
 export const deleteOne = (store: StoreName, key: IDBValidKey) => transaction<undefined>(store, "readwrite", (target) => target.delete(key));
+
+export async function putRecords(records: Array<{ store: StoreName; value: unknown }>) {
+  if (!records.length) return;
+  const db = await openDatabase();
+  const names = [...new Set(records.map((record) => record.store))];
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(names, "readwrite");
+    for (const record of records) tx.objectStore(record.store).put(record.value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("IndexedDB batch write failed"));
+  });
+}
+
+export const loadAcquisitionProgress = () => getOne<AcquisitionProgressRecord>("lists", ACTIVE_ACQUISITION_ID);
+export const saveAcquisitionProgress = (payload: string) => putOne("lists", {
+  id: ACTIVE_ACQUISITION_ID,
+  kind: "acquisition-session" as const,
+  payload,
+  updatedAt: new Date().toISOString(),
+} satisfies AcquisitionProgressRecord);
+export const clearAcquisitionProgress = () => deleteOne("lists", ACTIVE_ACQUISITION_ID);
 
 export async function loadSettings() {
   try {
@@ -175,7 +209,7 @@ export async function restoreBackup(payload: unknown) {
       store.clear();
       for (const row of migrated[name] as object[]) store.put(row);
     }
-    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error || new Error("恢复失败"));
   });
 }
@@ -185,7 +219,7 @@ export async function clearUserData() {
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(stores, "readwrite");
     stores.forEach((name) => tx.objectStore(name).clear());
-    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error || new Error("清空失败"));
   });
 }
