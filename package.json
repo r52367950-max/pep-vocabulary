@@ -14,7 +14,8 @@
     "data:build": "node scripts/build-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
     "test:unit": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test": "npm run data:audit && npm run test:unit && npm run build",
+    "test:ai-harness": "node --experimental-strip-types scripts/assistant-budget-harness.mjs",
+    "test": "npm run data:audit && npm run test:unit && npm run test:ai-harness && npm run build",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
