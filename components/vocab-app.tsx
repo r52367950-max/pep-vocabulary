@@ -4,18 +4,21 @@ import {
   BarChart3,
   BookOpen,
   Bookmark,
-  CalendarDays,
+  CalendarRange,
   Check,
   ChevronRight,
+  Clock3,
+  CloudOff,
   Database,
   Download,
   FileText,
-  Flame,
   Info,
-  MoveHorizontal,
+  Keyboard,
+  ListFilter,
   Play,
   RotateCcw,
   Search,
+  Settings2,
   ShieldCheck,
   SlidersHorizontal,
   Target,
@@ -23,12 +26,14 @@ import {
   Upload,
   Volume2,
   X,
-  Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ConsoleLexicon from "@/components/console-lexicon";
+import ConsoleSettings from "@/components/console-settings";
+import ConsoleStudySession from "@/components/console-study-session";
 import { loadDetails, loadLexicon, speakSystem, type LexiconDetail, type LexiconIndexEntry, type LexiconManifest, type Scope } from "@/lib/lexicon";
 import { buildQuestion, gradeQuestion, localSentenceCheck, QUESTION_CATALOG, type Question, type QuestionType } from "@/lib/questions";
-import { dueLabel, isDue, newStoredCard, previewIntervals, retrievabilityOf, scheduleReview, workloadEstimate } from "@/lib/scheduler";
+import { forecastDueLoad, isDue, newStoredCard, scheduleReview, workloadEstimate } from "@/lib/scheduler";
 import {
   clearUserData,
   createLocalId,
@@ -40,15 +45,16 @@ import {
   putOne,
   restoreBackup,
   saveSettings,
+  USER_DATA_SCHEMA_VERSION,
   type AppSettings,
   type ReviewEvent,
   type SkillName,
   type StoredCard,
 } from "@/lib/storage";
 
-type View = "today" | "lexicon" | "plan" | "analysis" | "data";
+type View = "today" | "lexicon" | "plan" | "analysis" | "data" | "settings";
 type SessionKind = "daily" | "diagnostic" | "free";
-type SessionState = {
+export type SessionState = {
   kind: SessionKind;
   queue: LexiconIndexEntry[];
   details: Map<string, LexiconDetail>;
@@ -56,7 +62,6 @@ type SessionState = {
   startedAt: number;
   reviewed: number;
   correct: number;
-  streak: number;
   endedAt?: number;
 };
 
@@ -69,58 +74,24 @@ const scopeLabels: Record<string, string> = {
   "common-supplement": "常用课外",
 };
 
-const scopeOrder: Scope[] = ["high-required", "high-selective", "middle-core", "curriculum-not-textbook", "gaokao-supplement", "common-supplement"];
-
 const bookOptions = [
   ["HS-R1", "必修一"], ["HS-R2", "必修二"], ["HS-R3", "必修三"],
   ["HS-S1", "选必一"], ["HS-S2", "选必二"], ["HS-S3", "选必三"], ["HS-S4", "选必四"],
   ["JH-7A", "七上"], ["JH-7B", "七下"], ["JH-8A", "八上"], ["JH-8B", "八下"], ["JH-9", "九年级"],
 ] as const;
 
-const statusOptions = [
-  ["weak", "薄弱"], ["unseen", "未学"], ["learning", "学习中"], ["mastered", "已掌握"], ["favorite", "已收藏"],
-] as const;
-
 const skillLabels: Record<SkillName, string> = {
   meaning: "识义", listening: "听辨", spelling: "拼写", context: "语境", collocation: "搭配", output: "输出",
 };
 
-const modeLabels: Record<AppSettings["mode"], string> = {
-  normal: "普通学习", unit: "单元同步", "review-only": "只复习", exam: "考前强化", browse: "自由浏览",
-};
-
-const ratingLabels: Record<number, string> = { 1: "忘记", 2: "困难", 3: "记得", 4: "轻松" };
-
-const navItems: Array<{ id: View; label: string; icon: typeof BookOpen; group: "学习" | "证据" }> = [
-  { id: "today", label: "今日", icon: Target, group: "学习" },
-  { id: "lexicon", label: "词库", icon: BookOpen, group: "学习" },
-  { id: "plan", label: "计划", icon: CalendarDays, group: "学习" },
-  { id: "analysis", label: "分析", icon: BarChart3, group: "证据" },
-  { id: "data", label: "数据", icon: SlidersHorizontal, group: "证据" },
+const navItems: Array<{ id: View; label: string; icon: typeof BookOpen }> = [
+  { id: "today", label: "今日", icon: Target },
+  { id: "lexicon", label: "词库", icon: BookOpen },
+  { id: "plan", label: "计划", icon: CalendarRange },
+  { id: "analysis", label: "分析", icon: BarChart3 },
+  { id: "data", label: "数据", icon: Database },
+  { id: "settings", label: "设置", icon: Settings2 },
 ];
-
-const skillTypeMap: Record<SkillName, QuestionType[]> = {
-  meaning: ["meaning-recall", "natural-expression"],
-  listening: ["listening-choice", "dictation"],
-  spelling: ["spelling", "word-form"],
-  context: ["context-choice", "confusable"],
-  collocation: ["collocation-gap", "family-conversion"],
-  output: ["sentence-output", "paragraph-retell"],
-};
-
-/** 题型选择是纯函数，今日队列预览与学习流共用同一套判断。 */
-function pickQuestionType(kind: SessionKind, position: number, card: StoredCard | undefined): QuestionType {
-  if (kind === "diagnostic") return (["meaning-recall", "listening-choice", "spelling"] as QuestionType[])[position % 3];
-  if (card?.skills) {
-    const weakest = (Object.entries(card.skills) as Array<[SkillName, number]>).sort((a, b) => a[1] - b[1])[0]?.[0];
-    if (weakest) return skillTypeMap[weakest][position % skillTypeMap[weakest].length];
-  }
-  return QUESTION_CATALOG[position % QUESTION_CATALOG.length].id;
-}
-
-function typeShort(type: QuestionType) {
-  return QUESTION_CATALOG.find((item) => item.id === type)?.short || "识义";
-}
 
 function downloadFile(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -135,98 +106,38 @@ function formatMinutes(value: number) {
   return value < 60 ? `${Math.round(value)} 分钟` : `${Math.floor(value / 60)} 小时 ${Math.round(value % 60)} 分`;
 }
 
-function formatClock(ms: number) {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+function calculateStreak(events: ReviewEvent[]) {
+  if (!events.length) return 0;
+  const days = new Set(events.map((event) => event.localDate));
+  const cursor = new Date();
+  let streak = 0;
+  while (days.has(cursor.toLocaleDateString("sv-SE"))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
 }
 
 function statusLabel(status?: StoredCard["status"]) {
   return ({ unseen: "未学", learning: "学习中", weak: "薄弱", mastered: "已掌握", paused: "暂停" } as const)[status || "unseen"];
 }
 
-/** 位置要压进一行：册次用「选必二」这类短名，Unit 缩成 U。 */
-function shortSource(entry: LexiconIndexEntry) {
-  const source = entry.sources[0];
-  if (!source) return "来源待核";
-  const volume = bookOptions.find(([id]) => id === source.bookId)?.[1] || source.volume;
-  const unit = source.unit.replace(/^Unit\s*/i, "U");
-  return `${volume} · ${unit}${source.printedPage ? ` · p.${source.printedPage}` : ""}`;
-}
-
-function fullSource(entry: LexiconIndexEntry) {
+function sourceLine(entry: LexiconIndexEntry) {
   const source = entry.sources[0];
   if (!source) return "来源待核";
   return `${source.volume} · ${source.unit}${source.printedPage ? ` · p.${source.printedPage}` : ""}`;
 }
 
-function overdueLabel(card: StoredCard | undefined, now: number | null) {
-  if (!card || !card.lastReviewed) return "新词";
-  if (now === null) return "—";
-  const days = Math.round((now - new Date(card.due).getTime()) / 86400000);
-  if (days > 0) return `+${days} 天`;
-  if (days === 0) return "今天";
-  return `${Math.abs(days)} 天后`;
-}
-
-/**
- * 时钟当作外部数据源订阅：快照被缓存，所以同一次渲染里「逾期几天」不会自己变；
- * 服务端快照为 null，避免注水时两边算出不同的天数。
- */
-let clockSnapshot = 0;
-const clockListeners = new Set<() => void>();
-
-function subscribeClock(listener: () => void) {
-  clockListeners.add(listener);
-  if (clockListeners.size === 1) {
-    clockTimer = window.setInterval(() => {
-      clockSnapshot = Date.now();
-      clockListeners.forEach((notify) => notify());
-    }, 60000);
-  }
-  return () => {
-    clockListeners.delete(listener);
-    if (!clockListeners.size && clockTimer !== null) {
-      window.clearInterval(clockTimer);
-      clockTimer = null;
-    }
-  };
-}
-
-let clockTimer: number | null = null;
-
-function readClock() {
-  if (!clockSnapshot) clockSnapshot = Date.now();
-  return clockSnapshot;
-}
-
-function useMountedClock() {
-  return useSyncExternalStore(subscribeClock, readClock, () => null);
-}
-
-function Marks() {
-  return <><i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" /></>;
-}
-
-function RuleLabel({ children, note }: { children: React.ReactNode; note?: React.ReactNode }) {
+function Progress({ value, label }: { value: number; label?: string }) {
   return (
-    <div className="rule-label">
-      <span className="label">{children}</span>
-      <span className="fill" />
-      {note && <span className="note">{note}</span>}
+    <div className="progress-wrap" aria-label={label || `完成 ${Math.round(value * 100)}%`}>
+      <span style={{ width: `${Math.max(0, Math.min(100, value * 100))}%` }} />
     </div>
   );
 }
 
-function Meter({ value, strong }: { value: number; strong?: boolean }) {
-  return (
-    <span className={strong ? "meter strong" : "meter"} aria-hidden="true">
-      <i style={{ width: `${Math.max(0, Math.min(100, value * 100))}%` }} />
-    </span>
-  );
-}
-
 function Metric({ label, value, note }: { label: string; value: string | number; note?: string }) {
-  return <div className="metric"><span className="label">{label}</span><strong className="num">{value}</strong>{note && <small>{note}</small>}</div>;
+  return <div className="metric"><span>{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</div>;
 }
 
 function EmptyState({ title, text }: { title: string; text: string }) {
@@ -249,22 +160,21 @@ export default function VocabApp() {
   const [answer, setAnswer] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [objectiveResult, setObjectiveResult] = useState<boolean | null>(null);
+  const [hints, setHints] = useState(0);
   const [questionStartedAt, setQuestionStartedAt] = useState(() => Date.now());
   const [lastReview, setLastReview] = useState<{ event: ReviewEvent; entry: LexiconIndexEntry } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<LexiconIndexEntry | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<LexiconDetail | null>(null);
+  const [visibleDetails, setVisibleDetails] = useState<Map<string, LexiconDetail>>(new Map());
   const [query, setQuery] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<Scope[]>([]);
-  const [bookFilter, setBookFilter] = useState<string[]>([]);
-  const [unitFilter, setUnitFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [scopeFilters, setScopeFilters] = useState<Scope[]>([]);
+  const [bookFilter, setBookFilter] = useState("all");
+  const [unitFilter, setUnitFilter] = useState("all");
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [articleText, setArticleText] = useState("");
   const [articleMatches, setArticleMatches] = useState<LexiconIndexEntry[]>([]);
-  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
-  const [listDetails, setListDetails] = useState<Map<string, LexiconDetail>>(new Map());
   const importRef = useRef<HTMLInputElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -298,218 +208,126 @@ export default function VocabApp() {
   }, [selectedEntry]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.theme;
+    const root = document.documentElement;
+    root.dataset.theme = settings.theme;
   }, [settings.theme]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [view]);
 
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (session) return;
+      const target = event.target as HTMLElement;
+      const editing = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k" || (!editing && event.key === "/")) {
+        event.preventDefault();
+        setView("lexicon");
+        window.setTimeout(() => document.querySelector<HTMLInputElement>("#lexicon-search")?.focus(), 0);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [session]);
+
   const activeEvents = useMemo(() => {
     const undone = new Set(events.filter((event) => event.eventType === "undo" && event.targetEventId).map((event) => event.targetEventId));
     return events.filter((event) => event.eventType !== "undo" && !undone.has(event.eventId));
   }, [events]);
 
-  const entryById = useMemo(() => new Map(index.map((entry) => [entry.id, entry])), [index]);
-
-  const dueCards = useMemo(() => [...cards.values()].filter((card) => isDue(card)), [cards]);
+  const dueCards = useMemo(() => [...cards.values()].filter((card) => isDue(card)).sort((a, b) => {
+    if (a.status === "weak" && b.status !== "weak") return -1;
+    if (b.status === "weak" && a.status !== "weak") return 1;
+    return a.due.localeCompare(b.due);
+  }), [cards]);
   const backlog = dueCards.length;
   const newBudget = Math.max(0, Math.min(14, Math.floor((settings.dailyMinutes - Math.min(settings.dailyMinutes, backlog * 0.55)) / 1.5)));
-  const todayNew = settings.mode === "review-only" || backlog > 28 ? 0 : newBudget;
+  const todayNew = backlog > 28 || ["review-only", "browse"].includes(settings.mode) ? 0 : newBudget;
   const todayReviews = Math.min(backlog, Math.max(8, Math.floor(settings.dailyMinutes / 0.6)));
 
-  const eligibleNew = useMemo(
-    () => index.filter((entry) => !cards.has(entry.id) && entry.sources.some((source) => settings.selectedBooks.includes(source.bookId)) && !entry.flags.properName),
-    [index, cards, settings.selectedBooks],
-  );
-
-  /** 今日队列在开始学习之前就成形，队列预览与题型分布读的是同一份。 */
-  const dailyQueue = useMemo(() => {
-    const due = dueCards
-      .slice()
-      .sort((a, b) => new Date(a.due).getTime() - new Date(b.due).getTime())
-      .map((card) => entryById.get(card.id))
-      .filter(Boolean) as LexiconIndexEntry[];
-    const queue = [...due.slice(0, todayReviews), ...eligibleNew.slice(0, todayNew)];
-    if (queue.length) return queue;
-    return index.filter((entry) => entry.scopes.includes("high-required") && !entry.flags.properName).slice(0, 12);
-  }, [dueCards, entryById, todayReviews, eligibleNew, todayNew, index]);
-
-  const queuePlan = useMemo(
-    () => dailyQueue.map((entry, position) => ({ entry, type: pickQuestionType("daily", position, cards.get(entry.id)) })),
-    [dailyQueue, cards],
-  );
-
-  const typeMix = useMemo(() => {
-    const counts = new Map<string, number>();
-    queuePlan.forEach(({ type }) => counts.set(typeShort(type), (counts.get(typeShort(type)) || 0) + 1));
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [queuePlan]);
-
-  const unitDistribution = useMemo(() => {
-    const counts = new Map<string, number>();
-    dueCards.forEach((card) => {
-      const entry = entryById.get(card.id);
-      const source = entry?.sources[0];
-      if (!source) return;
-      const key = `${source.volume} · ${source.unit}`;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const total = rows.reduce((sum, [, count]) => sum + count, 0) || 1;
-    return rows.map(([key, count]) => ({ key, count, share: count / total, minutes: Math.max(1, Math.round(count * 0.55)) }));
-  }, [dueCards, entryById]);
-
-  const forecast = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Array.from({ length: 14 }, (_, offset) => {
-      const from = today.getTime() + offset * 86400000;
-      const count = [...cards.values()].filter((card) => {
-        const due = new Date(card.due).getTime();
-        return offset === 0 ? due < from + 86400000 : due >= from && due < from + 86400000;
-      }).length;
-      return Math.round(count * 0.55);
-    });
-  }, [cards]);
-
-  const skillScores = useMemo(() => {
-    const reviewed = [...cards.values()].filter((card) => card.lastReviewed);
-    return (Object.keys(skillLabels) as SkillName[]).map((skill) => ({
-      skill,
-      value: reviewed.length ? reviewed.reduce((sum, card) => sum + card.skills[skill], 0) / reviewed.length : 0,
-    })).sort((a, b) => b.value - a.value);
-  }, [cards]);
-
-  const weakestSkill = skillScores.length ? skillScores[skillScores.length - 1].skill : "meaning";
-
-  const streak = useMemo(() => {
-    const days = new Set(activeEvents.map((event) => event.localDate));
-    let count = 0;
-    const cursor = new Date();
-    if (!days.has(cursor.toLocaleDateString("sv-SE"))) cursor.setDate(cursor.getDate() - 1);
-    while (days.has(cursor.toLocaleDateString("sv-SE"))) {
-      count += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-    return count;
-  }, [activeEvents]);
-
-  const weekMarks = useMemo(() => {
-    const days = new Set(activeEvents.map((event) => event.localDate));
-    return Array.from({ length: 7 }, (_, offset) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - offset));
-      return { hit: days.has(date.toLocaleDateString("sv-SE")), today: offset === 6 };
-    });
-  }, [activeEvents]);
-
-  const bookProgress = useMemo(() => {
-    return settings.selectedBooks.slice(0, 3).map((bookId) => {
-      const label = bookOptions.find(([id]) => id === bookId)?.[1] || bookId;
-      const total = index.filter((entry) => entry.sources.some((source) => source.bookId === bookId)).length;
-      const learned = index.filter((entry) => entry.sources.some((source) => source.bookId === bookId) && cards.has(entry.id)).length;
-      return { label, share: total ? learned / total : 0 };
-    });
-  }, [settings.selectedBooks, index, cards]);
+  const eligibleNew = useMemo(() => index
+    .filter((entry) => !cards.has(entry.id) && entry.sources.some((source) => settings.selectedBooks.includes(source.bookId)) && !entry.flags.properName)
+    .sort((a, b) => Number(b.flags.highValue) - Number(a.flags.highValue) || a.tier.localeCompare(b.tier) || a.headword.localeCompare(b.headword)), [index, cards, settings.selectedBooks]);
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return index.filter((entry) => {
       const card = cards.get(entry.id);
-      const queryHit = !normalized
-        || `${entry.headword} ${entry.lookup} ${entry.chineseCore} ${entry.britishIpa}`.toLowerCase().includes(normalized)
-        || entry.headword.toLowerCase().startsWith(normalized.replace(/[^a-z]/g, ""));
-      const scopeHit = !scopeFilter.length || scopeFilter.some((scope) => entry.scopes.includes(scope));
-      const bookHit = !bookFilter.length || entry.sources.some((source) => bookFilter.includes(source.bookId));
-      const unitHit = !unitFilter.length || entry.sources.some((source) => unitFilter.includes(source.unit) && (!bookFilter.length || bookFilter.includes(source.bookId)));
-      const statusHit = !statusFilter.length || statusFilter.some((value) => value === "favorite" ? card?.favorite : (card?.status || "unseen") === value);
+      const queryHit = !normalized || `${entry.headword} ${entry.lookup} ${entry.chineseCore}`.toLowerCase().includes(normalized) || entry.headword.toLowerCase().startsWith(normalized.replace(/[^a-z]/g, ""));
+      const scopeHit = !scopeFilters.length || scopeFilters.some((scope) => entry.scopes.includes(scope));
+      const bookHit = bookFilter === "all" || entry.sources.some((source) => source.bookId === bookFilter);
+      const unitHit = unitFilter === "all" || entry.sources.some((source) => source.unit === unitFilter && (bookFilter === "all" || source.bookId === bookFilter));
+      const statusHit = !statusFilters.length || statusFilters.some((status) => status === "favorite" ? card?.favorite : (card?.status || "unseen") === status);
       return queryHit && scopeHit && bookHit && unitHit && statusHit;
     });
-  }, [index, query, scopeFilter, bookFilter, unitFilter, statusFilter, cards]);
+  }, [index, query, scopeFilters, bookFilter, unitFilter, statusFilters, cards]);
 
-  const scopeCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    index.forEach((entry) => entry.scopes.forEach((scope) => counts.set(scope, (counts.get(scope) || 0) + 1)));
-    return counts;
-  }, [index]);
-
-  const statusCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    cards.forEach((card) => {
-      counts.set(card.status, (counts.get(card.status) || 0) + 1);
-      if (card.favorite) counts.set("favorite", (counts.get("favorite") || 0) + 1);
-    });
-    counts.set("unseen", index.length - cards.size);
-    return counts;
-  }, [cards, index.length]);
-
-  const availableUnits = useMemo(
-    () => [...new Set(index.flatMap((entry) => entry.sources.filter((source) => !bookFilter.length || bookFilter.includes(source.bookId)).map((source) => source.unit)))]
-      .sort((a, b) => a.localeCompare(b, "en", { numeric: true })).slice(0, 12),
-    [index, bookFilter],
-  );
-
-  const activeFilterCount = scopeFilter.length + bookFilter.length + unitFilter.length + statusFilter.length;
-
-  const visibleEntries = useMemo(() => filteredEntries.slice(0, 160), [filteredEntries]);
-
-  /** 列表里的「开放简义」来自详情分片；没取到就不显示，不用词头凑数。 */
   useEffect(() => {
-    if (view !== "lexicon") return;
-    const missing = visibleEntries.slice(0, 60).map((entry) => entry.id).filter((id) => !listDetails.has(id));
-    if (!missing.length) return;
+    const ids = filteredEntries.slice(0, 90).map((entry) => entry.id).filter((id) => !visibleDetails.has(id));
+    if (!ids.length) return;
     let active = true;
-    loadDetails(missing)
-      .then((rows) => {
-        if (!active || !rows.length) return;
-        setListDetails((previous) => {
-          const next = new Map(previous);
-          rows.forEach((row) => next.set(row.id, row));
-          return next;
-        });
-      })
-      .catch(() => undefined);
+    loadDetails(ids).then((rows) => {
+      if (!active) return;
+      setVisibleDetails((previous) => {
+        const next = new Map(previous);
+        rows.forEach((row) => next.set(row.id, row));
+        return next;
+      });
+    }).catch(() => undefined);
     return () => { active = false; };
-  }, [view, visibleEntries, listDetails]);
+  }, [filteredEntries, visibleDetails]);
+
+  const availableUnits = useMemo(() => [...new Set(index.flatMap((entry) => entry.sources.filter((source) => bookFilter === "all" || source.bookId === bookFilter).map((source) => source.unit)))].sort(), [index, bookFilter]);
+  const dailyQueuePreview = useMemo(() => {
+    const due = dueCards.map((card) => index.find((entry) => entry.id === card.id)).filter(Boolean) as LexiconIndexEntry[];
+    return [...due.slice(0, todayReviews), ...eligibleNew.slice(0, todayNew)];
+  }, [dueCards, index, todayReviews, eligibleNew, todayNew]);
+  const workload = useMemo(() => forecastDueLoad(cards.values(), 14), [cards]);
 
   const currentEntry = session?.queue[session.position] || null;
   const currentDetail = currentEntry ? session?.details.get(currentEntry.id) : undefined;
   const currentCard = currentEntry ? cards.get(currentEntry.id) : undefined;
   const suggestedType = useMemo<QuestionType>(() => {
     if (!currentEntry || !session) return "meaning-recall";
-    return forcedType || pickQuestionType(session.kind, session.position, currentCard);
+    if (forcedType) return forcedType;
+    if (session.kind === "diagnostic") return (["meaning-recall", "listening-choice", "spelling"] as QuestionType[])[session.position % 3];
+    const skills = currentCard?.skills;
+    if (skills) {
+      const weakest = (Object.entries(skills) as Array<[SkillName, number]>).sort((a, b) => a[1] - b[1])[0]?.[0];
+      const mapping: Record<SkillName, QuestionType[]> = {
+        meaning: ["meaning-recall", "natural-expression"], listening: ["listening-choice", "dictation"], spelling: ["spelling", "word-form"],
+        context: ["context-choice", "confusable"], collocation: ["collocation-gap", "family-conversion"], output: ["sentence-output", "paragraph-retell"],
+      };
+      if (weakest) return mapping[weakest][session.position % mapping[weakest].length];
+    }
+    return QUESTION_CATALOG[session.position % QUESTION_CATALOG.length].id;
   }, [currentEntry, currentCard, session, forcedType]);
 
-  const question = useMemo<Question | null>(
-    () => currentEntry ? buildQuestion(currentEntry, currentDetail, suggestedType, index) : null,
-    [currentEntry, currentDetail, suggestedType, index],
-  );
-
-  const intervals = useMemo(() => previewIntervals(currentCard, settings.desiredRetention), [currentCard, settings.desiredRetention]);
+  const question = useMemo<Question | null>(() => currentEntry ? buildQuestion(currentEntry, currentDetail, suggestedType, index) : null, [currentEntry, currentDetail, suggestedType, index]);
 
   const resetQuestion = useCallback(() => {
     setAnswer("");
     setRevealed(false);
     setObjectiveResult(null);
+    setHints(0);
     setQuestionStartedAt(Date.now());
   }, []);
 
   const startSession = useCallback(async (kind: SessionKind, custom?: LexiconIndexEntry[]) => {
     setLoading(true);
     try {
-      const queue = custom?.length ? custom : kind === "diagnostic"
-        ? [
-          ...index.filter((entry) => entry.scopes.includes("middle-core") && !entry.flags.properName).slice(0, 12),
-          ...index.filter((entry) => entry.scopes.includes("high-required") && !entry.flags.properName).slice(30, 54),
-        ]
-        : dailyQueue;
-      if (!queue.length) {
-        setToast("当前范围里没有可学的词条；先在「计划」里勾选教材册次。");
-        return;
+      let queue = custom || [];
+      if (!queue.length && kind === "diagnostic") {
+        const middle = index.filter((entry) => entry.scopes.includes("middle-core") && !entry.flags.properName).slice(0, 12);
+        const high = index.filter((entry) => entry.scopes.includes("high-required") && !entry.flags.properName).slice(30, 54);
+        queue = [...middle, ...high];
+      } else if (!queue.length) {
+        queue = dailyQueuePreview;
+        if (!queue.length) queue = index.filter((entry) => entry.scopes.includes("high-required") && !entry.flags.properName).slice(0, 12);
       }
       const details = await loadDetails(queue.map((entry) => entry.id));
-      setSession({ kind, queue, details: new Map(details.map((detail) => [detail.id, detail])), position: 0, startedAt: Date.now(), reviewed: 0, correct: 0, streak: 0 });
+      setSession({ kind, queue, details: new Map(details.map((detail) => [detail.id, detail])), position: 0, startedAt: Date.now(), reviewed: 0, correct: 0 });
       setSessionComplete(false);
       setForcedType(null);
       resetQuestion();
@@ -518,7 +336,7 @@ export default function VocabApp() {
     } finally {
       setLoading(false);
     }
-  }, [index, dailyQueue, resetQuestion]);
+  }, [index, dailyQueuePreview, resetQuestion]);
 
   const checkAnswer = useCallback(() => {
     if (!question) return;
@@ -530,7 +348,8 @@ export default function VocabApp() {
       setToast("先作答，再核对");
       return;
     }
-    setObjectiveResult(gradeQuestion(question, answer));
+    const result = gradeQuestion(question, answer);
+    setObjectiveResult(result);
     setRevealed(true);
   }, [question, answer]);
 
@@ -546,25 +365,29 @@ export default function VocabApp() {
       questionType: question.type,
       correct,
       responseMs: Date.now() - questionStartedAt,
-      hints: 0,
+      hints,
       errorType: correct ? null : question.skill === "spelling" ? "spelling" : question.skill === "listening" ? "listening" : "recall",
+      prompt: question.prompt,
+      answerGiven: answer.trim() || null,
+      expectedAnswer: question.answer,
+      sourceLine: sourceLine(currentEntry),
     });
     await Promise.all([putOne("cards", after), putOne("events", { ...event, eventType: "review" as const })]);
     setCards((previous) => new Map(previous).set(after.id, after));
     setEvents((previous) => [...previous, { ...event, eventType: "review" }]);
     setLastReview({ event, entry: currentEntry });
-    const nextStreak = correct ? session.streak + 1 : 0;
     if (session.position + 1 >= session.queue.length) {
-      setSession((previous) => previous ? { ...previous, reviewed: previous.reviewed + 1, correct: previous.correct + (correct ? 1 : 0), streak: nextStreak, endedAt: Date.now() } : previous);
+      setSession((previous) => previous ? { ...previous, reviewed: previous.reviewed + 1, correct: previous.correct + (correct ? 1 : 0), endedAt: Date.now() } : previous);
       setSessionComplete(true);
-      if (session.kind === "diagnostic") setSettings(await saveSettings({ ...settings, diagnosisComplete: true }));
+      if (session.kind === "diagnostic") {
+        const nextSettings = await saveSettings({ ...settings, diagnosisComplete: true });
+        setSettings(nextSettings);
+      }
       return;
     }
-    setSession((previous) => previous
-      ? { ...previous, position: previous.position + 1, reviewed: previous.reviewed + 1, correct: previous.correct + (correct ? 1 : 0), streak: nextStreak }
-      : previous);
+    setSession((previous) => previous ? { ...previous, position: previous.position + 1, reviewed: previous.reviewed + 1, correct: previous.correct + (correct ? 1 : 0) } : previous);
     resetQuestion();
-  }, [session, currentEntry, question, cards, questionStartedAt, objectiveResult, settings, resetQuestion]);
+  }, [session, currentEntry, question, cards, questionStartedAt, objectiveResult, settings, hints, answer, resetQuestion]);
 
   const undoLast = useCallback(async () => {
     if (!lastReview) return;
@@ -590,7 +413,6 @@ export default function VocabApp() {
         position: position >= 0 ? position : previous.position,
         reviewed: Math.max(0, previous.reviewed - 1),
         correct: Math.max(0, previous.correct - (event.correct ? 1 : 0)),
-        streak: 0,
         endedAt: undefined,
       };
     });
@@ -599,42 +421,24 @@ export default function VocabApp() {
     setLastReview(null);
   }, [lastReview, resetQuestion]);
 
-  const toggleFavorite = useCallback(async (entry: LexiconIndexEntry) => {
-    const stored = cards.get(entry.id) || newStoredCard(entry.id);
-    const next = { ...stored, favorite: !stored.favorite, updatedAt: new Date().toISOString() };
-    await putOne("cards", next);
-    setCards((previous) => new Map(previous).set(entry.id, next));
-    setToast(next.favorite ? `已收藏 ${entry.headword}` : `已取消收藏 ${entry.headword}`);
-  }, [cards]);
-
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (!session || sessionComplete) return;
       const target = event.target as HTMLElement;
-      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-      if (session && !sessionComplete) {
-        if (event.code === "Space" && !typing) { event.preventDefault(); checkAnswer(); }
-        if (event.key === "Enter" && !typing) checkAnswer();
-        if (revealed && ["1", "2", "3", "4"].includes(event.key) && !typing) rate(Number(event.key) as 1 | 2 | 3 | 4);
-        if (event.key === "Escape") { setSession(null); setSessionComplete(false); setView("today"); return; }
-        if (typing) return;
-        const key = event.key.toLowerCase();
-        if (key === "r" && currentEntry) speakSystem(currentEntry.headword);
-        if (key === "z") undoLast();
-        if (key === "b" && currentEntry) toggleFavorite(currentEntry);
-        if (key === "t") setForcedType((previous) => {
-          const list = QUESTION_CATALOG.map((item) => item.id);
-          const at = previous ? list.indexOf(previous) : -1;
-          return list[(at + 1) % list.length];
-        });
-        return;
-      }
-      if (typing) return;
-      if (event.key === "/") { event.preventDefault(); setView("lexicon"); window.setTimeout(() => searchRef.current?.focus(), 0); }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setView("lexicon"); window.setTimeout(() => searchRef.current?.focus(), 0); }
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (event.code === "Space") { event.preventDefault(); checkAnswer(); }
+      if (revealed && ["1", "2", "3", "4"].includes(event.key)) rate(Number(event.key) as 1 | 2 | 3 | 4);
+      if (event.key.toLowerCase() === "r" && currentEntry) speakSystem(currentEntry.headword);
+      if (event.key.toLowerCase() === "z") undoLast();
+      if (event.key.toLowerCase() === "t") setForcedType((current) => {
+        const index = current ? QUESTION_CATALOG.findIndex((item) => item.id === current) : -1;
+        return QUESTION_CATALOG[(index + 1) % QUESTION_CATALOG.length].id;
+      });
+      if (event.key === "Escape") { setSession(null); setSessionComplete(false); setView("today"); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [session, sessionComplete, checkAnswer, revealed, rate, currentEntry, undoLast, toggleFavorite]);
+  }, [session, sessionComplete, checkAnswer, revealed, rate, currentEntry, undoLast]);
 
   useEffect(() => {
     if (!toast) return;
@@ -642,7 +446,17 @@ export default function VocabApp() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
-  const updateSettings = async (patch: Partial<AppSettings>) => setSettings(await saveSettings({ ...settings, ...patch }));
+  const updateSettings = async (patch: Partial<AppSettings>) => {
+    const next = await saveSettings({ ...settings, ...patch });
+    setSettings(next);
+  };
+
+  const toggleFavorite = async (entry: LexiconIndexEntry) => {
+    const stored = cards.get(entry.id) || newStoredCard(entry.id);
+    const next = { ...stored, favorite: !stored.favorite, updatedAt: new Date().toISOString() };
+    await putOne("cards", next);
+    setCards((previous) => new Map(previous).set(entry.id, next));
+  };
 
   const saveNote = async (entry: LexiconIndexEntry, note: string) => {
     const stored = cards.get(entry.id) || newStoredCard(entry.id);
@@ -663,7 +477,8 @@ export default function VocabApp() {
 
   const handleImport = async (file: File) => {
     try {
-      await restoreBackup(JSON.parse(await file.text()));
+      const payload = JSON.parse(await file.text());
+      await restoreBackup(payload);
       const [storedCards, storedEvents, storedSettings] = await Promise.all([getAll<StoredCard>("cards"), getAll<ReviewEvent>("events"), loadSettings()]);
       setCards(new Map(storedCards.map((card) => [card.id, card])));
       setEvents(storedEvents);
@@ -679,7 +494,7 @@ export default function VocabApp() {
       if (direction === "push") {
         const payload = await exportBackup();
         const baseRevision = Number(localStorage.getItem("pep-vocab-sync-revision") || 0);
-        const response = await fetch("/api/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ schemaVersion: "1.0.0", baseRevision, clientUpdatedAt: new Date().toISOString(), payload }) });
+        const response = await fetch("/api/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ schemaVersion: USER_DATA_SCHEMA_VERSION, baseRevision, clientUpdatedAt: new Date().toISOString(), payload }) });
         const result = await response.json() as { revision?: number; error?: string };
         if (!response.ok) throw new Error(result.error === "revision-conflict" ? "云端已有更新：请先拉取，或导出本机备份后再处理冲突。" : result.error || "私有同步不可用");
         localStorage.setItem("pep-vocab-sync-revision", String(result.revision || 0));
@@ -704,71 +519,43 @@ export default function VocabApp() {
   const exportLexicon = (format: "csv" | "tsv") => {
     const separator = format === "csv" ? "," : "\t";
     const escape = (value: string) => format === "csv" ? `"${value.replaceAll('"', '""')}"` : value.replaceAll("\t", " ");
-    const rows = filteredEntries.slice(0, 2000).map((entry) => [entry.id, entry.headword, entry.britishIpa, entry.chineseCore, entry.scopes.join("|"), fullSource(entry)].map((value) => escape(String(value))).join(separator));
+    const rows = filteredEntries.slice(0, 2000).map((entry) => [entry.id, entry.headword, entry.britishIpa, entry.chineseCore, entry.scopes.join("|"), sourceLine(entry)].map((value) => escape(String(value))).join(separator));
     downloadFile(`词迹词表.${format}`, [["id", "word", "ipa_uk", "meaning_zh", "scopes", "source"].join(separator), ...rows].join("\n"), format === "csv" ? "text/csv;charset=utf-8" : "text/tab-separated-values;charset=utf-8");
   };
 
   const alignArticle = () => {
     const tokens = new Set((articleText.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []));
-    setArticleMatches(index.filter((entry) => !entry.headword.includes(" ") && tokens.has(entry.lookup)).slice(0, 80));
-  };
-
-  const startFromSkill = (skill: SkillName) => {
-    const candidates = index.filter((entry) => (cards.get(entry.id)?.skills[skill] ?? 0) < 0.5 && !entry.flags.properName).slice(0, 15);
-    setForcedType(skillTypeMap[skill][0]);
-    startSession("free", candidates);
+    const matches = index.filter((entry) => !entry.headword.includes(" ") && tokens.has(entry.lookup)).slice(0, 80);
+    setArticleMatches(matches);
   };
 
   if (loading && !index.length) {
-    return (
-      <main className="boot">
-        <div className="mark">词迹</div>
-        <div className="sub">PEP VOCABULARY</div>
-        <div className="boot-line" />
-        <p>正在校验词库版本与本地学习状态…</p>
-      </main>
-    );
+    return <main className="loading-screen"><div className="wordmark">词迹</div><div className="loading-line" /><p>正在校验词库版本与本地学习状态…</p></main>;
   }
 
   if (error) {
-    return (
-      <main className="boot">
-        <div className="mark">词迹</div>
-        <h1>暂时无法启动</h1>
-        <p>{error}</p>
-        <button className="btn primary" onClick={() => location.reload()}>重新加载</button>
-      </main>
-    );
+    return <main className="loading-screen"><CloudOff size={32} /><h1>暂时无法启动</h1><p>{error}</p><button className="primary-button" onClick={() => location.reload()}>重新加载</button></main>;
   }
-
-  /* 提示与朗读区在学习流里同样要出现，否则撤销、收藏都会静默。 */
-  const feedback = (
-    <>
-      <div className="sr-live" aria-live="polite">{toast}</div>
-      {toast && <div className="toast" role="status">{toast}</div>}
-    </>
-  );
 
   if (session) {
     return (
-      <>
-      <StudySession
+      <ConsoleStudySession
         session={session}
         complete={sessionComplete}
         entry={currentEntry}
         detail={currentDetail}
         card={currentCard}
+        events={activeEvents}
+        index={index}
+        desiredRetention={settings.desiredRetention}
+        dailyMinutes={settings.dailyMinutes}
         question={question}
-        intervals={intervals}
-        budgetMinutes={settings.dailyMinutes}
         answer={answer}
         setAnswer={setAnswer}
         revealed={revealed}
         objectiveResult={objectiveResult}
-        events={activeEvents}
-        index={index}
-        cards={cards}
-        favorite={Boolean(currentEntry && cards.get(currentEntry.id)?.favorite)}
+        hints={hints}
+        setHints={setHints}
         onCheck={checkAnswer}
         onRate={rate}
         onExit={() => { setSession(null); setSessionComplete(false); setView("today"); }}
@@ -776,1223 +563,368 @@ export default function VocabApp() {
         onSpeak={() => currentEntry && speakSystem(currentEntry.headword)}
         onUndo={undoLast}
         canUndo={Boolean(lastReview)}
-        onFavorite={() => currentEntry && toggleFavorite(currentEntry)}
         forcedType={forcedType}
         setForcedType={(type) => { setForcedType(type); resetQuestion(); }}
       />
-      {feedback}
-      </>
     );
   }
 
-  const openSearch = () => { setView("lexicon"); window.setTimeout(() => searchRef.current?.focus(), 0); };
-  const stampDate = new Date();
-  const dateStamp = `${stampDate.getFullYear()} · ${String(stampDate.getMonth() + 1).padStart(2, "0")} · ${String(stampDate.getDate()).padStart(2, "0")} ${stampDate.toLocaleDateString("zh-CN", { weekday: "long" })}`;
-
+  const streak = calculateStreak(activeEvents);
+  const modeLabel = ({ normal: "普通学习", unit: "单元同步", "review-only": "只复习", exam: "考前强化", browse: "自由浏览" } as const)[settings.mode];
   return (
-    <div className="console">
-      <aside className="rail">
-        <button className="rail-brand" onClick={() => setView("today")} aria-label="词迹首页">
-          <span className="mark">词迹</span>
-          <span className="sub">PEP VOCABULARY</span>
-        </button>
-        {(["学习", "证据"] as const).map((group, groupIndex) => (
-          <div key={group}>
-            <div className={groupIndex ? "rail-group gap" : "rail-group"}>{group}</div>
-            {navItems.filter((item) => item.group === group).map((item) => (
-              <button key={item.id} className={view === item.id ? "rail-item on" : "rail-item"} onClick={() => setView(item.id)} aria-current={view === item.id ? "page" : undefined}>
-                <item.icon size={17} strokeWidth={1.5} aria-hidden="true" />
-                {item.label}
-                {item.id === "today" && <span className="count">{dailyQueue.length}</span>}
-                {item.id === "lexicon" && <span className="count">{index.length.toLocaleString()}</span>}
-              </button>
-            ))}
-          </div>
-        ))}
-        <div className="rail-foot">
-          <div className="inner">
-            <div className="streak">
-              <Flame size={15} strokeWidth={1.5} aria-hidden="true" />
-              <span className="num">{streak}</span>
-              <span>天连续</span>
-            </div>
-            <div className="streak-week" aria-label={`最近七天有 ${weekMarks.filter((mark) => mark.hit).length} 天学习记录`}>
-              {weekMarks.map((mark, position) => <i key={position} className={mark.hit ? (mark.today ? "hit today" : "hit") : ""} />)}
-            </div>
-            <div className={online ? "rail-status" : "rail-status offline"}>
-              <ShieldCheck size={13} strokeWidth={1.5} aria-hidden="true" />
-              {online ? "本地已就绪 · 离线可复习" : "离线中 · 本地学习不受影响"}
-            </div>
-          </div>
-        </div>
+    <div className="console-app">
+      <aside className="console-sidebar">
+        <button className="console-brand" onClick={() => setView("today")} aria-label="词迹首页"><strong>词迹</strong><span>VOCAB CONSOLE</span></button>
+        <nav className="console-nav" aria-label="主导航">
+          <span className="nav-group-label">WORKSPACE</span>
+          {navItems.slice(0, 3).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "today" ? backlog : item.id === "lexicon" ? index.length.toLocaleString() : ""}</em></button>)}
+          <span className="nav-group-label evidence">EVIDENCE</span>
+          {navItems.slice(3, 5).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16} /><span>{item.label}</span><em>{item.id === "analysis" ? activeEvents.length : ""}</em></button>)}
+          <span className="nav-group-label evidence">SYSTEM</span>
+          {navItems.slice(5).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={16}/><span>{item.label}</span><em/></button>)}
+        </nav>
+        <div className="sidebar-foot"><div className="streak-line"><Target size={16} /><strong>{streak}</strong><span>连续学习天</span></div><div className="streak-cells" aria-label={`连续学习 ${streak} 天`}>{Array.from({ length: 14 }, (_, position) => <i key={position} className={position >= 14 - Math.min(streak, 14) ? "filled" : ""} />)}</div><div className="local-line">{online ? <ShieldCheck size={13} /> : <CloudOff size={13} />}<span>{online ? "本地数据已就绪" : "当前离线 · 核心可用"}</span></div></div>
       </aside>
-
-      <div className="work">
-        <header className="workbar">
-          <div className="workbar-brand">
-            <span className="mark">词迹</span>
-            <span className="stamp">{dateStamp} · {modeLabels[settings.mode]}</span>
-          </div>
-          <span className="stamp desk">{dateStamp}</span>
-          <span className="sep" />
-          <span className="mode">{modeLabels[settings.mode]} · {settings.dailyMinutes} 分钟预算 · 目标保持率 {settings.desiredRetention.toFixed(2)}</span>
-          <div className="spacer" />
-          <span className="workbar-streak">
-            <Flame size={15} strokeWidth={1.5} aria-hidden="true" />
-            <span className="num">{streak}</span>
-            <small>天</small>
-          </span>
-          {lastReview && (
-            <button className="undo" onClick={undoLast}>
-              <Undo2 size={15} strokeWidth={1.5} aria-hidden="true" />撤销上一次<kbd>Z</kbd>
-            </button>
-          )}
-          <button className="cmdk" onClick={openSearch}>
-            <Search size={15} strokeWidth={1.5} aria-hidden="true" />
-            <span className="cmdk-label">搜索词条或命令</span>
-            <kbd>⌘</kbd><kbd>K</kbd>
-          </button>
+      <section className="console-workspace">
+        <header className="console-toolbar">
+          <div className="toolbar-context"><span>{new Date().toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", weekday: "short" })}</span><i/><strong>{modeLabel}</strong><span>{settings.dailyMinutes} 分钟 / 日</span><span>保持率 {Math.round(settings.desiredRetention * 100)}%</span></div>
+          <div className="toolbar-actions"><button className="command-search" onClick={() => { setView("lexicon"); window.setTimeout(() => document.querySelector<HTMLInputElement>("#lexicon-search")?.focus(), 0); }}><Search size={15}/><span>查词或跳转</span><kbd>⌘K</kbd></button>{lastReview && <button className="square-icon" onClick={undoLast} aria-label="撤销上一次评分"><Undo2 size={16}/></button>}<button className={view === "settings" ? "square-icon mobile-data-trigger active" : "square-icon mobile-data-trigger"} onClick={() => setView("settings")} aria-label="设置"><Settings2 size={16}/></button></div>
         </header>
-
-        <div className="view">
-          {view === "today" && (
-            <TodayView
-              settings={settings}
-              queuePlan={queuePlan}
-              queueTotal={dailyQueue.length}
-              backlog={backlog}
-              todayNew={todayNew}
-              todayReviews={todayReviews}
-              cards={cards}
-              events={activeEvents}
-              entryById={entryById}
-              unitDistribution={unitDistribution}
-              forecast={forecast}
-              skillScores={skillScores}
-              weakestSkill={weakestSkill}
-              typeMix={typeMix}
-              bookProgress={bookProgress}
-              onStart={() => startSession("daily")}
-              onDiagnostic={() => startSession("diagnostic")}
-              onRetention={(value) => updateSettings({ desiredRetention: value })}
-              onSkill={startFromSkill}
-              onQuick={(skill, count) => {
-                const candidates = index
-                  .filter((entry) => !entry.flags.properName && (cards.get(entry.id)?.skills[skill] ?? 0) < 0.55)
-                  .slice(0, count);
-                setForcedType(skillTypeMap[skill][0]);
-                startSession("free", candidates);
-              }}
-            />
-          )}
-
-          {view === "lexicon" && (
-            <LexiconView
-              entries={visibleEntries}
-              matched={filteredEntries.length}
-              listDetails={listDetails}
-              total={index.length}
-              selected={selectedEntry}
-              detail={selectedDetail}
-              cards={cards}
-              query={query}
-              setQuery={setQuery}
-              searchRef={searchRef}
-              scopeFilter={scopeFilter}
-              setScopeFilter={setScopeFilter}
-              bookFilter={bookFilter}
-              setBookFilter={(next) => { setBookFilter(next); setUnitFilter([]); }}
-              unitFilter={unitFilter}
-              setUnitFilter={setUnitFilter}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              availableUnits={availableUnits}
-              scopeCounts={scopeCounts}
-              statusCounts={statusCounts}
-              activeFilterCount={activeFilterCount}
-              onClear={() => { setScopeFilter([]); setBookFilter([]); setUnitFilter([]); setStatusFilter([]); }}
-              detailOpenMobile={detailOpenMobile}
-              onSelect={(entry) => { setSelectedEntry(entry); setDetailOpenMobile(true); }}
-              onCloseDetail={() => setDetailOpenMobile(false)}
-              onFavorite={toggleFavorite}
-              onNote={saveNote}
-              onStudy={(entry) => startSession("free", [entry, ...filteredEntries.filter((candidate) => candidate.id !== entry.id).slice(0, 9)])}
-              onJump={(headword) => {
-                const target = index.find((entry) => entry.headword.toLowerCase() === headword.toLowerCase());
-                if (target) setSelectedEntry(target);
-                else setToast(`正式词库里没有「${headword}」，不做补写`);
-              }}
-            />
-          )}
-
-          {view === "plan" && <PlanView settings={settings} backlog={backlog} cards={cards} forecast={forecast} onUpdate={updateSettings} />}
-
-          {view === "analysis" && (
-            <AnalysisView
-              manifest={manifest}
-              cards={cards}
-              events={activeEvents}
-              index={index}
-              skillScores={skillScores}
-              weakestSkill={weakestSkill}
-              onTask={startFromSkill}
-            />
-          )}
-
-          {view === "data" && (
-            <DataView
-              settings={settings}
-              manifest={manifest}
-              articleText={articleText}
-              setArticleText={setArticleText}
-              articleMatches={articleMatches}
-              onAlign={alignArticle}
-              onBackup={handleBackup}
-              onImport={() => importRef.current?.click()}
-              onSync={handleSync}
-              onExportLexicon={exportLexicon}
-              onUpdate={updateSettings}
-              onClear={async () => {
-                if (!window.confirm("将清空本机的学习记录、词单、注释和设置。此操作只能通过已有备份恢复。确定继续？")) return;
-                await clearUserData();
-                setCards(new Map()); setEvents([]); setSettings(defaultSettings); setToast("本机个人数据已清空");
-              }}
-            />
-          )}
-        </div>
-      </div>
-
-      <nav className="tabbar" aria-label="移动端主导航">
-        {navItems.slice(0, 4).map((item) => (
-          <button key={item.id} className={view === item.id ? "on" : ""} onClick={() => setView(item.id)} aria-current={view === item.id ? "page" : undefined}>
-            <item.icon size={21} strokeWidth={1.5} aria-hidden="true" />
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <input ref={importRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && handleImport(event.target.files[0])} />
-      {feedback}
-    </div>
-  );
-}
-
-/* ── 今日 ──────────────────────────────────────────────── */
-
-function TodayView({
-  settings, queuePlan, queueTotal, backlog, todayNew, todayReviews, cards, events, entryById,
-  unitDistribution, forecast, skillScores, weakestSkill, typeMix, bookProgress,
-  onStart, onDiagnostic, onRetention, onSkill, onQuick,
-}: {
-  settings: AppSettings;
-  queuePlan: Array<{ entry: LexiconIndexEntry; type: QuestionType }>;
-  queueTotal: number; backlog: number; todayNew: number; todayReviews: number;
-  cards: Map<string, StoredCard>; events: ReviewEvent[]; entryById: Map<string, LexiconIndexEntry>;
-  unitDistribution: Array<{ key: string; count: number; share: number; minutes: number }>;
-  forecast: number[]; skillScores: Array<{ skill: SkillName; value: number }>; weakestSkill: SkillName;
-  typeMix: Array<[string, number]>; bookProgress: Array<{ label: string; share: number }>;
-  onStart: () => void; onDiagnostic: () => void; onRetention: (value: number) => void;
-  onSkill: (skill: SkillName) => void; onQuick: (skill: SkillName, count: number) => void;
-}) {
-  const now = useMountedClock();
-  const estimated = Math.round(todayReviews * 0.55 + todayNew * 1.5);
-  const busiest = Math.max(...forecast, 0);
-  const peak = Math.max(busiest, 1);
-  const peakDay = busiest > 0 ? forecast.indexOf(busiest) + 1 : 0;
-  const recent = events.slice(-5).reverse();
-  const shortTasks = skillScores.slice().reverse().slice(0, 3);
-
-  return (
-    <div className="today">
-      <div className="today-main">
-        {!settings.diagnosisComplete && (
-          <div className="blueprint diagnostic">
-            <Marks />
-            <div className="stamp num">36</div>
-            <div>
-              <span className="label accent">可跳过的冷启动</span>
-              <h2>用 36 词分层快筛，避免从头机械背。</h2>
-              <p>12 个初中基础词 + 24 个高一教材词，交替检查识义、听辨与拼写；结果直接写进计划。</p>
-            </div>
-            <button className="btn" onClick={onDiagnostic}>开始诊断</button>
-          </div>
-        )}
-
-        <div className="blueprint queue-head">
-          <Marks />
-          <div>
-            <span className="label accent">今日队列</span>
-            <div className="queue-figures">
-              <div>
-                <div className="big">{Math.min(backlog, todayReviews)}</div>
-                <div className="cap">到期 / 薄弱</div>
-              </div>
-              <div className="plus">+</div>
-              <div>
-                <div className="big">{todayNew}</div>
-                <div className="cap">新词上限</div>
-              </div>
-              <div className="vr" />
-              <div>
-                <div className="mid">{Math.min(settings.dailyMinutes, estimated)}<small> 分钟</small></div>
-                <div className="cap">预计用时 · 预算 {settings.dailyMinutes}</div>
-              </div>
-            </div>
-          </div>
-          <button className="btn primary large" onClick={onStart}>
-            <Play size={18} strokeWidth={1.5} aria-hidden="true" />开始今日学习<kbd>⏎</kbd>
-          </button>
-        </div>
-
-        <div>
-          <RuleLabel note="题型由六项能力自适应决定">
-            队列预览 · 前 {Math.min(10, queuePlan.length)} 条 / 共 {queueTotal}
-          </RuleLabel>
-          {/* iPad 横屏是五列表格；手机收成两行一条，两套布局各自成立，不靠挤压同一张表。 */}
-          <table className="grid-table queue-table" style={{ marginTop: 7 }}>
-            <thead>
-              <tr><th>词头</th><th>核心义</th><th>题型</th><th>教材位置</th><th>逾期</th></tr>
-            </thead>
-            <tbody>
-              {queuePlan.slice(0, 10).map(({ entry, type }) => {
-                const card = cards.get(entry.id);
-                const overdue = overdueLabel(card, now);
-                return (
-                  <tr key={entry.id}>
-                    <td className="word">{entry.headword}</td>
-                    <td className="mean">{entry.chineseCore || "核心义待核"}</td>
-                    <td><em className={card ? "tag skill" : "tag"}>{typeShort(type)}</em></td>
-                    <td className="place">{shortSource(entry)}</td>
-                    <td><span className="next-cell" data-none={overdue === "新词"}>{overdue}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          <div className="queue-list">
-            {queuePlan.slice(0, 10).map(({ entry, type }) => {
-              const card = cards.get(entry.id);
-              const overdue = overdueLabel(card, now);
-              return (
-                <div className="queue-item" key={entry.id}>
-                  <span className="lead"><b>{entry.headword}</b><span> · {entry.chineseCore || "核心义待核"}</span></span>
-                  <span className="next-cell" data-none={overdue === "新词"}>{overdue}</span>
-                  <span className="foot">
-                    <em className={card ? "tag skill" : "tag"}>{typeShort(type)}</em>
-                    {shortSource(entry)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {!queuePlan.length && <EmptyState title="今天没有排进队列的词" text="到「计划」勾选正在学的教材册次，或降低目标保持率。" />}
-        </div>
-
-        <div>
-          <RuleLabel>短任务 · 按薄弱能力</RuleLabel>
-          <div className="task-grid" style={{ marginTop: 8 }}>
-            {shortTasks.map(({ skill }, position) => (
-              <button key={skill} className="task-card" onClick={() => onQuick(skill, [12, 15, 9][position])}>
-                <strong>{skillLabels[skill]}专项 · {[12, 15, 9][position]} 词</strong>
-                <kbd>{position + 1}</kbd>
-                <small>从最低能力向量取词 · 约 {[10, 12, 7][position]} 分钟</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="split-2">
-          <div>
-            <RuleLabel note="词数 / 占比 / 预计">到期分布 · 按单元</RuleLabel>
-            {unitDistribution.length ? (
-              <table className="dist-table" style={{ marginTop: 6 }}>
-                <tbody>
-                  {unitDistribution.map((row) => (
-                    <tr key={row.key}>
-                      <td>{row.key}</td>
-                      <td className="n">{row.count}</td>
-                      <td className="bar"><Meter value={row.share} /></td>
-                      <td>{row.minutes} 分</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : <p className="skill-note">还没有到期词；分布会在第一轮复习之后出现。</p>}
-          </div>
-          <div>
-            <RuleLabel note="评分 / 反应">最近答题</RuleLabel>
-            <div style={{ marginTop: 6 }}>
-              {recent.length ? recent.map((event) => (
-                <div className="recent-row" key={event.eventId}>
-                  <span>
-                    <b>{entryById.get(event.cardId)?.headword || "已删除词条"}</b>
-                    <span className="kind"> · {skillLabels[event.skill]}</span>
-                  </span>
-                  <span className="rating" data-hard={event.rating === 1}>{ratingLabels[event.rating]}</span>
-                  <span className="ms">{(event.responseMs / 1000).toFixed(1)}s</span>
-                </div>
-              )) : <p className="skill-note">还没有答题记录。第一轮之后这里会显示评分与反应时间。</p>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <aside className="gauges" aria-label="今日仪表">
-        <div>
-          <span className="label">保持率与负担</span>
-          <div className="retention-value">
-            <span className="num">{settings.desiredRetention.toFixed(2)}</span>
-            <p>FSRS v6 主状态<br />每词一个，跨册共用</p>
-          </div>
-          <div className="retention-track">
-            <i style={{ width: `${(settings.desiredRetention - 0.8) / 0.17 * 100}%` }} />
-            <b style={{ left: `${(settings.desiredRetention - 0.8) / 0.17 * 100}%` }} />
-          </div>
-          <div className="retention-scale"><span>0.80 省力</span><span>当前</span><span>0.97 不建议</span></div>
-          <input
-            className="retention-range" type="range" min="0.8" max="0.97" step="0.01"
-            value={settings.desiredRetention} aria-label="目标保持率"
-            onChange={(event) => onRetention(Number(event.target.value))}
+        <main className={`console-main view-${view}`}>
+        {view === "today" && (
+          <TodayView
+            settings={settings}
+            manifest={manifest}
+            backlog={backlog}
+            todayNew={todayNew}
+            todayReviews={todayReviews}
+            events={activeEvents}
+            cards={cards}
+            index={index}
+            queue={dailyQueuePreview}
+            workload={workload}
+            diagnosisComplete={settings.diagnosisComplete}
+            onStart={() => startSession("daily")}
+            onDiagnostic={() => startSession("diagnostic")}
+            onPlan={() => setView("plan")}
+            onQuick={(type) => {
+              const candidates = type === "spelling" ? index.filter((entry) => (cards.get(entry.id)?.skills.spelling ?? 0) < 0.45).slice(0, 12) : index.filter((entry) => entry.scopes.includes("middle-core") && !entry.flags.properName).slice(0, 15);
+              setForcedType(type === "spelling" ? "spelling" : "meaning-recall");
+              startSession("free", candidates);
+            }}
           />
-        </div>
-
-        <div>
-          <div className="gauge-head"><span className="label">未来 14 天负担</span><span className="note label" style={{ letterSpacing: 0 }}>分钟 / 日</span></div>
-          <div className="bar-chart" role="img" aria-label="未来十四天预计复习负担">
-            {forecast.map((value, offset) => (
-              <i key={offset} className={offset > 4 ? "far" : ""} style={{ height: `${Math.max(3, value / peak * 100)}%` }} />
-            ))}
-          </div>
-          <div className="chart-axis"><span>今天</span><span>{peakDay ? `峰值 ${busiest} 分钟 · 第 ${peakDay} 天` : "两周内暂无排期"}</span></div>
-        </div>
-
-        <div>
-          <div className="gauge-head"><span className="label">六项能力</span><span className="note label" style={{ letterSpacing: 0 }}>0–100</span></div>
-          <div className="skill-list">
-            {skillScores.map(({ skill, value }) => (
-              <button key={skill} className={skill === weakestSkill ? "skill-row weakest" : "skill-row"} onClick={() => onSkill(skill)}>
-                <span>{skillLabels[skill]}</span>
-                <Meter value={value} strong={skill === weakestSkill} />
-                <span className="num">{Math.round(value * 100)}</span>
-              </button>
-            ))}
-          </div>
-          <p className="skill-note">最弱是{skillLabels[weakestSkill]}；只在某能力持续偏弱时才生成短期专项。</p>
-        </div>
-
-        <div>
-          <RuleLabel note={`${queueTotal} 题`}>今日题型分布</RuleLabel>
-          <div className="mix-list" style={{ marginTop: 8 }}>
-            {typeMix.map(([label, count]) => (
-              <div className="mix-row" key={label}>
-                <span>{label}</span>
-                <Meter value={count / Math.max(1, queueTotal)} />
-                <span>{count} 题</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="progress-block">
-          <span className="label">教材进度</span>
-          <div className="progress-list">
-            {bookProgress.map((row) => (
-              <div className="progress-row" key={row.label}>
-                <span>{row.label}</span>
-                <span className="num">{Math.round(row.share * 100)}%</span>
-                <Meter value={row.share} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
+        )}
+        {view === "lexicon" && (
+          <ConsoleLexicon
+            entries={filteredEntries}
+            total={index.length}
+            selected={selectedEntry}
+            detail={selectedDetail}
+            visibleDetails={visibleDetails}
+            cards={cards}
+            events={activeEvents}
+            allEntries={index}
+            query={query}
+            setQuery={setQuery}
+            scopeFilters={scopeFilters}
+            setScopeFilters={setScopeFilters}
+            bookFilter={bookFilter}
+            setBookFilter={(value) => { setBookFilter(value); setUnitFilter("all"); }}
+            unitFilter={unitFilter}
+            setUnitFilter={setUnitFilter}
+            statusFilters={statusFilters}
+            setStatusFilters={setStatusFilters}
+            availableUnits={availableUnits}
+            onSelect={setSelectedEntry}
+            onFavorite={toggleFavorite}
+            onNote={saveNote}
+            onStudy={(entry) => startSession("free", [entry, ...filteredEntries.filter((candidate) => candidate.id !== entry.id).slice(0, 9)])}
+          />
+        )}
+        {view === "plan" && <PlanView settings={settings} backlog={backlog} cards={cards} workload={workload} onUpdate={updateSettings} />}
+        {view === "analysis" && <AnalysisView manifest={manifest} cards={cards} events={activeEvents} index={index} onTask={(skill) => {
+          const candidates = index.filter((entry) => (cards.get(entry.id)?.skills[skill] ?? 0) < 0.5 && !entry.flags.properName).slice(0, 15);
+          const typeMap: Record<SkillName, QuestionType> = { meaning: "meaning-recall", listening: "dictation", spelling: "spelling", context: "context-choice", collocation: "collocation-gap", output: "sentence-output" };
+          setForcedType(typeMap[skill]);
+          startSession("free", candidates);
+        }} />}
+        {view === "data" && (
+          <DataView
+            manifest={manifest}
+            articleText={articleText}
+            setArticleText={setArticleText}
+            articleMatches={articleMatches}
+            onAlign={alignArticle}
+            onBackup={handleBackup}
+            onImport={() => importRef.current?.click()}
+            onSync={handleSync}
+            onExportLexicon={exportLexicon}
+            onOpenSettings={() => setView("settings")}
+          />
+        )}
+        {view === "settings" && (
+          <ConsoleSettings settings={settings} onUpdate={updateSettings} onOpenData={() => setView("data")} onClear={async () => {
+              if (!window.confirm("将清空本机的学习记录、词单、注释和设置。此操作只能通过已有备份恢复。确定继续？")) return;
+              await clearUserData();
+              setCards(new Map()); setEvents([]); setSettings(defaultSettings); setToast("本机个人数据已清空");
+            }}/>
+        )}
+        </main>
+      </section>
+      <nav className="console-mobile-nav" aria-label="移动端主导航">{navItems.slice(0, 4).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><item.icon size={19} /><span>{item.label}</span></button>)}</nav>
+      <input ref={importRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && handleImport(event.target.files[0])} />
+      <div className="sr-live" aria-live="polite">{toast}</div>
+      {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
 }
 
-/* ── 词库 ──────────────────────────────────────────────── */
-
-function LexiconView({
-  entries, matched, listDetails, total, selected, detail, cards, query, setQuery, searchRef,
-  scopeFilter, setScopeFilter, bookFilter, setBookFilter, unitFilter, setUnitFilter, statusFilter, setStatusFilter,
-  availableUnits, scopeCounts, statusCounts, activeFilterCount, onClear,
-  detailOpenMobile, onSelect, onCloseDetail, onFavorite, onNote, onStudy, onJump,
-}: {
-  entries: LexiconIndexEntry[]; matched: number; listDetails: Map<string, LexiconDetail>;
-  total: number; selected: LexiconIndexEntry | null; detail: LexiconDetail | null;
-  cards: Map<string, StoredCard>; query: string; setQuery: (value: string) => void; searchRef: React.RefObject<HTMLInputElement | null>;
-  scopeFilter: Scope[]; setScopeFilter: (value: Scope[]) => void;
-  bookFilter: string[]; setBookFilter: (value: string[]) => void;
-  unitFilter: string[]; setUnitFilter: (value: string[]) => void;
-  statusFilter: string[]; setStatusFilter: (value: string[]) => void;
-  availableUnits: string[]; scopeCounts: Map<string, number>; statusCounts: Map<string, number>;
-  activeFilterCount: number; onClear: () => void; detailOpenMobile: boolean;
-  onSelect: (entry: LexiconIndexEntry) => void; onCloseDetail: () => void;
-  onFavorite: (entry: LexiconIndexEntry) => void; onNote: (entry: LexiconIndexEntry, note: string) => void;
-  onStudy: (entry: LexiconIndexEntry) => void; onJump: (headword: string) => void;
+function TodayView({ settings, manifest, backlog, todayNew, todayReviews, events, cards, index, queue, workload, diagnosisComplete, onStart, onDiagnostic, onPlan, onQuick }: {
+  settings: AppSettings; manifest: LexiconManifest | null; backlog: number; todayNew: number; todayReviews: number; events: ReviewEvent[];
+  cards: Map<string, StoredCard>; index: LexiconIndexEntry[]; queue: LexiconIndexEntry[]; workload: ReturnType<typeof forecastDueLoad>;
+  diagnosisComplete: boolean; onStart: () => void; onDiagnostic: () => void; onPlan: () => void; onQuick: (type: "spelling" | "middle") => void;
 }) {
-  const toggle = <T extends string>(list: T[], value: T, set: (next: T[]) => void) =>
-    set(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
-  const card = selected ? cards.get(selected.id) : undefined;
+  const today = new Date().toLocaleDateString("sv-SE");
+  const todayEvents = events.filter((event) => event.localDate === today);
+  const todayMinutes = todayEvents.reduce((sum, event) => sum + event.responseMs, 0) / 60000;
+  const correct = todayEvents.length ? Math.round(todayEvents.filter((event) => event.correct).length / todayEvents.length * 100) : 0;
+  const reviewedCards = [...cards.values()].filter((card) => card.lastReviewed);
+  const skills = (Object.keys(skillLabels) as SkillName[]).map((skill) => ({ skill, value: reviewedCards.length ? reviewedCards.reduce((sum, card) => sum + card.skills[skill], 0) / reviewedCards.length : 0 }));
+  const mix = [...new Set(events.map((event) => event.questionType))].slice(0, 4).map((type) => ({ type, count: events.filter((event) => event.questionType === type).length }));
+  const mixMax = Math.max(1, ...mix.map((item) => item.count));
+  const loadMax = Math.max(1, ...workload.slice(0, 7).map((day) => day.count));
+  const byId = new Map(index.map((entry) => [entry.id, entry]));
+  const queueMinutes = Math.min(settings.dailyMinutes, Math.round(todayReviews * .55 + todayNew * 1.5));
+  const dueLabel = (entry: LexiconIndexEntry) => {
+    const card = cards.get(entry.id);
+    if (!card?.lastReviewed) return "新词";
+    const days = Math.floor((new Date(`${today}T00:00:00`).getTime() - new Date(card.due).getTime()) / 86400000);
+    return days > 0 ? `逾期 ${days} 天` : "今天到期";
+  };
+  const questionName = (value: string) => QUESTION_CATALOG.find((item) => item.id === value)?.label || value;
+  return <div className="console-today">
+    <section className="today-workbench">
+      {!diagnosisComplete && <section className="console-diagnostic"><span>36</span><div><strong>分层快筛尚未完成</strong><small>12 个初中基础词 + 24 个高一词，识义、听辨、拼写交替检查</small></div><button onClick={onDiagnostic}>开始诊断</button></section>}
+      <section className="queue-blueprint"><i className="corner tl"/><i className="corner tr"/><i className="corner bl"/><i className="corner br"/><div><span className="console-kicker">TODAY QUEUE · FSRS V6</span><div className="queue-numbers"><strong>{todayReviews}</strong><small>到期 / 薄弱</small><b>+</b><strong>{todayNew}</strong><small>新词上限</small><i/><strong className="minutes">{queueMinutes}<em> min</em></strong><small>预计用时</small></div><p className={backlog > 28 ? "queue-reason warning" : "queue-reason"}>{backlog > 28 ? `积压 ${backlog} 个：已暂停新词，先消化到期队列。` : `先处理到期与薄弱词，再按教材进度补入 ${todayNew} 个新词。`}</p></div><button className="console-primary" onClick={onStart}><Play size={17} fill="currentColor"/>开始今日学习</button></section>
+      <section className="queue-preview"><header><span className="console-kicker">QUEUE PREVIEW</span><i/><small>实时顺序 · 薄弱优先</small></header><div className="queue-table"><div className="queue-row queue-head"><span>词头</span><span>核心义</span><span>层级</span><span>来源</span><span>状态</span></div>{queue.slice(0, 7).map((entry) => <div className="queue-row" key={entry.id}><strong>{entry.headword}</strong><span>{entry.chineseCore}</span><em>{entry.tier} 层</em><small>{sourceLine(entry)}</small><b>{dueLabel(entry)}</b></div>)}{!queue.length && <EmptyState title="今日没有到期任务" text="可以自由查词，或从短任务开始一轮练习。"/>}</div></section>
+      <section className="console-quick-tasks"><header><span className="console-kicker">QUICK TASKS</span><i/><small>来自薄弱能力，不按签到凑数</small></header><div><button onClick={() => onQuick("spelling")}><span>01</span><span><strong>拼写回收</strong><small>眼熟但写不出 · 约 12 分钟</small></span><em>弱项优先</em><ChevronRight size={15}/></button><button onClick={() => onQuick("middle")}><span>02</span><span><strong>初中基础快扫</strong><small>核心义主动回忆 · 约 10 分钟</small></span><em>基础保持</em><ChevronRight size={15}/></button></div></section>
+    </section>
+    <aside className="today-inspector">
+      <section className="inspector-summary"><span>TODAY</span><div><strong>{todayEvents.length}</strong><small> 次完成</small><em>{correct}% 正确</em></div><div className="inspector-progress"><i style={{ width: `${Math.min(100, todayMinutes / Math.max(1, settings.dailyMinutes) * 100)}%` }}/></div><p>{formatMinutes(todayMinutes)} / {settings.dailyMinutes} 分钟预算</p></section>
+      <section><header><span>7 DAY LOAD</span><small>{workload.slice(0, 7).reduce((sum, day) => sum + day.count, 0)} 次预计</small></header><div className="load-bars">{workload.slice(0, 7).map((day, position) => <i key={day.date} style={{ height: `${Math.max(7, day.count / loadMax * 100)}%` }}>{position === 0 && <span>{day.count}</span>}</i>)}</div><div className="load-axis"><span>今天</span><span>+6 天</span></div></section>
+      <section><header><span>SIX CAPABILITIES</span><small>真实卡片均值</small></header><div className="inspector-skills">{skills.map(({ skill, value }) => <div key={skill}><span>{skillLabels[skill]}</span><i><b style={{ width: `${value * 100}%` }}/></i><strong>{Math.round(value * 100)}</strong></div>)}</div></section>
+      <section><header><span>QUESTION MIX</span><small>历史事件</small></header><div className="question-mix">{mix.length ? mix.map((item) => <div key={item.type}><span>{questionName(item.type)}</span><i><b style={{ width: `${item.count / mixMax * 100}%` }}/></i><strong>{item.count}</strong></div>) : <p>完成首轮学习后显示题型分布。</p>}</div></section>
+      <section><header><span>RECENT EVENTS</span><small>追加式日志</small></header><div className="recent-events">{events.slice(-4).reverse().map((event) => <div key={event.eventId}><strong>{byId.get(event.cardId)?.headword || "已迁移词条"} · {event.correct ? "正确" : "未命中"}</strong><span>{skillLabels[event.skill]} · {event.answerGiven || `评分 ${event.rating}`}</span><time>{new Date(event.timestampUtc).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time></div>)}</div></section>
+      <section className="inspector-footer"><button onClick={onPlan}><span>调整计划与保持率</span><ChevronRight size={14}/></button><span>词库 {manifest?.version || "—"} · 数据 schema {USER_DATA_SCHEMA_VERSION}</span></section>
+    </aside>
+  </div>;
+}
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function LexiconView({ entries, total, selected, detail, cards, query, setQuery, scopeFilter, setScopeFilter, bookFilter, setBookFilter, unitFilter, setUnitFilter, statusFilter, setStatusFilter, availableUnits, onSelect, onFavorite, onNote, onStudy }: {
+  entries: LexiconIndexEntry[]; total: number; selected: LexiconIndexEntry | null; detail: LexiconDetail | null; cards: Map<string, StoredCard>;
+  query: string; setQuery: (value: string) => void; scopeFilter: Scope | "all"; setScopeFilter: (value: Scope | "all") => void;
+  bookFilter: string; setBookFilter: (value: string) => void; unitFilter: string; setUnitFilter: (value: string) => void;
+  statusFilter: string; setStatusFilter: (value: string) => void; availableUnits: string[]; onSelect: (entry: LexiconIndexEntry) => void;
+  onFavorite: (entry: LexiconIndexEntry) => void; onNote: (entry: LexiconIndexEntry, note: string) => void; onStudy: (entry: LexiconIndexEntry) => void;
+}) {
   return (
-    <div className="lexicon">
-      <div className="lex-search">
-        <Search size={17} strokeWidth={1.5} aria-hidden="true" />
-        <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="agri" aria-label="搜索词库" spellCheck={false} />
-        <span className="hint">词头 / 中文 / IPA 都能搜</span>
-        <div className="tally">
-          <span className="num">{matched.toLocaleString()}</span>
-          <span>/ {total.toLocaleString()} 条命中</span>
-          <kbd>/</kbd>
-        </div>
-      </div>
+    <div className="lexicon-page">
+      <header className="lexicon-header">
+        <div><p className="eyebrow">EDITORIAL LEXICON</p><h1>词库索引</h1></div>
+        <label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="英文、中文或模糊拼写" aria-label="搜索词库" /><kbd>/</kbd></label>
+        <div className="result-count"><strong>{entries.length.toLocaleString()}</strong><span>/ {total.toLocaleString()} 条</span></div>
+      </header>
+      <div className="lexicon-layout">
+        <aside className="filter-rail" aria-label="词库筛选">
+          <div className="filter-title"><ListFilter size={16} />范围</div>
+          {["all", "middle-core", "high-required", "high-selective", "curriculum-not-textbook", "gaokao-supplement", "common-supplement"].map((scope) => <button key={scope} className={scopeFilter === scope ? "active" : ""} onClick={() => setScopeFilter(scope as Scope | "all")}><span>{scope === "all" ? "全部正式范围" : scopeLabels[scope]}</span></button>)}
+          <div className="filter-title top-gap"><BookOpen size={16} />教材位置</div>
+          <label><span>册次</span><select value={bookFilter} onChange={(event) => setBookFilter(event.target.value)}><option value="all">全部册次</option>{bookOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+          <label><span>单元</span><select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">全部单元</option>{availableUnits.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+          <div className="filter-title top-gap"><SlidersHorizontal size={16} />学习状态</div>
+          <label><span>状态</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">全部状态</option><option value="unseen">未学</option><option value="learning">学习中</option><option value="weak">薄弱</option><option value="mastered">已掌握</option><option value="paused">暂停</option><option value="favorite">已收藏</option></select></label>
+          <p className="filter-note">“课标差集”不会伪装成教材词；高考与常用课外范围在没有可靠证据前保持为空。</p>
+        </aside>
 
-      <div className="chip-bar">
-        <div className="chip-line">
-          <span className="label">范围</span>
-          {scopeOrder.map((scope) => {
-            const count = scopeCounts.get(scope) || 0;
-            return (
-              <button
-                key={scope}
-                className={`chip${scopeFilter.includes(scope) ? " on" : ""}${count ? "" : " empty"}`}
-                onClick={() => toggle(scopeFilter, scope, setScopeFilter)}
-                aria-pressed={scopeFilter.includes(scope)}
-              >
-                {scopeLabels[scope]}<span className="count">{count}</span>
-              </button>
-            );
+        <section className="word-list" aria-label="词条结果">
+          <div className="list-head"><span>词头 / 核心义</span><span>位置</span><span>状态</span></div>
+          {entries.slice(0, 160).map((entry) => {
+            const card = cards.get(entry.id);
+            return <button key={entry.id} className={selected?.id === entry.id ? "word-row selected" : "word-row"} onClick={() => onSelect(entry)}>
+              <div><strong>{entry.headword}</strong><small>{entry.britishIpa ? `/${entry.britishIpa}/ · ` : ""}{entry.chineseCore}</small></div>
+              <span>{sourceLine(entry)}</span>
+              <em data-status={card?.status || "unseen"}>{statusLabel(card?.status)}</em>
+            </button>;
           })}
-        </div>
-        <div className="chip-line">
-          <span className="label">册 / 单元</span>
-          {bookOptions.slice(0, 7).map(([id, label]) => (
-            <button key={id} className={bookFilter.includes(id) ? "chip on" : "chip"} onClick={() => toggle(bookFilter, id, setBookFilter)} aria-pressed={bookFilter.includes(id)}>{label}</button>
-          ))}
-          <span className="vr" />
-          {availableUnits.slice(0, 5).map((unit) => (
-            <button key={unit} className={unitFilter.includes(unit) ? "chip on" : "chip"} onClick={() => toggle(unitFilter, unit, setUnitFilter)} aria-pressed={unitFilter.includes(unit)}>{unit}</button>
-          ))}
-          <span className="vr" />
-          <span className="label" style={{ width: "auto" }}>状态</span>
-          {statusOptions.map(([value, label]) => (
-            <button
-              key={value}
-              className={`chip${statusFilter.includes(value) ? (value === "weak" ? " outline-on" : " on") : ""}`}
-              onClick={() => toggle(statusFilter, value, setStatusFilter)}
-              aria-pressed={statusFilter.includes(value)}
-            >
-              {label}<span className="count">{statusCounts.get(value) || 0}</span>
-            </button>
-          ))}
-          {activeFilterCount > 0 && (
-            <button className="chip-clear" onClick={onClear}>已选 {activeFilterCount} 个条件 · 清空<kbd>⌫</kbd></button>
-          )}
-        </div>
-      </div>
+          {entries.length > 160 && <p className="list-limit">为保持滚动流畅，当前显示前 160 条；继续输入关键词可精确定位。</p>}
+          {!entries.length && <EmptyState title="没有符合条件的词条" text="移除一个筛选条件，或换用更短的搜索词。" />}
+        </section>
 
-      <div className="lex-body">
-        <div className="lex-list">
-          <div className="lex-cols">
-            <span>词头 / IPA</span><span>词性 · 核心义 · 开放简义</span><span>教材位置</span><span>状态</span><span>下次</span>
-          </div>
-          {entries.map((entry) => {
-            const stored = cards.get(entry.id);
-            const next = dueLabel(stored);
-            const openGloss = listDetails.get(entry.id)?.englishCore;
-            return (
-              <button key={entry.id} className={selected?.id === entry.id ? "lex-row on" : "lex-row"} onClick={() => onSelect(entry)}>
-                <span className="head">
-                  <b>{entry.headword}</b>
-                  <span className="ipa">{entry.britishIpa ? `/${entry.britishIpa}/` : "—"}</span>
-                </span>
-                <span className="gloss">
-                  <span className="zh">
-                    {entry.partsOfSpeech.length > 0 && <em className="pos">{entry.partsOfSpeech.join(" / ")}.</em>}
-                    {entry.chineseCore || "核心义待核"}
-                  </span>
-                  {openGloss && <span className="en">{openGloss}</span>}
-                </span>
-                <span className="place">{shortSource(entry)}</span>
-                <em className="tag" data-status={stored?.status || "unseen"}>{stored?.favorite ? "已收藏" : statusLabel(stored?.status)}</em>
-                <span className="next-cell" data-none={next === "—"}>{next}</span>
-              </button>
-            );
-          })}
-          {matched > entries.length && (
-            <p className="lex-more">还有 {(matched - entries.length).toLocaleString()} 条命中未显示 ·「一行一个词」按索引序，继续输入关键词可精确定位</p>
-          )}
-          {!entries.length && <EmptyState title="没有符合条件的词条" text="移除一个筛选芯片，或换用更短的搜索词。" />}
-        </div>
-
-        <aside className={detailOpenMobile ? "lex-detail" : "lex-detail hidden-m"} aria-label="词条详情">
+        <aside className="detail-pane" aria-label="词条详情">
           {selected ? (
             <>
-              <div className="detail-top">
-                <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                  <span className="tag" data-status="mastered">{selected.tier} 层</span>
-                  <span className="tag">{selected.sources[0]?.status || "verified-primary"}</span>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className={card?.favorite ? "icon-btn on" : "icon-btn"} onClick={() => onFavorite(selected)} aria-label="收藏词条" title="收藏 (B)">
-                    <Bookmark size={15} strokeWidth={1.5} fill={card?.favorite ? "currentColor" : "none"} />
-                  </button>
-                  <button className="icon-btn" onClick={() => speakSystem(selected.headword)} aria-label="系统语音朗读" title="发音 (R)">
-                    <Volume2 size={15} strokeWidth={1.5} />
-                  </button>
-                  <button className="icon-btn" onClick={onCloseDetail} aria-label="收起详情"><X size={15} strokeWidth={1.5} /></button>
-                </div>
-              </div>
-
-              <h2 className="detail-word">{selected.headword}</h2>
-              <div className="detail-ipa">
-                <span>BrE /{selected.britishIpa || "—"}/</span>
-                <small>系统语音，不是真人录音</small>
-              </div>
-              {selected.americanIpa && selected.americanIpa !== selected.britishIpa && (
-                <div className="detail-ipa" style={{ marginTop: 6 }}><span>NAmE /{selected.americanIpa}/</span></div>
-              )}
-
-              <div className="detail-grammar">
-                {selected.partsOfSpeech.length ? selected.partsOfSpeech.map((pos) => <span key={pos}>{pos}.</span>) : <span>词性待字段级核验</span>}
-                {detail?.grammar?.countability && <span>{detail.grammar.countability}</span>}
-                {detail?.grammar?.transitivity && <span>{detail.grammar.transitivity}</span>}
-              </div>
-
-              <div className="detail-block">
-                <span className="label">核心义</span>
-                <p className="zh">{selected.chineseCore || "核心义待核"}</p>
-                {detail?.englishCore && <p className="en">{detail.englishCore}</p>}
-              </div>
-
-              {detail?.relations.family.length ? (
-                <div className="detail-block">
-                  <span className="label">词族 · 点击即跳转</span>
-                  <div className="link-chips">
-                    {detail.relations.family.slice(0, 6).map((word) => (
-                      <button key={word} className="link-chip" onClick={() => onJump(word)}>{word}</button>
-                    ))}
-                    {detail.relations.confusables.slice(0, 3).map((word) => (
-                      <button key={word} className="link-chip muted" onClick={() => onJump(word)}>{word}</button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {detail?.openExample && (
-                <div className="detail-block">
-                  <span className="label">开放语料例句</span>
-                  <p className="en" style={{ fontSize: 15 }}>
-                    {detail.openExample}
-                    <span className="credit">Open English WordNet · CC BY 4.0</span>
-                  </p>
-                </div>
-              )}
-
-              <div className="detail-block">
-                <span className="label">来源位置 · {selected.sources.length} 处</span>
-                <div className="source-list">
-                  {selected.sources.slice(0, 5).map((source, position) => (
-                    <div key={`${source.bookId}-${source.unit}-${position}`} className={position ? "secondary" : ""}>
-                      <ShieldCheck size={14} strokeWidth={1.5} aria-hidden="true" />
-                      {source.volume} · {source.unit}{source.printedPage ? ` · p.${source.printedPage}` : ""}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="detail-block">
-                <span className="label">你的记录</span>
-                <div className="stat-grid">
-                  <div><span className="num">{card?.lastReviewed ? Math.round(Number(card.fsrs.reps || 0)) : 0}</span><span>复习次数</span></div>
-                  <div><span className="num">{retrievabilityOf(card).toFixed(2)}</span><span>可提取性</span></div>
-                  <div><span className="num">{dueLabel(card)}</span><span>下次</span></div>
-                  <div><span className="num">{Math.round(Number(card?.fsrs.lapses || 0))}<small> 次</small></span><span>遗忘</span></div>
-                </div>
-              </div>
-
-              <label className="note-field">
-                <span className="label">我的注释</span>
-                <textarea
-                  key={selected.id}
-                  defaultValue={card?.note || ""}
-                  onBlur={(event) => onNote(selected, event.target.value)}
-                  placeholder="记录易错点或自己的例句；离开输入框即保存"
-                />
-              </label>
-
-              <div className="btn-row" style={{ marginTop: 12 }}>
-                <button className="btn primary" style={{ flex: 1 }} onClick={() => onStudy(selected)}>从这个词开始练习<kbd>⏎</kbd></button>
-              </div>
+              <div className="detail-actions"><span className="tier-badge">{selected.tier} 层</span><button className={cards.get(selected.id)?.favorite ? "icon-button active" : "icon-button"} onClick={() => onFavorite(selected)} aria-label="收藏词条"><Bookmark size={18} fill={cards.get(selected.id)?.favorite ? "currentColor" : "none"} /></button></div>
+              <h2>{selected.headword}</h2>
+              <button className="pronunciation" onClick={() => speakSystem(selected.headword)}><Volume2 size={18} /><span>BrE /{selected.britishIpa || "—"}/</span><small>系统语音</small></button>
+              {selected.americanIpa && selected.americanIpa !== selected.britishIpa && <p className="us-ipa">NAmE /{selected.americanIpa}/</p>}
+              <div className="pos-line">{selected.partsOfSpeech.length ? selected.partsOfSpeech.map((pos) => <span key={pos}>{pos}.</span>) : <span>词性待字段级核验</span>}</div>
+              <div className="meaning-block"><span>核心义</span><p>{selected.chineseCore}</p>{detail?.englishCore && <small>{detail.englishCore}</small>}</div>
+              {detail?.openExample && <div className="example-block"><span>开放语料例句</span><p>{detail.openExample}</p><small>Open English WordNet · CC BY 4.0</small></div>}
+              <div className="source-block"><span>来源位置</span>{selected.sources.slice(0, 5).map((source, index) => <p key={`${source.bookId}-${source.unit}-${index}`}><ShieldCheck size={14} />{source.volume} · {source.unit}{source.printedPage ? ` · p.${source.printedPage}` : ""}<small>{source.status || "verified-primary"}</small></p>)}</div>
+              {detail?.grammar && (detail.grammar.countability || detail.grammar.transitivity) && <div className="grammar-line">{detail.grammar.countability && <span>{detail.grammar.countability}</span>}{detail.grammar.transitivity && <span>{detail.grammar.transitivity}</span>}</div>}
+              <label className="note-field"><span>我的注释</span><textarea defaultValue={cards.get(selected.id)?.note || ""} onBlur={(event) => onNote(selected, event.target.value)} placeholder="记录易错点或自己的例句；离开输入框即保存" /></label>
+              <button className="primary-button full" onClick={() => onStudy(selected)}>从这个词开始练习</button>
               <p className="rights-note">未公开复制教材整段；详情只保留词表事实、页码定位和许可明确的开放字段。</p>
             </>
-          ) : <EmptyState title="选择一个词条" text="右侧会显示音标、词族、来源位置和学习状态。" />}
+          ) : <EmptyState title="选择一个词条" text="右侧会显示音标、来源、核心义和学习状态。" />}
         </aside>
       </div>
     </div>
   );
 }
 
-/* ── 计划 ──────────────────────────────────────────────── */
-
-function PlanView({ settings, backlog, cards, forecast, onUpdate }: {
-  settings: AppSettings; backlog: number; cards: Map<string, StoredCard>; forecast: number[];
-  onUpdate: (patch: Partial<AppSettings>) => void;
-}) {
+function PlanView({ settings, backlog, cards, workload, onUpdate }: { settings: AppSettings; backlog: number; cards: Map<string, StoredCard>; workload: ReturnType<typeof forecastDueLoad>; onUpdate: (patch: Partial<AppSettings>) => void }) {
   const estimated = workloadEstimate(settings.dailyMinutes, settings.desiredRetention);
   const activeCount = [...cards.values()].filter((card) => card.status !== "paused").length;
-  const peak = Math.max(...forecast, 1);
-  const modes: Array<[AppSettings["mode"], string]> = [
-    ["normal", "到期与薄弱优先，再放入少量新词"],
-    ["unit", "只从已选教材进度取新词"],
-    ["review-only", "不加入任何新词"],
-    ["exam", "在时间预算内提高目标词权重"],
-    ["browse", "不自动创建学习任务"],
+  const modes: Array<[AppSettings["mode"], string, string]> = [
+    ["normal", "普通学习", "到期与薄弱优先，再放入少量新词"], ["unit", "单元同步", "只从已选教材进度取新词"], ["review-only", "只复习", "不加入任何新词"],
+    ["exam", "考前强化", "在时间预算内提高目标词权重"], ["browse", "自由浏览", "不自动创建学习任务"],
   ];
-
   return (
-    <div className="sheet">
-      <RuleLabel note="LOAD, NOT STREAKS">计划 · 让计划服从时间预算</RuleLabel>
-      <div className="sheet-grid">
-        <section className="panel">
-          <div className="panel-head">
-            <div><span className="label">每日上限</span><h2>时间预算</h2></div>
-            <CalendarDays size={20} strokeWidth={1.5} aria-hidden="true" />
-          </div>
-          <div className="range-row"><span className="num">{settings.dailyMinutes}</span><span>分钟 / 天</span></div>
-          <input type="range" min="10" max="60" step="5" value={settings.dailyMinutes} aria-label="每日学习分钟数" onChange={(event) => onUpdate({ dailyMinutes: Number(event.target.value) })} />
-          <div className="range-scale"><span>10</span><span>30</span><span>60</span></div>
-          <div className="range-row" style={{ marginTop: 6 }}><span className="num">{settings.desiredRetention.toFixed(2)}</span><span>FSRS 目标保持率</span></div>
-          <input type="range" min="0.8" max="0.97" step="0.01" value={settings.desiredRetention} aria-label="目标保持率" onChange={(event) => onUpdate({ desiredRetention: Number(event.target.value) })} />
-          <div className="impact">
-            <span>预计每日复习时间</span>
-            <span className="num">{estimated} 分钟</span>
-            <small>估算值；保持率越接近 0.97，负担上升越快，而记住的边际收益越小。</small>
-          </div>
+    <div className="page-frame plan-frame">
+      <header className="page-title"><p className="eyebrow">LOAD, NOT STREAKS</p><h1>让计划服从时间预算。</h1><p>系统先处理到期和薄弱词；复习积压时，新词自动减少。</p></header>
+      <div className="plan-grid">
+        <section className="settings-section">
+          <div className="section-heading compact"><div><span className="section-kicker">每日上限</span><h2>{settings.dailyMinutes} 分钟</h2></div><Clock3 size={22} /></div>
+          <input type="range" min="10" max="60" step="5" value={settings.dailyMinutes} onChange={(event) => onUpdate({ dailyMinutes: Number(event.target.value) })} aria-label="每日学习分钟数" />
+          <div className="range-labels"><span>10</span><span>30</span><span>60 分钟</span></div>
+          <div className="settings-divider" />
+          <div className="section-heading compact"><div><span className="section-kicker">FSRS 目标保持率</span><h2>{Math.round(settings.desiredRetention * 100)}%</h2></div><Target size={22} /></div>
+          <input type="range" min="0.8" max="0.97" step="0.01" value={settings.desiredRetention} onChange={(event) => onUpdate({ desiredRetention: Number(event.target.value) })} aria-label="目标保持率" />
+          <div className="retention-impact"><span>预计每日复习时间</span><strong>{estimated} 分钟</strong><small>估算值；保持率越接近 97%，负担上升越快。</small></div>
         </section>
 
-        <section className="panel">
-          <div className="panel-head">
-            <div><span className="label">学习模式</span><h2>当前：{modeLabels[settings.mode]}</h2></div>
-            <SlidersHorizontal size={20} strokeWidth={1.5} aria-hidden="true" />
-          </div>
-          <div className="mode-list">
-            {modes.map(([id, text]) => (
-              <button key={id} className={settings.mode === id ? "on" : ""} onClick={() => onUpdate({ mode: id })} aria-pressed={settings.mode === id}>
-                <span className="mode-mark" />
-                <span><strong>{modeLabels[id]}</strong><small>{text}</small></span>
-              </button>
-            ))}
-          </div>
+        <section className="settings-section">
+          <div className="section-heading compact"><div><span className="section-kicker">学习模式</span><h2>当前：{modes.find(([id]) => id === settings.mode)?.[1]}</h2></div><SlidersHorizontal size={22} /></div>
+          <div className="mode-list">{modes.map(([id, label, text]) => <button key={id} className={settings.mode === id ? "active" : ""} onClick={() => onUpdate({ mode: id })}><span className="radio-mark" /><div><strong>{label}</strong><small>{text}</small></div></button>)}</div>
         </section>
 
-        <section className="panel span">
-          <div className="panel-head">
-            <div><span className="label">实际教材进度</span><h2>按学校进度选范围，不混淆七册完整词库。</h2></div>
-            <BookOpen size={20} strokeWidth={1.5} aria-hidden="true" />
-          </div>
-          <div className="book-grid">
-            {bookOptions.map(([id, label]) => {
-              const checked = settings.selectedBooks.includes(id);
-              return (
-                <label key={id} className={checked ? "on" : ""}>
-                  <input type="checkbox" checked={checked} onChange={() => onUpdate({ selectedBooks: checked ? settings.selectedBooks.filter((book) => book !== id) : [...settings.selectedBooks, id] })} />
-                  <span className="box"><Check size={12} strokeWidth={2} /></span>
-                  <strong>{label}</strong>
-                  <small>{id.startsWith("HS-R") ? "高中必修" : id.startsWith("HS-S") ? "选择性必修" : "初中核心"}</small>
-                </label>
-              );
-            })}
-          </div>
+        <section className="settings-section span-two">
+          <div className="section-heading compact"><div><span className="section-kicker">实际教材进度</span><h2>按学校进度选范围，不混淆七册完整词库。</h2></div><BookOpen size={22} /></div>
+          <div className="book-selector">{bookOptions.map(([id, label]) => {
+            const checked = settings.selectedBooks.includes(id);
+            return <label key={id} className={checked ? "checked" : ""}><input type="checkbox" checked={checked} onChange={() => onUpdate({ selectedBooks: checked ? settings.selectedBooks.filter((book) => book !== id) : [...settings.selectedBooks, id] })} /><span><Check size={14} /></span><strong>{label}</strong><small>{id.startsWith("HS-R") ? "高中必修" : id.startsWith("HS-S") ? "选择性必修" : "初中核心"}</small></label>;
+          })}</div>
         </section>
 
-        <section className="panel span">
-          <div className="panel-head">
-            <div><span className="label">未来 14 天</span><h2>负担预测</h2></div>
-            <span className="label">分钟 / 日</span>
-          </div>
-          <p>{backlog ? `目前 ${backlog} 个到期词；计划会压低新词，直到积压回落。` : "当前没有逾期；仍保留缓冲，不把空闲全部塞成新词。"}</p>
-          <div className="tall-chart" role="img" aria-label="未来十四天复习负担条形图">
-            {forecast.map((value, position) => (
-              <span key={position}>
-                <i style={{ height: `${Math.max(2, value / peak * 100)}%` }} />
-                <small>{position % 2 === 0 ? position + 1 : ""}</small>
-              </span>
-            ))}
-          </div>
-          <div className="metric-strip">
-            <Metric label="主学习状态" value={activeCount} note="跨词书不复制" />
-            <Metric label="预计峰值" value={`${Math.max(peak, estimated)} 分钟`} note="可由保持率调整" />
-            <Metric label="当前积压" value={backlog} note="到期未复习" />
-            <Metric label="已选册次" value={settings.selectedBooks.length} note="决定新词来源" />
-          </div>
+        <section className="forecast-section span-two">
+          <div><span className="section-kicker">未来 14 天</span><h2>负担预测</h2><p>{backlog ? `目前 ${backlog} 个到期词；计划会压低新词，直到积压回落。` : "当前没有逾期；仍保留缓冲，不把空闲全部塞成新词。"}</p></div>
+          <div className="forecast-chart" role="img" aria-label="未来十四天复习负担条形图">{workload.map((day, index) => <span key={day.date}><i style={{ height: `${Math.max(4, day.count / Math.max(1, ...workload.map((row) => row.count)) * 100)}%` }} /><small>{index % 2 === 0 ? `${index + 1}` : ""}</small></span>)}</div>
+          <div className="forecast-summary"><Metric label="主学习状态" value={activeCount} note="跨词书不复制" /><Metric label="预计峰值" value={`${Math.max(estimated, ...workload.map((day) => day.minutes))} 分钟`} note="来自当前到期时间" /></div>
         </section>
       </div>
     </div>
   );
 }
 
-/* ── 分析 ──────────────────────────────────────────────── */
-
-function AnalysisView({ manifest, cards, events, index, skillScores, weakestSkill, onTask }: {
-  manifest: LexiconManifest | null; cards: Map<string, StoredCard>; events: ReviewEvent[]; index: LexiconIndexEntry[];
-  skillScores: Array<{ skill: SkillName; value: number }>; weakestSkill: SkillName; onTask: (skill: SkillName) => void;
-}) {
+function AnalysisView({ manifest, cards, events, index, onTask }: { manifest: LexiconManifest | null; cards: Map<string, StoredCard>; events: ReviewEvent[]; index: LexiconIndexEntry[]; onTask: (skill: SkillName) => void }) {
   const reviewedCards = [...cards.values()].filter((card) => card.lastReviewed);
+  const skills = (Object.keys(skillLabels) as SkillName[]).map((skill) => ({ skill, value: reviewedCards.length ? reviewedCards.reduce((sum, card) => sum + card.skills[skill], 0) / reviewedCards.length : 0 }));
   const today = new Date();
   const days = Array.from({ length: 30 }, (_, offset) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (29 - offset));
+    const date = new Date(today); date.setDate(today.getDate() - (29 - offset));
     const key = date.toLocaleDateString("sv-SE");
     return events.filter((event) => event.localDate === key).length;
   });
   const maxDay = Math.max(1, ...days);
   const middleLearned = index.filter((entry) => entry.scopes.includes("middle-core") && cards.has(entry.id)).length;
   const highLearned = index.filter((entry) => entry.scopes.some((scope) => scope.startsWith("high")) && cards.has(entry.id)).length;
-  const highTotal = (manifest?.highRequiredEntries || 0) + (manifest?.highSelectiveEntries || 0);
   const weak = reviewedCards.filter((card) => card.status === "weak");
-  const retention = reviewedCards.length ? reviewedCards.reduce((sum, card) => sum + retrievabilityOf(card), 0) / reviewedCards.length : 0;
-
+  const weakest = [...skills].sort((a, b) => a.value - b.value)[0];
   return (
-    <div className="sheet">
-      <RuleLabel note="EVIDENCE OVER ACTIVITY">分析 · 看能力缺口，不看热闹</RuleLabel>
-      <div className="metric-strip">
-        <Metric label="学习中词条" value={reviewedCards.length} note={`薄弱 ${weak.length}`} />
-        <Metric label="30 天复习" value={days.reduce((sum, value) => sum + value, 0)} note="含新学与复习" />
-        <Metric label="估计保持率" value={`${Math.round(retention * 100)}%`} note="基于当前稳定度" />
-        <Metric label="主要薄弱项" value={skillLabels[weakestSkill]} note="推荐专项 10–15 分钟" />
-      </div>
-
-      <div className="sheet-grid wide">
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">30 DAYS</span><h2>复习趋势</h2></div><span className="label">事件 / 日</span></div>
-          <div className="trend-chart" role="img" aria-label="三十天复习事件趋势">
-            {days.map((value, position) => <i key={position} style={{ height: `${Math.max(2, value / maxDay * 100)}%` }} title={`${value} 次`} />)}
-          </div>
-          <div className="chart-axis"><span>30 天前</span><span>今天</span></div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">SIX CAPABILITIES</span><h2>六项能力</h2></div><span className="label">0–100</span></div>
-          <div>
-            {skillScores.map(({ skill, value }) => (
-              <button key={skill} className="skill-button" onClick={() => onTask(skill)}>
-                <span>{skillLabels[skill]}</span>
-                <Meter value={value} strong={skill === weakestSkill} />
-                <span className="num">{Math.round(value * 100)}</span>
-                <ChevronRight size={15} strokeWidth={1.5} aria-hidden="true" />
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">COVERAGE</span><h2>初高中独立覆盖</h2></div></div>
-          <div className="coverage-row">
-            <div className="top"><strong>初中核心</strong><small>{middleLearned} / {manifest?.middleEntries || 0}</small></div>
-            <Meter value={middleLearned / Math.max(1, manifest?.middleEntries || 1)} />
-          </div>
-          <div className="coverage-row">
-            <div className="top"><strong>高中七册</strong><small>{highLearned} / {highTotal}</small></div>
-            <Meter value={highLearned / Math.max(1, highTotal)} />
-          </div>
-          <p>同一个词跨册出现时只保留一个调度状态，来源位置会全部保留。</p>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">NEXT ACTION</span><h2>推荐短任务</h2></div></div>
-          <div className="range-row"><span className="num">{skillLabels[weakestSkill]}</span><span>约 12 分钟</span></div>
-          <p>
-            {weakestSkill === "spelling" ? "近期「眼熟但写不出」比例最高，先做中文到英文输入。"
-              : weakestSkill === "listening" ? "听辨稳定度最低，先做系统语音听写；真人音频未获授权时不冒充。"
-                : "从最低能力向量取词，避免为每个词创建六份长期任务。"}
-          </p>
-          <button className="btn" onClick={() => onTask(weakestSkill)}>开始专项</button>
-        </section>
+    <div className="page-frame analysis-frame">
+      <header className="page-title"><p className="eyebrow">EVIDENCE OVER ACTIVITY</p><h1>看能力缺口，不看热闹。</h1><p>统计来自追加式复习事件；撤销会通过反向事件重放。</p></header>
+      <section className="analysis-metrics"><Metric label="学习中词条" value={reviewedCards.length} note={`薄弱 ${weak.length}`} /><Metric label="30 天复习" value={events.filter((event) => event.timestampUtc >= new Date(today.getTime() - 30 * 86400000).toISOString()).length} note="含新学与复习" /><Metric label="估计保持率" value={`${Math.round((reviewedCards.length ? reviewedCards.reduce((sum, card) => sum + Math.min(0.99, Number(card.fsrs.stability || 0) / (Number(card.fsrs.stability || 0) + 2)), 0) / reviewedCards.length : 0) * 100)}%`} note="基于当前稳定度" /><Metric label="主要薄弱项" value={skillLabels[weakest?.skill || "meaning"]} note="推荐专项 10–15 分钟" /></section>
+      <div className="analysis-grid">
+        <section className="analysis-panel trend-panel"><div className="panel-title"><div><span className="section-kicker">30 DAYS</span><h2>复习趋势</h2></div><span>事件 / 日</span></div><div className="trend-chart" role="img" aria-label="三十天复习事件趋势">{days.map((value, indexValue) => <i key={indexValue} style={{ height: `${Math.max(4, value / maxDay * 100)}%` }} title={`${value} 次`} />)}</div><div className="trend-axis"><span>30 天前</span><span>今天</span></div></section>
+        <section className="analysis-panel skills-panel"><div className="panel-title"><div><span className="section-kicker">SIX CAPABILITIES</span><h2>六项能力</h2></div><span>0–100</span></div>{skills.map(({ skill, value }) => <button key={skill} onClick={() => onTask(skill)}><span>{skillLabels[skill]}</span><Progress value={value} /><strong>{Math.round(value * 100)}</strong><ChevronRight size={15} /></button>)}</section>
+        <section className="analysis-panel coverage-panel"><div className="panel-title"><div><span className="section-kicker">COVERAGE</span><h2>初高中独立覆盖</h2></div></div><div className="coverage-row"><div><strong>初中核心</strong><small>{middleLearned} / {manifest?.middleEntries || 0}</small></div><Progress value={middleLearned / Math.max(1, manifest?.middleEntries || 1)} /></div><div className="coverage-row"><div><strong>高中七册</strong><small>{highLearned} / {(manifest?.highRequiredEntries || 0) + (manifest?.highSelectiveEntries || 0)}</small></div><Progress value={highLearned / Math.max(1, (manifest?.highRequiredEntries || 0) + (manifest?.highSelectiveEntries || 0))} /></div><div className="coverage-note"><Info size={16} /><p>同一个词跨册出现时只保留一个调度状态，来源位置会全部保留。</p></div></section>
+        <section className="analysis-panel weak-panel"><div className="panel-title"><div><span className="section-kicker">NEXT ACTION</span><h2>推荐短任务</h2></div></div><strong>{skillLabels[weakest?.skill || "meaning"]} · 12 分钟</strong><p>{weakest?.skill === "spelling" ? "近期“眼熟但写不出”比例最高，先做中文到英文输入。" : weakest?.skill === "listening" ? "听辨稳定度最低，先做系统语音听写；真人音频未获授权时不冒充。" : "从最低能力向量取词，避免为每个词创建六份长期任务。"}</p><button className="secondary-button" onClick={() => onTask(weakest?.skill || "meaning")}>开始专项</button></section>
       </div>
     </div>
   );
 }
 
-/* ── 数据 ──────────────────────────────────────────────── */
-
-function DataView({ settings, manifest, articleText, setArticleText, articleMatches, onAlign, onBackup, onImport, onSync, onExportLexicon, onUpdate, onClear }: {
-  settings: AppSettings; manifest: LexiconManifest | null; articleText: string; setArticleText: (value: string) => void;
-  articleMatches: LexiconIndexEntry[]; onAlign: () => void; onBackup: () => void; onImport: () => void;
-  onSync: (direction: "push" | "pull") => void; onExportLexicon: (format: "csv" | "tsv") => void;
-  onUpdate: (patch: Partial<AppSettings>) => void; onClear: () => void;
+function DataView({ manifest, articleText, setArticleText, articleMatches, onAlign, onBackup, onImport, onSync, onExportLexicon, onOpenSettings }: {
+  manifest: LexiconManifest | null; articleText: string; setArticleText: (value: string) => void; articleMatches: LexiconIndexEntry[];
+  onAlign: () => void; onBackup: () => void; onImport: () => void; onSync: (direction: "push" | "pull") => void; onExportLexicon: (format: "csv" | "tsv") => void; onOpenSettings: () => void;
 }) {
   return (
-    <div className="sheet">
-      <RuleLabel note="LOCAL FIRST">数据 · 你的学习数据，先在本机</RuleLabel>
-      <div className="sheet-grid">
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">个人数据</span><h2>备份、恢复与私有同步</h2></div><Database size={20} strokeWidth={1.5} aria-hidden="true" /></div>
-          <p>包含卡片主状态、六项能力、追加式事件、词单、注释和设置。</p>
-          <div className="btn-row">
-            <button className="btn primary" onClick={onBackup}><Download size={16} strokeWidth={1.5} aria-hidden="true" />导出 JSON</button>
-            <button className="btn" onClick={onImport}><Upload size={16} strokeWidth={1.5} aria-hidden="true" />恢复备份</button>
-            <button className="btn" onClick={() => onSync("push")}>同步本机</button>
-            <button className="btn" onClick={() => onSync("pull")}>从私有同步恢复</button>
-          </div>
-          <small>当前 schema：1.0.0。冲突不会静默覆盖；本地预览没有站点身份时安全降级。</small>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">词库与 Anki</span><h2>CSV / TSV 导出</h2></div><FileText size={20} strokeWidth={1.5} aria-hidden="true" /></div>
-          <p>导出当前正式词库筛选结果；TSV 可映射到 Anki 的 Word、IPA、Meaning、Source 字段。</p>
-          <div className="btn-row">
-            <button className="btn" onClick={() => onExportLexicon("csv")}>导出 CSV</button>
-            <button className="btn" onClick={() => onExportLexicon("tsv")}>Anki TSV</button>
-          </div>
-          <small>发布版本 {manifest?.version || "—"}；不会导出教材 PDF 或未授权音频。</small>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">文章生词对齐</span><h2>粘贴一段英文</h2></div><Search size={20} strokeWidth={1.5} aria-hidden="true" /></div>
-          <p>只在本机分词，并与正式索引对齐；文本不会上传。</p>
-          <textarea className="article-area" value={articleText} onChange={(event) => setArticleText(event.target.value)} placeholder="Paste an English article here…" aria-label="待对齐的英文文章" />
-          <div className="btn-row"><button className="btn primary" onClick={onAlign}>提取并对齐</button></div>
-          {articleMatches.length > 0 && (
-            <div className="match-list">
-              {articleMatches.map((entry) => <span key={entry.id}><strong>{entry.headword}</strong>{entry.chineseCore}</span>)}
-            </div>
-          )}
-        </section>
-
-        <section className="panel">
-          <div className="panel-head"><div><span className="label">阅读与增强</span><h2>应用设置</h2></div><SlidersHorizontal size={20} strokeWidth={1.5} aria-hidden="true" /></div>
-          <label className="field-row">
-            <span>阅读方案</span>
-            <select value={settings.theme} onChange={(event) => onUpdate({ theme: event.target.value as AppSettings["theme"] })}>
-              <option value="system">跟随系统</option>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-            </select>
-          </label>
-          <label className="switch-row">
-            <span><strong>AI 增强层</strong><small>解释、造句检查与易混小课；AI 关闭时核心学习完全不依赖它</small></span>
-            <input type="checkbox" checked={settings.aiEnabled} onChange={(event) => onUpdate({ aiEnabled: event.target.checked })} />
-            <span className="switch" />
-          </label>
-          {settings.aiEnabled && (
-            <p className="inline-warning"><Sparkles size={15} strokeWidth={1.5} aria-hidden="true" />当前部署未配置模型密钥，增强层会安全降级到本地检查。</p>
-          )}
-          <button className="btn danger" onClick={onClear} style={{ marginTop: "auto" }}>
-            <RotateCcw size={15} strokeWidth={1.5} aria-hidden="true" />清空本机个人数据
-          </button>
-        </section>
+    <div className="page-frame data-frame">
+      <header className="page-title"><p className="eyebrow">LOCAL FIRST</p><h1>你的学习数据，先在本机。</h1><p>词库版本与个人状态分离；JSON 备份可完整恢复，应用偏好与 API 接口已集中到设置页。</p></header>
+      <div className="data-grid">
+        <section className="data-panel"><Database size={22} /><div><span className="section-kicker">个人数据</span><h2>备份、恢复与私有同步</h2><p>包含卡片主状态、六项能力、追加式事件、词单、注释和设置。</p></div><div className="button-row"><button className="primary-button" onClick={onBackup}><Download size={17} />导出 JSON</button><button className="secondary-button" onClick={onImport}><Upload size={17} />恢复备份</button><button className="secondary-button" onClick={() => onSync("push")}>同步本机</button><button className="secondary-button" onClick={() => onSync("pull")}>从私有同步恢复</button></div><small>当前 schema：{USER_DATA_SCHEMA_VERSION}；1.0.0 备份会先迁移再恢复。冲突不会静默覆盖。</small></section>
+        <section className="data-panel"><FileText size={22} /><div><span className="section-kicker">词库与 Anki</span><h2>CSV / TSV</h2><p>导出当前正式词库筛选结果；TSV 可映射到 Anki 的 Word、IPA、Meaning、Source 字段。</p></div><div className="button-row"><button className="secondary-button" onClick={() => onExportLexicon("csv")}>导出 CSV</button><button className="secondary-button" onClick={() => onExportLexicon("tsv")}>Anki TSV</button></div><small>发布版本 {manifest?.version || "—"}；不会导出教材 PDF 或未授权音频。</small></section>
+        <section className="data-panel article-panel"><Search size={22} /><div><span className="section-kicker">文章生词对齐</span><h2>粘贴一段英文</h2><p>只在本机分词，并与正式索引对齐；文本不会上传。</p></div><textarea value={articleText} onChange={(event) => setArticleText(event.target.value)} placeholder="Paste an English article here…" /><button className="primary-button" onClick={onAlign}>提取并对齐</button>{articleMatches.length > 0 && <div className="match-list">{articleMatches.map((entry) => <span key={entry.id}><strong>{entry.headword}</strong>{entry.chineseCore}</span>)}</div>}</section>
+        <section className="data-panel"><Settings2 size={22}/><div><span className="section-kicker">应用设置</span><h2>外观、学习与 API</h2><p>API Key 由服务端加密保管，不进入学习备份；接口状态和安全边界可在设置页查看。</p></div><button className="secondary-button" onClick={onOpenSettings}>打开设置<ChevronRight size={16}/></button><small>数据页不读取、显示或导出任何 API Key。</small></section>
       </div>
-
-      <section className="privacy-strip">
-        <ShieldCheck size={20} strokeWidth={1.5} aria-hidden="true" />
-        <div>
-          <strong>数据边界</strong>
-          <p>词库作为版本化静态资源；学习状态进入 IndexedDB。私有同步启用时只上传个人状态，不复制整份词库。系统 TTS 不等于真人音频。</p>
-        </div>
-      </section>
+      <section className="privacy-strip"><ShieldCheck size={20} /><div><strong>数据边界</strong><p>词库作为版本化静态资源；学习状态进入 IndexedDB。私有同步启用时只上传个人状态，不复制整份词库。系统 TTS 不等于真人音频。</p></div></section>
     </div>
   );
 }
 
-/* ── 学习流（常深色） ──────────────────────────────────── */
-
-function StudySession({
-  session, complete, entry, detail, card, question, intervals, budgetMinutes, answer, setAnswer, revealed, objectiveResult,
-  events, index, cards, favorite, onCheck, onRate, onExit, onRestart, onSpeak, onUndo, canUndo, onFavorite, forcedType, setForcedType,
-}: {
-  session: SessionState; complete: boolean; entry: LexiconIndexEntry | null; detail?: LexiconDetail; card?: StoredCard;
-  question: Question | null; intervals: Record<1 | 2 | 3 | 4, string>; budgetMinutes: number;
-  answer: string; setAnswer: (value: string) => void; revealed: boolean; objectiveResult: boolean | null;
-  events: ReviewEvent[]; index: LexiconIndexEntry[]; cards: Map<string, StoredCard>; favorite: boolean;
-  onCheck: () => void; onRate: (rating: 1 | 2 | 3 | 4) => void; onExit: () => void; onRestart: () => void;
-  onSpeak: () => void; onUndo: () => void; canUndo: boolean; onFavorite: () => void;
-  forcedType: QuestionType | null; setForcedType: (type: QuestionType | null) => void;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function StudySession({ session, complete, entry, detail, question, answer, setAnswer, revealed, objectiveResult, hints, setHints, onCheck, onRate, onExit, onRestart, onSpeak, onUndo, canUndo, forcedType, setForcedType }: {
+  session: SessionState; complete: boolean; entry: LexiconIndexEntry | null; detail?: LexiconDetail; question: Question | null; answer: string; setAnswer: (value: string) => void;
+  revealed: boolean; objectiveResult: boolean | null; hints: number; setHints: (value: number) => void; onCheck: () => void; onRate: (rating: 1 | 2 | 3 | 4) => void;
+  onExit: () => void; onRestart: () => void; onSpeak: () => void; onUndo: () => void; canUndo: boolean; forcedType: QuestionType | null; setForcedType: (type: QuestionType | null) => void;
 }) {
-  const [elapsed, setElapsed] = useState(0);
-  const now = useMountedClock();
-  const swipeFrom = useRef<{ x: number; y: number } | null>(null);
-  useEffect(() => {
-    const timer = window.setInterval(() => setElapsed(Date.now() - session.startedAt), 1000);
-    return () => window.clearInterval(timer);
-  }, [session.startedAt]);
-
-  const cardEvents = useMemo(() => entry ? events.filter((event) => event.cardId === entry.id) : [], [events, entry]);
-  const mistakes = cardEvents.filter((event) => !event.correct);
-  const neighbors = useMemo(() => {
-    if (!entry) return [];
-    const source = entry.sources[0];
-    if (!source) return [];
-    return index
-      .filter((candidate) => candidate.id !== entry.id && candidate.sources.some((item) => item.bookId === source.bookId && item.unit === source.unit))
-      .slice(0, 4);
-  }, [entry, index]);
-
   if (complete) {
-    const minutes = ((session.endedAt || session.startedAt) - session.startedAt) / 60000;
-    return (
-      <main className="session night">
-        <div className="complete">
-          <div className="complete-inner">
-            <span className="label accent">SESSION COMPLETE</span>
-            <h1>{session.kind === "diagnostic" ? "诊断样本已写入计划。" : "这一轮已经收好。"}</h1>
-            <p>没有额外塞入新词；下一次仍从到期与薄弱项开始。</p>
-            <div className="metric-strip" style={{ margin: "28px 0" }}>
-              <Metric label="完成" value={session.reviewed} note="主学习状态更新" />
-              <Metric label="正确" value={`${Math.round(session.correct / Math.max(1, session.reviewed) * 100)}%`} note="客观题 + 翻卡" />
-              <Metric label="用时" value={formatMinutes(minutes)} note="含思考与反馈" />
-              <Metric label="最长连对" value={session.streak} note="仅供参考，不计入排程" />
-            </div>
-            <div className="btn-row">
-              {canUndo && <button className="btn" onClick={onUndo}><Undo2 size={16} strokeWidth={1.5} aria-hidden="true" />撤销最后一次评分</button>}
-              <button className="btn" onClick={onRestart}><RotateCcw size={16} strokeWidth={1.5} aria-hidden="true" />再练一轮</button>
-              <button className="btn primary" onClick={onExit}>返回今日</button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
+    const elapsed = ((session.endedAt || session.startedAt) - session.startedAt) / 60000;
+    return <main className="session-shell complete-shell"><div className="session-complete"><span className="completion-mark"><Check size={30} /></span><p className="eyebrow">SESSION COMPLETE</p><h1>{session.kind === "diagnostic" ? "诊断样本已写入计划。" : "这一轮已经收好。"}</h1><p>没有额外塞入新词；下一次仍从到期与薄弱项开始。</p><div className="completion-metrics"><Metric label="完成" value={session.reviewed} note="主学习状态更新" /><Metric label="正确" value={`${Math.round(session.correct / Math.max(1, session.reviewed) * 100)}%`} note="客观题 + 翻卡" /><Metric label="用时" value={formatMinutes(elapsed)} note="含思考与反馈" /></div><div className="button-row center">{canUndo && <button className="secondary-button" onClick={onUndo}><Undo2 size={17} />撤销最后一次评分</button>}<button className="secondary-button" onClick={onRestart}><RotateCcw size={17} />再练一轮</button><button className="primary-button" onClick={onExit}>返回今日</button></div></div></main>;
   }
-
   if (!entry || !question) return null;
   const sentenceCheck = question.type === "sentence-output" && answer ? localSentenceCheck(answer, entry.headword) : null;
-  const progress = (session.position + (revealed ? 0.5 : 0)) / session.queue.length;
-  const overdue = overdueLabel(card, now);
-
   return (
-    <main className="session night">
-      <header className="session-bar">
-        <button className="session-close" onClick={onExit} aria-label="退出并保存"><X size={16} strokeWidth={1.5} /></button>
-        <span className="label">{session.kind === "diagnostic" ? "分层诊断" : session.kind === "free" ? "专项练习" : "今日学习"}</span>
-        <div className="session-progress">
-          <span className="session-track" aria-hidden="true">
-            <i style={{ width: `${progress * 100}%` }} />
-            <b style={{ left: `${progress * 100}%` }} />
-          </span>
-          <span className="session-count">{session.position + 1}<small> / {session.queue.length}</small></span>
-        </div>
-        <span className="session-clock">{formatClock(elapsed)}</span>
-        <span className="session-budget">/ {budgetMinutes} 分钟</span>
-        <span className="session-streak"><Zap size={14} strokeWidth={1.5} aria-hidden="true" /><span className="num">连对 {session.streak}</span></span>
+    <main className="session-shell">
+      <header className="session-topbar">
+        <button className="session-close" onClick={onExit} aria-label="退出学习"><X size={20} /></button>
+        <div className="session-progress"><div><span>{session.kind === "diagnostic" ? "分层诊断" : "今日学习"}</span><strong>{session.position + 1} / {session.queue.length}</strong></div><Progress value={(session.position + (revealed ? 0.5 : 0)) / session.queue.length} /></div>
+        <button className="icon-button" onClick={onUndo} disabled={!canUndo} aria-label="撤销上一次评分"><Undo2 size={18} /></button>
       </header>
-
-      <div className="session-body">
-        {/* 手机以手势为主：左滑忘记 / 右滑记得 / 上滑轻松；翻卡之后才接受手势。 */}
-        <div
-          className="stage"
-          onTouchStart={(event) => {
-            const touch = event.changedTouches[0];
-            swipeFrom.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
-          }}
-          onTouchEnd={(event) => {
-            const start = swipeFrom.current;
-            const touch = event.changedTouches[0];
-            swipeFrom.current = null;
-            if (!start || !touch || !revealed) return;
-            const dx = touch.clientX - start.x;
-            const dy = touch.clientY - start.y;
-            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) onRate(dx < 0 ? 1 : 3);
-            else if (dy < -60 && Math.abs(dy) > Math.abs(dx)) onRate(4);
-          }}
-        >
-          <div className="stage-meta">
-            <span className="label accent">{question.label}</span>
-            <span className="vr" />
-            <select value={forcedType || "adaptive"} onChange={(event) => setForcedType(event.target.value === "adaptive" ? null : event.target.value as QuestionType)} aria-label="选择题型">
-              <option value="adaptive">自适应题型</option>
-              {QUESTION_CATALOG.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-            <span className="src">
-              <span className="src-full">{fullSource(entry)} · {entry.sources[0]?.status || "verified-primary"}</span>
-              <span className="src-short">{shortSource(entry)}</span>
-            </span>
-          </div>
-
-          <div className="stage-core">
-            <span className="label">第 {session.position + 1} 题 · {overdue}</span>
-            <h1 className={question.prompt.length > 24 ? "stage-prompt long" : "stage-prompt"}>{question.prompt}</h1>
-
-            <div className="stage-sub">
-              {entry.britishIpa && <span className="ipa">BrE /{entry.britishIpa}/</span>}
-              <button className="speak-btn" onClick={onSpeak}>
-                <Volume2 size={14} strokeWidth={1.5} aria-hidden="true" />系统语音<kbd>R</kbd>
-              </button>
-              <span className="meta">
-                {entry.partsOfSpeech.join(" / ") || "词性待核"} · 出现于 {entry.sources.length} 处
-              </span>
-            </div>
-
-            {question.support && !revealed && <p className="stage-gloss" style={{ marginTop: 12 }}>{question.support}</p>}
-
-            {!revealed && question.inputMode === "text" && (
-              <div className="answer-field">
-                <input autoFocus value={answer} onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => event.key === "Enter" && onCheck()} placeholder="输入答案" spellCheck={false} autoComplete="off" aria-label="作答" />
-              </div>
-            )}
-            {!revealed && question.inputMode === "textarea" && (
-              <div className="answer-field">
-                <textarea autoFocus value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="先独立作答；核心功能不依赖 AI" aria-label="作答" />
-                {sentenceCheck && <p className={sentenceCheck.hasTarget && sentenceCheck.completeEnough ? "local-check pass" : "local-check"}>{sentenceCheck.message}</p>}
-              </div>
-            )}
-            {!revealed && question.inputMode === "choice" && (
-              <div className="choice-grid">
-                {question.choices.map((choice) => (
-                  <button key={choice} className={answer === choice ? "on" : ""} onClick={() => setAnswer(choice)}>
-                    <span className="choice-mark" />{choice}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {revealed && (
-              <>
-                <div className="stage-rule" />
-                {objectiveResult !== null && (
-                  <div className={objectiveResult ? "verdict ok" : "verdict no"}>
-                    {objectiveResult ? <Check size={15} strokeWidth={2} /> : <X size={15} strokeWidth={2} />}
-                    {objectiveResult ? "客观判定正确" : "客观判定未命中"}
-                  </div>
-                )}
-                <span className="label" style={{ display: "block", marginTop: 10 }}>已翻卡 · 答案</span>
-                <div className="stage-answer">{question.answer}</div>
-                {detail?.englishCore && (
-                  <p className="stage-gloss">
-                    {detail.englishCore}
-                    <span className="credit">Open English WordNet · CC BY 4.0</span>
-                  </p>
-                )}
-                <div className="stage-split">
-                  {detail?.openExample && (
-                    <div>
-                      <span className="label">开放语料例句</span>
-                      <p>{detail.openExample}</p>
-                    </div>
-                  )}
-                  <div>
-                    <span className="label">你上次错在哪</span>
-                    <p className="zh">
-                      {mistakes.length
-                        ? `${mistakes.slice(-3).map((event) => `${skillLabels[event.skill]}${event.errorType ? ` · ${event.errorType}` : ""}`).join("；")}。共 ${mistakes.length} 次未命中。`
-                        : "还没有记录到错误；这里只显示真实的答题事件，不做推测。"}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="stage-foot">
-            {!revealed ? (
-              <div className="check-row">
-                <button className="btn primary large" onClick={onCheck}>
-                  {question.inputMode === "reveal" ? "显示答案" : "核对答案"}<kbd>Space</kbd>
-                </button>
-                <span className="session-budget">先自己回忆，再翻卡；翻卡后才出现评分。</span>
-              </div>
-            ) : (
-              <>
-                <div className="ask">
-                  <span>这次回忆有多费力？</span>
-                  <small>评分只更新这一个 FSRS 主状态；键帽上写的是评分后的下一次间隔</small>
-                </div>
-                <div className="swipe-hint">
-                  <span><MoveHorizontal size={14} strokeWidth={1.5} aria-hidden="true" />左滑忘记 · 右滑记得 · 上滑轻松</span>
-                  <span>点按也可</span>
-                </div>
-                <div className="rate-grid">
-                  {([1, 2, 3, 4] as const).map((rating) => (
-                    <button key={rating} className={rating === 3 ? "rate-btn best" : "rate-btn"} onClick={() => onRate(rating)}>
-                      <strong>{ratingLabels[rating]}</strong>
-                      <kbd>{rating}</kbd>
-                      <span className="iv">{intervals[rating]}{rating === 3 ? " · 推荐" : ""}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <div className="keyline">
-              <span><kbd>Space</kbd>翻卡</span>
-              <span><kbd>1</kbd>–<kbd>4</kbd>评分并进入下一题</span>
-              <span><kbd>R</kbd>发音</span>
-              <span><kbd>Z</kbd>撤销</span>
-              <span><kbd>T</kbd>换题型</span>
-              <span><kbd>Esc</kbd>退出并保存</span>
-              <span className="tail">正误反馈同时使用文字与图标</span>
-            </div>
-          </div>
+      <section className="study-stage">
+        <div className="question-meta">
+          <label><span>{question.label}</span><select value={forcedType || "adaptive"} onChange={(event) => setForcedType(event.target.value === "adaptive" ? null : event.target.value as QuestionType)} aria-label="选择题型"><option value="adaptive">自适应题型</option>{QUESTION_CATALOG.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <span>{sourceLine(entry)}</span>
         </div>
 
-        <aside className="context" aria-label="上下文">
-          <span className="label">上下文 · 常驻</span>
+        <article className="study-card">
+          {question.audio && <button className="audio-orb" onClick={onSpeak} aria-label="播放系统语音"><Volume2 size={26} /><span>播放</span></button>}
+          <p className={question.prompt.length > 90 ? "study-prompt long" : "study-prompt"}>{question.prompt}</p>
+          {question.support && <p className="study-support">{question.support}</p>}
 
-          {detail?.relations.family.length ? (
-            <div>
-              <h3>词族</h3>
-              <div className="context-chips">
-                <span className="self">{entry.headword}</span>
-                {detail.relations.family.slice(0, 5).map((word) => <span key={word}>{word}</span>)}
-              </div>
-            </div>
-          ) : null}
+          {!revealed && question.inputMode === "text" && <div className="answer-area"><input autoFocus value={answer} onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => event.key === "Enter" && onCheck()} placeholder="输入答案" spellCheck={false} autoComplete="off" /></div>}
+          {!revealed && question.inputMode === "textarea" && <div className="answer-area"><textarea autoFocus value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="先独立作答；核心功能不依赖 AI" />{sentenceCheck && <p className={sentenceCheck.hasTarget && sentenceCheck.completeEnough ? "local-check pass" : "local-check"}>{sentenceCheck.message}</p>}</div>}
+          {!revealed && question.inputMode === "choice" && <div className="choice-grid">{question.choices.map((choice) => <button key={choice} className={answer === choice ? "selected" : ""} onClick={() => setAnswer(choice)}><span className="choice-mark" />{choice}</button>)}</div>}
 
-          {detail?.relations.phrases.length ? (
-            <div>
-              <h3>已审核搭配</h3>
-              <div className="context-list">
-                {detail.relations.phrases.slice(0, 3).map((phrase) => (
-                  <div key={phrase}>{phrase}<span className="credit">来自正式词库短语条目</span></div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {detail?.relations.confusables.length ? (
-            <div>
-              <h3>易混</h3>
-              <div className="context-chips">
-                {detail.relations.confusables.slice(0, 4).map((word) => <span key={word}>{word}</span>)}
-              </div>
-            </div>
-          ) : null}
-
-          {neighbors.length > 0 && (
-            <div>
-              <h3>同单元邻词</h3>
-              <div>
-                {neighbors.map((neighbor) => (
-                  <div className="neighbor" key={neighbor.id}>
-                    <span>{neighbor.headword}<span className="zh"> {neighbor.chineseCore}</span></span>
-                    <span className="when">{dueLabel(cards.get(neighbor.id))}</span>
-                  </div>
-                ))}
-              </div>
+          {revealed && (
+            <div className="answer-reveal">
+              {objectiveResult !== null && <div className={objectiveResult ? "result-line correct" : "result-line incorrect"}>{objectiveResult ? <Check size={18} /> : <X size={18} />}<strong>{objectiveResult ? "客观判定正确" : "客观判定未命中"}</strong></div>}
+              <span>答案</span><h2>{question.answer}</h2>
+              {entry.britishIpa && <button className="inline-audio" onClick={onSpeak}><Volume2 size={16} />/{entry.britishIpa}/</button>}
+              {question.type !== "meaning-recall" && <p className="answer-meaning">{entry.chineseCore}</p>}
+              {detail?.englishCore && <p className="answer-definition">{detail.englishCore}</p>}
+              {question.type === "sentence-output" && sentenceCheck && <p className="local-check-note">本地用法检查：{sentenceCheck.message} 语法、搭配和风格是不同维度；未配置 AI 时不伪造更细判断。</p>}
             </div>
           )}
+        </article>
 
-          <div className="context-foot">
-            <span className="label">这个词的记录</span>
-            <div className="context-stats" style={{ marginTop: 10 }}>
-              <div><span className="num">{cardEvents.length}</span><span>复习次数</span></div>
-              <div>
-                <span className="num">
-                  {cardEvents.length ? (cardEvents.reduce((sum, event) => sum + event.responseMs, 0) / cardEvents.length / 1000).toFixed(1) : "0.0"}
-                  <small> 秒</small>
-                </span>
-                <span>平均反应</span>
-              </div>
-              <div><span className="num">{retrievabilityOf(card).toFixed(2)}</span><span>当前可提取性</span></div>
-              <div><span className="num">{mistakes.length}</span><span>未命中</span></div>
-            </div>
-            <button className="btn block" style={{ marginTop: 12 }} onClick={onFavorite}>
-              <Bookmark size={14} strokeWidth={1.5} fill={favorite ? "currentColor" : "none"} aria-hidden="true" />
-              {favorite ? "已收藏" : "收藏并加注释"}<kbd>B</kbd>
-            </button>
-          </div>
-        </aside>
-      </div>
+        {!revealed ? <div className="study-actions"><button className="hint-button" onClick={() => setHints(hints + 1)} disabled={hints >= 2}>提示 {hints}/2</button><button className="primary-button wide" onClick={onCheck}>{question.inputMode === "reveal" ? "显示答案" : "核对答案"}<span className="key-hint">Space</span></button></div> : (
+          <div className="rating-zone"><p>这次回忆有多费力？<span>评分会更新唯一的 FSRS 主状态</span></p><div className="rating-buttons"><button onClick={() => onRate(1)}><strong>忘记</strong><span>1</span><small>重学</small></button><button onClick={() => onRate(2)}><strong>困难</strong><span>2</span><small>短间隔</small></button><button onClick={() => onRate(3)} className="recommended"><strong>记得</strong><span>3</span><small>推荐</small></button><button onClick={() => onRate(4)}><strong>轻松</strong><span>4</span><small>长间隔</small></button></div></div>
+        )}
+        <footer className="session-help"><Keyboard size={15} /><span>Space 翻卡 · 1–4 评分 · R 发音 · Z 撤销</span><span>正误反馈同时使用文字与图标</span></footer>
+      </section>
     </main>
   );
 }

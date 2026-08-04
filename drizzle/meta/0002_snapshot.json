@@ -1,14 +1,14 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "65fedcd4-79d3-4f7b-bd04-f206b085bb25",
-  "prevId": "7818a155-cc3a-46d3-a0d1-505008878a5d",
+  "id": "8322b24b-d588-4c8a-a448-42bef5273abe",
+  "prevId": "65fedcd4-79d3-4f7b-bd04-f206b085bb25",
   "tables": {
-    "ai_provider_config": {
-      "name": "ai_provider_config",
+    "ai_configs": {
+      "name": "ai_configs",
       "columns": {
-        "id": {
-          "name": "id",
+        "user_key": {
+          "name": "user_key",
           "type": "text",
           "primaryKey": true,
           "notNull": true,
@@ -19,42 +19,70 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'deepseek'"
         },
         "base_url": {
           "name": "base_url",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'https://api.deepseek.com/v1'"
         },
         "model": {
           "name": "model",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'deepseek-v4-flash'"
         },
-        "api_key_ciphertext": {
-          "name": "api_key_ciphertext",
+        "daily_limit": {
+          "name": "daily_limit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 30
+        },
+        "timeout_seconds": {
+          "name": "timeout_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 25
+        },
+        "encrypted_api_key": {
+          "name": "encrypted_api_key",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "api_key_iv": {
-          "name": "api_key_iv",
+        "key_iv": {
+          "name": "key_iv",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "updated_by": {
-          "name": "updated_by",
+        "encryption_version": {
+          "name": "encryption_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
         },
         "updated_at": {
           "name": "updated_at",

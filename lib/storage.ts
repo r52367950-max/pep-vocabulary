@@ -1,6 +1,6 @@
-export const USER_DATA_SCHEMA_VERSION = "1.0.0";
+export const USER_DATA_SCHEMA_VERSION = "1.1.0";
 const DB_NAME = "pep-vocab-studio";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const stores = ["cards", "events", "lists", "settings", "meta"] as const;
 type StoreName = (typeof stores)[number];
 
@@ -47,6 +47,16 @@ export type ReviewEvent = {
   responseMs: number;
   hints: number;
   errorType: string | null;
+  prompt?: string;
+  answerGiven?: string | null;
+  expectedAnswer?: string | null;
+  sourceLine?: string | null;
+  intervalBeforeDays?: number | null;
+  intervalAfterDays?: number;
+  stabilityBefore?: number | null;
+  stabilityAfter?: number;
+  difficultyBefore?: number | null;
+  difficultyAfter?: number;
   before: StoredCard | null;
   after: StoredCard;
   schedulerLog: Record<string, unknown>;
@@ -69,7 +79,7 @@ export type AppSettings = {
 
 export const defaultSettings: AppSettings = {
   key: "app",
-  dailyMinutes: 25,
+  dailyMinutes: 45,
   desiredRetention: 0.9,
   selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
   mode: "normal",
@@ -132,18 +142,38 @@ export async function exportBackup() {
   return { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards, events, lists, settings };
 }
 
+type BackupPayload = {
+  schemaVersion: string;
+  exportedAt?: string;
+  cards: StoredCard[];
+  events: ReviewEvent[];
+  lists: Record<string, unknown>[];
+  settings: AppSettings[];
+};
+
+function migrateBackup(payload: BackupPayload): BackupPayload {
+  if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION) return payload;
+  if (payload.schemaVersion !== "1.0.0") throw new Error(`不支持的 schema 版本：${payload.schemaVersion || "缺失"}`);
+  return {
+    ...payload,
+    schemaVersion: USER_DATA_SCHEMA_VERSION,
+    events: payload.events.map((event) => ({ ...event, prompt: event.prompt || "", answerGiven: event.answerGiven ?? null, expectedAnswer: event.expectedAnswer ?? null, sourceLine: event.sourceLine ?? null })),
+    settings: payload.settings.map((settings) => ({ ...defaultSettings, ...settings, key: "app" })),
+  };
+}
+
 export async function restoreBackup(payload: unknown) {
   if (!payload || typeof payload !== "object") throw new Error("备份不是有效对象");
   const data = payload as Record<string, unknown>;
-  if (data.schemaVersion !== USER_DATA_SCHEMA_VERSION) throw new Error(`不支持的 schema 版本：${String(data.schemaVersion || "缺失")}`);
   if (!["cards", "events", "lists", "settings"].every((key) => Array.isArray(data[key]))) throw new Error("备份结构损坏或字段缺失");
+  const migrated = migrateBackup(data as unknown as BackupPayload);
   const db = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(["cards", "events", "lists", "settings"], "readwrite");
     for (const name of ["cards", "events", "lists", "settings"] as const) {
       const store = tx.objectStore(name);
       store.clear();
-      for (const row of data[name] as object[]) store.put(row);
+      for (const row of migrated[name] as object[]) store.put(row);
     }
     tx.oncomplete = () => { db.close(); resolve(); };
     tx.onerror = () => reject(tx.error || new Error("恢复失败"));
