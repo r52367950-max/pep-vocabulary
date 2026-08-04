@@ -16,8 +16,8 @@
 - `ts-fsrs` v5.2.3 / FSRS v6 适配层；每词一个主调度状态，默认保持率 0.90，可查看负担变化。
 - 词库搜索与教材/单元/状态筛选、懒加载详情、收藏、注释、系统 TTS、趋势和负担分析。
 - IndexedDB 本地状态、追加式复习事件、JSON 备份恢复、CSV/TSV、文章生词对齐、Service Worker 离线。
-- 独立设置中心：外观、学习参数、数据边界与 DeepSeek API 配置分栏管理。
-- 可选 D1 私有同步；DeepSeek API Key 只在服务端以 AES-GCM 加密保存，前端、备份和 Git 均不含明文；AI 关闭或不可用时核心功能不受影响。
+- 独立设置中心：外观、学习参数、数据边界与 DeepSeek / OpenAI-compatible API 配置分栏管理。
+- 可选 D1 私有同步；模型 API Key 只在服务端以 AES-GCM 加密保存，前端、备份和 Git 均不含明文；AI 关闭或不可用时核心功能不受影响。
 
 ## 本地运行
 

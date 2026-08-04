@@ -45,16 +45,16 @@ test("destructive reset and AI degradation are explicit", () => {
   assert.match(app, /系统语音/);
 });
 
-test("AI deployment settings keep credentials server-side and restrict the upstream", () => {
+test("AI deployment settings keep credentials server-side and validate compatible upstreams", () => {
   const settings = source("components/console-settings.tsx");
   const configRoute = source("app/api/ai/config/route.ts");
   const testRoute = source("app/api/ai/test/route.ts");
   const cryptoLayer = source("lib/ai-config.ts");
   const storage = source("lib/storage.ts");
   const migration = source("drizzle/0001_classy_queen_noir.sql");
-  assert.match(settings, /type="password"/); assert.match(settings, /autoComplete="new-password"/); assert.match(settings, /服务端加密保存/);
-  assert.doesNotMatch(settings, /localStorage.*apiKey|indexedDB.*apiKey/i); assert.match(cryptoLayer, /AES-GCM/); assert.match(cryptoLayer, /https:\/\/api\.deepseek\.com/); assert.match(cryptoLayer, /no-store, max-age=0/);
-  assert.match(configRoute, /encryptedApiKey/); assert.doesNotMatch(configRoute, /apiKey:\s*row|encryptedApiKey:\s*row/); assert.match(testRoute, /\/models/); assert.match(migration, /encrypted_api_key/); assert.doesNotMatch(storage, /encryptedApiKey|DEEPSEEK_API_KEY/);
+  assert.match(settings, /type="password"/); assert.match(settings, /autoComplete="off"/); assert.match(settings, /服务端加密保存/);
+  assert.doesNotMatch(settings, /localStorage.*apiKey|indexedDB.*apiKey/i); assert.match(cryptoLayer, /AES-GCM/); assert.match(cryptoLayer, /https:\/\/api\.deepseek\.com/); assert.match(cryptoLayer, /openai-compatible/); assert.match(cryptoLayer, /no-store, max-age=0/);
+  assert.match(configRoute, /encryptedApiKey/); assert.doesNotMatch(configRoute, /apiKey:\s*row|encryptedApiKey:\s*row/); assert.match(testRoute, /testAssistantConnection/); assert.match(migration, /encrypted_api_key/); assert.doesNotMatch(storage, /encryptedApiKey|DEEPSEEK_API_KEY/);
 });
 
 test("accessibility fallbacks and exact viewport QA harness stay wired", () => {

@@ -23,3 +23,9 @@ export const aiConfigs = sqliteTable("ai_configs", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const aiRateLimits = sqliteTable("ai_rate_limits", {
+  bucketKey: text("bucket_key").primaryKey(),
+  requestCount: integer("request_count").notNull().default(1),
+  expiresAt: integer("expires_at").notNull(),
+});
