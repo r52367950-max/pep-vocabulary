@@ -18,7 +18,6 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Target,
   Undo2,
   Upload,
