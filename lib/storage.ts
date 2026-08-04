@@ -86,7 +86,7 @@ export const defaultSettings: AppSettings = {
   selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
   mode: "normal",
   theme: "system",
-  aiEnabled: false,
+  aiEnabled: true,
   diagnosisComplete: false,
   examDate: null,
   updatedAt: new Date(0).toISOString(),

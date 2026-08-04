@@ -40,8 +40,15 @@ test("PWA shell, offline worker, lazy chunks, backup and D1 sync are wired", () 
 test("destructive reset and AI degradation are explicit", () => {
   const app = source("components/vocab-app.tsx");
   const settings = source("components/console-settings.tsx");
+  const storage = source("lib/storage.ts");
+  const consoleCss = source("app/console.css");
+  const globalCss = source("app/globals.css");
   assert.match(app, /window\.confirm\(["']将清空本机/);
   assert.match(settings, /关闭后不会发起模型请求/);
+  assert.match(storage, /aiEnabled:\s*true/);
+  assert.match(consoleCss, /\.toggle-row>input\{[^}]*inset:0[^}]*cursor:pointer[^}]*z-index:1/);
+  assert.doesNotMatch(consoleCss, /\.toggle-row>input\{[^}]*pointer-events:none/);
+  assert.match(globalCss, /label:not\(\.switch-row\):not\(\.toggle-row\)/);
   assert.match(app, /系统语音/);
 });
 
