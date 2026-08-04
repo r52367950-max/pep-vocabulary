@@ -16,11 +16,12 @@ import {
 } from "../lib/assistant/core.ts";
 import {
   LEARNING_ASSISTANT_TASKS,
-  LEARNING_MAX_OUTPUT_TOKENS,
+  LEARNING_OUTPUT_TOKEN_RANGES,
   LEARNING_RESPONSE_CACHE_POLICY,
   LEARNING_SYSTEM_PREFIX,
   buildLearningPrompt,
   learningResponseCacheKey,
+  learningOutputTokenBudget,
   learningUpstreamPayload,
   parseLearningRequest,
 } from "../lib/assistant/learning-core.ts";
@@ -33,8 +34,12 @@ export const ASSISTANT_BUDGET_CONTRACT = Object.freeze({
   maxStaticPrefixBytes: 4_096,
   maxUserMessageBytes: 20_000,
   maxUpstreamRequestBytes: 24_000,
-  maxLegacyOutputTokens: 960,
-  maxLearningOutputTokens: 640,
+  minDeepExplainOutputTokens: 10_000,
+  maxDeepExplainOutputTokens: 20_000,
+  maxCompactLegacyOutputTokens: 960,
+  minExpandedLearningOutputTokens: 5_000,
+  maxExpandedLearningOutputTokens: 16_000,
+  maxMemorizeOutputTokens: 640,
 });
 
 const FORBIDDEN_REQUEST_KEYS = new Set([
@@ -274,7 +279,7 @@ export async function runAssistantBudgetHarness({ projectRoot = PROJECT_ROOT } =
     const evidence = evidenceFor(request.wordIds);
     const firstPrompt = buildLearningPrompt(request, evidence);
     const secondPrompt = buildLearningPrompt(request, reverseEvidence(evidence));
-    const payload = learningUpstreamPayload("deepseek-v4-flash", firstPrompt, task, "deepseek");
+    const payload = learningUpstreamPayload("deepseek-v4-flash", firstPrompt, request, "deepseek");
     const serialized = JSON.stringify(payload);
     const firstCacheKey = await learningResponseCacheKey("deepseek", "deepseek-v4-flash", request, evidence);
     const secondCacheKey = await learningResponseCacheKey("deepseek", "deepseek-v4-flash", request, reverseEvidence(evidence));
@@ -286,6 +291,8 @@ export async function runAssistantBudgetHarness({ projectRoot = PROJECT_ROOT } =
       userBytes: bytes(firstPrompt.user),
       requestBytes: bytes(serialized),
       outputTokens: payload.max_tokens,
+      expectedOutputTokens: learningOutputTokenBudget(request),
+      outputTokenRange: LEARNING_OUTPUT_TOKEN_RANGES[task],
       promptHash: promptHash(firstPrompt),
       repeatPromptHash: promptHash(secondPrompt),
       responseCacheEnabled: LEARNING_RESPONSE_CACHE_POLICY[task].enabled,
@@ -321,9 +328,14 @@ export async function runAssistantBudgetHarness({ projectRoot = PROJECT_ROOT } =
   check(
     checks,
     "output-token-budget",
-    legacy.every((item) => item.outputTokens === ASSISTANT_TOKEN_BUDGETS[item.task] && item.outputTokens <= ASSISTANT_BUDGET_CONTRACT.maxLegacyOutputTokens) &&
-      learning.every((item) => item.outputTokens === LEARNING_MAX_OUTPUT_TOKENS[item.task] && item.outputTokens <= ASSISTANT_BUDGET_CONTRACT.maxLearningOutputTokens),
-    `legacyMax=${Math.max(...legacy.map((item) => item.outputTokens))}; learningMax=${Math.max(...learning.map((item) => item.outputTokens))}`,
+    legacy.every((item) => item.outputTokens === ASSISTANT_TOKEN_BUDGETS[item.task]) &&
+      legacy.find((item) => item.task === "explain").outputTokens >= ASSISTANT_BUDGET_CONTRACT.minDeepExplainOutputTokens &&
+      legacy.find((item) => item.task === "explain").outputTokens <= ASSISTANT_BUDGET_CONTRACT.maxDeepExplainOutputTokens &&
+      legacy.filter((item) => item.task !== "explain").every((item) => item.outputTokens <= ASSISTANT_BUDGET_CONTRACT.maxCompactLegacyOutputTokens) &&
+      learning.every((item) => item.outputTokens === item.expectedOutputTokens && item.outputTokens >= item.outputTokenRange.min && item.outputTokens <= item.outputTokenRange.max) &&
+      learning.filter((item) => item.task !== "memorize").every((item) => item.outputTokens >= ASSISTANT_BUDGET_CONTRACT.minExpandedLearningOutputTokens && item.outputTokens <= ASSISTANT_BUDGET_CONTRACT.maxExpandedLearningOutputTokens) &&
+      learning.find((item) => item.task === "memorize").outputTokens <= ASSISTANT_BUDGET_CONTRACT.maxMemorizeOutputTokens,
+    `explain=${legacy.find((item) => item.task === "explain").outputTokens}; search=${learning.find((item) => item.task === "search").outputTokens}; analysis=${learning.find((item) => item.task === "analyze-learning").outputTokens}; plan=${learning.find((item) => item.task === "plan-study").outputTokens}`,
   );
   check(
     checks,

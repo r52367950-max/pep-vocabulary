@@ -64,6 +64,20 @@ test("AI deployment settings keep credentials server-side and validate compatibl
   assert.match(configRoute, /encryptedApiKey/); assert.doesNotMatch(configRoute, /apiKey:\s*row|encryptedApiKey:\s*row/); assert.match(testRoute, /testAssistantConnection/); assert.match(migration, /encrypted_api_key/); assert.doesNotMatch(storage, /encryptedApiKey|DEEPSEEK_API_KEY/);
 });
 
+test("deep AI tasks use centralized long timeouts and full explanation rendering", () => {
+  const client = source("lib/assistant/client.ts");
+  const coach = source("components/study-ai-coach.tsx");
+  assert.match(client, /explain:\s*285_000/);
+  assert.match(client, /search:\s*140_000/);
+  assert.match(client, /"analyze-learning":\s*190_000/);
+  assert.match(client, /"plan-study":\s*240_000/);
+  assert.match(coach, /result\.meaning\.map/);
+  assert.match(coach, /result\.grammar\.map/);
+  assert.match(coach, /result\.collocations\.map/);
+  assert.match(coach, /result\.examples\.map/);
+  assert.doesNotMatch(coach, /result\.(?:meaning|grammar|collocations|examples)\.slice/);
+});
+
 test("accessibility fallbacks and exact viewport QA harness stay wired", () => {
   const css = source("app/globals.css");
   const storage = source("lib/storage.ts");

@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 import {
   AssistantInputError,
   AssistantUpstreamError,
+  ASSISTANT_TOKEN_BUDGETS,
+  assistantTimeoutForOutputTokens,
   buildAssistantPrompt,
   chatCompletionsUrl,
   connectionEndpointCandidates,
@@ -55,6 +57,20 @@ test("all four assistant requests accept only bounded canonical word IDs", () =>
   assert.throws(() => parseAssistantRequest("explain", { wordId: "abandon" }), AssistantInputError);
   assert.throws(() => parseAssistantRequest("contrast-words", { wordIds: [wordA] }), /词条数量/);
   assert.throws(() => parseAssistantRequest("check-sentence", { wordId: wordA, sentence: "x".repeat(601) }), /sentence/);
+});
+
+test("single-word explanations allow a 20k deep answer without changing compact task budgets", () => {
+  assert.equal(ASSISTANT_TOKEN_BUDGETS.explain, 20_000);
+  assert.ok(ASSISTANT_TOKEN_BUDGETS.explain >= 10_000 && ASSISTANT_TOKEN_BUDGETS.explain <= 20_000);
+  assert.ok(ASSISTANT_TOKEN_BUDGETS["check-sentence"] <= 960);
+  assert.ok(ASSISTANT_TOKEN_BUDGETS["generate-practice"] <= 960);
+  assert.ok(ASSISTANT_TOKEN_BUDGETS["contrast-words"] <= 960);
+  assert.equal(assistantTimeoutForOutputTokens(25_000, 20_000), 270_000);
+  const evidence = resolveLexiconEvidence(evidenceRows, [wordA]);
+  const prompt = buildAssistantPrompt(parseAssistantRequest("explain", { wordId: wordA }), evidence);
+  assert.match(prompt.system, /单词深度精讲/);
+  assert.doesNotMatch(prompt.system, /输出不得超过/);
+  assert.equal(upstreamPayload("deepseek-v4-flash", prompt, "explain", "deepseek").max_tokens, 20_000);
 });
 
 test("base URL validation is HTTPS-first and rejects credential or private-network targets", () => {
@@ -177,6 +193,23 @@ test("generated examples are explicitly marked and never represented as textbook
     style: { status: "ok", feedback: "风格自然。" },
     revision: null, evidenceIds: [wordA], limitations: [],
   }), evidence), /verdict/);
+});
+
+test("deep explanations preserve expanded sections instead of silently truncating them", () => {
+  const evidence = resolveLexiconEvidence(evidenceRows, [wordA]);
+  const result = sanitizeModelResult("explain", JSON.stringify({
+    summary: "完整精讲。",
+    meaning: Array.from({ length: 12 }, (_, index) => `核心义说明 ${index + 1}`),
+    grammar: Array.from({ length: 12 }, (_, index) => `语法说明 ${index + 1}`),
+    collocations: Array.from({ length: 12 }, (_, index) => `搭配说明 ${index + 1}`),
+    examples: Array.from({ length: 6 }, (_, index) => ({ sentence: `Generated example ${index + 1}.`, translation: `生成例句 ${index + 1}。` })),
+    evidenceIds: [wordA],
+    limitations: [],
+  }), evidence);
+  assert.equal(result.meaning.length, 12);
+  assert.equal(result.grammar.length, 12);
+  assert.equal(result.collocations.length, 12);
+  assert.equal(result.examples.length, 6);
 });
 
 test("upstream timeout and provider errors are normalized without leaking response bodies", async () => {
