@@ -15,20 +15,33 @@ import { authenticatedUserKey } from "@/lib/server-user";
 import {
   AssistantInputError,
   AssistantUpstreamError,
+  assistantTimeoutForOutputTokens,
   buildAssistantPrompt,
   chatCompletionsUrl,
   connectionEndpointCandidates,
   connectionTestPayload,
+  fetchChatCompletionDetailedWithTimeout,
   fetchChatCompletionWithTimeout,
   parseAssistantRequest,
   probeConnectionEndpoint,
   resolveLexiconEvidence,
   sanitizeModelResult,
+  ASSISTANT_TOKEN_BUDGETS,
   upstreamPayload,
   type AiProvider,
   type AssistantTask,
   type LexiconEvidence,
 } from "./core";
+import {
+  LEARNING_RESPONSE_CACHE_POLICY,
+  buildLearningPrompt,
+  learningResponseCacheKey,
+  learningOutputTokenBudget,
+  learningUpstreamPayload,
+  parseLearningRequest,
+  sanitizeLearningResult,
+  type LearningAssistantTask,
+} from "./learning-core";
 
 const MAX_REQUEST_BYTES = 24_000;
 
@@ -81,6 +94,43 @@ function responseHeaders(extra?: HeadersInit): Headers {
   headers.set("cache-control", "no-store");
   headers.set("x-content-type-options", "nosniff");
   return headers;
+}
+
+const EMPTY_USAGE = {
+  promptTokens: null,
+  completionTokens: null,
+  totalTokens: null,
+  promptCacheHitTokens: null,
+  promptCacheMissTokens: null,
+  reasoningTokens: null,
+};
+
+function learningCacheRequest(cacheKey: string) {
+  return new Request(`https://vocab-ai-cache.invalid/${encodeURIComponent(cacheKey)}`);
+}
+
+async function readLearningCache(cacheKey: string): Promise<string | null> {
+  try {
+    const cache = await caches.open("vocab-ai-learning-v1");
+    const response = await cache.match(learningCacheRequest(cacheKey));
+    if (!response?.ok) return null;
+    const payload = await response.json() as { content?: unknown };
+    return typeof payload.content === "string" && payload.content.length <= 48_000 ? payload.content : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeLearningCache(cacheKey: string, content: string, ttlSeconds: number) {
+  try {
+    const cache = await caches.open("vocab-ai-learning-v1");
+    await cache.put(learningCacheRequest(cacheKey), Response.json(
+      { content },
+      { headers: { "cache-control": `public, max-age=${ttlSeconds}`, "x-content-type-options": "nosniff" } },
+    ));
+  } catch {
+    // The provider prefix cache still works when an edge cache is unavailable.
+  }
 }
 
 export function assistantErrorResponse(error: unknown): Response {
@@ -378,6 +428,7 @@ function logConnectionTest(
 
 export async function handleAssistantRequest(request: Request, task: AssistantTask): Promise<Response> {
   let apiKey = "";
+  const startedAt = Date.now();
   try {
     assertSameOrigin(request);
     const body = await readJsonRequest(request);
@@ -386,7 +437,8 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     apiKey = config.apiKey;
     const evidence = resolveLexiconEvidence(await releaseIndex(request), parsed.wordIds);
     const prompt = buildAssistantPrompt(parsed, evidence);
-    const completion = await fetchChatCompletionWithTimeout(
+    const outputBudget = ASSISTANT_TOKEN_BUDGETS[task];
+    const completion = await fetchChatCompletionDetailedWithTimeout(
       fetch,
       chatCompletionsUrl(config.baseUrl, config.provider),
       {
@@ -399,12 +451,104 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
         },
         body: JSON.stringify(upstreamPayload(config.model, prompt, task, config.provider)),
       },
-      config.timeoutMs,
+      assistantTimeoutForOutputTokens(config.timeoutMs, outputBudget),
     );
     const maximumItems = parsed.task === "generate-practice" ? parsed.count : 8;
-    const result = sanitizeModelResult(task, completion, evidence, maximumItems);
+    const result = sanitizeModelResult(task, completion.content, evidence, maximumItems);
     return Response.json(
-      { ok: true, task, provider: config.provider, model: config.model, evidence, result },
+      {
+        ok: true,
+        task,
+        provider: config.provider,
+        model: config.model,
+        evidence,
+        result,
+        meta: {
+          durationMs: Date.now() - startedAt,
+          maxOutputTokens: outputBudget,
+          usage: completion.usage,
+        },
+      },
+      { status: 200, headers: responseHeaders() },
+    );
+  } catch (error) {
+    return assistantErrorResponse(error);
+  } finally {
+    apiKey = "";
+  }
+}
+
+export async function handleLearningAssistantRequest(request: Request, task: LearningAssistantTask): Promise<Response> {
+  let apiKey = "";
+  const startedAt = Date.now();
+  try {
+    assertSameOrigin(request);
+    const body = await readJsonRequest(request);
+    const parsed = parseLearningRequest(task, body);
+    const config = await authenticatedRuntime(request);
+    apiKey = config.apiKey;
+    const evidence = resolveLexiconEvidence(await releaseIndex(request), parsed.wordIds);
+    const prompt = buildLearningPrompt(parsed, evidence);
+    const outputBudget = learningOutputTokenBudget(parsed);
+    const cacheKey = await learningResponseCacheKey(config.provider, config.model, parsed, evidence, config.baseUrl);
+    if (cacheKey) {
+      const cachedContent = await readLearningCache(cacheKey);
+      if (cachedContent) {
+        const result = sanitizeLearningResult(parsed, cachedContent, evidence);
+        return Response.json(
+          {
+            ok: true,
+            task,
+            provider: config.provider,
+            model: config.model,
+            evidence,
+            result,
+            meta: {
+              durationMs: Date.now() - startedAt,
+              maxOutputTokens: outputBudget,
+              usage: EMPTY_USAGE,
+              cache: "hit",
+            },
+          },
+          { status: 200, headers: responseHeaders() },
+        );
+      }
+    }
+
+    const completion = await fetchChatCompletionDetailedWithTimeout(
+      fetch,
+      chatCompletionsUrl(config.baseUrl, config.provider),
+      {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify(learningUpstreamPayload(config.model, prompt, parsed, config.provider)),
+      },
+      assistantTimeoutForOutputTokens(config.timeoutMs, outputBudget),
+    );
+    const result = sanitizeLearningResult(parsed, completion.content, evidence);
+    if (cacheKey) {
+      await writeLearningCache(cacheKey, completion.content, LEARNING_RESPONSE_CACHE_POLICY[task].ttlSeconds);
+    }
+    return Response.json(
+      {
+        ok: true,
+        task,
+        provider: config.provider,
+        model: config.model,
+        evidence,
+        result,
+        meta: {
+          durationMs: Date.now() - startedAt,
+          maxOutputTokens: outputBudget,
+          usage: completion.usage,
+          cache: cacheKey ? "miss" : "bypass",
+        },
+      },
       { status: 200, headers: responseHeaders() },
     );
   } catch (error) {
@@ -513,7 +657,7 @@ export async function testAssistantConnection(request: Request): Promise<Respons
           connectionCheck("account", "passed", "服务商允许当前账户执行真实生成请求。"),
           connectionCheck("model", "passed", "所选模型已返回非空回答。", basicLatencyMs),
           connectionCheck("service", "passed", "模型服务已完成两次真实请求。"),
-          connectionCheck("capability", "passed", "JSON 结构化输出可供四类词汇助手使用。", capabilityLatencyMs),
+          connectionCheck("capability", "passed", "JSON 结构化输出可供词迹的八类受限任务使用。", capabilityLatencyMs),
         ],
       },
       { status: 200, headers: responseHeaders() },
