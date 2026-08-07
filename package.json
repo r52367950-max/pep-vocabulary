@@ -12,6 +12,7 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "data:manifest": "node scripts/build-source-manifest.mjs",
     "data:build": "node scripts/build-lexicon.mjs",
+    "data:repair": "node scripts/repair-generated-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
     "test:unit": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:ai-harness": "node --experimental-strip-types scripts/assistant-budget-harness.mjs",

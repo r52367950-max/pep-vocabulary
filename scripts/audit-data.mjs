@@ -17,10 +17,21 @@ for (const entry of entries) {
   if (!entry.id || !entry.headword || !entry.chineseCore || !entry.scopes?.length || !entry.sources?.length) errors.push(`required-field:${entry.id || entry.headword || "unknown"}`);
   if (ids.has(entry.id)) errors.push(`duplicate-id:${entry.id}`);
   ids.add(entry.id);
-  if (/[\uE000-\uF8FF]/.test(`${entry.headword}${entry.britishIpa}${entry.americanIpa}`)) errors.push(`private-use-character:${entry.id}`);
+  if (/[\uE000-\uF8FF]/.test(`${entry.headword}${entry.britishIpa}${entry.americanIpa}${entry.chineseCore}`)) errors.push(`private-use-character:${entry.id}`);
+  if (/\bNAmE\b|ŋɑmE/i.test(`${entry.britishIpa}${entry.americanIpa}${entry.chineseCore}`)) errors.push(`ipa-label-leak:${entry.id}`);
+  if (/\/[\uE000-\uF8FFA-Za-z@%{}]+\//.test(entry.chineseCore)) errors.push(`ipa-leak-in-chinese:${entry.id}`);
   if (/[{}%@/]/.test(`${entry.britishIpa}${entry.americanIpa}`)) errors.push(`malformed-ipa:${entry.id}`);
+  if (/[\u200B-\u200D\uFEFF]/.test(`${entry.headword}${entry.britishIpa}${entry.americanIpa}${entry.chineseCore}`)) errors.push(`zero-width-character:${entry.id}`);
+  if (/[\u3400-\u9fff；]/.test(`${entry.britishIpa}${entry.americanIpa}`)) errors.push(`non-ipa-text-in-ipa:${entry.id}`);
+  if (/[（(《]\s*$/.test(entry.headword)) errors.push(`dangling-headword-delimiter:${entry.id}`);
+  if (/Henry Norman Bethune/.test(entry.chineseCore)) errors.push(`merged-headword-in-chinese:${entry.id}`);
   const rights = JSON.stringify(entry.license).toLowerCase();
   if (rights.includes("unknown") || rights.includes("prohibited")) errors.push(`unsafe-rights:${entry.id}`);
+}
+if (releaseManifest.releasedEntries !== entries.length) errors.push(`manifest-entry-count:${releaseManifest.releasedEntries}:${entries.length}`);
+for (const chunk of releaseManifest.chunks) {
+  const actual = readJson(`public/data/v1/${chunk.file}`).length;
+  if (chunk.count !== actual) errors.push(`manifest-chunk-count:${chunk.file}:${chunk.count}:${actual}`);
 }
 
 const sourceBookIds = new Set(sourceManifest.entries.filter((entry) => entry.id.startsWith("HS-") || entry.id.startsWith("JH-")).map((entry) => entry.id));

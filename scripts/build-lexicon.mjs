@@ -35,13 +35,29 @@ function normalizeIpa(value = "") {
     .replace(/Q/g, "ɒ").replace(/A/g, "ɑ").replace(/D/g, "ð").replace(/T/g, "θ")
     .replace(/S/g, "ʃ").replace(/Z/g, "ʒ").replace(/V/g, "ʌ").replace(/3/g, "ɜ")
     .replace(/\{/g, "æ").replace(/%/g, "ˌ").replace(/'/g, "ˈ").replace(/ә/g, "ə")
-    .replace(/:/g, "ː").replace(/\//g, "").replace(/\s+/g, " ").trim();
+    .replace(/:/g, "ː").replace(/；/g, ";").replace(/\//g, "").replace(/\s+/g, " ").trim();
   return out;
 }
 
-const cleanSpaces = (value = "") => value.replace(/[\u00a0\t]+/g, " ").replace(/\s+/g, " ").trim();
+function completeSharedIpaSuffix(variant, base) {
+  if (!variant.endsWith("-")) return variant;
+  const prefix = variant.slice(0, -1);
+  const anchor = [...prefix.replace(/[ˈˌː()]/g, "")].at(-1);
+  const anchorIndex = anchor ? base.lastIndexOf(anchor) : -1;
+  return anchorIndex >= 0 ? `${prefix}${base.slice(anchorIndex + 1)}` : prefix;
+}
+
+const cleanSpaces = (value = "") => value.replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/[\u00a0\t]+/g, " ").replace(/\s+/g, " ").trim();
 const lookupKey = (value = "") => cleanSpaces(value).toLowerCase().replace(/[’‘]/g, "'")
   .replace(/…+/g, "...").replace(/\.{2,}/g, "...").replace(/\s*\.\.\.\s*/g, " ... ").replace(/\s+/g, " ").trim();
+
+function chineseSliceStart(value, hanStart) {
+  if (hanStart < 0) return -1;
+  const prefix = value.slice(0, hanStart);
+  const open = Math.max(prefix.lastIndexOf("（"), prefix.lastIndexOf("("), prefix.lastIndexOf("《"));
+  const close = Math.max(prefix.lastIndexOf("）"), prefix.lastIndexOf(")"), prefix.lastIndexOf("》"));
+  return open > close ? open : hanStart;
+}
 
 function parseBBox(pdfPath, firstPage, lastPage) {
   const xml = execFileSync("pdftotext", ["-f", String(firstPage), "-l", String(lastPage), "-bbox-layout", pdfPath, "-"], {
@@ -240,26 +256,61 @@ function parseRawHigh(record) {
   // Some PEP PDFs encode the phonetic slash and spaces in a private-use font.
   // Normalise the delimiters before splitting the headword from IPA/POS data.
   const raw = record.rawText.replace(/^△\s*/, "").replaceAll("\uF02F", "/").replaceAll("\uF020", " ").trim();
-  const properName = record.rawText.trim().startsWith("△");
   const slashStart = raw.indexOf("/");
   const chineseStart = raw.search(/[\u3400-\u9fff]/);
   let headEnd = slashStart >= 0 ? slashStart : chineseStart;
   if (headEnd < 0) headEnd = raw.search(/\b(?:n|v|vi|vt|adj|adv|prep|pron|conj|abbr|modal|art|num|interj)\./i);
   if (headEnd < 0) headEnd = raw.length;
+  const prefixForChinese = chineseStart >= 0 ? raw.slice(0, chineseStart) : "";
+  const openBeforeChinese = Math.max(prefixForChinese.lastIndexOf("（"), prefixForChinese.lastIndexOf("("), prefixForChinese.lastIndexOf("《"));
+  const closeBeforeChinese = Math.max(prefixForChinese.lastIndexOf("）"), prefixForChinese.lastIndexOf(")"), prefixForChinese.lastIndexOf("》"));
+  if (slashStart < 0 && openBeforeChinese > closeBeforeChinese) headEnd = openBeforeChinese;
   const rawHeadword = cleanSpaces(raw.slice(0, headEnd));
-  const headword = cleanSpaces(rawHeadword
+  let headword = cleanSpaces(rawHeadword
     .replace(/\s*[（(]\s*(?:especially\s+)?NAmE[^）)]*[）)]/gi, "")
+    .replace(/\s*[（(]\s*(?:especially\s+)?US\s+[^）)]*[）)]/gi, "")
+    .replace(/\s+abbr\.\s*[（(][^）)]+[）)]\s*$/i, "")
     .replace(/\s*\(BrE[^)]*\)/gi, "")
     .replace(/\s+/g, " "));
-  const ipaGroups = [...raw.matchAll(/\/([^/]{1,100})\//g)].map((m) => normalizeIpa(m[1]));
-  const firstIpa = ipaGroups[0] || "";
-  const nameSplit = firstIpa.split(/;\s*NAmE\s*/i);
-  const britishIpa = nameSplit[0] || firstIpa;
-  const americanIpa = nameSplit[1]?.replace(/^-/, headword.slice(0, Math.max(0, headword.length - 3))) || nameSplit[0] || firstIpa;
+  if (headword.endsWith("）") && !headword.includes("（")) headword = cleanSpaces(headword.slice(0, -1));
+  if (record.sourceRecordId === "HS-R3:111:191") headword = "Department of Obstetrics and Gynecology";
+  if (record.sourceRecordId === "HS-R3:111:194") headword = "the North/South Pole";
+  if (record.sourceRecordId === "HS-S1:114:85") headword = "switch off/on";
+  const markedProperName = record.rawText.trim().startsWith("△");
+  const properName = markedProperName || /^[A-Z]/.test(headword);
+  const rawIpaGroups = [...raw.matchAll(/\/([^/]{1,100})\//g)].map((m) => m[1]);
+  // Split the BrE/NAmE label before IPA normalisation; otherwise the ASCII N/A
+  // characters are themselves converted to phonetic symbols (for example ŋɑmE).
+  const firstIpaGroup = (rawIpaGroups[0] || "").replaceAll("\uF03B", ";").replaceAll("\uF020", " ");
+  const nameSplit = firstIpaGroup.split(/;\s*NAmE\s*/i);
+  let britishIpa = normalizeIpa(nameSplit[0] || rawIpaGroups[0] || "");
+  let americanIpa = completeSharedIpaSuffix(normalizeIpa(nameSplit[1] || nameSplit[0] || rawIpaGroups[0] || "")
+    .replace(/^-/, headword.slice(0, Math.max(0, headword.length - 3))), britishIpa);
+  const ipaGroups = [...new Set([britishIpa, americanIpa, ...rawIpaGroups.slice(1).map(normalizeIpa)].filter(Boolean))];
   const pos = [...raw.matchAll(/\b(n|v|vi|vt|adj|adv|prep|pron|conj|abbr|modal v|art|num|interj)\./gi)].map((m) => m[1].toLowerCase());
-  const zhStart = raw.search(/[\u3400-\u9fff]/);
-  const chinese = zhStart >= 0 ? cleanSpaces(raw.slice(zhStart).replace(/\b(?:NAmE|BrE)\b[^\u3400-\u9fff]*/g, "")) : "";
-  const kind = /\s/.test(headword) || /\.\.\./.test(headword) ? "phrase" : properName ? "proper-name" : "word";
+  const rawWithoutIpa = raw.replace(/\/[^/]{1,100}\//g, " ");
+  const zhStart = rawWithoutIpa.search(/[\u3400-\u9fff]/);
+  const chineseStartIndex = chineseSliceStart(rawWithoutIpa, zhStart);
+  let chinese = chineseStartIndex >= 0 ? cleanSpaces(rawWithoutIpa.slice(chineseStartIndex)
+    .replace(/\b(?:NAmE|BrE)\b[^\u3400-\u9fff]*/g, "")
+    .replace(/\s+\b(?:n|v|vi|vt|adj|adv|prep|pron|conj|abbr|modal v|art|num|interj)\.\s*/gi, "；")
+    .replace(/；{2,}/g, "；")) : "";
+  if (record.sourceRecordId === "HS-R3:111:190") chinese = "妇产科（全称 Department of Obstetrics and Gynecology）";
+  if (record.sourceRecordId === "HS-R3:111:191") chinese = "妇产科（全称）";
+  if (record.sourceRecordId === "HS-R3:111:157") chinese = chinese.replace(/\s*Henry Norman Bethune\s*/g, "");
+  if (record.sourceRecordId === "HS-R3:111:194") {
+    britishIpa = "";
+    americanIpa = "";
+    chinese = "北极／南极";
+  }
+  if (record.sourceRecordId === "HS-S1:114:85") {
+    britishIpa = "";
+    americanIpa = "";
+    chinese = "关／开（电灯、机器等）";
+  }
+  // Keep the historical kind stable so correcting a missed proper-name flag does
+  // not churn the entry's content-addressed ID.
+  const kind = /\s/.test(headword) || /\.\.\./.test(headword) ? "phrase" : markedProperName ? "proper-name" : "word";
   return {
     ...record,
     headword,
@@ -450,6 +501,19 @@ for (const book of books) {
   sourceRecords.push(...records);
   writeFileSync(join(rawDir, `${book.id}.jsonl`), `${records.map((item) => JSON.stringify(item)).join("\n")}\n`);
 }
+if (!sourceRecords.some((record) => record.lookup === "henry norman bethune")) {
+  sourceRecords.push({
+    sourceRecordId: "HS-R3:111:194:bethune", bookId: "HS-R3", scope: "high-required",
+    volume: "必修第三册", unit: "Unit 2", physicalPage: 111, printedPage: 104,
+    extraction: "pdf-text-layer-reconciled", sourceStatus: "verified-cross-source",
+    rawText: "Henry Norman Bethune 亨利·诺曼·白求恩", headword: "Henry Norman Bethune",
+    lookup: "henry norman bethune", kind: "phrase", properName: true,
+    britishIpa: "ˈhenri ˈnɔːmən bəˈθjuːn", americanIpa: "ˈhɛnri ˈnɔːrmən bəˈθuːn",
+    ipaVariants: ["ˈhenri ˈnɔːmən bəˈθjuːn", "ˈhɛnri ˈnɔːrmən bəˈθuːn"], partsOfSpeech: [],
+    countability: null, transitivity: null, chinese: "亨利·诺曼·白求恩",
+    fieldStatus: { headword: "verified-cross-source", chinese: "verified-primary", britishIpa: "verified-cross-source", americanIpa: "verified-cross-source", partsOfSpeech: "provisional" },
+  });
+}
 sourceRecords.push(...standardRecords);
 writeFileSync(join(rawDir, "STD-HS.jsonl"), `${standardRecords.map((item) => JSON.stringify(item)).join("\n")}\n`);
 const ecdictAll = await loadEcdict(new Set(sourceRecords.map((record) => record.lookup)));
@@ -472,6 +536,7 @@ for (const record of normalized) {
 }
 
 const highValueSeeds = new Set(["apply", "challenge", "content", "focus", "issue", "matter", "mean", "present", "range", "respect", "subject", "address", "approach", "figure", "strike", "charge", "account", "adapt", "affect", "effect", "advance", "recommend", "responsible", "confuse", "graduate", "schedule", "attract", "addicted"]);
+const gaokaoHighFrequency = new Set(JSON.parse(readFileSync(join(root, "data/gaokao-high-frequency.json"), "utf8")).headwords);
 const entries = [...grouped.entries()].map(([key, records]) => {
   const primary = records.find((item) => item.bookId.startsWith("HS-") && item.chinese) || records.find((item) => item.bookId.startsWith("JH-") && item.chinese) || records.find((item) => item.chinese) || records[0];
   const hasHighTextbook = records.some((item) => item.bookId.startsWith("HS-"));
@@ -488,6 +553,7 @@ const entries = [...grouped.entries()].map(([key, records]) => {
   const tier = high ? (records.length >= 3 || highValueSeeds.has(primary.lookup) ? "B" : "A") : "C";
   const scopes = [...new Set(records.filter((item) => item.bookId !== "STD-HS").map((item) => item.scope))];
   if (hasStandard && !hasHighTextbook && !hasMiddleTextbook) scopes.push("curriculum-not-textbook");
+  if (gaokaoHighFrequency.has(primary.lookup)) scopes.push("gaokao-supplement");
   const britishIpa = primary.britishIpa || records.find((item) => item.britishIpa)?.britishIpa || ipaUK.get(primary.lookup) || synthesizePhraseIpa(primary.headword, ipaUK) || "";
   const americanIpa = primary.americanIpa || records.find((item) => item.americanIpa)?.americanIpa || ipaUS.get(primary.lookup) || synthesizePhraseIpa(primary.headword, ipaUS) || britishIpa;
   return {
@@ -550,7 +616,7 @@ const released = entries.filter((entry) => entry.flags.formalReleaseEligible);
 const index = released.map((entry) => ({
   id: entry.id, headword: entry.headword, lookup: entry.lookup, tier: entry.tier, scopes: entry.scopes,
   chineseCore: entry.chineseCore, britishIpa: entry.britishIpa, americanIpa: entry.americanIpa,
-  partsOfSpeech: entry.partsOfSpeech, sources: entry.sources.map(({ bookId, volume, unit, printedPage }) => ({ bookId, volume, unit, printedPage })),
+  partsOfSpeech: entry.partsOfSpeech, sources: entry.sources.map(({ recordId, bookId, volume, unit, printedPage }) => ({ recordId, bookId, volume, unit, printedPage })),
   flags: entry.flags,
 }));
 
@@ -570,6 +636,7 @@ writeFileSync(join(releaseDir, "manifest.json"), `${JSON.stringify({
   highRequiredEntries: released.filter((item) => item.scopes.includes("high-required")).length,
   highSelectiveEntries: released.filter((item) => item.scopes.includes("high-selective")).length,
   curriculumNotTextbookEntries: released.filter((item) => item.scopes.includes("curriculum-not-textbook")).length,
+  gaokaoSupplementEntries: released.filter((item) => item.scopes.includes("gaokao-supplement")).length,
   tierCounts: Object.fromEntries(["A", "B", "C"].map((tier) => [tier, released.filter((item) => item.tier === tier).length])),
   chunks,
 }, null, 2)}\n`);

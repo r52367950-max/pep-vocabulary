@@ -59,7 +59,7 @@ test("new words use acquisition before FSRS and low-frequency views are lazy chu
   assert.match(app, /questionType:\s*"acquisition-delayed-recall"/);
   assert.match(app, /延迟再测/);
   assert.match(app, /eligibleNew\.slice\(0, Math\.min\(6, todayNew\)\)/);
-  assert.match(app, /先背 \$\{Math\.min\(6, todayNew\)\} 个新词/);
+  assert.match(app, /先学 \$\{Math\.min\(6, todayNew\)\} 个新词/);
   assert.doesNotMatch(app, /Math\.max\(4, Math\.min\(6, todayNew/);
   assert.match(app, /normalizedAcquisitionText\(item\.headword\).*normalizedAcquisitionText\(entry\.headword\)/s);
   assert.match(app, /normalizedAcquisitionText\(item\.meaning\).*normalizedAcquisitionText\(entry\.chineseCore\)/s);

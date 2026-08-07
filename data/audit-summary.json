@@ -1,19 +1,19 @@
 {
-  "auditedAt": "2026-08-04T12:47:10.750Z",
+  "auditedAt": "2026-08-07T11:35:08.019Z",
   "status": "release-candidate-with-declared-gaps",
   "counts": {
     "targetTextbooks": 12,
     "sourceManifestEntries": 41,
     "curriculumHeadwordRows": 2997,
-    "releasedEntries": 4681,
-    "missingEnglishDefinitions": 333,
-    "missingCompleteIpa": 153,
+    "releasedEntries": 4682,
+    "missingEnglishDefinitions": 334,
+    "missingCompleteIpa": 155,
     "unitRowsWithUnresolvedFields": 7
   },
   "errors": [],
   "warnings": [
-    "333 high-scope entries lack an open English definition",
-    "153 entries rely on system TTS without complete IPA",
+    "334 high-scope entries lack an open English definition",
+    "155 entries rely on system TTS without complete IPA",
     "7 unit rows contain field-level unresolved records"
   ],
   "gapSamples": {
@@ -164,7 +164,7 @@
       },
       {
         "id": "pep-ae71bca8b4d7191e",
-        "headword": "Administration (",
+        "headword": "Administration",
         "sources": [
           {
             "recordId": "HS-R3:114:358",
@@ -680,7 +680,7 @@
       },
       {
         "id": "pep-3cff26ba5f9ccbb6",
-        "headword": "break out （",
+        "headword": "break out",
         "sources": [
           {
             "recordId": "HS-S2:116:52",
@@ -770,7 +770,7 @@
       },
       {
         "id": "pep-77f0d8c11482311e",
-        "headword": "by comparison （",
+        "headword": "by comparison",
         "sources": [
           {
             "recordId": "HS-S1:116:242",
@@ -802,7 +802,7 @@
       },
       {
         "id": "pep-55bfb1dbb6eaad79",
-        "headword": "call on （",
+        "headword": "call on",
         "sources": [
           {
             "recordId": "HS-S1:117:287",
@@ -1208,7 +1208,7 @@
       },
       {
         "id": "pep-3cff26ba5f9ccbb6",
-        "headword": "break out （",
+        "headword": "break out",
         "sources": [
           {
             "recordId": "HS-S2:116:52",
@@ -1224,7 +1224,7 @@
       },
       {
         "id": "pep-77f0d8c11482311e",
-        "headword": "by comparison （",
+        "headword": "by comparison",
         "sources": [
           {
             "recordId": "HS-S1:116:242",
@@ -1256,7 +1256,7 @@
       },
       {
         "id": "pep-55bfb1dbb6eaad79",
-        "headword": "call on （",
+        "headword": "call on",
         "sources": [
           {
             "recordId": "HS-S1:117:287",
@@ -1304,7 +1304,7 @@
       },
       {
         "id": "pep-2341be0c75a6682e",
-        "headword": "check in （",
+        "headword": "check in",
         "sources": [
           {
             "recordId": "HS-R1:121:154",
@@ -1432,7 +1432,7 @@
       },
       {
         "id": "pep-f8501a251af28a35",
-        "headword": "CPR abbr. （ cardiopulmonary resuscitation ）",
+        "headword": "CPR",
         "sources": [
           {
             "recordId": "HS-S2:121:376",
@@ -1473,6 +1473,22 @@
             "unit": "Unit 5",
             "physicalPage": 118,
             "printedPage": 111,
+            "status": "verified-primary",
+            "curriculumLevel": null
+          }
+        ]
+      },
+      {
+        "id": "pep-492ec4aad518f000",
+        "headword": "Department of Obstetrics and Gynecology",
+        "sources": [
+          {
+            "recordId": "HS-R3:111:191",
+            "bookId": "HS-R3",
+            "volume": "必修第三册",
+            "unit": "Unit 2",
+            "physicalPage": 111,
+            "printedPage": 104,
             "status": "verified-primary",
             "curriculumLevel": null
           }
@@ -1544,7 +1560,7 @@
       },
       {
         "id": "pep-8447e8c413b09188",
-        "headword": "engage in （",
+        "headword": "engage in",
         "sources": [
           {
             "recordId": "HS-S2:116:101",
@@ -1592,7 +1608,7 @@
       },
       {
         "id": "pep-7fa26578114fc7d3",
-        "headword": "fall away （",
+        "headword": "fall away",
         "sources": [
           {
             "recordId": "HS-S4:113:53",
@@ -1647,22 +1663,6 @@
             "bookId": "JH-9",
             "volume": "九年级全一册",
             "unit": "Unit 6",
-            "physicalPage": null,
-            "printedPage": null,
-            "status": "verified-cross-source",
-            "curriculumLevel": null
-          }
-        ]
-      },
-      {
-        "id": "pep-c89b9759d4b02400",
-        "headword": "get a surprise",
-        "sources": [
-          {
-            "recordId": "JH-7B:crosscheck:481",
-            "bookId": "JH-7B",
-            "volume": "七年级下册",
-            "unit": "Unit 12",
             "physicalPage": null,
             "printedPage": null,
             "status": "verified-cross-source",

@@ -1,4 +1,4 @@
-export const USER_DATA_SCHEMA_VERSION = "1.1.0";
+export const USER_DATA_SCHEMA_VERSION = "1.2.0";
 const DB_NAME = "pep-vocab-studio";
 const DB_VERSION = 2;
 const stores = ["cards", "events", "lists", "settings", "meta"] as const;
@@ -71,9 +71,13 @@ export type AppSettings = {
   dailyMinutes: number;
   desiredRetention: number;
   selectedBooks: string[];
+  unitBook: string;
+  unit: string;
   mode: "normal" | "unit" | "review-only" | "exam" | "browse";
   theme: "light" | "dark" | "system";
   aiEnabled: boolean;
+  aiShareObjectiveAnswers: boolean;
+  aiShareFreeTextAnswers: boolean;
   diagnosisComplete: boolean;
   examDate: string | null;
   updatedAt: string;
@@ -84,9 +88,13 @@ export const defaultSettings: AppSettings = {
   dailyMinutes: 45,
   desiredRetention: 0.9,
   selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
+  unitBook: "HS-R1",
+  unit: "Unit 1",
   mode: "normal",
   theme: "system",
   aiEnabled: true,
+  aiShareObjectiveAnswers: true,
+  aiShareFreeTextAnswers: false,
   diagnosisComplete: false,
   examDate: null,
   updatedAt: new Date(0).toISOString(),
@@ -157,7 +165,8 @@ export const clearAcquisitionProgress = () => deleteOne("lists", ACTIVE_ACQUISIT
 
 export async function loadSettings() {
   try {
-    return (await getOne<AppSettings>("settings", "app")) || defaultSettings;
+    const stored = await getOne<Partial<AppSettings>>("settings", "app");
+    return stored ? { ...defaultSettings, ...stored, key: "app" as const } : defaultSettings;
   } catch {
     return defaultSettings;
   }
@@ -187,7 +196,7 @@ type BackupPayload = {
 
 function migrateBackup(payload: BackupPayload): BackupPayload {
   if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION) return payload;
-  if (payload.schemaVersion !== "1.0.0") throw new Error(`不支持的 schema 版本：${payload.schemaVersion || "缺失"}`);
+  if (!["1.0.0", "1.1.0"].includes(payload.schemaVersion)) throw new Error(`不支持的 schema 版本：${payload.schemaVersion || "缺失"}`);
   return {
     ...payload,
     schemaVersion: USER_DATA_SCHEMA_VERSION,

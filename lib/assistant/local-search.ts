@@ -64,7 +64,7 @@ export function recallSearchCandidates(
   query: string,
   options: { scopes?: Scope[]; limit?: number } = {},
 ) {
-  const limit = Math.max(1, Math.min(12, Math.trunc(options.limit ?? 12)));
+  const limit = Math.max(1, Math.min(5_000, Math.trunc(options.limit ?? 12)));
   const scoped = options.scopes?.length
     ? entries.filter((entry) => options.scopes!.some((scope) => entry.scopes.includes(scope)))
     : entries;

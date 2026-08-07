@@ -7,6 +7,7 @@ export type Scope =
   | "common-supplement";
 
 export type SourcePosition = {
+  recordId?: string;
   bookId: string;
   volume: string;
   unit: string;
@@ -56,6 +57,7 @@ export type LexiconManifest = {
   highRequiredEntries: number;
   highSelectiveEntries: number;
   curriculumNotTextbookEntries: number;
+  gaokaoSupplementEntries?: number;
   chunks: Array<{ file: string; count: number }>;
 };
 
@@ -72,8 +74,8 @@ export async function loadLexicon() {
   if (lexiconPromise) return lexiconPromise;
   lexiconPromise = (async () => {
     const [indexResponse, manifestResponse] = await Promise.all([
-      fetch("/data/v1/index.json", { cache: "force-cache" }),
-      fetch("/data/v1/manifest.json", { cache: "force-cache" }),
+      fetch("/data/v1/index.json", { cache: "no-cache" }),
+      fetch("/data/v1/manifest.json", { cache: "no-cache" }),
     ]);
     if (!indexResponse.ok || !manifestResponse.ok) throw new Error("词库索引暂时无法读取");
     const index = (await indexResponse.json()) as LexiconIndexEntry[];
@@ -104,7 +106,7 @@ export async function loadDetails(ids: string[]) {
     const descriptor = manifest.chunks[chunkIndex];
     if (!descriptor) return;
     const promise = (async () => {
-      const response = await fetch(`/data/v1/${descriptor.file}`, { cache: "force-cache" });
+      const response = await fetch(`/data/v1/${descriptor.file}`, { cache: "no-cache" });
       if (!response.ok) throw new Error("词条详情分片暂时无法读取");
       const rows = (await response.json()) as LexiconDetail[];
       rows.forEach((row) => detailCache.set(row.id, row));

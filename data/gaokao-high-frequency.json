@@ -1,0 +1,38 @@
+{
+  "version": "2026.08",
+  "label": "高考高频核心 259",
+  "methodology": "以课程标准词汇边界为底线，结合人教版教材覆盖、全国卷强调的阅读与表达关键能力，以及通用语篇中高复用的学术、叙事和任务词筛得。它是复习优先级清单，不冒充教育考试院发布的官方词频排名。",
+  "sources": [
+    "https://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+    "https://gaokao.neea.edu.cn/",
+    "https://www.neea.edu.cn/xhtml1/report/2401/549-1.htm"
+  ],
+  "headwords": [
+    "ability", "abstract", "accept", "access", "account", "achieve", "acquire", "action", "activity", "adapt",
+    "add", "address", "advantage", "advice", "affect", "afford", "agree", "aim", "allow", "amount",
+    "analyse", "answer", "appear", "apply", "appreciate", "approach", "argue", "assess", "association", "assume",
+    "attempt", "attend", "attention", "attitude", "attract", "available", "avoid", "aware", "balance", "base",
+    "behaviour", "belief", "believe", "benefit", "cause", "challenge", "change", "character", "choice", "claim",
+    "common", "communicate", "community", "compare", "compete", "complete", "concern", "conclude", "condition", "consequence",
+    "consider", "consume", "contact", "contain", "context", "continue", "contrast", "contribute", "control", "convince",
+    "cooperate", "courage", "create", "creative", "culture", "curious", "data", "decide", "decision", "decrease",
+    "define", "demand", "depend", "describe", "design", "desire", "detail", "determine", "develop", "difference",
+    "difficult", "direct", "discover", "discuss", "education", "effect", "efficient", "effort", "emotion", "enable",
+    "encourage", "energy", "engage", "ensure", "environment", "establish", "evaluate", "event", "evidence", "examine",
+    "exist", "expect", "experience", "explain", "explore", "express", "extent", "factor", "failure", "familiar",
+    "feature", "finally", "focus", "follow", "force", "form", "function", "future", "global", "goal",
+    "habit", "happen", "health", "help", "human", "identify", "imagine", "impact", "importance", "improve",
+    "include", "increase", "independent", "indicate", "individual", "influence", "information", "instead", "intention", "interest",
+    "involve", "issue", "knowledge", "language", "lead", "learn", "life", "likely", "maintain", "major",
+    "manage", "matter", "mean", "measure", "memory", "method", "mind", "mistake", "motivate", "natural",
+    "nature", "necessary", "need", "normal", "notice", "observe", "occur", "offer", "opinion", "opportunity",
+    "organise", "participate", "particular", "pattern", "perform", "period", "possible", "practice", "prefer", "prepare",
+    "pressure", "prevent", "problem", "process", "produce", "progress", "promote", "protect", "provide", "public",
+    "purpose", "quality", "range", "react", "realise", "reason", "receive", "recognise", "recommend", "reduce",
+    "reflect", "relate", "relationship", "require", "research", "respond", "responsibility", "result", "risk", "role",
+    "rule", "significant", "similar", "situation", "skill", "society", "solution", "solve", "source", "specific",
+    "standard", "strategy", "stress", "structure", "success", "suggest", "suitable", "support", "system", "target",
+    "task", "teach", "team", "technology", "tend", "theory", "think", "topic", "tradition", "treatment",
+    "truth", "typical", "understand", "useful", "value", "various", "view", "volunteer", "work"
+  ]
+}

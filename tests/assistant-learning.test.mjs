@@ -44,7 +44,7 @@ const stats = [
 
 test("four learning requests are bounded, canonical and reject identity-bearing fields", () => {
   const search = parseLearningRequest("search", { query: "  放弃   give up  ", wordIds: [wordA, wordB] });
-  assert.deepEqual(search, { task: "search", query: "放弃 give up", wordIds: [wordA, wordB], limit: 5 });
+  assert.deepEqual(search, { task: "search", query: "放弃 give up", wordIds: [wordA, wordB], limit: 40 });
   assert.throws(
     () => parseLearningRequest("search", { query: "me@example.com", wordIds: [wordA] }),
     (error) => error instanceof AssistantInputError && error.code === "personal_data_not_allowed",
@@ -66,6 +66,7 @@ test("four learning requests are bounded, canonical and reject identity-bearing 
   assert.deepEqual(analysis.skillStats.map((item) => item.skill), ["meaning", "spelling"]);
   assert.equal(analysis.retentionPercent, 82.3);
   assert.equal(analysis.averageSeconds, 7.5);
+  assert.deepEqual(analysis.recentMistakes, []);
   assert.throws(() => parseLearningRequest("analyze-learning", {
     wordIds: [wordA], periodDays: 7, reviewCount: 1, uniqueWords: 1, retentionPercent: 90,
     averageSeconds: 5, skillStats: [], userName: "Luna",
@@ -115,8 +116,8 @@ test("system prefix is identical for every task and user JSON is deterministic",
 
 test("search, analysis and plan use distinct dynamic budgets of at least 5k", () => {
   assert.deepEqual(LEARNING_ASSISTANT_TASKS, ["search", "analyze-learning", "plan-study", "memorize"]);
-  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES.search, { min: 5_000, max: 8_000 });
-  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES["analyze-learning"], { min: 7_000, max: 12_000 });
+  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES.search, { min: 5_000, max: 12_000 });
+  assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES["analyze-learning"], { min: 7_000, max: 16_000 });
   assert.deepEqual(LEARNING_OUTPUT_TOKEN_RANGES["plan-study"], { min: 9_000, max: 16_000 });
   const requests = [
     parseLearningRequest("search", { query: "abandon and give up", wordIds: [wordA, wordB], limit: 2 }),

@@ -2,7 +2,7 @@
 
 import { BookOpenCheck, Bot, Check, ChevronRight, CircleAlert, Database, ExternalLink, Eye, KeyRound, Laptop, Link2, LockKeyhole, Palette, PlugZap, RotateCcw, Save, ShieldCheck, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { AppSettings } from "@/lib/storage";
+import { USER_DATA_SCHEMA_VERSION, type AppSettings } from "@/lib/storage";
 
 type Section = "general" | "learning" | "ai" | "privacy" | "about";
 type AIProvider = "deepseek" | "openai-compatible";
@@ -96,10 +96,11 @@ export default function ConsoleSettings({ settings, onUpdate, onOpenData, onClea
               {connectionResult.serviceStatusUrl && <a className="provider-status-link" href={connectionResult.serviceStatusUrl} target="_blank" rel="noreferrer">查看 DeepSeek 官方服务状态 <ExternalLink size={13}/></a>}
             </div> : aiConfig.provider === "deepseek" ? <a className="provider-status-link standalone" href="https://status.deepseek.com/" target="_blank" rel="noreferrer">查看 DeepSeek 官方服务状态 <ExternalLink size={13}/></a> : null}
           </section>
-          <section className="settings-card compact-card"><header><Eye size={19}/><div><h2>发送范围与 token 预算</h2><p>搜索先在本机召回最多 12 个词；分析与规划只发送匿名聚合；背诵只发送正式词条 ID。搜索 5k–8k、分析 7k–12k、计划 9k–16k，按请求规模动态分配；单词精讲上限 20k。固定前缀与规范 JSON 保持缓存稳定。</p></div></header></section>
+          <section className="settings-card"><header><Eye size={19}/><div><h2>AI 可看的学习数据</h2><p>错答属于个人学习数据。客观题可安全地用于诊断；自由写作可能包含生活信息，因此单独授权。</p></div></header><label className="settings-row toggle-row"><div><strong>发送客观题错答</strong><small>最多最近 100 条拼写、选择与听写错答；同时发送标准答案和对应词条</small></div><input type="checkbox" checked={settings.aiShareObjectiveAnswers} onChange={(event) => onUpdate({ aiShareObjectiveAnswers: event.target.checked })}/><span className="switch"/></label><label className="settings-row toggle-row"><div><strong>发送自由写作错答</strong><small>包括造句与复述正文；默认关闭，个人注释始终不发送</small></div><input type="checkbox" checked={settings.aiShareFreeTextAnswers} onChange={(event) => onUpdate({ aiShareFreeTextAnswers: event.target.checked })}/><span className="switch"/></label></section>
+          <section className="settings-card compact-card"><header><Eye size={19}/><div><h2>发送范围与 token 预算</h2><p>搜索先在本机解析册次、单元和中英词义，再向 AI 提供最多 120 个候选；分析可读取本机筛出的薄弱 100 词和已授权错答。搜索 5k–12k、分析 7k–16k、计划 9k–16k，按请求规模动态分配；单词精讲上限 20k。</p></div></header></section>
         </>}
         {section === "privacy" && <><section className="settings-card"><header><Database size={20}/><div><h2>本地数据</h2><p>卡片状态、复习事件、词单和注释默认保存在本机。</p></div></header><button className="settings-link-row" onClick={onOpenData}><div><strong>备份、恢复与私有同步</strong><small>前往数据页管理 JSON、CSV 与同步状态</small></div><ChevronRight size={16}/></button></section><section className="settings-card danger-card"><header><RotateCcw size={20}/><div><h2>重置本机数据</h2><p>不会删除服务端 API 密钥；如需移除密钥，请在 AI 接口页单独操作。</p></div></header><button className="danger-button" onClick={onClear}><Trash2 size={16}/>清空本机个人数据</button></section></>}
-        {section === "about" && <section className="settings-card about-card"><header><Laptop size={20}/><div><h2>词迹</h2><p>人教版初高中英语词汇学习 · 本地优先</p></div></header><dl><div><dt>应用版本</dt><dd>1.4.0</dd></div><div><dt>用户数据 schema</dt><dd>1.1.0</dd></div><div><dt>词库发布状态</dt><dd>带已声明缺口的发布候选</dd></div><div><dt>AI 密钥边界</dt><dd>服务端加密，不随备份导出</dd></div></dl></section>}
+        {section === "about" && <section className="settings-card about-card"><header><Laptop size={20}/><div><h2>词迹</h2><p>人教版初高中英语词汇学习 · 本地优先</p></div></header><dl><div><dt>应用版本</dt><dd>1.5.0</dd></div><div><dt>用户数据 schema</dt><dd>{USER_DATA_SCHEMA_VERSION}</dd></div><div><dt>词库发布状态</dt><dd>带已声明缺口的发布候选</dd></div><div><dt>AI 密钥边界</dt><dd>服务端加密，不随备份导出</dd></div></dl></section>}
       </main>
     </div>
   </div>;

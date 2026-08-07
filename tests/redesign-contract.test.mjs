@@ -25,15 +25,15 @@ test("Vocab Redesign console shell is wired to live application state", async ()
   assert.match(app, /<ConsoleSettings/); assert.match(settings, /AI 接口/); assert.match(styles, /settings-layout/);
 });
 
-test("review event schema preserves learning evidence and supports 1.0 migration", async () => {
+test("review event schema preserves learning evidence and migrates earlier backups", async () => {
   const [storage, scheduler, api, layout] = await Promise.all([
     read("lib/storage.ts"),
     read("lib/scheduler.ts"),
     read("app/api/sync/route.ts"),
     read("app/layout.tsx"),
   ]);
-  assert.match(storage, /USER_DATA_SCHEMA_VERSION = "1\.1\.0"/);
-  assert.match(storage, /payload\.schemaVersion !== "1\.0\.0"/);
+  assert.match(storage, /USER_DATA_SCHEMA_VERSION = "1\.2\.0"/);
+  assert.match(storage, /\["1\.0\.0", "1\.1\.0"\]/);
   assert.match(storage, /answerGiven\?: string \| null/);
   assert.match(scheduler, /intervalAfterDays/);
   assert.match(scheduler, /forecastDueLoad/);
