@@ -18,6 +18,9 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
+# Do not package obsolete hashed assets from earlier builds.
+rm -rf -- "${SITES_PROJECT_ROOT}/dist"
+
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \

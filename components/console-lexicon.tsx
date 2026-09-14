@@ -27,7 +27,7 @@ export default function ConsoleLexicon(p:ConsoleLexiconProps){
  const toggleScope=(s:Scope)=>setScopeFilters(scopeFilters.includes(s)?scopeFilters.filter(v=>v!==s):[...scopeFilters,s]);
  const toggleStatus=(s:string)=>setStatusFilters(statusFilters.includes(s)?statusFilters.filter(v=>v!==s):[...statusFilters,s]);
  const select=(e:LexiconIndexEntry)=>{onSelect(e);setMobileDetailOpen(true)};
- const statusCount=(s:string)=>s==="unseen"?allEntries.filter(e=>!cards.has(e.id)).length:[...cards.values()].filter(c=>c.status===s).length;
+ const statusCount=(s:string)=>s==="unseen"?allEntries.filter(e=>!cards.has(e.id)||cards.get(e.id)?.status==="unseen").length:[...cards.values()].filter(c=>c.status===s).length;
  return <div className="console-lexicon">
   <header className="lexicon-console-head"><label><Search size={18}/><input id="lexicon-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="英文、中文、词根或模糊拼写" aria-label="搜索词库"/><kbd>/</kbd></label><div><strong>{entries.length.toLocaleString()}</strong><span>/ {total.toLocaleString()} 条</span></div></header>
   <section className="filter-console" aria-label="词库组合筛选">

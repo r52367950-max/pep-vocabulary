@@ -1,0 +1,13 @@
+{
+  "baseline": "1386d0e",
+  "node": "v24.19.0",
+  "entries": 4681,
+  "choice_100_calls_median_ms": {
+    "before": 53.34923500000002,
+    "after": 21.624612999999954
+  },
+  "concurrent_20_index_loads": {
+    "before": 40,
+    "after": 2
+  }
+}

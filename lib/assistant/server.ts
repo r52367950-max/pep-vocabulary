@@ -1,3 +1,5 @@
+import { readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
+import type { D1Database } from "@cloudflare/workers-types";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
@@ -37,7 +39,7 @@ type ReleaseIndexRow = LexiconEvidence & {
 };
 
 type RuntimeBindings = {
-  ASSETS?: Fetcher;
+  ASSETS?: { fetch: typeof fetch };
   DB?: D1Database;
 };
 
@@ -117,6 +119,7 @@ export function assistantErrorResponse(error: unknown): Response {
 
 export function assertSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
+  if (!sameOriginRequest(request)) throw new AssistantInputError("invalid_origin", "只允许同源请求。", 403);
   if (!origin) return;
   let expected: string;
   try {
@@ -128,22 +131,10 @@ export function assertSameOrigin(request: Request) {
 }
 
 export async function readJsonRequest(request: Request): Promise<unknown> {
-  const contentType = request.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().startsWith("application/json")) {
-    throw new AssistantInputError("unsupported_media_type", "请求必须使用 application/json。", 415);
-  }
-  const declaredLength = Number(request.headers.get("content-length") || 0);
-  if (declaredLength > MAX_REQUEST_BYTES) {
-    throw new AssistantInputError("request_too_large", "AI 请求超过 24 KB 限制。", 413);
-  }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > MAX_REQUEST_BYTES) {
-    throw new AssistantInputError("request_too_large", "AI 请求超过 24 KB 限制。", 413);
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new AssistantInputError("invalid_json", "请求不是有效 JSON。");
+  try { return await readJsonObject(request, MAX_REQUEST_BYTES); }
+  catch (error) {
+    if (error instanceof RequestBodyError) throw new AssistantInputError("invalid_request", error.message, error.status);
+    throw error;
   }
 }
 

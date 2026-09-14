@@ -1,45 +1,52 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { syncStates } from "@/db/schema";
-import { USER_DATA_SCHEMA_VERSION } from "@/lib/storage";
+import { USER_DATA_SCHEMA_VERSION, validateBackup } from "@/lib/storage";
 import { authenticatedUserKey } from "@/lib/server-user";
+import { readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 
 const MAX_PAYLOAD_BYTES = 5_000_000;
+function json(body: unknown, status = 200) {
+  return Response.json(body, { status, headers: { "cache-control": "no-store, max-age=0", "x-content-type-options": "nosniff" } });
+}
 
 export async function GET() {
-  const key = await authenticatedUserKey();
-  if (!key) return Response.json({ error: "Private sync requires the authenticated site identity." }, { status: 401 });
   try {
+    const key = await authenticatedUserKey();
+    if (!key) return json({ error: "Private sync requires the authenticated site identity." }, 401);
     const [row] = await getDb().select().from(syncStates).where(eq(syncStates.userKey, key)).limit(1);
-    return Response.json({ state: row || null });
-  } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Sync storage unavailable" }, { status: 503 });
-  }
+    return json({ state: row || null });
+  } catch { return json({ error: "Sync storage unavailable" }, 503); }
 }
 
 export async function POST(request: Request) {
-  const key = await authenticatedUserKey();
-  if (!key) return Response.json({ error: "Private sync requires the authenticated site identity." }, { status: 401 });
-  let body: { schemaVersion?: string; baseRevision?: number; clientUpdatedAt?: string; payload?: unknown };
+  if (!sameOriginRequest(request)) return json({ error: "Invalid request origin" }, 403);
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    const key = await authenticatedUserKey();
+    if (!key) return json({ error: "Private sync requires the authenticated site identity." }, 401);
+    const body = await readJsonObject(request, MAX_PAYLOAD_BYTES + 4096);
+    if (body.schemaVersion !== USER_DATA_SCHEMA_VERSION || typeof body.clientUpdatedAt !== "string" || !Number.isFinite(Date.parse(body.clientUpdatedAt)) ||
+      typeof body.baseRevision !== "number" || !Number.isSafeInteger(body.baseRevision) || body.baseRevision < 0 || body.baseRevision >= Number.MAX_SAFE_INTEGER) {
+      return json({ error: "Valid schemaVersion, clientUpdatedAt and baseRevision are required" }, 400);
+    }
+    let payload: string;
+    try {
+      if (!body.payload || (body.payload as { schemaVersion?: unknown }).schemaVersion !== body.schemaVersion) return json({ error: "payload schema does not match request schema" }, 400);
+      payload = JSON.stringify(validateBackup(body.payload));
+    } catch { return json({ error: "Invalid backup payload" }, 400); }
+    if (new TextEncoder().encode(payload).byteLength > MAX_PAYLOAD_BYTES) return json({ error: "Backup exceeds the 5 MB private-sync limit; use file export instead." }, 413);
+    const db = getDb();
+    const values = { schemaVersion: body.schemaVersion, payload, clientUpdatedAt: body.clientUpdatedAt };
+    // Compare and swap in ONE SQL statement, including the first-upload race.
+    const rows = body.baseRevision === 0
+      ? await db.insert(syncStates).values({ userKey: key, revision: 1, ...values }).onConflictDoNothing().returning({ revision: syncStates.revision, serverUpdatedAt: syncStates.serverUpdatedAt })
+      : await db.update(syncStates).set({ ...values, revision: sql`${syncStates.revision} + 1`, serverUpdatedAt: sql`CURRENT_TIMESTAMP` })
+        .where(sql`${syncStates.userKey} = ${key} AND ${syncStates.revision} = ${body.baseRevision}`)
+        .returning({ revision: syncStates.revision, serverUpdatedAt: syncStates.serverUpdatedAt });
+    if (!rows.length) return json({ error: "revision-conflict" }, 409);
+    return json(rows[0]);
+  } catch (error) {
+    if (error instanceof RequestBodyError) return json({ error: error.message }, error.status);
+    return json({ error: "Sync storage unavailable" }, 503);
   }
-  if (body.schemaVersion !== USER_DATA_SCHEMA_VERSION || !body.clientUpdatedAt || !body.payload) return Response.json({ error: "schemaVersion, clientUpdatedAt and payload are required" }, { status: 400 });
-  if (typeof body.payload !== "object" || (body.payload as { schemaVersion?: string }).schemaVersion !== USER_DATA_SCHEMA_VERSION) return Response.json({ error: "payload schema does not match request schema" }, { status: 400 });
-  const payload = JSON.stringify(body.payload);
-  if (new TextEncoder().encode(payload).byteLength > MAX_PAYLOAD_BYTES) return Response.json({ error: "Backup exceeds the 5 MB private-sync limit; use file export instead." }, { status: 413 });
-  const db = getDb();
-  const [current] = await db.select().from(syncStates).where(eq(syncStates.userKey, key)).limit(1);
-  if (current && typeof body.baseRevision === "number" && current.revision !== body.baseRevision) {
-    return Response.json({ error: "revision-conflict", state: current }, { status: 409 });
-  }
-  const nextRevision = (current?.revision || 0) + 1;
-  await db.insert(syncStates).values({ userKey: key, revision: nextRevision, schemaVersion: body.schemaVersion, payload, clientUpdatedAt: body.clientUpdatedAt })
-    .onConflictDoUpdate({
-      target: syncStates.userKey,
-      set: { revision: nextRevision, schemaVersion: body.schemaVersion, payload, clientUpdatedAt: body.clientUpdatedAt, serverUpdatedAt: sql`CURRENT_TIMESTAMP` },
-    });
-  return Response.json({ revision: nextRevision, serverUpdatedAt: new Date().toISOString() });
 }

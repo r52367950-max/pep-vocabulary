@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "files": 160,
+    "total_bytes": 6295623,
+    "js_bytes": 393380,
+    "css_bytes": 201115
+  },
+  "after": {
+    "files": 132,
+    "total_bytes": 6010663,
+    "js_bytes": 399358,
+    "css_bytes": 194509
+  }
+}

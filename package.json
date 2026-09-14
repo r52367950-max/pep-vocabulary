@@ -13,11 +13,14 @@
     "data:manifest": "node scripts/build-source-manifest.mjs",
     "data:build": "node scripts/build-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
-    "test:unit": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test": "npm run data:audit && npm run test:unit && npm run build",
+    "test:unit": "node --import ./tests/register.mjs --test tests/*.test.mjs",
+    "test": "npm run data:audit && npm run typecheck && npm run test:unit && npm run build && npm run test:runtime",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
+    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
+    "typecheck": "tsc --noEmit",
+    "test:runtime": "node scripts/smoke-worker.mjs",
+    "benchmark": "node scripts/benchmark-core.mjs"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "^5.1.1",
@@ -27,13 +30,14 @@
     "@fontsource/barlow-condensed": "^5.3.0",
     "drizzle-orm": "0.45.2",
     "lucide-react": "^0.468.0",
-    "next": "16.2.6",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
+    "next": "16.3.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "ts-fsrs": "^5.2.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/vite-plugin": "1.54.9",
+    "@cloudflare/workers-types": "^5.20260914.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
@@ -42,14 +46,19 @@
     "@vitejs/plugin-rsc": "0.5.26",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
-    "react-server-dom-webpack": "19.2.6",
+    "eslint-config-next": "16.3.5",
+    "fake-indexeddb": "^6.2.5",
+    "react-server-dom-webpack": "19.2.8",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
-    "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "vite": "8.3.0",
+    "wrangler": "4.131.2"
   },
   "type": "module",
-  "displayName": "词迹 · 英语词汇学习"
+  "displayName": "\u8bcd\u8ff9 \u00b7 \u82f1\u8bed\u8bcd\u6c47\u5b66\u4e60",
+  "overrides": {
+    "image-size": "2.0.4",
+    "esbuild": "0.28.2"
+  }
 }
