@@ -1,0 +1,34 @@
+{
+  "id": "thoreau-walking",
+  "title": "Walking",
+  "titleZh": "散步",
+  "author": "Henry David Thoreau",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "梭罗把散步看作一种接近自然的能力。节选开篇四段，其中关于 sauntering 的词源说法是作者的文学联想。",
+  "backgroundEn": "Thoreau treats walking as a way of approaching nature. These four opening paragraphs include his imaginative account of the word sauntering.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/1022",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 547,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "I wish to speak a word for Nature, for absolute Freedom and Wildness, as contrasted with a freedom and culture merely civil,—to regard man as an inhabitant, or a part and parcel of Nature, rather than a member of society. I wish to make an extreme statement, if so I may make an emphatic one, for there are enough champions of civilization: the minister and the school committee and every one of you will take care of that."
+    },
+    {
+      "en": "I have met with but one or two persons in the course of my life who understood the art of Walking, that is, of taking walks—who had a genius, so to speak, for sauntering, which word is beautifully derived “from idle people who roved about the country, in the Middle Ages, and asked charity, under pretense of going à la Sainte Terre,” to the Holy Land, till the children exclaimed, “There goes a Sainte-Terrer,” a Saunterer, a Holy-Lander. They who never go to the Holy Land in their walks, as they pretend, are indeed mere idlers and vagabonds; but they who do go there are saunterers in the good sense, such as I mean. Some, however, would derive the word from sans terre without land or a home, which, therefore, in the good sense, will mean, having no particular home, but equally at home everywhere. For this is the secret of successful sauntering. He who sits still in a house all the time may be the greatest vagrant of all; but the saunterer, in the good sense, is no more vagrant than the meandering river, which is all the while sedulously seeking the shortest course to the sea. But I prefer the first, which, indeed, is the most probable derivation. For every walk is a sort of crusade, preached by some Peter the Hermit in us, to go forth and reconquer this Holy Land from the hands of the Infidels."
+    },
+    {
+      "en": "It is true, we are but faint-hearted crusaders, even the walkers, nowadays, who undertake no persevering, never-ending enterprises. Our expeditions are but tours, and come round again at evening to the old hearth-side from which we set out. Half the walk is but retracing our steps. We should go forth on the shortest walk, perchance, in the spirit of undying adventure, never to return,—prepared to send back our embalmed hearts only as relics to our desolate kingdoms. If you are ready to leave father and mother, and brother and sister, and wife and child and friends, and never see them again,—if you have paid your debts, and made your will, and settled all your affairs, and are a free man; then you are ready for a walk."
+    },
+    {
+      "en": "To come down to my own experience, my companion and I, for I sometimes have a companion, take pleasure in fancying ourselves knights of a new, or rather an old, order—not Equestrians or Chevaliers, not Ritters or Riders, but Walkers, a still more ancient and honorable class, I trust. The chivalric and heroic spirit which once belonged to the Rider seems now to reside in, or perchance to have subsided into, the Walker—not the Knight, but Walker Errant. He is a sort of fourth estate, outside of Church and State and People."
+    }
+  ]
+}

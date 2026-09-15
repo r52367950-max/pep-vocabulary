@@ -1,0 +1,31 @@
+{
+  "id": "stevenson-idlers",
+  "title": "An Apology for Idlers",
+  "titleZh": "为闲人辩护",
+  "author": "Robert Louis Stevenson",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "这里的 apology 是“辩护”。节选文章开头三个完整段落，作者用反讽讨论忙碌、教育与思考的空间。",
+  "backgroundEn": "Here, apology means a defence. These first three complete paragraphs question whether visible busyness is the only form of useful activity.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/386",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 665,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "JUST now, when every one is bound, under pain of a decree in absence convicting them of lèse-respectability, to enter on some lucrative profession, and labour therein with something not far short of enthusiasm, a cry from the opposite party who are content when they have enough, and like to look on and enjoy in the meanwhile, savours a little of bravado and gasconade. And yet this should not be. Idleness so called, which does not consist in doing nothing, but in doing a great deal not recognised in the dogmatic formularies of the ruling class, has as good a right to state its position as industry itself. It is admitted that the presence of people who refuse to enter in the great handicap race for sixpenny pieces, is at once an insult and a disenchantment for those who do. A fine fellow (as we see so many) takes his determination, votes for the sixpences, and in the emphatic Americanism, it “goes for” them. And while such an one is ploughing distressfully up the road, it is not hard to understand his resentment, when he perceives cool persons in the meadows by the wayside, lying with a handkerchief over their ears and a glass at their elbow. Alexander is touched in a very delicate place by the disregard of Diogenes. Where was the glory of having taken Rome for these tumultuous barbarians, who poured into the Senate house, and found the Fathers sitting silent and unmoved by their success? It is a sore thing to have laboured along and scaled the arduous hilltops, and when all is done, find humanity indifferent to your achievement. Hence physicists condemn the unphysical; financiers have only a superficial toleration for those who know little of stocks; literary persons despise the unlettered; and people of all pursuits combine to disparage those who have none."
+    },
+    {
+      "en": "But though this is one difficulty of the subject, it is not the greatest. You could not be put in prison for speaking against industry, but you can be sent to Coventry for speaking like a fool. The greatest difficulty with most subjects is to do them well; therefore, please to remember this is an apology. It is certain that much may be judiciously argued in favour of diligence; only there is something to be said against it, and that is what, on the present occasion, I have to say. To state one argument is not necessarily to be deaf to all others, and that a man has written a book of travels in Montenegro, is no reason why he should never have been to Richmond."
+    },
+    {
+      "en": "It is surely beyond a doubt that people should be a good deal idle in youth. For though here and there a Lord Macaulay may escape from school honours with all his wits about him, most boys pay so dear for their medals that they never afterwards have a shot in their locker, and begin the world bankrupt. And the same holds true during all the time a lad is educating himself, or suffering others to educate him. It must have been a very foolish old gentleman who addressed Johnson at Oxford in these words: “Young man, ply your book diligently now, and acquire a stock of knowledge; for when years come upon you, you will find that poring upon books will be but an irksome task.” The old gentleman seems to have been unaware that many other things besides reading grow irksome, and not a few become impossible, by the time a man has to use spectacles and cannot walk without a stick. Books are good enough in their own way, but they are a mighty bloodless substitute for life. It seems a pity to sit, like the Lady of Shalott, peering into a mirror, with your back turned on all the bustle and glamour of reality. And if a man reads very hard, as the old anecdote reminds us, he will have little time for thought."
+    }
+  ]
+}

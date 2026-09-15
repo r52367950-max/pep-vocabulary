@@ -1,0 +1,28 @@
+{
+  "id": "aesop-woodman",
+  "title": "Mercury and the Woodman",
+  "titleZh": "墨丘利与樵夫",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "樵夫丢失了斧头，河神般的援手考验了他的诚实。这则完整寓言也写到模仿者的选择。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "A woodman loses his axe and receives an unexpected test of honesty. The complete fable also follows a neighbour who tries to copy his good fortune.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 312,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "A Woodman was felling a tree on the bank of a river, when his axe, glancing off the trunk, flew out of his hands and fell into the water. As he stood by the water's edge lamenting his loss, Mercury appeared and asked him the reason for his grief; and on learning what had happened, out of pity for his distress he dived into the river and, bringing up a golden axe, asked him if that was the one he had lost. The Woodman replied that it was not, and Mercury then dived a second time, and, bringing up a silver axe, asked if that was his. \"No, that is not mine either,\" said the Woodman. Once more Mercury dived into the river, and brought up the missing axe. The Woodman was overjoyed at recovering his property, and thanked his benefactor warmly; and the latter was so pleased with his honesty that he made him a present of the other two axes. When the Woodman told the story to his companions, one of these was filled with envy of his good fortune and determined to try his luck for himself. So he went and began to fell a tree at the edge of the river, and presently contrived to let his axe drop into the water. Mercury appeared as before, and, on learning that his axe had fallen in, he dived and brought up a golden axe, as he had done on the previous occasion. Without waiting to be asked whether it was his or not the fellow cried, \"That's mine, that's mine,\" and stretched out his hand eagerly for the prize: but Mercury was so disgusted at his dishonesty that he not only declined to give him the golden axe, but also refused to recover for him the one he had let fall into the stream."
+    },
+    {
+      "en": "Honesty is the best policy."
+    }
+  ]
+}

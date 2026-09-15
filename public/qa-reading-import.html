@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>词迹导入验收</title><style>body{font:16px system-ui;padding:32px;line-height:1.8}button{font:inherit;padding:10px 20px;margin-right:10px}pre{white-space:pre-wrap}canvas{max-width:600px;border:1px solid #ddd}</style><h1>阅读导入验收</h1><p>仅供受控开发预览，调用实际文件解析模块。</p><button id="files">验证文本、HTML、DOCX、PDF</button><button id="ocr">验证扫描识别</button><button id="cancel">取消</button><pre id="status" role="status">待开始</pre><canvas width="1500" height="650"></canvas><script type="module">
+import {extractReadingFile,htmlText} from '/lib/reading-import.ts';
+import {zipSync,strToU8} from '/node_modules/fflate/esm/browser.js';
+const status=document.querySelector('#status'),canvas=document.querySelector('canvas');let controller;
+const source='A reader learns a little every day. Careful reading helps us notice new ideas and understand familiar words in a different way. We can ask a question, look for evidence, and discuss what we have learned with a friend. Every good question can lead to another discovery.';
+const context=canvas.getContext('2d');context.fillStyle='white';context.fillRect(0,0,1500,650);context.fillStyle='black';context.font='36px Georgia';let y=90;for(const line of source.match(/.{1,68}(?:\s|$)/g)){context.fillText(line.trim(),60,y);y+=65;}
+const report=[];const show=m=>{status.textContent=report.join('\n')+'\n'+m;};
+document.querySelector('#cancel').onclick=()=>controller?.abort();
+document.querySelector('#files').onclick=async()=>{controller=new AbortController();report.length=0;const signal=controller.signal;try{
+ const cases=[new File([source],'reading.txt'),new File(['# Reading\n\n'+source],'reading.md'),new File(['<html><script>throw Error("MUST NOT EXECUTE")<\/script><nav>NO NAVIGATION</nav><p>'+source+'</p></html>'],'reading.html')];
+ const xml='<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>'+source+'</w:t></w:r></w:p></w:body></w:document>';
+ cases.push(new File([zipSync({'word/document.xml':strToU8(xml)})],'reading.docx'));
+ cases.push(new File([await (await fetch('/qa-fixtures/reading.pdf')).arrayBuffer()],'reading.pdf'));
+ for(const file of cases){const started=performance.now();const text=await extractReadingFile(file,signal,show);const ok=text.includes('A reader learns')&&text.includes('another discovery.')&&!text.includes('NO NAVIGATION')&&!text.includes('MUST NOT EXECUTE');report.push(JSON.stringify({file:file.name,ok,characters:text.length,ms:Math.round(performance.now()-started)}));if(!ok)throw Error('Extraction mismatch');}show('PASS');
+ }catch(e){show('FAIL: '+e.message);}};
+document.querySelector('#ocr').onclick=async()=>{controller=new AbortController();report.length=0;const started=performance.now();try{const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const text=await extractReadingFile(new File([blob],'scan.png',{type:'image/png'}),controller.signal,show);report.push(text);report.push(JSON.stringify({ok:text.includes('A reader learns')&&text.includes('another discovery'),ms:Math.round(performance.now()-started),vendorResources:performance.getEntriesByType('resource').filter(r=>r.name.includes('/vendor/')).map(r=>({url:new URL(r.name).pathname,transfer:r.transferSize,duration:Math.round(r.duration)}))}));show('OCR COMPLETE');}catch(e){show('OCR ERROR: '+e.message);}};
+</script></html>

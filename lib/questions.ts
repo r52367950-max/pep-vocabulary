@@ -1,5 +1,5 @@
 import type { LexiconDetail, LexiconIndexEntry } from "./lexicon";
-import { findOriginalExample } from "./reading";
+import { findOriginalExample } from "./examples";
 import type { SkillName } from "./storage";
 
 export type QuestionType =

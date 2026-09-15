@@ -1,0 +1,31 @@
+{
+  "id": "thoreau-winter-walk",
+  "title": "A Winter Walk",
+  "titleZh": "冬日漫步",
+  "author": "Henry David Thoreau",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "一夜风雪之后，作者推门走入冬晨。节选随笔开篇三个完整段落，止于村落的炊烟升起。",
+  "backgroundEn": "After a night of snow, the narrator steps into a winter morning. These three opening paragraphs end as smoke begins rising from the village chimneys.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/9846",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 596,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "The wind has gently murmured through the blinds, or puffed with feathery softness against the windows, and occasionally sighed like a summer zephyr lifting the leaves along, the livelong night. The meadow-mouse has slept in his snug gallery in the sod, the owl has sat in a hollow tree in the depth of the swamp, the rabbit, the squirrel, and the fox have all been housed. The watch-dog has lain quiet on the hearth, and the cattle have stood silent in their stalls. The earth itself has slept, as it were its first, not its last sleep, save when some street-sign or wood-house door has faintly creaked upon its hinge, cheering forlorn nature at her midnight work,—the only sound awake twixt Venus and Mars,—advertising us of a remote inward warmth, a divine cheer and fellowship, where gods are met together, but where it is very bleak for men to stand. But while the earth has slumbered, all the air has been alive with feathery flakes descending, as if some northern Ceres reigned, showering her silvery grain over all the fields."
+    },
+    {
+      "en": "We sleep, and at length awake to the still reality of a winter morning. The snow lies warm as cotton or down upon the window-sill; the broadened sash and frosted panes admit a dim and private light, which enhances the snug cheer within. The stillness of the morning is impressive. The floor creaks under our feet as we move toward the window to look abroad through some clear space over the fields. We see the roofs stand under their snow burden. From the eaves and fences hang stalactites of snow, and in the yard stand stalagmites covering some concealed core. The trees and shrubs rear white arms to the sky on every side; and where were walls and fences, we see fantastic forms stretching in frolic gambols across the dusky landscape, as if nature had strewn her fresh designs over the fields by night as models for man’s art."
+    },
+    {
+      "en": "Silently we unlatch the door, letting the drift fall in, and step abroad to face the cutting air. Already the stars have lost some of their sparkle, and a dull, leaden mist skirts the horizon. A lurid brazen light in the east proclaims the approach of day, while the western landscape is dim and spectral still, and clothed in a sombre Tartarian light, like the shadowy realms. They are Infernal sounds only that you hear,—the crowing of cocks, the barking of dogs, the chopping of wood, the lowing of kine, all seem to come from Pluto’s barn-yard and beyond the Styx;—not for any melancholy they suggest, but their twilight bustle is too solemn and mysterious for earth. The recent tracks of the fox or otter, in the yard, remind us that each hour of the night is crowded with events, and the primeval nature is still working and making tracks in the snow. Opening the gate, we tread briskly along the lone country road, crunching the dry and crisped snow under our feet, or aroused by the sharp clear creak of the wood-sled, just starting for the distant market, from the early farmer’s door, where it has lain the summer long, dreaming amid the chips and stubble; while far through the drifts and powdered windows we see the farmer’s early candle, like a paled star, emitting a lonely beam, as if some severe virtue were at its matins there. And one by one the smokes begin to ascend from the chimneys amidst the trees and snows."
+    }
+  ]
+}

@@ -7,7 +7,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules:
 const results = [];
 try {
   const request = async (path, init) => mf.dispatchFetch(`http://localhost${path}`, init);
-  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/api/sync', 401], ['/api/ai/config', 401]]) {
+  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401]]) {
     const response = await request(path);
     const text = await response.text();
     assert.equal(response.status, expected, `${path}: ${text.slice(0, 120)}`);
@@ -22,6 +22,16 @@ try {
       assert.ok(assets.length > 0);
       for (const asset of assets) assert.equal((await request(asset)).status, 200, asset);
     }
+  }
+  for (const [name, headers, body, status] of [
+    ['unauthenticated', {'x-vocab-action':'reading-classify'}, {title:'A test article',text:'This is an English reading sample. '.repeat(5)}, 401],
+    ['cross-origin', {origin:'https://evil.test','x-vocab-action':'reading-classify'}, {title:'A test article',text:'This is an English reading sample. '.repeat(5)}, 403],
+    ['oversized input', {'x-vocab-action':'reading-classify'}, {title:'A test article',text:'x'.repeat(8001)}, 400],
+  ]) {
+    const result = await request('/api/reading/classify', {method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)});
+    assert.equal(result.status,status,await result.clone().text());
+    assert.match(result.headers.get('cache-control') || '',/no-store/);
+    results.push({path:`/api/reading/classify ${name}`,status:result.status});
   }
   const response = await request('/api/ai/config', { method: 'POST', headers: { origin: 'http://evil.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' }, body: '{}' });
   assert.equal(response.status, 403);

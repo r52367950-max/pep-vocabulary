@@ -1,0 +1,25 @@
+{
+  "id": "aesop-mice-council",
+  "title": "The Mice in Council",
+  "titleZh": "老鼠开会",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "老鼠们提出了一个保护自己的妙计，却还需要有人去实行。全文保留故事的最后一问。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "The mice agree on a clever plan to protect themselves. One practical question remains at the end of this complete fable.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 140,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "Once upon a time all the Mice met together in Council, and discussed the best means of securing themselves against the attacks of the cat. After several suggestions had been debated, a Mouse of some standing and experience got up and said, \"I think I have hit upon a plan which will ensure our safety in the future, provided you approve and carry it out. It is that we should fasten a bell round the neck of our enemy the cat, which will by its tinkling warn us of her approach.\" This proposal was warmly applauded, and it had been already decided to adopt it, when an old Mouse got upon his feet and said, \"I agree with you all that the plan before us is an admirable one: but may I ask who is going to bell the cat?\""
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+What is Blue Carbon? (https://oceanservice.noaa.gov/facts/bluecarbon.html)
+citeturn100view0 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/facts/bluecarbon.html","lineno":null}); Total lines: 41
+L0: # What is Blue Carbon?
+L1: 
+L2: ## Blue carbon is the term for carbon captured by the world's ocean and coastal ecosystems.
+L3: 
+L4: cite0†Image: This is an image of a mangrove, but did you know it is also an image of a sink? A carbon sink. L5: 
+L6: Yes, this is an image of a mangrove, but did you know it is also an image of a sink? A carbon sink. Don’t know what that is? Read below.
+L7: ##### Did you know?
+L8: NOAA’s cite1†National Estuarine Research Reserves†coast.noaa.gov and their partners are working to make wetlands conservation and restoration profitable while lessening greenhouse gas emissions through blue carbon financial markets. These markets balance projects that feature heat-trapping emissions with contributions that take carbon out of the atmosphere. Efforts thus far have produced the first-ever U.S.
+L9: guide that makes salt marsh restoration eligible for international carbon markets; research that documents carbon storage capabilities in the marsh; workshops and school curricula on the topic; and newsletters and technical assistance.
+L10: Something that has a significant effect on our daily lives and is stored within the largest system of water on our planet must be a household name, right? Not necessarily. Have you ever heard of blue carbon? Chances are the answer is no, but perhaps you know more than you realize.
+L11: Blue carbon is simply the term for carbon captured by the world's ocean and coastal ecosystems. You have probably heard that human activities emit (or give off) something called carbon dioxide, which contains atmospheric carbon. You have also heard that these gases are changing the world's climate, and not in a good way.
+L12: What you may not have heard is that our ocean and coasts provide a natural way of reducing the impact of greenhouse gases on our atmosphere, through sequestration (or taking in) of this carbon.
+L13: Sea grasses, mangroves, and salt marshes along our coast "capture and hold" carbon, acting as something called a carbon sink. These coastal systems, though much smaller in size than the planet's forests, sequester this carbon at a much faster rate, and can continue to do so for millions of years. Most of the carbon taken up by these ecosystems is stored below ground where we can't see it, but it is still there. The carbon found in coastal soil is often thousands of years old!
+L14: The bigger picture of blue carbon is one of coastal habitat conservation. When these systems are damaged, an enormous amount of carbon is emitted back into the atmosphere, where it can then contribute to climate change. So protecting and restoring coastal habitats is a good way to reduce climate change.
+L15: When we protect the carbon in coastal systems, we protect healthy coastal environments that provide many other benefits to people, such as recreational opportunities, storm protection, and nursery habitat for commercial and recreational fisheries.
+L16: One method of slowing climate change impacts is to incorporate coastal wetlands into the carbon market through the buying and selling of carbon offsets. This approach creates a financial incentive for restoration and conservation projects by helping to alleviate federal and state carbon taxes aimed at discouraging the use of fossil fuels. When fewer greenhouse gases are emitted, less pollution is created.
+L17: When there is less pollution to tax, the process benefits not only the environment but also the financial well-being of the community doing the restoration.
+L18: ##### More Information
+L19: 
+L20: cite2†Blue Carbon Fast Facts†coast.noaa.gov L21: 
+L22: cite3†Bringing Wetlands to Market (audio podcast) L23: 
+L24: cite4†Blue Carbon (audio podcast) L25: 
+L26: cite5†Climate.gov†www.climate.gov L27: 
+L28: ##### cite6†Get Social L29: 
+L30: ###### Social
+L31: 
+L32:   *   *   *   *   * ##### Last updated:
+L33: 
+L34: ###### 06/16/24
+L35: 
+L36: Author: NOAA
+L37: 
+L38: cite7†How to cite this article L39: 
+L40: cite8†Contact Us --------------------------------------------------------------------------------
+How much oxygen comes from the ocean? (https://oceanservice.noaa.gov/facts/ocean-oxygen.html)
+citeturn100view1 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/facts/ocean-oxygen.html","lineno":null}); Total lines: 38
+L0: # How much oxygen comes from the ocean?
+L1: ## About half of Earth’s oxygen comes from the ocean; about the same amount is consumed by marine life.
+L2: 
+L3: cite0†Image: a close-up view of the roiling ocean L4: 
+L5: The surface layer of the ocean is teeming with photosynthetic plankton. Though they're invisible to the naked eye, they produce more oxygen than the largest redwoods.
+L6: Scientists estimate that roughly half of the oxygen production on Earth comes from the ocean. The majority of this production is from oceanic cite1†plankton — drifting plants, algae, and some bacteria that can photosynthesize. One particular species, Prochlorococcus, is the smallest photosynthetic organism on Earth. But cite2†this little bacteria produces up to 20% of the oxygen in our entire biosphere†ocean.si.edu . That’s a higher percentage than all of the tropical rainforests on land combined.
+L7: Calculating the exact percentage of oxygen produced in the ocean is difficult because the amounts are constantly changing. Scientists can use cite3†satellite imagery to track photosynthesizing plankton and estimate cite4†the amount of photosynthesis occurring in the ocean†earthobservatory.nasa.gov , but satellite imagery cannot tell the whole story. The amount of plankton changes seasonally and in response to changes in the water’s nutrient load, temperature, and other factors.
+L8: Studies have shown that the amount of oxygen in specific locations cite5†varies with time of day and with the tides†www.whoi.edu .
+L9: It’s important to remember that although the ocean produces at least 50% of the oxygen on Earth, roughly the same amount is consumed by marine life. Like animals on land, marine animals use oxygen to breathe, and both plants and animals use oxygen for cellular respiration. Oxygen is also consumed when cite6†dead plants and animals decay in the ocean. There is also oxygen in the atmosphere which has accumulated over hundreds of millions of years.
+L10: As land animals, most of the oxygen humans breathe comes from this source.
+L11: This is particularly problematic when algal blooms die and the decomposition process uses oxygen faster than it can be replenished. This can create areas of extremely low oxygen concentrations, or cite7†hypoxia . These areas are often called cite8†dead zones , because the oxygen levels are too low to support most marine life.
+L12: NOAA’s cite9†National Centers for Coastal Ocean Science†coastalscience.noaa.gov conducts extensive research and forecasting on algal blooms and hypoxia to lessen the harm done to the ocean ecosystem and human environment.
+L13: ##### More Information
+L14: 
+L15: cite10†What are Phytoplankton? L16: 
+L17: cite11†Oxygen Factories in the Southern Ocean†earthobservatory.nasa.gov L18: 
+L19: cite5†The Ocean is Earth’s Oxygen Bank†www.whoi.edu L20: 
+L21: cite7†Hypoxia L22: 
+L23: cite9†National Centers for Coastal Ocean Science†coastalscience.noaa.gov L24: 
+L25: ##### cite12†Get Social L26: 
+L27: ###### Social
+L28: 
+L29:   *   *   *   *   * ##### Last updated:
+L30: 
+L31: ###### 06/16/24
+L32: 
+L33: Author: NOAA
+L34: 
+L35: cite13†How to cite this article L36: 
+L37: cite14†Contact Us --------------------------------------------------------------------------------
+What are phytoplankton? (https://oceanservice.noaa.gov/facts/phyto.html)
+citeturn100view2 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/facts/phyto.html","lineno":null}); Total lines: 27
+L0: cite0†National Ocean Service cite1†National Oceanic and Atmospheric Administration†www.noaa.gov L1: 
+L2: [Input] Search [Input: Search] Search National Ocean Service
+L3: 
+L4: # What are phytoplankton?
+L5: ## Phytoplankton are microscopic marine algae.
+L6: 
+L7: cite2†Image: Phytoplankton L8: 
+L9: Phytoplankton is the base of several aquatic food webs. In a balanced ecosystem, they provide food for a wide range of sea creatures.
+L10: Phytoplankton, also known as microalgae, are similar to terrestrial plants in that they contain chlorophyll and require sunlight in order to live and grow. Most phytoplankton are buoyant and float in the upper part of the ocean, where sunlight penetrates the water. Phytoplankton also require inorganic nutrients such as nitrates, phosphates, and sulfur which they convert into proteins, fats, and carbohydrates.
+L11: The two main classes of phytoplankton are dinoflagellates and diatoms. Dinoflagellates use a whip-like tail, or flagella, to move through the water and their bodies are covered with complex shells. Diatoms also have shells, but they are made of a different substance and their structure is rigid and made of interlocking parts. Diatoms do not rely on flagella to move through the water and instead rely on ocean currents to travel through the water.
+L12: In a balanced ecosystem, phytoplankton provide food for a wide range of sea creatures including shrimp, snails, and jellyfish. When too many nutrients are available, phytoplankton may grow out of control and form harmful algal blooms (HABs). These blooms can produce extremely toxic compounds that have harmful effects on fish, shellfish, mammals, birds, and even people.
+L13: The cite3†National Centers for Coastal Ocean Science†coastalscience.noaa.gov conduct extensive research on harmful algal blooms. Scientists use a range of technologies to predict where and when HABs are likely to form and how they will affect the areas where they occur. Scientists use this information to inform coastal authorities on how to best respond in order to minimize negative impacts.
+L14: ###### Get Social
+L15: 
+L16: ###### More Information
+L17: 
+L18:   * cite4†NOAA's National Centers for Coastal Ocean Science†coastalscience.noaa.gov L19:   * cite5†Phytoplankton Monitoring Network†coastalscience.noaa.gov L20:   * cite6†Harmful Algal Blooms L21: 
+L22: Last updated: 06/16/24
+L23: Author: NOAA
+L24: cite7†How to cite this article L25: 
+L26: cite8†Contact Us --------------------------------------------------------------------------------
+Estuaries Tutorial: NOAA's National Ocean Service Education (https://oceanservice.noaa.gov/education/tutorial_estuaries/welcome.html)
+citeturn100view3 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/education/tutorial_estuaries/welcome.html","lineno":null}); Total lines: 46
+L0: # Estuaries
+L1: 
+L2: Estuaries are bodies of water and their surrounding coastal habitats are typically found where rivers meet the sea. Estuaries harbor unique plant and animal communities because their waters are brackish — a mixture of fresh water draining from the land and salty seawater.
+L3: 
+L4: Estuaries are some of the most productive ecosystems in the world. Many animal species rely on estuaries for food and as places to nest and breed. Human communities also rely on estuaries for food, recreation, and jobs.
+L5: Of the 32 largest cities in the world, 22 are located on estuaries. Not surprisingly, human activities have led to a decline in the health of estuaries, making them one of the most threatened ecosystems on Earth. NOAA's National Estuarine Research Reserve System (NERRS), in partnership with coastal states, monitors the health of estuaries, educates the public about these ecosystems, and helps communities manage their coastal resources.
+L6: 
+L7: cite0†Image: Estuaries L8: Estuaries are both beautiful and ecologically bountiful. Their natural expanses provide habitats for a wide range of animal and plant species. This is an image of the Old Woman Creek National Estuarine Research Reserve. It is located on the south-central shore of Lake Erie in Erie County, Ohio, three miles east of Huron.
+L9: It is one of the "Great Lakes-type" freshwater estuaries in the National Estuarine Research Reserve System, and features freshwater marshes, swamp forests, a barrier beach, an upland forest, and a portion of nearshore Lake Erie. (Photo Credit: Jennifer Buchiet, Old Woman Creek Reserve)
+L10: cite1†Image: Estuaries L11: 
+L12: New York City, with a population of over eight million people, is located at the mouth of the Hudson River Estuary which stretches 153 miles inland from the Atlantic Ocean and includes a wide range of wetland habitats. Home to more than 200 species of fish, the Hudson River Estuary serves as a nursery ground for sturgeon, striped bass, and American shad. It also supports an abundance of other river-dependent wildlife, especially birds.
+L13: 
+L14: cite2†Image: Estuaries L15: Estuarine habitats are typically found where rivers meet the sea. This image shows the eastern half of North America as viewed from space. Mouse over the image to see some of the estuarine areas highlighted in this tutorial. And you can see that most of the land area drains into the Great Lakes, the Atlantic Ocean, and the Gulf of Mexico. Wherever freshwater rivers drain into these larger bodies of water, estuarine habitats are found.
+L16: The yellow squares in the image indicate some of the North American estuaries that contain NOAA's national estuarine research reserves.
+L17: 
+L18: These estuaries lessons are an overview of estuarine habitats, the threats facing them, and efforts to monitor and protect estuaries nationwide.
+L19: 
+L20: The cite3†Roadmap to Resources complements the information in the tutorial by directing you to specific online estuary-related materials from NOAA and other reliable resources.
+L21: ##### Estuaries Lessons
+L22: 
+L23: cite4†Welcome cite5†What is an Estuary? cite6†Economy and Environment cite7†Ecosystem Services cite8†Geology cite9†Water Circulation cite10†Estuarine Habitats cite11†Adaptations to Life in the Estuary cite12†Natural Disturbances to Estuaries cite13†Human Disturbances to Estuaries cite14†Monitoring Estuaries cite15†The Future cite16†References L24: ##### More Information
+L25: 
+L26: cite17†Roadmap to Resources cite18†Subject Review L27: 
+L28: The cite19†National Science Teaching Association (NSTA)†www.nsta.org includes this resource in its database. NSTA provides educators and students access to Web-based, educationally appropriate science content that has been formally evaluated by master teachers.
+L29: 
+L30: ##### Search Our facts
+L31: 
+L32: [Input] [Input] [Input] [Input: search]
+L33: 
+L34: ##### cite20†Get Social L35: 
+L36: ###### Social
+L37: 
+L38:   *   *   *   *   * ##### Last updated:
+L39: ###### 08/12/24
+L40: 
+L41: Author: NOAA
+L42: 
+L43: cite21†How to cite this article L44: 
+L45: cite22†Contact Us 

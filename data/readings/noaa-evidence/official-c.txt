@@ -1,0 +1,46 @@
+Why do we have an ocean? (https://oceanservice.noaa.gov/facts/why_oceans.html)
+citeturn102view0 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/facts/why_oceans.html","lineno":null}); Total lines: 25
+L0: cite0†National Ocean Service cite1†National Oceanic and Atmospheric Administration†www.noaa.gov L1: 
+L2: [Input] Search [Input: Search] Search National Ocean Service
+L3: 
+L4: # Why do we have an ocean?
+L5: ## The ocean formed billions of years ago.
+L6: 
+L7: cite2†Image: The ocean formed billions of years ago. L8: 
+L9: Over vast periods of time, our primitive ocean formed. Water remained a gas until the Earth cooled below 212 degrees Fahrenheit (100 degrees Celsius). At this time, about 3.8 billion years ago, the water condensed into rain which filled the basins that we now know as our world ocean.
+L10: Most scientists agree that the atmosphere and the ocean accumulated gradually over millions and millions of years with the continual 'degassing' of the Earth's interior.
+L11: 
+L12: According to this theory, the ocean formed from the escape of water vapor and other gases from the molten rocks of the Earth to the atmosphere surrounding the cooling planet.
+L13: After the Earth's surface had cooled to a temperature below the boiling point of water, rain began to fall—and continued to fall for centuries. As the water drained into the great hollows in the Earth's surface, the primeval ocean came into existence. The forces of gravity prevented the water from leaving the planet.
+L14: ###### Search Our Facts
+L15: 
+L16: [Input] [Input] [Input] [Input: search] [Input]
+L17: 
+L18: ###### Get Social
+L19: 
+L20: Last updated: 06/16/24
+L21: Author: NOAA
+L22: cite3†How to cite this article L23: 
+L24: cite4†Contact Us --------------------------------------------------------------------------------
+National Ocean Service Website Disclaimers (https://oceanservice.noaa.gov/disclaimer.html)
+citeturn102view1 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/disclaimer.html","lineno":null}); Total lines: 22
+L0: # National Ocean Service Website Disclaimers
+L1: ##
+L2: 
+L3: Information presented on this website is considered public information and may be distributed or copied, unless specifically noted otherwise. This website is maintained by NOAA’s National Ocean Service. Please note the following disclaimers:
+L4:   * External links on this website are indicated by this icon:
+L5: The appearance of external links does not constitute endorsement by the Department of Commerce (DOC)/(NOAA) of external websites or the information, products, or services contained therein. For other than authorized activities, DOC/NOAA does not exercise any editorial control over the information found at these locations. These links are provided to be consistent with the stated purpose of this DOC/NOAA website.
+L6:   * Some products and manufacturers are mentioned in descriptive information or in metadata records. Mention of these products or manufacturers does not constitute an endorsement by NOAA or DOC.
+L7:   * The quality and completeness of both the metadata, data and information products are the responsibility of the individual contributor, and not NOAA or DOC. Individual contributors are identified in metadata records.
+L8:   * The seals, initials, and agency identification can not be used without the written permission of the agency.
+L9: ##### More Information
+L10: 
+L11: cite0†About the National Ocean Service L12: 
+L13: ##### cite1†Get Social L14: 
+L15: ###### Social
+L16: 
+L17:   *   *   *   *   * ##### Last updated:
+L18: 
+L19: ###### 06/16/24
+L20: 
+L21: cite2†Contact Us --------------------------------------------------------------------------------

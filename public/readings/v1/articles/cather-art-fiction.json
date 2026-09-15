@@ -1,0 +1,31 @@
+{
+  "id": "cather-art-fiction",
+  "title": "On the Art of Fiction",
+  "titleZh": "论小说的艺术",
+  "author": "Willa Cather",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "original",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "这篇完整短论最初刊于 1920 年。凯瑟以写作与绘画为例，说明艺术中的取舍，以及删去好材料的必要。",
+  "backgroundEn": "First published in 1920, this complete short essay uses writing and painting to explain selection in art and the need to leave good material out.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/25586",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 491,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "One is sometimes asked about the \"obstacles\" that confront young writers who are trying to do good work. I should say the greatest obstacles that writers today have to get over, are the dazzling journalistic successes of twenty years ago, stories that surprised and delighted by their sharp photographic detail and that were really nothing more than lively pieces of reporting. The whole aim of that school of writing was novelty--never a very important thing in art. They gave us, altogether, poor standards--taught us to multiply our ideas instead of to condense them. They tried to make a story out of every theme that occurred to them and to get returns on every situation that suggested itself. They got returns, of a kind. But their work, when one looks back on it, now that the novelty upon which they counted so much is gone, is journalistic and thin. The especial merit of a good reportorial story is that it shall be intensely interesting and pertinent today and shall have lost its point by tomorrow."
+    },
+    {
+      "en": "Art, it seems to me, should simplify. That, indeed, is very nearly the whole of the higher artistic process; finding what conventions of form and what detail one can do without and yet preserve the spirit of the whole--so that all that one has suppressed and cut away is there to the reader's consciousness as much as if it were in type on the page. Millet had done hundreds of sketches of peasants sowing grain, some of them very complicated and interesting, but when he came to paint the spirit of them all into one picture, \"The Sower,\" the composition is so simple that it seems inevitable. All the discarded sketches that went before made the picture what it finally became, and the process was all the time one of simplifying, of sacrificing many conceptions good in themselves for one that was better and more universal."
+    },
+    {
+      "en": "Any first rate novel or story must have in it the strength of a dozen fairly good stories that have been sacrificed to it. A good workman can't be a cheap workman; he can't be stingy about wasting material, and he cannot compromise. Writing ought either to be the manufacture of stories for which there is a market demand--a business as safe and commendable as making soap or breakfast foods--or it should be an art, which is always a search for something for which there is no market demand, something new and untried, where the values are intrinsic and have nothing to do with standardized values. The courage to go on without compromise does not come to a writer all at once--nor, for that matter, does the ability. Both are phases of natural development. In the beginning the artist, like his public, is wedded to old forms, old ideals, and his vision is blurred by the memory of old delights he would like to recapture."
+    }
+  ]
+}

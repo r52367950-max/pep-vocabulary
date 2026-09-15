@@ -1,0 +1,25 @@
+{
+  "id": "aesop-fox-stork",
+  "title": "The Fox and the Stork",
+  "titleZh": "狐狸与鹳",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "两次邀请、两种餐具，构成一个关于待客与换位思考的完整故事。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "Two invitations and two different dishes make a complete story about hospitality and seeing another creature’s needs.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 111,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "A Fox invited a Stork to dinner, at which the only fare provided was a large flat dish of soup. The Fox lapped it up with great relish, but the Stork with her long bill tried in vain to partake of the savoury broth. Her evident distress caused the sly Fox much amusement. But not long after the Stork invited him in turn, and set before him a pitcher with a long and narrow neck, into which she could get her bill with ease. Thus, while she enjoyed her dinner, the Fox sat by hungry and helpless, for it was impossible for him to reach the tempting contents of the vessel."
+    }
+  ]
+}

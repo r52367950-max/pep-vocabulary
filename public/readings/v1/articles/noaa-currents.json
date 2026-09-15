@@ -1,0 +1,34 @@
+{
+  "id": "noaa-currents",
+  "title": "Currents",
+  "author": "NOAA",
+  "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_currents/",
+  "category": "science",
+  "background": "教程概览潮流、风生表层流和由温度盐度差异驱动的深层环流。",
+  "titleZh": "洋流",
+  "difficulty": "B2",
+  "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+  "backgroundEn": "This section of NOAA’s currents tutorial explains three causes of moving ocean water: tides, wind and differences in density.",
+  "rights": {
+    "label": "NOAA 公开信息",
+    "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+    "url": "https://oceanservice.noaa.gov/disclaimer.html"
+  },
+  "form": "excerpt",
+  "wordCount": 257,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "When used in association with water, the term \"current\" describes the motion of the water. Some currents you may be familiar with are the motion of rainwater as it flows down the street, or the motion of the water in a creek, stream, or river flowing from higher elevation to lower elevation. This motion is caused by gravity. The speed and direction (velocity) of currents can be measured and recorded."
+    },
+    {
+      "en": "Oceanic currents are driven by several factors. One is the rise and fall of the tides, which is driven by the gravitational attraction of the sun and moon on Earth's oceans. Tides create a current in the oceans, near the shore, and in bays and estuaries along the coast. These are called \"tidal currents.\" Tidal currents are the only type of currents that change in a very regular pattern and can be predicted for future dates."
+    },
+    {
+      "en": "A second factor that drives ocean currents is wind. Winds drive currents that are at or near the ocean's surface. These currents are generally measured in meters per second or in knots (1 knot = 1.15 miles per hour or 1.85 kilometers per hour). Winds drive currents near coastal areas on a localized scale, and in the open ocean on a global scale."
+    },
+    {
+      "en": "A third factor that drives currents is thermohaline circulation - a process driven by density differences in water due to temperature (thermo) and salinity (haline) in different parts of the ocean. Currents driven by thermohaline circulation occur at both deep and shallow ocean levels and move much slower than tidal or surface currents."
+    }
+  ]
+}

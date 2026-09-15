@@ -1,0 +1,43 @@
+{
+  "id": "lamb-books-reading",
+  "title": "Detached Thoughts on Books and Reading",
+  "titleZh": "关于书与阅读的随想",
+  "author": "Charles Lamb",
+  "category": "essay",
+  "difficulty": "C1",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+  "background": "节选题前引语与正文开头五段。兰姆从一句关于书内与书外世界的俏皮话出发，谈自己怎样与书相处，也借装帧表达对阅读的偏爱。",
+  "backgroundEn": "An epigraph sets a reader’s own thoughts against the world inside a book. These first five prose paragraphs then explore Lamb’s affection for reading and well-used volumes.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/10343",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 657,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "To mind the inside of a book is to entertain one's self with the forced product of another man's brain. Now I think a man of quality and breeding may be much amused with the natural sprouts of his own."
+    },
+    {
+      "en": "Lord Foppington in the Relapse."
+    },
+    {
+      "en": "An ingenious acquaintance of my own was so much struck with this bright sally of his Lordship, that he has left off reading altogether, to the great improvement of his originality. At the hazard of losing some credit on this head, I must confess that I dedicate no inconsiderable portion of my time to other people's thoughts. I dream away my life in others' speculations. I love to lose myself in other men's minds. When I am not walking, I am reading; I cannot sit and think. Books think for me."
+    },
+    {
+      "en": "I have no repugnances. Shaftesbury is not too genteel for me, nor Jonathan Wild too low. I can read any thing which I call a book. There are things in that shape which I cannot allow for such."
+    },
+    {
+      "en": "In this catalogue of books which are no books--biblia a-biblia--I reckon Court Calendars, Directories, Pocket Books, Draught Boards bound and lettered at the back, Scientific Treatises, Almanacks, Statutes at Large; the works of Hume, Gibbon, Robertson, Beattie, Soame Jenyns, and, generally, all those volumes which \"no gentleman's library should be without:\" the Histories of Flavins Josephus (that learned Jew), and Paley's Moral Philosophy. With these exceptions, I can read almost any thing. I bless my stars for a taste so catholic, so unexcluding."
+    },
+    {
+      "en": "I confess that it moves my spleen to see these things in books' clothing perched upon shelves, like false saints, usurpers of true shrines, intruders into the sanctuary, thrusting out the legitimate occupants. To reach down a well-bound semblance of a volume, and hope it is some kind-hearted play-book, then, opening what \"seem its leaves,\" to come bolt upon a withering Population Essay. To expect a Steele, or a Farquhar, and find--Adam Smith. To view a well-arranged assortment of blockheaded Encyclopædias (Anglicanas or Metropolitanas) set out in an array of Russia, or Morocco, when a tithe of that good leather would comfortably re-clothe my shivering folios; would renovate Paracelsus himself, and enable old Raymund Lully to look like himself again in the world. I never see these impostors, but I long to strip them, to warm my ragged veterans in their spoils."
+    },
+    {
+      "en": "To be strong-backed and neat-bound is the desideratum of a volume. Magnificence comes after. This, when it can be afforded, is not to be lavished upon all kinds of books indiscriminately. I would not dress a set of Magazines, for instance, in full suit. The dishabille, or half-binding (with Russia backs ever) is our costume. A Shakespeare, or a Milton (unless the first editions), it were mere foppery to trick out in gay apparel. The possession of them confers no distinction. The exterior of them (the things themselves being so common), strange to say, raises no sweet emotions, no tickling sense of property in the owner. Thomson's Seasons, again, looks best (I maintain it) a little torn, and dog's-eared. How beautiful to a genuine lover of reading are the sullied leaves, and worn out appearance, nay, the very odour (beyond Russia), if we would not forget kind feelings in fastidiousness, of an old \"Circulating Library\" Tom Jones, or Vicar of Wakefield! How they speak of the thousand thumbs, that have turned over their pages with delight!--of the lone sempstress, whom they may have cheered (milliner, or harder-working mantua-maker) after her long day's needle-toil, running far into midnight, when she has snatched an hour, ill spared from sleep, to steep her cares, as in some Lethean cup, in spelling out their enchanting contents! Who would have them a whit less soiled? What better condition could we desire to see them in?"
+    }
+  ]
+}

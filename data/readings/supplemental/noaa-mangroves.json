@@ -1,0 +1,40 @@
+{
+  "id": "noaa-mangroves",
+  "title": "Mangrove Forests",
+  "author": "NOAA",
+  "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_estuaries/est06_habitats.html",
+  "category": "science",
+  "background": "河口教程的红树林部分说明其分布、缺氧土壤、根系沉积作用、海岸防护和潮汐分区。",
+  "titleZh": "红树林",
+  "difficulty": "B2",
+  "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+  "backgroundEn": "This complete section from NOAA’s habitats tutorial explains mangrove roots, coastal protection and zones within a mangrove forest.",
+  "rights": {
+    "label": "NOAA 公开信息",
+    "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+    "url": "https://oceanservice.noaa.gov/disclaimer.html"
+  },
+  "form": "excerpt",
+  "wordCount": 280,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "Mangrove forests, or mangals grow at tropical and subtropical latitudes near the equator where the sea surface temperatures never fall below 16°C. Mangals line about two-thirds of the coastlines in tropical areas of the world."
+    },
+    {
+      "en": "There are about 80 species of mangrove trees, all of which grow in hypoxic (oxygen poor) soils where slow-moving waters allow fine sediments to accumulate. Many mangrove forests can be recognized by their dense tangle of prop roots that make the trees appear to be standing on stilts above the water. This tangle of roots helps to slow the movement of tidal waters, causing even more sediments to settle out of the water and build up the muddy bottom."
+    },
+    {
+      "en": "Mangrove forests stabilize the coastline, reducing erosion from storm surges, currents, waves and tides."
+    },
+    {
+      "en": "Just like the high and low areas of salt marshes where specific types of grasses are found, mangals have distinct zones characterized by the species of mangrove tree that grows there. Where a species of mangrove tree exists depends on its tolerance for tidal flooding, soil salinity, and the availability of nutrients. Three dominant species of mangrove trees are found in Florida."
+    },
+    {
+      "en": "The red mangrove (Rhizophora mangle) colonizes the seaward side of the mangal, so it receives the greatest amount of tidal flooding. Further inland and at a slightly higher elevation, black mangroves (Avicennia germinanas) grow. The zone in which black mangrove trees are found is only shallowly flooded during high tides. White mangrove (Laguncularia racemosa) and buttonwood trees (Conocarpus erectus), a non-mangrove species, face inland and dominate the highest parts of the mangal."
+    },
+    {
+      "en": "The zone where white mangrove and buttonwood trees grow is almost never flooded by tidal waters."
+    }
+  ]
+}

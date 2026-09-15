@@ -1,0 +1,31 @@
+{
+  "id": "noaa-estuaries",
+  "title": "Estuaries",
+  "author": "NOAA",
+  "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_estuaries/welcome.html",
+  "category": "science",
+  "background": "文章定义河口，介绍淡咸水混合形成的独特生态系统及其对动物、人类和城市的作用。",
+  "titleZh": "河口",
+  "difficulty": "B1",
+  "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+  "backgroundEn": "This opening section of NOAA’s estuaries tutorial describes where rivers and the sea meet, and why these places matter.",
+  "rights": {
+    "label": "NOAA 公开信息",
+    "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+    "url": "https://oceanservice.noaa.gov/disclaimer.html"
+  },
+  "form": "excerpt",
+  "wordCount": 144,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "Estuaries are bodies of water and their surrounding coastal habitats are typically found where rivers meet the sea. Estuaries harbor unique plant and animal communities because their waters are brackish — a mixture of fresh water draining from the land and salty seawater."
+    },
+    {
+      "en": "Estuaries are some of the most productive ecosystems in the world. Many animal species rely on estuaries for food and as places to nest and breed. Human communities also rely on estuaries for food, recreation, and jobs."
+    },
+    {
+      "en": "Of the 32 largest cities in the world, 22 are located on estuaries. Not surprisingly, human activities have led to a decline in the health of estuaries, making them one of the most threatened ecosystems on Earth. NOAA's National Estuarine Research Reserve System (NERRS), in partnership with coastal states, monitors the health of estuaries, educates the public about these ecosystems, and helps communities manage their coastal resources."
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import "./studio-controls.css";
 import "./globals.css";
 import "./reading-surfaces.css";
 import "./interface.css";
+import "./settings-dialog.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",

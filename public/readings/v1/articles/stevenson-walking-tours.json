@@ -1,0 +1,28 @@
+{
+  "id": "stevenson-walking-tours",
+  "title": "Walking Tours",
+  "titleZh": "徒步旅行",
+  "author": "Robert Louis Stevenson",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "徒步的乐趣，是否一定在目的地和风景？这两个开篇段落谈独行、节奏，以及身体与思绪的关系。",
+  "backgroundEn": "Does the pleasure of a walking tour lie only in scenery? These two opening paragraphs consider solitude, pace and the relation between body and mind.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/386",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 617,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "IT must not be imagined that a walking tour, as some would have us fancy, is merely a better or worse way of seeing the country. There are many ways of seeing landscape quite as good; and none more vivid, in spite of canting dilettantes, than from a railway train. But landscape on a walking tour is quite accessory. He who is indeed of the brotherhood does not voyage in quest of the picturesque, but of certain jolly humours—of the hope and spirit with which the march begins at morning, and the peace and spiritual repletion of the evening’s rest. He cannot tell whether he puts his knapsack on, or takes it off, with more delight. The excitement of the departure puts him in key for that of the arrival. Whatever he does is not only a reward in itself, but will be further rewarded in the sequel; and so pleasure leads on to pleasure in an endless chain. It is this that so few can understand; they will either be always lounging or always at five miles an hour; they do not play off the one against the other, prepare all day for the evening, and all evening for the next day. And, above all, it is here that your overwalker fails of comprehension. His heart rises against those who drink their curaçoa in liqueur glasses, when he himself can swill it in a brown john. He will not believe that the flavour is more delicate in the smaller dose. He will not believe that to walk this unconscionable distance is merely to stupefy and brutalise himself, and come to his inn, at night, with a sort of frost on his five wits, and a starless night of darkness in his spirit. Not for him the mild luminous evening of the temperate walker! He has nothing left of man but a physical need for bedtime and a double nightcap; and even his pipe, if he be a smoker, will be savourless and disenchanted. It is the fate of such an one to take twice as much trouble as is needed to obtain happiness, and miss the happiness in the end; he is the man of the proverb, in short, who goes further and fares worse."
+    },
+    {
+      "en": "Now, to be properly enjoyed, a walking tour should be gone upon alone. If you go in a company, or even in pairs, it is no longer a walking tour in anything but name; it is something else and more in the nature of a picnic. A walking tour should be gone upon alone, because freedom is of the essence; because you should be able to stop and go on, and follow this way or that, as the freak takes you; and because you must have your own pace, and neither trot alongside a champion walker, nor mince in time with a girl. And then you must be open to all impressions and let your thoughts take colour from what you see. You should be as a pipe for any wind to play upon. “I cannot see the wit,” says Hazlitt, “of walking and talking at the same time. When I am in the country I wish to vegetate like the country,”—which is the gist of all that can be said upon the matter. There should be no cackle of voices at your elbow, to jar on the meditative silence of the morning. And so long as a man is reasoning he cannot surrender himself to that fine intoxication that comes of much motion in the open air, that begins in a sort of dazzle and sluggishness of the brain, and ends in a peace that passes comprehension."
+    }
+  ]
+}

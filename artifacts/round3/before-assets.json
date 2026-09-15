@@ -1,0 +1,129 @@
+{
+  "commit": "d8e75f14836e9292a40ea51a7dced60b2bc17902",
+  "siteVersion": 16,
+  "conditions": "Exact deployed production artifact; gzip level 9, no network/CPU throttling measurement",
+  "assets": [
+    {
+      "file": "activity-CdQDNooX.js",
+      "bytes": 4007,
+      "gzip": 1797
+    },
+    {
+      "file": "arrow-left-BRLAEwhD.js",
+      "bytes": 164,
+      "gzip": 163
+    },
+    {
+      "file": "bookmark-D6fLKPo3.js",
+      "bytes": 163,
+      "gzip": 164
+    },
+    {
+      "file": "check-C_yP91XY.js",
+      "bytes": 124,
+      "gzip": 140
+    },
+    {
+      "file": "console-settings-BIPKTq5z.js",
+      "bytes": 19337,
+      "gzip": 6578
+    },
+    {
+      "file": "createLucideIcon-qt_RuBxS.js",
+      "bytes": 950,
+      "gzip": 571
+    },
+    {
+      "file": "data-tools-Bwzcp444.js",
+      "bytes": 7441,
+      "gzip": 3390
+    },
+    {
+      "file": "download-o0K9UcyG.js",
+      "bytes": 262,
+      "gzip": 218
+    },
+    {
+      "file": "error-boundary-BvdYAQi-.js",
+      "bytes": 656,
+      "gzip": 490
+    },
+    {
+      "file": "framework-C-kvl5Nm.js",
+      "bytes": 189765,
+      "gzip": 58854
+    },
+    {
+      "file": "index-Be1sz0ks.js",
+      "bytes": 81013,
+      "gzip": 24393
+    },
+    {
+      "file": "index-DzNrclDJ.css",
+      "bytes": 78942,
+      "gzip": 15707
+    },
+    {
+      "file": "layout-segment-context-00vWQAwH.js",
+      "bytes": 283,
+      "gzip": 223
+    },
+    {
+      "file": "lexicon-BdQczGpb.js",
+      "bytes": 7092,
+      "gzip": 2768
+    },
+    {
+      "file": "questions-BQW_VVi8.js",
+      "bytes": 6986,
+      "gzip": 2923
+    },
+    {
+      "file": "reading-BJvZJBE2.js",
+      "bytes": 9956,
+      "gzip": 3320
+    },
+    {
+      "file": "rolldown-runtime-hePW80VL.js",
+      "bytes": 716,
+      "gzip": 430
+    },
+    {
+      "file": "rotate-ccw-V9EzimyN.js",
+      "bytes": 199,
+      "gzip": 181
+    },
+    {
+      "file": "sliders-horizontal-DpNJCJvY.js",
+      "bytes": 584,
+      "gzip": 265
+    },
+    {
+      "file": "sparkles-CS5w9xbq.js",
+      "bytes": 508,
+      "gzip": 296
+    },
+    {
+      "file": "storage-B0fWo59C.js",
+      "bytes": 8147,
+      "gzip": 3332
+    },
+    {
+      "file": "study-session-BcVAoQry.js",
+      "bytes": 13471,
+      "gzip": 5216
+    },
+    {
+      "file": "vocab-app-CKONww1-.js",
+      "bytes": 78083,
+      "gzip": 29004
+    },
+    {
+      "file": "word-detail-DyT1ve1l.js",
+      "bytes": 4419,
+      "gzip": 2181
+    }
+  ],
+  "totalBytes": 513268,
+  "totalGzip": 162604
+}

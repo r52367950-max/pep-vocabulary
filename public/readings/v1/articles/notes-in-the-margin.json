@@ -1,0 +1,62 @@
+{
+  "id": "notes-in-the-margin",
+  "title": "Notes in the Margin",
+  "titleZh": "书页旁的笔记",
+  "paragraphs": [
+    {
+      "en": "On a rainy afternoon, I read the opening chapter of a novel twice. The first time, I followed the action. The second time, I noticed how the author described a room through what the main character chose to see. A cracked cup received three lines, while the expensive furniture was hardly mentioned.",
+      "zh": "一个下雨的下午，我把一部小说的第一章读了两遍。第一遍，我关注情节。第二遍，我注意到，作者通过主人公选择看到的东西来描写房间。一个有裂纹的杯子用了三行文字，昂贵的家具却几乎没有被提到。"
+    },
+    {
+      "en": "I wrote a question in the margin: why does this cup matter? I did not search for an answer immediately. Instead, I kept reading and changed my guess as new details appeared. Literature sometimes asks us to remain uncertain for a while. That patience can reveal more than a quick explanation of what a story is supposed to mean.",
+      "zh": "我在页边写下一个问题：这个杯子为什么重要？我没有立刻查找答案，而是继续读，随着新细节的出现修改自己的猜想。文学有时要求我们容许一时的不确定。这种耐心可能比急于解释一个故事的所谓含义，让我们发现更多。"
+    }
+  ],
+  "targets": [
+    "chapter",
+    "author",
+    "character",
+    "literature",
+    "describe",
+    "reveal"
+  ],
+  "questions": [
+    {
+      "id": "margin-1",
+      "prompt": "What did the writer notice on the second reading?",
+      "options": [
+        "How the room reflected the character's attention.",
+        "How much every piece of furniture cost.",
+        "How many chapters the novel contained."
+      ],
+      "answerIndex": 0,
+      "explanation": "第二遍阅读关注的是主人公注意哪些物件，以及作者如何借此呈现房间。"
+    },
+    {
+      "id": "margin-2",
+      "prompt": "What does the final paragraph encourage readers to do?",
+      "options": [
+        "Avoid changing their first interpretation.",
+        "Keep reading and revise their ideas when necessary.",
+        "Find an online explanation before finishing a chapter."
+      ],
+      "answerIndex": 1,
+      "explanation": "作者随着新细节调整猜想，并肯定容许不确定、耐心阅读的价值。"
+    }
+  ],
+  "author": "词迹",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "essay",
+  "wordCount": 111,
+  "difficulty": "B2",
+  "difficultyNote": "包含抽象表达与议论，需要联系上下文理解。",
+  "form": "original-writing",
+  "background": "文学生活主题短文，含中文译文与阅读理解练习。",
+  "addedIn": "2.0.0",
+  "backgroundEn": "An original reading about the notes we make while reading and how questions help us understand a text."
+}

@@ -1,0 +1,34 @@
+{
+  "id": "original-rain-notebook",
+  "title": "The Rain Notebook",
+  "titleZh": "雨天笔记",
+  "author": "词迹编辑",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "为词迹 2.1.0 补充的原创入门读物，使用模型起草并经编辑审校，不代表教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "science",
+  "wordCount": 132,
+  "difficulty": "A2",
+  "difficultyNote": "使用常见词汇、简单过去时与短句，补充经典原文中较少的入门难度。未经标准化测评。",
+  "form": "original-writing",
+  "background": "一篇补充观察与记录题材的原创入门读物。它介绍一个简单的班级观察活动，提醒读者有限的记录不能代替长期数据。",
+  "backgroundEn": "This original beginner text describes a class weather diary. It also shows why a short record cannot tell us everything about a place’s weather.",
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "Our class kept a weather notebook for one month. Every morning, two students looked outside before the first lesson. They wrote the date and the weather on a new page."
+    },
+    {
+      "en": "We used simple words: sunny, cloudy, rainy and windy. Sometimes we needed two words for the same morning. We also wrote down any changes that we saw at lunch."
+    },
+    {
+      "en": "At the end of the month, we counted the rainy mornings. There were more than we expected. One student said that our town was always wet. Our teacher asked us to think again."
+    },
+    {
+      "en": "We only had notes for one month. The next month might be different. We needed more records before we could say what the weather was usually like. We decided to keep the notebook for the rest of the school year."
+    }
+  ]
+}

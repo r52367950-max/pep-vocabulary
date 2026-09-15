@@ -1,0 +1,166 @@
+{
+  "conditions": "Production Vite manifests; static entry + initial React client boundary + CSS; gzip level 9. Shared lexicon index reported separately. No CPU/network throttle, no Lighthouse score, no physical iPad timing.",
+  "before": {
+    "initialCode": {
+      "bytes": 438555,
+      "gzip": 133452
+    },
+    "initialFiles": [
+      {
+        "path": "assets/createLucideIcon-qt_RuBxS.js",
+        "bytes": 950,
+        "gzip": 568
+      },
+      {
+        "path": "assets/error-boundary-BvdYAQi-.js",
+        "bytes": 656,
+        "gzip": 491
+      },
+      {
+        "path": "assets/framework-C-kvl5Nm.js",
+        "bytes": 189765,
+        "gzip": 58891
+      },
+      {
+        "path": "assets/index-Be1sz0ks.js",
+        "bytes": 81013,
+        "gzip": 24409
+      },
+      {
+        "path": "assets/index-DzNrclDJ.css",
+        "bytes": 78942,
+        "gzip": 15687
+      },
+      {
+        "path": "assets/layout-segment-context-00vWQAwH.js",
+        "bytes": 283,
+        "gzip": 223
+      },
+      {
+        "path": "assets/rolldown-runtime-hePW80VL.js",
+        "bytes": 716,
+        "gzip": 428
+      },
+      {
+        "path": "assets/storage-B0fWo59C.js",
+        "bytes": 8147,
+        "gzip": 3351
+      },
+      {
+        "path": "assets/vocab-app-CKONww1-.js",
+        "bytes": 78083,
+        "gzip": 29404
+      }
+    ],
+    "allClientCode": {
+      "bytes": 513268,
+      "gzip": 163585
+    },
+    "lexiconIndex": {
+      "bytes": 2313458,
+      "gzip": 285433
+    }
+  },
+  "after": {
+    "initialCode": {
+      "bytes": 440094,
+      "gzip": 130056
+    },
+    "initialFiles": [
+      {
+        "path": "assets/createLucideIcon-qt_RuBxS.js",
+        "bytes": 950,
+        "gzip": 568
+      },
+      {
+        "path": "assets/error-boundary-BvdYAQi-.js",
+        "bytes": 656,
+        "gzip": 491
+      },
+      {
+        "path": "assets/framework-C-kvl5Nm.js",
+        "bytes": 189765,
+        "gzip": 58891
+      },
+      {
+        "path": "assets/index-DEyPv8N3.js",
+        "bytes": 81016,
+        "gzip": 24417
+      },
+      {
+        "path": "assets/index-DYFg-HKi.css",
+        "bytes": 92818,
+        "gzip": 17898
+      },
+      {
+        "path": "assets/layout-segment-context-BZZMmCjq.js",
+        "bytes": 283,
+        "gzip": 223
+      },
+      {
+        "path": "assets/progress-h6ZDU3Vk.js",
+        "bytes": 747,
+        "gzip": 405
+      },
+      {
+        "path": "assets/rolldown-runtime-hePW80VL.js",
+        "bytes": 716,
+        "gzip": 428
+      },
+      {
+        "path": "assets/vocab-app-kROBqewB.js",
+        "bytes": 73143,
+        "gzip": 26735
+      }
+    ],
+    "allClientCode": {
+      "bytes": 555068,
+      "gzip": 177455
+    },
+    "lexiconIndex": {
+      "bytes": 2313458,
+      "gzip": 285433
+    }
+  },
+  "initialGzipChange": -3396,
+  "readings": {
+    "total": 60,
+    "catalogBytes": 65173,
+    "allBodiesBytes": 281765,
+    "minBodyBytes": 1637,
+    "medianBodyBytes": 4018,
+    "maxBodyBytes": 13684,
+    "bodiesLoadedOnDemand": true,
+    "memoryBodyCacheLimit": 8,
+    "covers": [
+      {
+        "name": "reading-essay-480.webp",
+        "bytes": 6442
+      },
+      {
+        "name": "reading-essay-960.webp",
+        "bytes": 13626
+      },
+      {
+        "name": "reading-fiction-480.webp",
+        "bytes": 7956
+      },
+      {
+        "name": "reading-fiction-960.webp",
+        "bytes": 17474
+      },
+      {
+        "name": "reading-science-480.webp",
+        "bytes": 7344
+      },
+      {
+        "name": "reading-science-960.webp",
+        "bytes": 15108
+      }
+    ]
+  },
+  "import": {
+    "loadedOnDemand": true,
+    "vendorDirectoryBytes": 20164458
+  }
+}

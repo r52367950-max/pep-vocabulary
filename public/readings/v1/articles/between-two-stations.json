@@ -1,0 +1,62 @@
+{
+  "id": "between-two-stations",
+  "title": "Between Two Stations",
+  "titleZh": "两站之间",
+  "paragraphs": [
+    {
+      "en": "Before dawn, our train stopped at a small station. Most passengers were asleep, but I stayed by the window. Beyond the platform, a woman was opening a shop. A cyclist waited for a truck to pass. I had expected the journey to be empty time before we reached our destination. Instead, these ordinary scenes held my attention.",
+      "zh": "黎明前，火车停在一座小站。大多数乘客还睡着，我却一直望着窗外。站台外，一位女士正在开店门。一名骑车人等着卡车经过。我原以为旅途只是到达目的地之前的一段空白时间，这些普通的场景却吸引了我的注意。"
+    },
+    {
+      "en": "Later, we walked through a local market without a fixed schedule. We bought breakfast and asked a shopkeeper about the old bridge nearby. He pointed us towards a narrow street. By evening, my notebook contained no list of famous sights. It held small details that helped me imagine daily life in an unfamiliar city.",
+      "zh": "后来，我们没有按固定日程，走进了当地的一处市场。我们买了早餐，向店主打听附近的老桥。他指向一条狭窄的街道。到了晚上，我的笔记本里没有名胜清单，记录的是一些小细节。它们帮助我想象这座陌生城市里的日常生活。"
+    }
+  ],
+  "targets": [
+    "journey",
+    "destination",
+    "local",
+    "schedule",
+    "ordinary",
+    "detail"
+  ],
+  "questions": [
+    {
+      "id": "stations-1",
+      "prompt": "What surprised the writer during the train journey?",
+      "options": [
+        "The interest of ordinary scenes.",
+        "The number of famous sights.",
+        "The speed of the train."
+      ],
+      "answerIndex": 0,
+      "explanation": "第一段中，作者原以为旅途乏味，却被普通的日常场景吸引。"
+    },
+    {
+      "id": "stations-2",
+      "prompt": "What was the notebook mainly used to record?",
+      "options": [
+        "Ticket prices.",
+        "Small details of everyday life.",
+        "A strict travel plan."
+      ],
+      "answerIndex": 1,
+      "explanation": "最后两句强调，笔记中记录的是帮助理解城市生活的细节。"
+    }
+  ],
+  "author": "词迹",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "fiction",
+  "wordCount": 111,
+  "difficulty": "B1",
+  "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+  "form": "original-writing",
+  "background": "旅行主题短文，含中文译文与阅读理解练习。",
+  "addedIn": "2.0.0",
+  "backgroundEn": "An original short story about a journey and the small choices people make along the way."
+}

@@ -36,11 +36,9 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
         </button>
       </section>
       <section className="daily-feature" aria-labelledby="daily-title">
-        {/* eslint-disable-next-line @next/next/no-img-element -- Local artwork with reserved intrinsic dimensions. */}
-        <img className="daily-art" src="/images/daily-book.webp" alt="" width={1536} height={1024} fetchPriority="high" />
         <div className="daily-feature-copy">
           <span className="lesson-label"><StudioSymbol name="today" size={20} />今日计划</span>
-          <h2 id="daily-title">{resume ? "继续学习" : queue.length ? `今天学 ${queue.length} 个词` : "今日计划已完成"}</h2>
+          <h2 id="daily-title">{resume ? "接着上次学" : queue.length ? `今天学 ${queue.length} 个词` : "今日计划已完成"}</h2>
           <p>{resume ? resumeLabel : queue.length ? `复习 ${Math.min(due, queue.length)} 词，学习 ${newCount} 个新词。` : "可以在词库中选择单词，继续练习。"}</p>
           <div className="feature-action">
             <button className="primary" disabled={!resume && !queue.length} onClick={resume ?? (() => onStart("daily"))}>
@@ -62,7 +60,7 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
           </button>
           <button className="practice-option" onClick={onReading}>
             <StudioSymbol name="reading" tile size={27} />
-            <span><strong>短文阅读</strong><small>阅读短文，理解词义</small></span>
+            <span><strong>阅读</strong><small>在文章中理解单词</small></span>
             <ChevronRight size={17} aria-hidden="true" />
           </button>
         </div>
