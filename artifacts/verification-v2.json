@@ -11,7 +11,8 @@
     },
     "productionBuild": "passed",
     "workerSmoke": "passed",
-    "dataAudit": "passed with candidate content gaps"
+    "dataAudit": "passed with candidate content gaps",
+    "legacyDatabaseBootstrap": "passed: existing table data, snapshot revision/payload and encrypted configuration survive replay"
   },
   "assets": {
     "before": {
