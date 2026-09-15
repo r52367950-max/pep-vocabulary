@@ -251,11 +251,13 @@ function parseRawHigh(record) {
     .replace(/\s*[（(]\s*(?:especially\s+)?NAmE[^）)]*[）)]/gi, "")
     .replace(/\s*\(BrE[^)]*\)/gi, "")
     .replace(/\s+/g, " "));
-  const ipaGroups = [...raw.matchAll(/\/([^/]{1,100})\//g)].map((m) => normalizeIpa(m[1]));
-  const firstIpa = ipaGroups[0] || "";
-  const nameSplit = firstIpa.split(/;\s*NAmE\s*/i);
-  const britishIpa = nameSplit[0] || firstIpa;
-  const americanIpa = nameSplit[1]?.replace(/^-/, headword.slice(0, Math.max(0, headword.length - 3))) || nameSplit[0] || firstIpa;
+  const rawIpaGroups = [...raw.matchAll(/\/([^/]{1,100})\//g)].map((m) => m[1]);
+  // Split regional labels before converting the embedded phonetic font.
+  const nameSplit = (rawIpaGroups[0] || "").split(/;\s*NAmE\s*/i);
+  const britishIpa = normalizeIpa(nameSplit[0]);
+  const americanCandidate = nameSplit[1]?.trim();
+  const americanIpa = americanCandidate ? (/^-|-$/.test(americanCandidate) ? "" : normalizeIpa(americanCandidate)) : britishIpa;
+  const ipaGroups = rawIpaGroups.flatMap((value) => value.split(/;\s*NAmE\s*/i)).map(normalizeIpa).filter((value) => value && !/^-|-$/.test(value));
   const pos = [...raw.matchAll(/\b(n|v|vi|vt|adj|adv|prep|pron|conj|abbr|modal v|art|num|interj)\./gi)].map((m) => m[1].toLowerCase());
   const zhStart = raw.search(/[\u3400-\u9fff]/);
   const chinese = zhStart >= 0 ? cleanSpaces(raw.slice(zhStart).replace(/\b(?:NAmE|BrE)\b[^\u3400-\u9fff]*/g, "")) : "";

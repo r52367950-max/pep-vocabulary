@@ -38,12 +38,18 @@ export function sites(): Plugin {
       }
       const assets = resolve(root, "dist", "client", "assets");
       if (await exists(assets)) {
-        const files = (await readdir(assets)).filter((file) => /\.(?:js|css)$/.test(file)).sort();
+        const files = (await readdir(assets)).filter((file) => /\.(?:js|css|woff2?)$/.test(file)).sort();
         await writeFile(resolve(root, "dist", "client", "offline-assets.json"), JSON.stringify(files.map((file) => `/assets/${file}`)));
         const fingerprint = createHash("sha256").update(files.join("\n"));
         const dataRoot = resolve(root, "public", "data", "v1");
         for (const file of (await readdir(dataRoot, { recursive: true })).filter((file) => file.endsWith(".json")).sort()) {
           fingerprint.update(await readFile(resolve(dataRoot, file)));
+        }
+        for (const directory of ["icons", "images"]) {
+          const staticRoot = resolve(root, "public", directory);
+          if (await exists(staticRoot)) for (const file of (await readdir(staticRoot)).sort()) {
+            fingerprint.update(await readFile(resolve(staticRoot, file)));
+          }
         }
         const worker = await readFile(resolve(root, "public", "sw.js"), "utf8");
         fingerprint.update(worker);

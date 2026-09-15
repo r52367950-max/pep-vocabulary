@@ -1,65 +1,60 @@
-# 词迹 · 人教版英语词汇学习
+# 词迹 2.0 · 在语言中生长
 
-面向山东高中生的本地优先词汇学习 PWA。应用覆盖人教版高中必修一至三、选择性必修一至四，以及可核验的人教版七上、七下、八上、八下、九年级词表；学习状态由 FSRS v6 调度，初高中范围独立筛选，首次加载后可离线复习。
+面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
-> 当前数据版本是 `1.0.0-rc.1` 发布候选，不是人工终审后的正式终版。自动审计通过硬性安全规则，但仍有 333 个高中短语/专名缺少许可清楚的开放英文简义、153 个词条的 IPA 不完整、7 个单元存在字段级未解析记录。详见 [VOCAB_AUDIT_REPORT.md](./VOCAB_AUDIT_REPORT.md) 与 [data/audit-summary.json](./data/audit-summary.json)。
+[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
 
-仅所有者可访问的 Sites 部署：[pep-vocab-studio.namizore.chatgpt.site](https://pep-vocab-studio.namizore.chatgpt.site)。访问策略经 Sites 接口核验为 `custom`，仅包含站点所有者，无外部访客或授权群组。
+## 功能
 
-## 已实现
+- 今日学习：教材与单元选词、到期复习优先、时间预算与新词额度、刷新恢复。
+- 专注练习：词义回忆、拼写、听写与语境填空；先作答再揭示，错误与提示影响评分，本轮薄弱词重练，支持撤销。
+- 我的词库：4,681 个稳定词条，12 册教材与高中课标范围；中英文搜索、状态筛选、收藏、笔记、选择练习与 CSV 导出。
+- 短文阅读：6 篇原创短文、双语切换、12 道理解题、36 个目标词与 48 条原创例句；可粘贴文章匹配词库。
+- 学习足迹：真实作答、首次作答正确率、学习天数、近期趋势与未来复习负担。
+- 数据与偏好：浅色 / 深色、FSRS 保持率与学习预算、JSON 备份恢复、手动私有云端备份、显式离线下载。
+- 可选 AI：词条用法讲解，密钥仅在服务器加密保存。核心学习无需 AI。
 
-- 4,681 条可操作发布候选，初中核心、高中必修、高中选择性必修、课标差集分层；稳定 ID、来源位置与字段审核状态可追溯。
-- 今日计划、36 词可跳过诊断、教材进度、时间预算、积压时自动减少新词、五种学习模式。
-- 14 种题型、客观评分、四档主观评分、反应时间/提示/错误类型、撤销误触与六项能力向量。
-- `ts-fsrs` v5.2.3 / FSRS v6 适配层；每词一个主调度状态，默认保持率 0.90，可查看负担变化。
-- 词库搜索与教材/单元/状态筛选、懒加载详情、收藏、注释、系统 TTS、趋势和负担分析。
-- IndexedDB 本地状态、追加式复习事件、JSON 备份恢复、CSV/TSV、文章生词对齐、Service Worker 离线。
-- 可选 D1 私有同步；AI 关闭或不可用时核心功能不受影响。
+![词迹 2.0 桌面界面](artifacts/screenshots/studio-v2-desktop.jpg)
 
-## 本地运行
+## 本地开发
 
-要求 Node.js `>=22.13.0`。
+要求 Node.js >=22.13.0。仓库包含发布词库，日常开发无需重新抽取教材。
 
 ```bash
 npm ci
-npm run data:manifest
-npm run data:build
-npm test
 npm run dev
 ```
 
-数据源缓存默认位于 `/workspace/source-cache/pep-vocab`，也可通过 `PEP_VOCAB_SOURCE_CACHE` 指定。受保护教材、整页 OCR 和未授权音频不会进入 `public/` 或 Git。
+| 命令 | 用途 |
+| --- | --- |
+| `npm test` | 数据审计、类型检查、89 项单元测试、生产构建、Worker / D1 验证 |
+| `npm run lint` | ESLint 检查 |
+| `npm run benchmark` | 与 3b12529 比较出题耗时和并发加载 |
+| `npm run build` | 有超时限制的生产构建与产物验证 |
+| `npm run data:audit` | 审核发布词库与来源字段 |
+| `npm run data:manifest` / `npm run data:build` | 在具备来源缓存时重新生成词库 |
 
-## 核心命令
+数据重建所需缓存通过 `PEP_VOCAB_SOURCE_CACHE` 指定。受保护教材、整页 OCR 与未授权音频不会进入公开产物。
 
-| 命令 | 作用 |
-|---|---|
-| `npm run data:manifest` | 重建机器可读和人工来源清单 |
-| `npm run data:build` | 原始抽取 → 规范化 → 聚合 → 分片发布 |
-| `npm run data:audit` | 生成字段级审计摘要；硬错误会非零退出 |
-| `npm run test:unit` | 数据、FSRS、题型、PWA 和同步结构测试 |
-| `npm test` | 审计、单元测试、生产构建与产物验证 |
-| `npm run db:generate` | 从 Drizzle schema 生成 D1 迁移 |
+## 代码结构
 
-## 目录
+| 位置 | 职责 |
+| --- | --- |
+| `components/vocab-app.tsx`、`components/studio/` | 导航与按需加载的页面 |
+| `hooks/use-vocabulary.ts` | 本机数据加载、保存、跨标签页刷新 |
+| `lib/study.ts`、`lib/questions.ts`、`lib/session.ts` | 选词、题型降级、学习队列与恢复 |
+| `lib/reading.ts` | 原创短文、理解题与例句 |
+| `lib/storage.ts`、`lib/scheduler.ts` | IndexedDB 事务、备份校验、FSRS |
+| `app/api/`、`lib/assistant/` | 身份隔离、快照、模型配置与受限代理 |
+| `public/sw.js`、`lib/offline.ts` | 发布缓存、离线下载确认 |
+| `tests/`、`artifacts/verification-v2.json` | 测试与验证记录 |
 
-- `app/`, `components/`, `lib/`：应用、交互、词库、调度和本地存储。
-- `scripts/`：来源清单、抽取、规范化、审计和构建脚本。
-- `data/build/`：页码级原始与规范化 JSONL；`data/unit-reconciliation.json` 为逐单元对账。
-- `public/data/v1/`：版本化轻量索引和详情分片。
-- `db/`, `drizzle/`：可选私有同步 schema 与迁移。
-- `tests/`：可重复的自动化证据。
-- `artifacts/screenshots/`：手机、iPad、桌面和主要流程的真实运行截图及索引。
+## 当前边界
 
-## 数据与隐私边界
+词库仍为 1.0.0-rc.1 发布候选：333 个高中词条缺开放英文简义、153 个词条音标不完整、7 个单元存在未解析记录。本次修复了 32 个词的地区标记音标显示问题，没有宣称完成全库人工终审。来源见 [SOURCE_MANIFEST.md](SOURCE_MANIFEST.md) 与 [VOCAB_AUDIT_REPORT.md](VOCAB_AUDIT_REPORT.md)。
 
-学习数据默认只在浏览器 IndexedDB。私有同步需要站点身份，并只在 D1 保存经过 SHA-256 处理的身份键和 2 MB 以内的用户备份；发生 revision 冲突时拒绝静默覆盖。应用不收集核心学习以外的个人信息，不在前端放模型密钥，不捆绑真人音频。完整权利说明见 [LICENSES_AND_RIGHTS.md](./LICENSES_AND_RIGHTS.md)。
+语境不足时明确降级为基础题；原创内容不冒充教材原文。听写使用设备英语 TTS，离线发音取决于设备语音包。浏览器可能回收站点数据，重要记录可导出备份。
 
-## 相关证据
+云端目前是带 revision 冲突保护的手动快照备份，尚未实现自动多设备合并。站点保持仅所有者访问；托管身份依赖受信任网关，迁移平台需接入服务端认证。详见[架构说明](docs/BACKEND_ARCHITECTURE.md)。
 
-- [SOURCE_MANIFEST.md](./SOURCE_MANIFEST.md)
-- [PRODUCT_RESEARCH.md](./PRODUCT_RESEARCH.md)
-- [DATA_SCHEMA.md](./DATA_SCHEMA.md)
-- [TEST_REPORT.md](./TEST_REPORT.md)
-- [PROJECT_STATE.md](./PROJECT_STATE.md)
-- [LEXICON_VERSIONING_AND_MIGRATIONS.md](./LEXICON_VERSIONING_AND_MIGRATIONS.md)
+旧版设计与测试报告作为历史记录保留；2.0 以[本次重构说明](docs/REFACTOR_REPORT.md)为准。数据权利见 [LICENSES_AND_RIGHTS.md](LICENSES_AND_RIGHTS.md)。

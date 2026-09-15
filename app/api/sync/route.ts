@@ -15,7 +15,10 @@ export async function GET() {
     const key = await authenticatedUserKey();
     if (!key) return json({ error: "Private sync requires the authenticated site identity." }, 401);
     const [row] = await getDb().select().from(syncStates).where(eq(syncStates.userKey, key)).limit(1);
-    return json({ state: row || null });
+    // Identity lets the client bind a revision to the account it actually read.
+    const state = row ? { schemaVersion: row.schemaVersion, payload: row.payload, revision: row.revision,
+      clientUpdatedAt: row.clientUpdatedAt, serverUpdatedAt: row.serverUpdatedAt } : null;
+    return json({ identity: key, state });
   } catch { return json({ error: "Sync storage unavailable" }, 503); }
 }
 
@@ -25,6 +28,7 @@ export async function POST(request: Request) {
     const key = await authenticatedUserKey();
     if (!key) return json({ error: "Private sync requires the authenticated site identity." }, 401);
     const body = await readJsonObject(request, MAX_PAYLOAD_BYTES + 4096);
+    if (body.expectedIdentity !== undefined && body.expectedIdentity !== key) return json({ error: "identity-conflict" }, 409);
     if (body.schemaVersion !== USER_DATA_SCHEMA_VERSION || typeof body.clientUpdatedAt !== "string" || !Number.isFinite(Date.parse(body.clientUpdatedAt)) ||
       typeof body.baseRevision !== "number" || !Number.isSafeInteger(body.baseRevision) || body.baseRevision < 0 || body.baseRevision >= Number.MAX_SAFE_INTEGER) {
       return json({ error: "Valid schemaVersion, clientUpdatedAt and baseRevision are required" }, 400);
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
         .where(sql`${syncStates.userKey} = ${key} AND ${syncStates.revision} = ${body.baseRevision}`)
         .returning({ revision: syncStates.revision, serverUpdatedAt: syncStates.serverUpdatedAt });
     if (!rows.length) return json({ error: "revision-conflict" }, 409);
-    return json(rows[0]);
+    return json({ ...rows[0], identity: key });
   } catch (error) {
     if (error instanceof RequestBodyError) return json({ error: error.message }, error.status);
     return json({ error: "Sync storage unavailable" }, 503);

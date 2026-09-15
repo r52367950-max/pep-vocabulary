@@ -159,7 +159,8 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
   }
   let apiKey: string;
   try {
-    apiKey = normalizeApiKey(await decryptApiKey(row.encryptedApiKey, row.keyIv));
+    apiKey = normalizeApiKey(await decryptApiKey(row.encryptedApiKey, row.keyIv, row.encryptionVersion,
+      { userKey, provider: row.provider, baseUrl }));
   } catch {
     throw new AiRuntimeConfigError("credential_unavailable", "无法解密当前密钥，请在设置中重新保存 API Key。");
   }

@@ -1,0 +1,118 @@
+{
+  "date": "2026-09-15",
+  "applicationVersion": "2.0.0",
+  "baseline": "3b12529",
+  "checks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "unitTests": {
+      "passed": 89,
+      "failed": 0
+    },
+    "productionBuild": "passed",
+    "workerSmoke": "passed",
+    "dataAudit": "passed with candidate content gaps",
+    "legacyDatabaseBootstrap": "passed: existing table data, snapshot revision/payload and encrypted configuration survive replay"
+  },
+  "assets": {
+    "before": {
+      "assetCount": 132,
+      "totalBytes": 6010663,
+      "fonts": {
+        "files": 126,
+        "bytes": 5416796
+      },
+      "js": {
+        "files": 5,
+        "bytes": 399358,
+        "gzip": 124762
+      },
+      "css": {
+        "bytes": 194509,
+        "gzip": 62036
+      }
+    },
+    "after": {
+      "assetCount": 23,
+      "totalBytes": 504052,
+      "fonts": {
+        "files": 0,
+        "bytes": 0
+      },
+      "js": {
+        "files": 22,
+        "bytes": 431713,
+        "gzip": 145993
+      },
+      "css": {
+        "bytes": 72339,
+        "gzip": 14415
+      },
+      "contentImages": {
+        "files": 3,
+        "bytes": 197222
+      },
+      "totalWithNewContentImages": 701274
+    }
+  },
+  "assetComparisonScope": "Preserved earlier build versus current production build; not a load-time benchmark. All lazy-page JavaScript included.",
+  "coreBenchmark": {
+    "baseline": "3b12529",
+    "node": "v24.19.0",
+    "entries": 4681,
+    "choice_100_calls_median_ms": {
+      "before": 28.258942000000047,
+      "after": 28.558716000000004
+    },
+    "concurrent_20_index_loads": {
+      "before": 2,
+      "after": 2
+    }
+  },
+  "dataCaveats": {
+    "missingEnglishDefinitions": 333,
+    "incompleteIpaEntries": 153,
+    "unresolvedUnits": 7,
+    "legacyRegionalLabelsRepairedAtDisplayBoundary": 32
+  },
+  "browser": [
+    "dictation answer hidden",
+    "wrong spelling correction and retry",
+    "hint caps rating",
+    "undo",
+    "refresh resume",
+    "lexicon search",
+    "reading comprehension feedback",
+    "translation toggle",
+    "light/dark theme",
+    "desktop and 390x844 CSS viewport inspection",
+    "optional lexicon selection and selected-word dictation",
+    "reading return position and answer feedback",
+    "desktop sidebar and mobile floating navigation"
+  ],
+  "notVerified": [
+    "paid AI provider end-to-end",
+    "native iOS/iPadOS hardware",
+    "real-device offline speech and quota",
+    "hosted identity gateway internals"
+  ],
+  "dependencyAudit": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "dependencies": {
+      "prod": 25,
+      "dev": 578,
+      "optional": 145,
+      "peer": 45,
+      "peerOptional": 0,
+      "total": 637
+    }
+  },
+  "designRevision": "content-led-apple-product-study"
+}

@@ -1,16 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/barlow/latin-400.css";
-import "@fontsource/barlow/latin-500.css";
-import "@fontsource/barlow/latin-600.css";
-import "@fontsource/barlow/latin-700.css";
-import "@fontsource/barlow-condensed/latin-500.css";
-import "@fontsource/barlow-condensed/latin-600.css";
-import "@fontsource/barlow-condensed/latin-700.css";
-import "@fontsource-variable/noto-sans";
-import "@fontsource-variable/noto-sans-sc";
-import "@fontsource-variable/source-serif-4";
+import "./studio-controls.css";
 import "./globals.css";
-import "./console.css";
+import "./reading-surfaces.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",
@@ -18,18 +9,28 @@ export const metadata: Metadata = {
   applicationName: "词迹",
   manifest: "/manifest.webmanifest",
   other: { "codex-preview": "development" },
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/icons/icon-192.svg" },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f2f3" },
-    { media: "(prefers-color-scheme: dark)", color: "#14181c" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}</body></html>;
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="zh-CN">
+      <body>{children}</body>
+    </html>
+  );
 }
