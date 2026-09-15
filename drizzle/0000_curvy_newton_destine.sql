@@ -1,4 +1,4 @@
-CREATE TABLE `sync_states` (
+CREATE TABLE IF NOT EXISTS `sync_states` (
 	`user_key` text PRIMARY KEY NOT NULL,
 	`revision` integer DEFAULT 1 NOT NULL,
 	`schema_version` text NOT NULL,

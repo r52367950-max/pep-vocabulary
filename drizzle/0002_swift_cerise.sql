@@ -1,4 +1,4 @@
-CREATE TABLE `ai_configs` (
+CREATE TABLE IF NOT EXISTS `ai_configs` (
 	`user_key` text PRIMARY KEY NOT NULL,
 	`provider` text DEFAULT 'deepseek' NOT NULL,
 	`base_url` text DEFAULT 'https://api.deepseek.com/v1' NOT NULL,
