@@ -1,13 +1,14 @@
 "use client";
 
-import { BookOpen, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import { speakSystem, type LexiconIndexEntry } from "@/lib/lexicon";
+import { StudioSymbol } from "./symbol";
 import { BOOKS, getBookUnits } from "@/lib/study";
 
 export function Brand() {
   return (
     <span className="brand">
-      词迹<span className="brand-period">.</span>
+      词迹
     </span>
   );
 }
@@ -96,7 +97,7 @@ export function Empty({
 }) {
   return (
     <div className="empty">
-      <BookOpen size={28} />
+      <StudioSymbol name="lexicon" size={30} />
       <h3>{title}</h3>
       <p>{children}</p>
     </div>

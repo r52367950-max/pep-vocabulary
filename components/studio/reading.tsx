@@ -145,7 +145,7 @@ export default function Reading({ data, onDetail, onPractice }: {
   const nature = READINGS[1];
   return (
     <div className="reading-shelf">
-      <header className="reading-shelf-heading"><h1>阅读</h1><p>让熟悉的单词，走进新的故事。</p></header>
+      <header className="reading-shelf-heading"><h1>阅读</h1><p>6 篇原创短文</p></header>
       <section className="reading-shelf-feature" aria-labelledby="reading-feature-title">
         <ReadingArtwork kind="conversation" eager />
         <div className="reading-shelf-feature-copy">

@@ -7,14 +7,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Headphones,
   Search,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import { matchesLexiconQuery, type LexiconIndexEntry } from "@/lib/lexicon";
-import { selectEntries, type StudyMode } from "@/lib/study";
+import { BOOKS, selectEntries, type StudyMode } from "@/lib/study";
 import { delimitedCell } from "@/lib/export";
+import { StudioSymbol } from "./symbol";
 import { CoursePicker, Empty, sourceLabel } from "./shared";
 
 export default function Lexicon({
@@ -40,6 +41,7 @@ export default function Lexicon({
     initialQuery ? "all" : "book",
   );
   const [status, setStatus] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selecting, setSelecting] = useState(false);
@@ -96,8 +98,8 @@ export default function Lexicon({
     <div className="lexicon-view">
       <div className="page-heading">
         <div>
-          <p>教材词汇与个人收藏</p>
           <h1>词库</h1>
+          <p className="lexicon-caption">{scope === "book" ? `${BOOKS.find(book => book.id === bookId)?.label ?? "当前教材"}${unit !== "all" ? `，${unit}` : ""}` : "全部词库"}</p>
         </div>
         <div className="lexicon-actions">
           <button
@@ -108,7 +110,7 @@ export default function Lexicon({
               setSelected(new Set());
             }}
           >
-            {selecting ? "完成选择" : "选择"}
+            {selecting ? "完成" : "选择"}
           </button>
           <button
             className="icon-button"
@@ -116,7 +118,7 @@ export default function Lexicon({
             aria-label="导出当前词表"
             title="导出当前词表"
           >
-            <Download size={17} />
+            <Download size={19} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -125,13 +127,17 @@ export default function Lexicon({
           <Search size={19} />
           <input
             id="lexicon-search"
+            name="word-search"
+            type="search"
+            autoComplete="off"
+            spellCheck={false}
             aria-label="搜索单词或中文释义"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setPage(0);
             }}
-            placeholder="搜索单词、中文释义或短语"
+            placeholder="搜索单词或释义…"
           />
           {query && (
             <button
@@ -143,7 +149,9 @@ export default function Lexicon({
             </button>
           )}
         </div>
-        <div className="segmented" aria-label="搜索范围">
+        <div className="lexicon-scope-row">
+        <div className="segmented scope-switch" data-scope={scope} aria-label="搜索范围">
+          <span className="scope-selection" aria-hidden="true" />
           <button
             aria-pressed={scope === "book"}
             onClick={() => {
@@ -160,11 +168,15 @@ export default function Lexicon({
               setPage(0);
             }}
           >
-            全部词库
+            全部
           </button>
         </div>
+        <button className="filter-toggle" aria-expanded={filtersOpen} aria-controls="lexicon-filters" onClick={() => setFiltersOpen(!filtersOpen)}>
+          <SlidersHorizontal size={18} aria-hidden="true" />筛选{status !== "all" && <span className="filter-count">1</span>}
+        </button>
+        </div>
       </div>
-      <div className="lexicon-filters">
+      <div className="lexicon-filters" id="lexicon-filters" hidden={!filtersOpen}>
         {scope === "book" && (
           <CoursePicker
             entries={data.index}
@@ -197,7 +209,7 @@ export default function Lexicon({
         </label>
       </div>
       <div className="word-list-meta">
-        <span>
+        <span role="status" aria-live="polite">
           共 {rows.length.toLocaleString("zh-CN")} 词{" "}
           {picks.length > 0 && `· 已选 ${picks.length} 词`}
         </span>
@@ -215,8 +227,8 @@ export default function Lexicon({
             disabled={!practice.length}
             onClick={() => onStart("dictation", practice)}
           >
-            <Headphones size={16} />
-            {picks.length ? "听写所选" : `听写这 ${practice.length} 词`}
+            <StudioSymbol name="listen" size={19} />
+            {picks.length ? "听写所选" : `听写 ${practice.length} 词`}
           </button>
           <button
             className="primary small"
@@ -229,6 +241,7 @@ export default function Lexicon({
       </div>
       {rows.length ? (
         <>
+          <div className="word-list-heading" aria-hidden="true"><span>单词</span><span>释义</span><span>状态</span></div>
           <div
             className={`word-list${selecting ? " is-selecting" : ""}`}
             aria-label="词库搜索结果"
@@ -259,7 +272,7 @@ export default function Lexicon({
                     </label>
                   )}
                   <button className="word-open" onClick={() => onDetail(entry)}>
-                    <span className="word-en">
+                    <span className="word-en" lang="en">
                       <strong>{entry.headword}</strong>
                       <small>
                         {entry.britishIpa ? `/${entry.britishIpa}/` : ""}
@@ -289,7 +302,7 @@ export default function Lexicon({
                       data.metadata(entry.id, { toggleFavorite: true })
                     }
                   >
-                    <Bookmark size={17} />
+                    <Bookmark size={19} aria-hidden="true" />
                   </button>
                 </div>
               );
