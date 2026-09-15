@@ -7,12 +7,7 @@ import { BOOKS, getBookUnits } from "@/lib/study";
 export function Brand() {
   return (
     <span className="brand">
-      <span className="brand-symbol">
-        <BookOpen size={25} strokeWidth={1.6} />
-      </span>
-      <span>
-        词迹<small>在语言中生长</small>
-      </span>
+      词迹<span className="brand-period">.</span>
     </span>
   );
 }
@@ -39,7 +34,9 @@ export function CoursePicker({
         >
           {BOOKS.map((book) => (
             <option key={book.id} value={book.id}>
-              {book.label}
+              {book.level === "curriculum"
+                ? book.shortLabel
+                : `${book.level === "middle" ? "初中" : "高中"} · ${book.shortLabel}`}
             </option>
           ))}
         </select>

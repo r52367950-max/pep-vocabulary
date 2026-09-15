@@ -124,7 +124,7 @@ export default function WordDetail({
           </button>
         </div>
         <div className="detail-word">
-          <h2 id="detail-title" className="serif">
+          <h2 id="detail-title" className="english">
             {entry.headword}
           </h2>
           <Pronounce text={entry.headword} notify={data.notify} />
@@ -152,7 +152,7 @@ export default function WordDetail({
         {example && (
           <div className="example-block">
             <span>{example.source}</span>
-            <p className="serif">{example.en}</p>
+            <p className="english">{example.en}</p>
             {example.zh && <small>{example.zh}</small>}
           </div>
         )}
