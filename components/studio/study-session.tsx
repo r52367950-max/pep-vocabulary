@@ -57,6 +57,7 @@ export default function StudySession({
     previous: StudySessionState;
   } | null>(null);
   const [audioFailed, setAudioFailed] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const busy = useRef(false);
   const start = useRef(0);
   const answerTime = useRef(0);
@@ -107,6 +108,8 @@ export default function StudySession({
     start.current = Date.now();
     answerTime.current = 0;
     setAudioFailed(false);
+    setSpeaking(false);
+    if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
   }, []);
 
   useEffect(() => {
@@ -164,7 +167,11 @@ export default function StudySession({
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang || "en-GB";
     utterance.rate = 0.84;
+    setAudioFailed(false);
+    utterance.onstart = () => setSpeaking(true);
+    utterance.onend = () => setSpeaking(false);
     utterance.onerror = (e) => {
+      setSpeaking(false);
       if (e.error !== "canceled" && e.error !== "interrupted")
         setAudioFailed(true);
     };
@@ -482,13 +489,16 @@ export default function StudySession({
           {question.audio ? (
             <>
               <button
-                className="audio-orb"
+                className={`audio-orb${speaking ? " is-speaking" : ""}`}
                 onClick={play}
                 aria-label="播放听写发音"
+                aria-pressed={speaking}
               >
                 <Volume2 size={37} />
               </button>
-              <p className="audio-note">点击播放 · 系统英语语音</p>
+              <p className="audio-note" role="status">
+                {speaking ? "正在播放…" : "轻点播放 · 系统英语语音"}
+              </p>
               {audioFailed && (
                 <p role="alert" className="inline-error">
                   语音暂不可用。可以退出后选择文字练习；离线发音需要设备已安装英语语音。
@@ -499,7 +509,7 @@ export default function StudySession({
             <h1
               className={
                 question.inputMode === "reveal"
-                  ? "serif recall-word"
+                  ? "english recall-word"
                   : "question-text"
               }
             >
@@ -609,7 +619,7 @@ export default function StudySession({
                 className={
                   question.inputMode === "reveal"
                     ? "answer-zh"
-                    : "serif answer-en"
+                    : "english answer-en"
                 }
               >
                 {question.answer}
@@ -618,7 +628,7 @@ export default function StudySession({
               {example && (
                 <div className="example-block">
                   <span>{example.source}</span>
-                  <p className="serif">{example.en}</p>
+                  <p className="english">{example.en}</p>
                   {example.zh && <small>{example.zh}</small>}
                 </div>
               )}

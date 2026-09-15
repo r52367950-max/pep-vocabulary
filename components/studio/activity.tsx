@@ -30,8 +30,8 @@ export default function Activity({ data }: { data: Vocabulary }) {
     <div className="activity-view">
       <div className="page-heading">
         <div>
-          <p>每次回忆，都留下真实的记录</p>
-          <h1>学习足迹</h1>
+          <p>回顾练习与复习安排</p>
+          <h1>学习记录</h1>
         </div>
       </div>
       <div className="activity-metrics">

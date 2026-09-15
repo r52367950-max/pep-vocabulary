@@ -12,8 +12,7 @@ import {
 import {
   BarChart3,
   BookOpen,
-  Check,
-  ChevronRight,
+  Library,
   CloudOff,
   Home,
   Search,
@@ -43,9 +42,9 @@ const WordDetail = lazy(() => import("./studio/word-detail"));
 type View = "today" | "lexicon" | "reading" | "activity" | "settings" | "data";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", Icon: Home },
-  { id: "lexicon", label: "我的词库", short: "词库", Icon: BookOpen },
+  { id: "lexicon", label: "词库", short: "词库", Icon: Library },
   { id: "reading", label: "短文阅读", short: "阅读", Icon: BookOpen },
-  { id: "activity", label: "学习足迹", short: "足迹", Icon: BarChart3 },
+  { id: "activity", label: "学习足迹", short: "记录", Icon: BarChart3 },
   { id: "settings", label: "偏好设置", short: "设置", Icon: Settings2 },
 ] as const;
 const modeTitle: Record<StudyMode, string> = {
@@ -68,7 +67,6 @@ export default function VocabApp() {
   const data = useVocabulary();
   const [view, setView] = useState<View>("today");
   const [unit, setUnit] = useState("all");
-  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
   const [resume, setResume] = useState<StudySessionState | null>(null);
@@ -320,7 +318,7 @@ export default function VocabApp() {
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <aside className="sidebar">
+      <aside className="app-sidebar" aria-label="应用侧栏">
         <button
           className="brand-home"
           onClick={() => setView("today")}
@@ -328,8 +326,26 @@ export default function VocabApp() {
         >
           <Brand />
         </button>
-        <nav aria-label="主要导航">
-          {navigation.map(({ id, label, Icon }) => (
+        <button
+          className="sidebar-search"
+          onClick={() => {
+            setView("lexicon");
+            setTimeout(
+              () =>
+                document
+                  .querySelector<HTMLInputElement>("#lexicon-search")
+                  ?.focus(),
+              150,
+            );
+          }}
+        >
+          <Search size={17} />
+          <span>搜索</span>
+          <kbd>⌘ K</kbd>
+        </button>
+        <p className="sidebar-label">学习空间</p>
+        <nav className="desktop-nav" aria-label="主要导航">
+          {navigation.slice(0, 3).map(({ id, label, Icon }) => (
             <button
               key={id}
               aria-current={
@@ -339,52 +355,64 @@ export default function VocabApp() {
               }
               onClick={() => setView(id)}
             >
-              <Icon size={20} />
+              <Icon size={21} strokeWidth={1.8} />
               {label}
-              {id === "lexicon" && (
-                <small>{data.index.length.toLocaleString("zh-CN")}</small>
-              )}
             </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span>每个词，都是新的理解。</span>
-            <BookOpen size={25} />
-          </div>
-          <p>
-            <Check size={14} />
-            学习记录保存在本机
-          </p>
-          <small>词迹 2.0</small>
+          <button
+            className="sidebar-progress"
+            onClick={() => setView("activity")}
+          >
+            <span
+              className="daily-ring"
+              style={{
+                background: `conic-gradient(var(--blue) ${Math.min(100, (stats.todayMinutes / Math.max(1, data.settings.dailyMinutes)) * 100)}%, var(--line) 0)`,
+              }}
+            >
+              <span>{stats.todayWords}</span>
+            </span>
+            <span>
+              <strong>一点一滴，都算数</strong>
+              <small>今天已学习 {stats.todayWords} 词</small>
+            </span>
+          </button>
+          <nav className="desktop-nav" aria-label="个人导航">
+            {navigation.slice(3).map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                aria-current={
+                  view === id || (id === "settings" && view === "data")
+                    ? "page"
+                    : undefined
+                }
+                onClick={() => setView(id)}
+              >
+                <Icon size={20} strokeWidth={1.8} />
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
       </aside>
+      <header className="mobile-header">
+        <button
+          className="brand-home"
+          onClick={() => setView("today")}
+          aria-label="词迹首页"
+        >
+          <Brand />
+        </button>
+        <button
+          className="icon-button"
+          aria-label="搜索词库"
+          onClick={() => setView("lexicon")}
+        >
+          <Search size={21} />
+        </button>
+      </header>
       <div className="studio-workspace">
-        <header className="topbar">
-          <span>
-            {navigation.find((item) => item.id === view)?.label || "数据与备份"}
-          </span>
-          <form
-            className="global-search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setView("lexicon");
-            }}
-          >
-            <Search size={16} />
-            <input
-              aria-label="全库快速搜索"
-              placeholder="查一个单词…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <kbd>⌘ K</kbd>
-          </form>
-          <span className="local-status">
-            <i className={data.online ? "online" : "offline"} />
-            {data.online ? "本机学习" : "离线中"}
-          </span>
-        </header>
         <main
           id="main-content"
           className="main-content"
@@ -417,6 +445,12 @@ export default function VocabApp() {
                 onStart={startSession}
                 onWords={() => setView("lexicon")}
                 onReading={() => setView("reading")}
+                onActivity={() => setView("activity")}
+                resumeLabel={
+                  resume
+                    ? `${resume.title} · 第 ${resume.position + 1} / ${resume.queue.length} 词`
+                    : null
+                }
                 resume={
                   resume
                     ? () => {
@@ -429,12 +463,11 @@ export default function VocabApp() {
             )}
             {view === "lexicon" && (
               <Lexicon
-                key={search}
                 data={data}
                 bookId={bookId}
                 unit={unit}
                 onCourse={onCourse}
-                initialQuery={search}
+                initialQuery=""
                 onDetail={setSelected}
                 onStart={startSession}
               />
@@ -464,12 +497,6 @@ export default function VocabApp() {
             )}
           </Suspense>
         </main>
-        <footer className="workspace-footer">
-          <span>词迹 · 在语言中生长</span>
-          <button className="text-button" onClick={() => setView("data")}>
-            管理学习数据 <ChevronRight size={13} />
-          </button>
-        </footer>
       </div>
       <nav className="mobile-nav" aria-label="移动导航">
         {navigation.map(({ id, short, Icon }) => (
