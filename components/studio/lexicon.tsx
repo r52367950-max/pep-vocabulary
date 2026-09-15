@@ -42,6 +42,7 @@ export default function Lexicon({
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selecting, setSelecting] = useState(false);
   const rows = useMemo(
     () =>
       selectEntries(
@@ -95,13 +96,29 @@ export default function Lexicon({
     <div className="lexicon-view">
       <div className="page-heading">
         <div>
-          <p>熟悉的词，也值得再读一次</p>
-          <h1>我的词库</h1>
+          <p>教材词汇与个人收藏</p>
+          <h1>词库</h1>
         </div>
-        <button className="secondary" onClick={exportRows}>
-          <Download size={17} />
-          导出词表
-        </button>
+        <div className="lexicon-actions">
+          <button
+            className="text-button"
+            aria-pressed={selecting}
+            onClick={() => {
+              setSelecting(!selecting);
+              setSelected(new Set());
+            }}
+          >
+            {selecting ? "完成选择" : "选择"}
+          </button>
+          <button
+            className="icon-button"
+            onClick={exportRows}
+            aria-label="导出当前词表"
+            title="导出当前词表"
+          >
+            <Download size={17} />
+          </button>
+        </div>
       </div>
       <div className="lexicon-toolbar">
         <div className="search-field">
@@ -199,7 +216,7 @@ export default function Lexicon({
             onClick={() => onStart("dictation", practice)}
           >
             <Headphones size={16} />
-            {picks.length ? "听写所选" : "听写前 20 词"}
+            {picks.length ? "听写所选" : `听写这 ${practice.length} 词`}
           </button>
           <button
             className="primary small"
@@ -212,30 +229,35 @@ export default function Lexicon({
       </div>
       {rows.length ? (
         <>
-          <div className="word-list" aria-label="词库搜索结果">
+          <div
+            className={`word-list${selecting ? " is-selecting" : ""}`}
+            aria-label="词库搜索结果"
+          >
             {visible.map((entry) => {
               const card = data.cards.get(entry.id);
               return (
                 <div className="word-row" key={entry.id}>
-                  <label className="word-select">
-                    <input
-                      type="checkbox"
-                      aria-label={`选择 ${entry.headword}`}
-                      checked={selected.has(entry.id)}
-                      onChange={() =>
-                        setSelected((previous) => {
-                          const next = new Set(previous);
-                          if (next.has(entry.id)) next.delete(entry.id);
-                          else if (next.size < 80) next.add(entry.id);
-                          else data.notify("每轮最多选择 80 个词。");
-                          return next;
-                        })
-                      }
-                    />
-                    <span>
-                      <Check size={12} />
-                    </span>
-                  </label>
+                  {selecting && (
+                    <label className="word-select">
+                      <input
+                        type="checkbox"
+                        aria-label={`选择 ${entry.headword}`}
+                        checked={selected.has(entry.id)}
+                        onChange={() =>
+                          setSelected((previous) => {
+                            const next = new Set(previous);
+                            if (next.has(entry.id)) next.delete(entry.id);
+                            else if (next.size < 80) next.add(entry.id);
+                            else data.notify("每轮最多选择 80 个词。");
+                            return next;
+                          })
+                        }
+                      />
+                      <span>
+                        <Check size={12} />
+                      </span>
+                    </label>
+                  )}
                   <button className="word-open" onClick={() => onDetail(entry)}>
                     <span className="word-en">
                       <strong>{entry.headword}</strong>

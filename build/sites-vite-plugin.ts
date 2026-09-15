@@ -45,6 +45,12 @@ export function sites(): Plugin {
         for (const file of (await readdir(dataRoot, { recursive: true })).filter((file) => file.endsWith(".json")).sort()) {
           fingerprint.update(await readFile(resolve(dataRoot, file)));
         }
+        for (const directory of ["icons", "images"]) {
+          const staticRoot = resolve(root, "public", directory);
+          if (await exists(staticRoot)) for (const file of (await readdir(staticRoot)).sort()) {
+            fingerprint.update(await readFile(resolve(staticRoot, file)));
+          }
+        }
         const worker = await readFile(resolve(root, "public", "sw.js"), "utf8");
         fingerprint.update(worker);
         await writeFile(resolve(root, "dist", "client", "sw.js"), worker.replace('"vocab-shell-v2"', `"vocab-shell-v2-${fingerprint.digest("hex").slice(0, 16)}"`));

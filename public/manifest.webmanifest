@@ -6,7 +6,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f7fafa",
+  "background_color": "#ffffff",
   "theme_color": "#5277a8",
   "categories": [
     "education",

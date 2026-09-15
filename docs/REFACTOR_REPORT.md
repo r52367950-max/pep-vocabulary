@@ -11,12 +11,12 @@
 | 参考 | 公开观察 | 词迹中的实现 |
 | --- | --- | --- |
 | [墨墨背单词](https://sj.qq.com/appdetail/com.maimemo.android.momo) | 主词突出、渐进显示、简短记忆反馈与复习压力信息 | 单题学习，揭示后显示释义和例句，真实复习量 |
-| [不背单词](https://bbdc.cn/)与[官方商店页](https://apps.apple.com/us/app/id698570469) | 大字号主词、语境例句与用法、克制的学习界面 | 英文衬线字、独立词页、例句与短文、主动查看详情 |
+| [不背单词](https://bbdc.cn/)与[官方商店页](https://apps.apple.com/us/app/id698570469) | 大字号主词、语境例句与用法、克制的学习界面 | 大字号主词、独立词页、例句与短文、主动查看详情 |
 | [扇贝](https://web.shanbay.com/web/main) | 针对薄弱记忆学习，结合阅读与练习 | 错词及提示词再次回忆，阅读目标词进入练习 |
 | [Anki 学习说明](https://docs.ankiweb.net/studying.html)与[牌组选项](https://docs.ankiweb.net/deck-options.html) | 先回忆再揭示、评分对应间隔、新词限制 | FSRS 间隔预览、复习优先、时间预算，错误不能绕过低评分 |
 | [Quizlet 官方商店页](https://play.google.com/store/apps/details?id=com.quizlet.quizletandroid) | 学习、测试与适应学习情况的练习 | 回忆、拼写、听写和语境练习共享学习状态 |
 
-采用纸白、墨蓝、湖蓝与叶绿；桌面侧导航、平板紧凑导航、手机底部导航，学习期间聚焦单题。字体仅保留一份英文衬线子集，中文使用系统字体。首页数字来自本机记录，没有示例成绩。详见 [DESIGN_DIRECTION.md](DESIGN_DIRECTION.md)。
+用户否定早期视觉稿后，重新观察 Apple Books、Music、Fitness、Journal 与 Translate 的官方界面。最终采用内容主导的首页、宽屏侧栏、手机悬浮导航、独立学习界面与安静阅读页，撤去统计面板。三张原创静物封面统一构图、纸张材质和光线；全站系统字体，无字体下载。详见 [DESIGN_DIRECTION.md](DESIGN_DIRECTION.md)、[APPLE_PRODUCT_RESEARCH.md](APPLE_PRODUCT_RESEARCH.md)。
 
 ## 学习逻辑
 
@@ -43,14 +43,16 @@
 
 | 指标 | 保留的旧版构建 | 2.0 构建 |
 | --- | ---: | ---: |
-| assets 总体积 | 6,010,663 | 536,633 |
-| 字体数量 | 126 | 1 |
-| 字体总体积 | 5,416,796 | 49,308 |
-| CSS 总体积 | 194,509 | 59,548 |
-| CSS gzip | 62,036 | 12,479 |
-| 全部 JS 总体积 | 399,358 | 427,777 |
+| 脚本、样式与字体总体积 | 6,010,663 | 504,052 |
+| 字体数量 | 126 | 0 |
+| 字体总体积 | 5,416,796 | 0 |
+| CSS 总体积 | 194,509 | 72,339 |
+| CSS gzip | 62,036 | 14,415 |
+| 全部 JS 总体积 | 399,358 | 431,713 |
+| 本次新增内容封面 | — | 197,222 |
 
-assets 总量减少约 **91%**。新增阅读、恢复、备份逻辑使全部 JS 略增；页面按需加载，词库每页渲染 40 行，详情分片加载并去重。
+新构建的脚本、样式、字体和三张新增封面合计 **701,274 字节**，相比上述旧构建资源减少约 **88%**。此比较不含两版共同使用的词库数据与应用图标，也不代表首屏传输量。新增阅读、恢复、备份逻辑使全部 JS 略增；页面按需加载，词库每页渲染 40 行，详情分片加载并去重。三张本地 WebP 均保留明确尺寸，非关键图片延迟加载；无远程字体请求。
+
 
 `npm run benchmark` 使用 Node v24.19.0、4,681 词，与 `3b12529` 比较。最终测量 100 次选择题构造中位总耗时 **28.26 ms → 28.56 ms**，基本持平，不宣称出题加速；20 个并发索引加载仍只发 **2 次请求**。保留既有请求去重，并修复重构过程中出现的出题退化。
 
@@ -72,14 +74,14 @@ assets 总量减少约 **91%**。新增阅读、恢复、备份逻辑使全部 J
 | npm audit（含开发依赖） | 当前公告库报告 0 项漏洞 |
 | 自动化测试 | **89 / 89 通过** |
 | 生产构建与产物验证 | 通过 |
-| workerd / Miniflare + 临时 D1 | shell、资源字体、鉴权、加密配置、并发首传 200 / 409 通过 |
+| workerd / Miniflare + 临时 D1 | shell、脚本样式、鉴权、加密配置、并发首传 200 / 409 通过 |
 | 数据审计 | 硬规则通过，保留内容待审项 |
 | 浏览器交互 | 听写答案隐藏、错误重练、提示评分、撤销、刷新恢复、查询、阅读反馈、译文、主题切换通过 |
 | 浏览器布局 | 桌面及 390×844 手机布局截图检查；不是原生手机或 iPad 硬件测试 |
 
 没有调用实际付费模型接口。受控缓存测试不等于真实移动设备的离线语音、存储配额或托管认证网关端到端测试。
 
-截图：[桌面](../artifacts/screenshots/studio-v2-desktop.jpg)、[听写](../artifacts/screenshots/studio-v2-dictation.jpg)、[手机阅读](../artifacts/screenshots/studio-v2-mobile.jpg)、[深色设置](../artifacts/screenshots/studio-v2-dark.jpg)。机器记录：[verification-v2.json](../artifacts/verification-v2.json)。
+截图：[桌面](../artifacts/screenshots/studio-v2-desktop.jpg)、[听写](../artifacts/screenshots/studio-v2-dictation.jpg)、[手机首页](../artifacts/screenshots/studio-v2-mobile.jpg)、[深色界面](../artifacts/screenshots/studio-v2-dark.jpg)。另见[阅读目录](../artifacts/screenshots/studio-v2-reading.jpg)。机器记录：[verification-v2.json](../artifacts/verification-v2.json)。
 
 ## 下一阶段
 

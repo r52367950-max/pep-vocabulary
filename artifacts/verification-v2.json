@@ -32,21 +32,26 @@
       }
     },
     "after": {
-      "assetCount": 22,
-      "totalBytes": 536633,
+      "assetCount": 23,
+      "totalBytes": 504052,
       "fonts": {
-        "files": 1,
-        "bytes": 49308
+        "files": 0,
+        "bytes": 0
       },
       "js": {
-        "files": 20,
-        "bytes": 427777,
-        "gzip": 146199
+        "files": 22,
+        "bytes": 431713,
+        "gzip": 145993
       },
       "css": {
-        "bytes": 59548,
-        "gzip": 12479
-      }
+        "bytes": 72339,
+        "gzip": 14415
+      },
+      "contentImages": {
+        "files": 3,
+        "bytes": 197222
+      },
+      "totalWithNewContentImages": 701274
     }
   },
   "assetComparisonScope": "Preserved earlier build versus current production build; not a load-time benchmark. All lazy-page JavaScript included.",
@@ -79,7 +84,10 @@
     "reading comprehension feedback",
     "translation toggle",
     "light/dark theme",
-    "desktop and 390x844 CSS viewport inspection"
+    "desktop and 390x844 CSS viewport inspection",
+    "optional lexicon selection and selected-word dictation",
+    "reading return position and answer feedback",
+    "desktop sidebar and mobile floating navigation"
   ],
   "notVerified": [
     "paid AI provider end-to-end",
@@ -104,5 +112,6 @@
       "peerOptional": 0,
       "total": 637
     }
-  }
+  },
+  "designRevision": "content-led-apple-product-study"
 }
