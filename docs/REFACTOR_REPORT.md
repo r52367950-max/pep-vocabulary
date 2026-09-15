@@ -83,6 +83,14 @@
 
 截图：[桌面](../artifacts/screenshots/studio-v2-desktop.jpg)、[听写](../artifacts/screenshots/studio-v2-dictation.jpg)、[手机首页](../artifacts/screenshots/studio-v2-mobile.jpg)、[深色界面](../artifacts/screenshots/studio-v2-dark.jpg)。另见[阅读目录](../artifacts/screenshots/studio-v2-reading.jpg)。机器记录：[verification-v2.json](../artifacts/verification-v2.json)。
 
+## 发布兼容修复
+
+首次新版本发布遇到旧实例数据库已存在 `ai_rate_limits` 的情况。第 14 版迁移返回 `table ai_rate_limits already exists`，发布未完成。将三份初始迁移中的建表语句改为 `CREATE TABLE IF NOT EXISTS`，不删除、重建或重置已有数据。
+
+在临时 D1 中分别验证空库启动、只存在旧限额表且含数据的启动，以及完整快照与加密配置已经保存后的重复迁移。重复执行必须保留请求计数、快照 revision / payload 和配置密钥。
+
+失败记录：Site `appgprj_6a701d05be848191993dc47a98ccb8b4`，版本 14，部署 `appgdep_6aa8cb328874819183978d6457ba9fe1`。此记录用于解释兼容修复，不代表后续修复版本的部署状态。
+
 ## 下一阶段
 
 优先逐条校核待审音标、词义，再按单元扩充原创例句和分级短文。需要多设备连续学习时，按架构说明落实增量协议与本地账号分区。当前已交付完整本机学习、导出恢复、手动云端备份与可选词条 AI。
