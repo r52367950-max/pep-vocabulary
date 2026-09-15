@@ -1,0 +1,50 @@
+{
+  "runtime": "workerd via Miniflare, local ephemeral D1",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 4551
+    },
+    {
+      "path": "/sw.js",
+      "status": 200,
+      "bytes": 3446
+    },
+    {
+      "path": "/offline-assets.json",
+      "status": 200,
+      "bytes": 206
+    },
+    {
+      "path": "/data/v1/index.json",
+      "status": 200,
+      "bytes": 2313458
+    },
+    {
+      "path": "/api/sync",
+      "status": 401,
+      "bytes": 66
+    },
+    {
+      "path": "/api/ai/config",
+      "status": 401,
+      "bytes": 65
+    },
+    {
+      "path": "/api/ai/config cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config authenticated save",
+      "status": 200
+    },
+    {
+      "path": "/api/sync concurrent first upload",
+      "statuses": [
+        200,
+        409
+      ]
+    }
+  ]
+}

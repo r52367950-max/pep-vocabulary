@@ -48,13 +48,24 @@ export type Question = {
 };
 
 export const normalizeAnswer = (value: string) => value.toLowerCase().normalize("NFKC")
-  .replace(/[’‘]/g, "'").replace(/[^a-z0-9' -]+/g, " ").replace(/\s+/g, " ").trim();
+  .replace(/[’‘]/g, "'").replace(/[^\p{L}\p{N}' -]+/gu, " ").replace(/\s+/g, " ").trim();
 
 function choicesFor(entry: LexiconIndexEntry, pool: LexiconIndexEntry[], field: "headword" | "chineseCore") {
-  const distractors = pool.filter((candidate) => candidate.id !== entry.id && candidate[field] && candidate.scopes.some((scope) => entry.scopes.includes(scope)))
-    .sort((a, b) => Math.abs(a.headword.length - entry.headword.length) - Math.abs(b.headword.length - entry.headword.length))
-    .slice(0, 3).map((candidate) => candidate[field]);
-  return [...distractors, entry[field]].sort((a, b) => `${entry.id}:${a}`.localeCompare(`${entry.id}:${b}`));
+  const correct = normalizeAnswer(entry[field]);
+  const seen = new Set([correct]);
+  const closest: Array<{ value: string; distance: number }> = [];
+  for (const candidate of pool) {
+    if (candidate.id === entry.id || !candidate[field] || !candidate.scopes.some((scope) => entry.scopes.includes(scope))) continue;
+    const distance = Math.abs(candidate.headword.length - entry.headword.length);
+    if (closest.length === 3 && distance >= closest[2].distance) continue;
+    const normalized = normalizeAnswer(candidate[field]);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    closest.push({ value: candidate[field], distance });
+    closest.sort((a, b) => a.distance - b.distance);
+    if (closest.length > 3) closest.pop();
+  }
+  return [...closest.map((item) => item.value), entry[field]].sort((a, b) => a.localeCompare(b));
 }
 
 export function buildQuestion(entry: LexiconIndexEntry, detail: LexiconDetail | undefined, requested: QuestionType, pool: LexiconIndexEntry[]): Question {
@@ -101,12 +112,14 @@ export function buildQuestion(entry: LexiconIndexEntry, detail: LexiconDetail | 
 
 export function gradeQuestion(question: Question, response: string) {
   if (!question.objective) return null;
-  return normalizeAnswer(response) === normalizeAnswer(question.answer);
+  const answer = normalizeAnswer(response);
+  return Boolean(answer) && answer === normalizeAnswer(question.answer);
 }
 
 export function localSentenceCheck(sentence: string, headword: string) {
   const normalized = normalizeAnswer(sentence);
-  const hasTarget = normalized.includes(normalizeAnswer(headword));
+  const target = normalizeAnswer(headword);
+  const hasTarget = Boolean(target) && ` ${normalized} `.includes(` ${target} `);
   const wordCount = normalized.split(/\s+/).filter(Boolean).length;
   return {
     hasTarget,

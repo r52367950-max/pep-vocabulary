@@ -94,39 +94,81 @@ function openDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === "undefined") return reject(new Error("IndexedDB unavailable"));
     const request = indexedDB.open(DB_NAME, DB_VERSION);
+    let blocked = false;
+    request.onblocked = () => { blocked = true; reject(new Error("请关闭其他词迹页面后重试数据库升级。")); };
     request.onupgradeneeded = () => {
       const db = request.result;
       for (const store of stores) {
         if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: store === "events" ? "eventId" : store === "settings" || store === "meta" ? "key" : "id" });
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => db.close();
+      if (blocked) db.close();
+      else resolve(db);
+    };
     request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
   });
 }
 
-async function transaction<T>(storeName: StoreName, mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>) {
+async function runTransaction<T>(names: readonly StoreName[], mode: IDBTransactionMode, work: (tx: IDBTransaction, result: (value: T) => void) => void) {
   const db = await openDatabase();
   return new Promise<T>((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
+    let tx: IDBTransaction;
+    let value: T;
+    try { tx = db.transaction([...names], mode); }
+    catch (error) { db.close(); reject(error); return; }
+    tx.oncomplete = () => { db.close(); resolve(value); };
+    tx.onabort = () => { db.close(); reject(tx.error || new Error("本地保存已取消，数据未提交。")); };
+    try { work(tx, (result) => { value = result; }); }
+    catch (error) { tx.abort(); reject(error); }
+  });
+}
+
+function transaction<T>(storeName: StoreName, mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>) {
+  return runTransaction<T>([storeName], mode, (tx, result) => {
     const request = work(tx.objectStore(storeName));
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("IndexedDB request failed"));
-    tx.oncomplete = () => db.close();
+    request.onsuccess = () => result(request.result);
   });
 }
 
 export const getOne = <T>(store: StoreName, key: IDBValidKey) => transaction<T | undefined>(store, "readonly", (target) => target.get(key));
 export const getAll = <T>(store: StoreName) => transaction<T[]>(store, "readonly", (target) => target.getAll());
 export const putOne = <T>(store: StoreName, value: T) => transaction<IDBValidKey>(store, "readwrite", (target) => target.put(value));
-export const deleteOne = (store: StoreName, key: IDBValidKey) => transaction<undefined>(store, "readwrite", (target) => target.delete(key));
+
+export function updateCardMetadata(fallback: StoredCard, patch: { note?: string; toggleFavorite?: boolean }) {
+  return runTransaction<StoredCard>(["cards"], "readwrite", (tx, result) => {
+    const store = tx.objectStore("cards");
+    const request = store.get(fallback.id);
+    request.onsuccess = () => {
+      const current: StoredCard = request.result || fallback;
+      const next = { ...current, ...(patch.note === undefined ? {} : { note: patch.note }),
+        ...(patch.toggleFavorite ? { favorite: !current.favorite } : {}), updatedAt: new Date().toISOString() };
+      store.put(next);
+      result(next);
+    };
+  });
+}
+
+export async function commitReview(event: ReviewEvent) {
+  await runTransaction<void>(["cards", "events"], "readwrite", (tx) => {
+    const cards = tx.objectStore("cards");
+    const request = cards.get(event.cardId);
+    request.onsuccess = () => {
+      const undo = event.eventType === "undo";
+      const expected = undo ? event.after : event.before;
+      if (JSON.stringify(request.result || null) !== JSON.stringify(expected)) { tx.abort(); return; }
+      // The card and its audit event either both commit or both roll back.
+      if (undo && !event.before) cards.delete(event.cardId);
+      else cards.put(undo ? event.before! : event.after);
+      tx.objectStore("events").add(event);
+    };
+  });
+}
 
 export async function loadSettings() {
-  try {
-    return (await getOne<AppSettings>("settings", "app")) || defaultSettings;
-  } catch {
-    return defaultSettings;
-  }
+  return (await getOne<AppSettings>("settings", "app")) || structuredClone(defaultSettings);
 }
 
 export async function saveSettings(settings: AppSettings) {
@@ -136,10 +178,14 @@ export async function saveSettings(settings: AppSettings) {
 }
 
 export async function exportBackup() {
-  const [cards, events, lists, settings] = await Promise.all([
-    getAll<StoredCard>("cards"), getAll<ReviewEvent>("events"), getAll<Record<string, unknown>>("lists"), getAll<AppSettings>("settings"),
-  ]);
-  return { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards, events, lists, settings };
+  return runTransaction<BackupPayload>(["cards", "events", "lists", "settings"], "readonly", (tx, result) => {
+    const payload: BackupPayload = { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards: [], events: [], lists: [], settings: [] };
+    for (const name of ["cards", "events", "lists", "settings"] as const) {
+      const request = tx.objectStore(name).getAll();
+      request.onsuccess = () => { payload[name] = request.result; };
+    }
+    result(payload);
+  });
 }
 
 type BackupPayload = {
@@ -162,31 +208,75 @@ function migrateBackup(payload: BackupPayload): BackupPayload {
   };
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const validDate = (value: unknown) => typeof value === "string" && value.length <= 40 && Number.isFinite(Date.parse(value));
+const textId = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 200;
+const finiteRange = (value: unknown, low: number, high = Number.MAX_SAFE_INTEGER): value is number => typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
+const stringArray = (value: unknown) => Array.isArray(value) && value.length <= 200 && value.every((item) => typeof item === "string" && item.length <= 500);
+const skills = ["meaning", "listening", "spelling", "context", "collocation", "output"] as const;
+
+function validCard(value: unknown): value is StoredCard {
+  if (!isRecord(value) || !textId(value.id) || !validDate(value.due) || !validDate(value.updatedAt) || (value.lastReviewed !== null && !validDate(value.lastReviewed))) return false;
+  if (!["unseen", "learning", "weak", "mastered", "paused"].includes(String(value.status)) || !isRecord(value.skills) || !isRecord(value.fsrs)) return false;
+  const vector = value.skills, fsrs = value.fsrs;
+  return skills.every((skill) => finiteRange(vector[skill], 0, 1)) && validDate(fsrs.due) &&
+    (!fsrs.last_review || validDate(fsrs.last_review)) &&
+    ["stability", "difficulty", "elapsed_days", "scheduled_days", "reps", "lapses", "state"].every((key) => finiteRange(fsrs[key], 0)) &&
+    finiteRange(fsrs.difficulty, 0, 10) && finiteRange(fsrs.state, 0, 3) && Number.isInteger(fsrs.state) &&
+    (fsrs.learning_steps === undefined || finiteRange(fsrs.learning_steps, 0)) &&
+    (value.note === undefined || (typeof value.note === "string" && value.note.length <= 50_000)) &&
+    (value.favorite === undefined || typeof value.favorite === "boolean") && (value.tags === undefined || stringArray(value.tags));
+}
+
+export function validateBackup(payload: unknown): BackupPayload {
+  if (!isRecord(payload) || !["cards", "events", "lists", "settings"].every((key) => Array.isArray(payload[key]))) throw new Error("备份结构损坏或字段缺失");
+  for (const name of ["cards", "events", "lists", "settings"] as const) {
+    const rows = payload[name] as unknown[];
+    if (rows.length > (name === "events" ? 100_000 : name === "settings" ? 1 : 20_000)) throw new Error("备份记录数量超过限制");
+    const ids = new Set<string>();
+    for (const row of rows) {
+      const key = name === "events" ? "eventId" : name === "settings" ? "key" : "id";
+      if (!isRecord(row) || !textId(row[key]) || ids.has(row[key])) throw new Error("备份包含无效或重复的记录 ID");
+      ids.add(row[key]);
+    }
+  }
+  const data = migrateBackup(payload as unknown as BackupPayload);
+  if (!data.cards.every(validCard)) throw new Error("备份的词卡或调度数据无效");
+  for (const event of data.events) {
+    if (!textId(event.cardId) || !validDate(event.timestampUtc) || !/^\d{4}-\d{2}-\d{2}$/.test(event.localDate) ||
+      typeof event.timezone !== "string" || typeof event.questionType !== "string" || !skills.includes(event.skill) ||
+      ![1, 2, 3, 4].includes(event.rating) || typeof event.correct !== "boolean" ||
+      !finiteRange(event.responseMs, 0) || !finiteRange(event.hints, 0) || !isRecord(event.schedulerLog) ||
+      !validCard(event.after) || event.after.id !== event.cardId || (event.before !== null && (!validCard(event.before) || event.before.id !== event.cardId)) ||
+      (event.eventType !== undefined && !["review", "undo"].includes(event.eventType)) || (event.eventType === "undo" && !textId(event.targetEventId)) ||
+      [event.prompt, event.answerGiven, event.expectedAnswer, event.sourceLine, event.errorType].some((value) => value != null && typeof value !== "string")) throw new Error("备份的复习事件无效");
+  }
+  for (const settings of data.settings) {
+    if (settings.key !== "app" || !finiteRange(settings.dailyMinutes, 1, 1440) || !finiteRange(settings.desiredRetention, 0.7, 0.99) ||
+      !stringArray(settings.selectedBooks) || !["normal", "unit", "review-only", "exam", "browse"].includes(settings.mode) ||
+      !["light", "dark", "system"].includes(settings.theme) || typeof settings.aiEnabled !== "boolean" ||
+      typeof settings.diagnosisComplete !== "boolean" || !validDate(settings.updatedAt) ||
+      (settings.examDate !== null && !validDate(settings.examDate))) throw new Error("备份的学习设置无效");
+  }
+  return data;
+}
+
 export async function restoreBackup(payload: unknown) {
-  if (!payload || typeof payload !== "object") throw new Error("备份不是有效对象");
-  const data = payload as Record<string, unknown>;
-  if (!["cards", "events", "lists", "settings"].every((key) => Array.isArray(data[key]))) throw new Error("备份结构损坏或字段缺失");
-  const migrated = migrateBackup(data as unknown as BackupPayload);
-  const db = await openDatabase();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(["cards", "events", "lists", "settings"], "readwrite");
+  // Validate every row before opening the destructive transaction.
+  const migrated = validateBackup(payload);
+  await runTransaction<void>(["cards", "events", "lists", "settings", "meta"], "readwrite", (tx) => {
     for (const name of ["cards", "events", "lists", "settings"] as const) {
       const store = tx.objectStore(name);
       store.clear();
-      for (const row of migrated[name] as object[]) store.put(row);
+      for (const row of migrated[name]) store.put(row);
     }
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => reject(tx.error || new Error("恢复失败"));
+    tx.objectStore("meta").clear();
   });
 }
 
 export async function clearUserData() {
-  const db = await openDatabase();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(stores, "readwrite");
+  await runTransaction<void>(stores, "readwrite", (tx) => {
     stores.forEach((name) => tx.objectStore(name).clear());
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => reject(tx.error || new Error("清空失败"));
   });
 }
 

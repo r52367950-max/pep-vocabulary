@@ -1,4 +1,4 @@
-import { createEmptyCard, fsrs, generatorParameters, Rating, type Card } from "ts-fsrs";
+import { createEmptyCard, fsrs, generatorParameters, type Card } from "ts-fsrs";
 import { createLocalId, emptySkills, type ReviewEvent, type SkillName, type StoredCard } from "./storage";
 
 function hydrateCard(value: Record<string, unknown>): Card {
@@ -28,6 +28,7 @@ export function newStoredCard(id: string, now = new Date()): StoredCard {
 
 export function scheduleReview({
   stored,
+  cardId,
   rating,
   retention,
   skill,
@@ -43,6 +44,7 @@ export function scheduleReview({
   now = new Date(),
 }: {
   stored: StoredCard | null;
+  cardId?: string;
   rating: 1 | 2 | 3 | 4;
   retention: number;
   skill: SkillName;
@@ -58,9 +60,9 @@ export function scheduleReview({
   now?: Date;
 }) {
   const before = stored ? structuredClone(stored) : null;
-  const current = stored || newStoredCard(createLocalId(), now);
+  const current = stored || newStoredCard(cardId || createLocalId(), now);
   const scheduler = fsrs(generatorParameters({ request_retention: retention, enable_fuzz: true, enable_short_term: true }));
-  const result = scheduler.next(hydrateCard(current.fsrs), now, rating as Rating);
+  const result = scheduler.next(hydrateCard(current.fsrs), now, rating);
   const nextSkill = Math.max(0, Math.min(1, current.skills[skill] * 0.78 + (correct ? 0.28 : -0.08)));
   const nextSkills = { ...current.skills, [skill]: Number(nextSkill.toFixed(3)) };
   const average = Object.values(nextSkills).reduce((sum, value) => sum + value, 0) / 6;
@@ -120,19 +122,23 @@ export function previewReviewIntervals(stored: StoredCard | null | undefined, re
   const current = stored || newStoredCard("preview", now);
   const scheduler = fsrs(generatorParameters({ request_retention: retention, enable_fuzz: false, enable_short_term: true }));
   return ([1, 2, 3, 4] as const).map((rating) => {
-    const due = scheduler.next(hydrateCard(current.fsrs), now, rating as Rating).card.due;
+    const due = scheduler.next(hydrateCard(current.fsrs), now, rating).card.due;
     return { rating, due: due.toISOString(), days: Math.max(0, (due.getTime() - now.getTime()) / 86400000), label: intervalLabel(due, now) };
   });
 }
 
 export type WorkloadDay = { date: string; count: number; minutes: number };
 export function forecastDueLoad(cards: Iterable<StoredCard>, days = 14, now = new Date()): WorkloadDay[] {
+  if (!Number.isInteger(days) || days <= 0) return [];
   const start = new Date(now); start.setHours(0, 0, 0, 0);
   const result = Array.from({ length: days }, (_, offset) => { const date = new Date(start); date.setDate(start.getDate() + offset); return { date: date.toLocaleDateString("sv-SE"), count: 0, minutes: 0 }; });
+  const byDate = new Map(result.map((day) => [day.date, day]));
   for (const card of cards) {
-    if (card.status === "paused") continue;
-    const offset = Math.max(0, Math.min(days - 1, Math.floor((new Date(card.due).getTime() - start.getTime()) / 86400000)));
-    result[offset].count += 1;
+    if (card.status === "paused" || card.status === "unseen") continue;
+    const due = new Date(card.due);
+    if (!Number.isFinite(due.getTime())) continue;
+    const bucket = due < start ? result[0] : byDate.get(due.toLocaleDateString("sv-SE"));
+    if (bucket) bucket.count += 1;
   }
   return result.map((day) => ({ ...day, minutes: Math.max(day.count ? 2 : 0, Math.round(day.count * .62)) }));
 }
@@ -143,5 +149,5 @@ export function workloadEstimate(minutesAtNinety: number, retention: number) {
 }
 
 export function isDue(card: StoredCard, now = new Date()) {
-  return new Date(card.due).getTime() <= now.getTime() && card.status !== "paused";
+  return new Date(card.due).getTime() <= now.getTime() && card.status !== "paused" && card.status !== "unseen";
 }

@@ -1,3 +1,4 @@
+import { sameOriginRequest } from "@/lib/http";
 import { env } from "cloudflare:workers";
 import { normalizeBaseUrl, type AiProvider } from "@/lib/assistant/core";
 
@@ -102,7 +103,5 @@ export function securityHeaders() {
 }
 
 export function sameOriginMutation(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return false;
-  return request.headers.get("x-vocab-action") === "settings";
+  return sameOriginRequest(request) && request.headers.get("x-vocab-action") === "settings";
 }

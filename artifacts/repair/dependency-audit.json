@@ -1,0 +1,18 @@
+{
+  "before": {
+    "info": 0,
+    "low": 1,
+    "moderate": 6,
+    "high": 16,
+    "critical": 1,
+    "total": 24
+  },
+  "after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  }
+}

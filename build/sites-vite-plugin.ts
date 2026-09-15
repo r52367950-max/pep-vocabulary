@@ -1,4 +1,5 @@
-import { access, cp, mkdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Plugin } from "vite";
 
@@ -34,6 +35,19 @@ export function sites(): Plugin {
 
       if (await exists(hostingConfig)) {
         await cp(hostingConfig, resolve(outputDirectory, "hosting.json"));
+      }
+      const assets = resolve(root, "dist", "client", "assets");
+      if (await exists(assets)) {
+        const files = (await readdir(assets)).filter((file) => /\.(?:js|css)$/.test(file)).sort();
+        await writeFile(resolve(root, "dist", "client", "offline-assets.json"), JSON.stringify(files.map((file) => `/assets/${file}`)));
+        const fingerprint = createHash("sha256").update(files.join("\n"));
+        const dataRoot = resolve(root, "public", "data", "v1");
+        for (const file of (await readdir(dataRoot, { recursive: true })).filter((file) => file.endsWith(".json")).sort()) {
+          fingerprint.update(await readFile(resolve(dataRoot, file)));
+        }
+        const worker = await readFile(resolve(root, "public", "sw.js"), "utf8");
+        fingerprint.update(worker);
+        await writeFile(resolve(root, "dist", "client", "sw.js"), worker.replace('"vocab-shell-v2"', `"vocab-shell-v2-${fingerprint.digest("hex").slice(0, 16)}"`));
       }
       if (await exists(drizzleSource)) {
         await cp(drizzleSource, resolve(outputDirectory, "drizzle"), {

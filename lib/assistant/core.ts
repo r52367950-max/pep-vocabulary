@@ -226,14 +226,14 @@ function privateIpv4(hostname: string): boolean {
 
 function privateIpv6(hostname: string): boolean {
   if (!hostname.includes(":")) return false;
-  return hostname === "::" || hostname === "::1" || hostname.startsWith("::ffff:") ||
+  return hostname.startsWith("::") || hostname.startsWith("64:ff9b:") || hostname.startsWith("2002:") ||
     hostname.includes(".") || hostname.startsWith("fc") || hostname.startsWith("fd") ||
     /^fe[89a-f]/.test(hostname) || hostname.startsWith("ff");
 }
 
 function localHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  return host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") || privateIpv4(host) || privateIpv6(host);
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.+$/, "");
+  return (!host.includes(".") && !host.includes(":")) || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") || privateIpv4(host) || privateIpv6(host);
 }
 
 export function normalizeBaseUrl(raw: string, allowInsecureLocal = false): string {
