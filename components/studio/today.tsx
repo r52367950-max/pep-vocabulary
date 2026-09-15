@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Responsive local WebP illustration, without an image proxy. */
 
 import { ChevronRight, Play } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
@@ -49,6 +50,7 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
           </div>
           {resume && queue.length > 0 && <button className="fresh-plan" onClick={() => onStart("daily")}>开始今日计划<ChevronRight size={14} aria-hidden="true" /></button>}
         </div>
+        <img className="today-artwork" src="/images/today-study-320.webp" srcSet="/images/today-study-320.webp 320w, /images/today-study-640.webp 640w" sizes="(max-width: 760px) 112px, 264px" width={640} height={640} alt="" decoding="async" onError={event => { event.currentTarget.style.visibility = "hidden"; }} />
       </section>
       <section className="practice-section" aria-labelledby="practice-title">
         <div className="section-heading"><h2 id="practice-title">专项练习</h2></div>

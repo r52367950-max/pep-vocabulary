@@ -1,10 +1,10 @@
-# 词迹 2.1.0
+# 词迹 2.1.1
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
 [打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [界面与动效更新](docs/INTERFACE_REFINEMENT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
 
-本次更新见 [2.1.0 发布说明](docs/RELEASE_2.1.0.md)：60 篇可阅读内容、个人文章导入与扫描、独立设置浮层、iPad 布局与手绘分类封面。
+本次 [2.1.1 更新](docs/RELEASE_2.1.1.md)新增彩色手绘插画与稳定的封面分配。主要功能见 [2.1.0 发布说明](docs/RELEASE_2.1.0.md)：60 篇可阅读内容、个人文章导入与扫描、独立设置浮层、iPad 布局与手绘分类封面。
 
 ## 功能
 

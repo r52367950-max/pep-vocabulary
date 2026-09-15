@@ -7,14 +7,16 @@ import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { READING_CATEGORIES, READING_FORMS, LENGTHS, lengthBand, loadReadingCatalog, loadLibraryArticle, matchReadingWords, type LibraryArticle, type ReadingMeta, type ReadingCategory } from "@/lib/reading-library";
 import { StudioSymbol } from "./symbol";
+import { readingCoverBase } from "@/lib/reading-art";
 import { listPersonalReadings, readPersonalArticle, removePersonalArticle, exportPersonalArticle } from "@/lib/personal-readings";
 const ReadingImport = lazy(() => import("./reading-import"));
 
-function Cover({ category, eager = false }: { category: ReadingCategory; eager?: boolean }) {
+function Cover({ category, articleId, eager = false }: { category: ReadingCategory; articleId: string; eager?: boolean }) {
   const [failed, setFailed] = useState(false);
+  const base = readingCoverBase(category, articleId);
   return <span className={`reading-cover cover-${category}`} aria-hidden="true">
     <span className="cover-fallback"><StudioSymbol name={category === "science" ? "today" : "reading"} size={34} /></span>
-    {!failed && <img src={`/images/reading-${category}-480.webp`} srcSet={`/images/reading-${category}-480.webp 480w, /images/reading-${category}-960.webp 960w`} sizes="(max-width: 600px) calc(100vw - 40px), (max-width: 1120px) 40vw, 320px" alt="" width={480} height={320} loading={eager ? "eager" : "lazy"} decoding="async" onError={() => setFailed(true)} />}
+    {!failed && <img src={`${base}-480.webp`} srcSet={`${base}-480.webp 480w, ${base}-960.webp 960w`} sizes="(max-width: 600px) calc(100vw - 40px), (max-width: 1120px) 40vw, 320px" alt="" width={480} height={320} loading={eager ? "eager" : "lazy"} decoding="async" onError={() => setFailed(true)} />}
   </span>;
 }
 function LoadError({ message, retry }: { message: string; retry: () => void }) {
@@ -167,7 +169,7 @@ export default function Reading({ data, onDetail, onPractice }: {
     {shelf === "personal" && personalError ? <p role="alert" className="import-error">{personalError}</p> : shelf === "library" && catalogError ? <LoadError message={catalogError} retry={() => { setCatalogError(""); setCatalogRetry(n => n + 1); }} /> : shelf === "library" && !catalog ? <div className="reading-loading" role="status"><div className="reading-skeleton" /><p>正在载入阅读目录…</p></div> : <>
       <div className="reading-result-count" role="status">{category !== "all" || difficulty !== "all" || length || query ? `找到 ${filtered.length} 篇` : "所有文章"}<span>难度与篇幅分别标注</span></div>
       {displayed.length ? <div className="reading-grid">{displayed.map((item, i) => <button className="reading-card" key={item.id} data-reading-id={item.id} onClick={() => open(item.id)}>
-        <Cover category={item.category} eager={i < 3} />
+        <Cover category={item.category} articleId={item.id} eager={i < 3} />
         <span className="reading-card-copy"><span className="reading-card-category">{READING_CATEGORIES[item.category]}</span><strong lang="en">{item.title}</strong><span className="reading-card-author">{item.author}</span><span className="reading-card-meta"><span>{item.difficulty}</span><span>{item.wordCount.toLocaleString()} 词</span><span>{READING_FORMS[item.form]}</span></span></span>
       </button>)}</div> : <div className="reading-empty"><Search size={30} /><h2>{shelf === "personal" && !personal.length ? "保存你想读的文章" : "没有找到文章"}</h2><p>{shelf === "personal" && !personal.length ? "导入文件、扫描英文，或直接粘贴正文。" : "试试其他作品、作者或筛选条件。"}</p><button className="secondary" onClick={shelf === "personal" && !personal.length ? () => setImportOpen(true) : resetFilters}>{shelf === "personal" && !personal.length ? "导入文章" : "清除筛选"}</button></div>}
       {pages > 1 && <div className="reading-pagination"><button disabled={currentPage === 1} onClick={() => { setPage(currentPage - 1); window.scrollTo(0, 0); }}><ArrowLeft size={17} />上一页</button><span>{currentPage} / {pages}</span><button disabled={currentPage === pages} onClick={() => { setPage(currentPage + 1); window.scrollTo(0, 0); }}>下一页<ArrowRight size={17} /></button></div>}
