@@ -12,7 +12,10 @@ try {
     const text = await response.text();
     assert.equal(response.status, expected, `${path}: ${text.slice(0, 120)}`);
     results.push({ path, status: response.status, bytes: Buffer.byteLength(text) });
-    if (path === '/') assert.match(text, /词迹/);
+    if (path === '/') {
+      assert.match(text, /词迹/);
+      assert.doesNotMatch(response.headers.get('cache-control') || '', /\bno-store\b/i, 'The public app shell must be cacheable for offline installation');
+    }
     if (path === '/sw.js') assert.match(text, /vocab-shell-v2-[a-f0-9]{16}/);
     if (path === '/offline-assets.json') {
       const assets = JSON.parse(text);

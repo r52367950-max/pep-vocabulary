@@ -666,9 +666,15 @@ function mappedUpstreamFailure(status: number): AssistantUpstreamError {
 }
 
 export async function readChatCompletion(response: Response, signal?: AbortSignal): Promise<string> {
-  if (!response.ok) throw mappedUpstreamFailure(response.status);
+  if (!response.ok) {
+    void response.body?.cancel().catch(() => undefined);
+    throw mappedUpstreamFailure(response.status);
+  }
   const declaredLength = Number(response.headers.get("content-length") || 0);
-  if (declaredLength > 300_000) throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
+  if (declaredLength > 300_000) {
+    void response.body?.cancel().catch(() => undefined);
+    throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
+  }
   const text = await readBoundedResponseText(response, 300_000, signal);
   let payload: unknown;
   try {
@@ -705,14 +711,14 @@ async function readBoundedResponseText(response: Response, maximumBytes: number,
       if (chunk.done) break;
       total += chunk.value.byteLength;
       if (total > maximumBytes) {
-        await reader.cancel("response-too-large").catch(() => undefined);
+        void reader.cancel("response-too-large").catch(() => undefined);
         throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
       }
       text += decoder.decode(chunk.value, { stream: true });
     }
     return text + decoder.decode();
   } catch (error) {
-    if (signal?.aborted) await reader.cancel("request-timeout").catch(() => undefined);
+    if (signal?.aborted) void reader.cancel("request-timeout").catch(() => undefined);
     throw error;
   } finally {
     if (signal && onAbort) signal.removeEventListener("abort", onAbort);

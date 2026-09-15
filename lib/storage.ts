@@ -160,9 +160,18 @@ export async function commitReview(event: ReviewEvent) {
       const expected = undo ? event.after : event.before;
       if (JSON.stringify(request.result || null) !== JSON.stringify(expected)) { tx.abort(); return; }
       // The card and its audit event either both commit or both roll back.
-      if (undo && !event.before) cards.delete(event.cardId);
-      else cards.put(undo ? event.before! : event.after);
-      tx.objectStore("events").add(event);
+      const write = () => {
+        if (undo && !event.before) cards.delete(event.cardId);
+        else cards.put(undo ? event.before! : event.after);
+        tx.objectStore("events").add(event);
+      };
+      if (undo) {
+        const target = tx.objectStore("events").get(event.targetEventId || "");
+        target.onsuccess = () => {
+          if (!validUndoTarget(target.result, event)) { tx.abort(); return; }
+          write();
+        };
+      } else write();
     };
   });
 }
@@ -215,6 +224,15 @@ const finiteRange = (value: unknown, low: number, high = Number.MAX_SAFE_INTEGER
 const stringArray = (value: unknown) => Array.isArray(value) && value.length <= 200 && value.every((item) => typeof item === "string" && item.length <= 500);
 const skills = ["meaning", "listening", "spelling", "context", "collocation", "output"] as const;
 
+function validUndoTarget(target: ReviewEvent | undefined, undo: ReviewEvent) {
+  return target && target.eventType !== "undo" && target.eventId === undo.targetEventId && target.cardId === undo.cardId &&
+    JSON.stringify(target.before) === JSON.stringify(undo.before) && JSON.stringify(target.after) === JSON.stringify(undo.after);
+}
+
+function validCalendarDate(value: unknown) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && validDate(value) && new Date(value).toISOString().slice(0, 10) === value;
+}
+
 function validCard(value: unknown): value is StoredCard {
   if (!isRecord(value) || !textId(value.id) || !validDate(value.due) || !validDate(value.updatedAt) || (value.lastReviewed !== null && !validDate(value.lastReviewed))) return false;
   if (!["unseen", "learning", "weak", "mastered", "paused"].includes(String(value.status)) || !isRecord(value.skills) || !isRecord(value.fsrs)) return false;
@@ -242,14 +260,22 @@ export function validateBackup(payload: unknown): BackupPayload {
   }
   const data = migrateBackup(payload as unknown as BackupPayload);
   if (!data.cards.every(validCard)) throw new Error("备份的词卡或调度数据无效");
+  const eventById = new Map(data.events.map((event) => [event.eventId, event]));
+  const undoneTargets = new Set<string>();
   for (const event of data.events) {
-    if (!textId(event.cardId) || !validDate(event.timestampUtc) || !/^\d{4}-\d{2}-\d{2}$/.test(event.localDate) ||
-      typeof event.timezone !== "string" || typeof event.questionType !== "string" || !skills.includes(event.skill) ||
+    if (!textId(event.cardId) || !validDate(event.timestampUtc) || !validCalendarDate(event.localDate) ||
+      !textId(event.timezone) || !textId(event.questionType) || !skills.includes(event.skill) ||
       ![1, 2, 3, 4].includes(event.rating) || typeof event.correct !== "boolean" ||
-      !finiteRange(event.responseMs, 0) || !finiteRange(event.hints, 0) || !isRecord(event.schedulerLog) ||
+      !finiteRange(event.responseMs, 0) || !finiteRange(event.hints, 0) || !Number.isInteger(event.hints) || !isRecord(event.schedulerLog) ||
       !validCard(event.after) || event.after.id !== event.cardId || (event.before !== null && (!validCard(event.before) || event.before.id !== event.cardId)) ||
       (event.eventType !== undefined && !["review", "undo"].includes(event.eventType)) || (event.eventType === "undo" && !textId(event.targetEventId)) ||
-      [event.prompt, event.answerGiven, event.expectedAnswer, event.sourceLine, event.errorType].some((value) => value != null && typeof value !== "string")) throw new Error("备份的复习事件无效");
+      [event.prompt, event.answerGiven, event.expectedAnswer, event.sourceLine, event.errorType].some((value) => value != null && (typeof value !== "string" || value.length > 50_000)) ||
+      [event.intervalBeforeDays, event.intervalAfterDays, event.stabilityBefore, event.stabilityAfter].some((value) => value != null && !finiteRange(value, 0)) ||
+      [event.difficultyBefore, event.difficultyAfter].some((value) => value != null && !finiteRange(value, 0, 10))) throw new Error("备份的复习事件无效");
+    if (event.eventType === "undo") {
+      if (!validUndoTarget(eventById.get(event.targetEventId!), event) || undoneTargets.has(event.targetEventId!)) throw new Error("备份的撤销记录与原复习事件不一致");
+      undoneTargets.add(event.targetEventId!);
+    }
   }
   for (const settings of data.settings) {
     if (settings.key !== "app" || !finiteRange(settings.dailyMinutes, 1, 1440) || !finiteRange(settings.desiredRetention, 0.7, 0.99) ||

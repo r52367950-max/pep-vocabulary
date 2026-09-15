@@ -9,6 +9,15 @@ export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: 
 
 const ENCRYPTION_CONTEXT = new TextEncoder().encode("pep-vocab-ai-config:v1");
 
+export type AiCredentialScope = { userKey: string; provider: AiProvider; baseUrl: string };
+
+function encryptionContext(version: number, scope?: AiCredentialScope) {
+  if (version === 1) return ENCRYPTION_CONTEXT;
+  if (version !== 2 || !scope) throw new Error("Unsupported AI credential encryption context");
+  // A ciphertext copied to another user or destination must fail authentication.
+  return new TextEncoder().encode(JSON.stringify(["pep-vocab-ai-config:v2", scope.userKey, scope.provider, scope.baseUrl]));
+}
+
 function bytesToBase64(bytes: Uint8Array) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -34,19 +43,20 @@ async function masterKey() {
   return crypto.subtle.importKey("raw", bytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
-export async function encryptApiKey(value: string) {
+export async function encryptApiKey(value: string, scope?: AiCredentialScope) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encryptionVersion = scope ? 2 : 1;
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv, additionalData: ENCRYPTION_CONTEXT },
+    { name: "AES-GCM", iv, additionalData: encryptionContext(encryptionVersion, scope) },
     await masterKey(),
     new TextEncoder().encode(value),
   );
-  return { encryptedApiKey: bytesToBase64(new Uint8Array(encrypted)), keyIv: bytesToBase64(iv) };
+  return { encryptedApiKey: bytesToBase64(new Uint8Array(encrypted)), keyIv: bytesToBase64(iv), encryptionVersion };
 }
 
-export async function decryptApiKey(encryptedApiKey: string, keyIv: string) {
+export async function decryptApiKey(encryptedApiKey: string, keyIv: string, encryptionVersion = 1, scope?: AiCredentialScope) {
   const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64ToBytes(keyIv), additionalData: ENCRYPTION_CONTEXT },
+    { name: "AES-GCM", iv: base64ToBytes(keyIv), additionalData: encryptionContext(encryptionVersion, scope) },
     await masterKey(),
     base64ToBytes(encryptedApiKey),
   );
