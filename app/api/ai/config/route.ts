@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { aiConfigs } from "@/db/schema";
 import {
   AI_PROVIDER_DEFAULTS,
+  decryptApiKey,
   encryptApiKey,
   isAiProvider,
   normalizeConfiguredBaseUrl,
@@ -96,7 +97,8 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const [current] = await db.select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
-    let encrypted: { encryptedApiKey: string; keyIv: string } | null = null;
+    const scope = { userKey, provider: body.provider, baseUrl };
+    let encrypted: { encryptedApiKey: string; keyIv: string; encryptionVersion: number } | null = null;
     if (current) {
       let currentBaseUrl = current.baseUrl;
       try {
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
         { provider: safeProvider(current.provider), baseUrl: currentBaseUrl },
         { provider: body.provider, baseUrl },
       )) {
-        encrypted = { encryptedApiKey: current.encryptedApiKey, keyIv: current.keyIv };
+        encrypted = { encryptedApiKey: current.encryptedApiKey, keyIv: current.keyIv, encryptionVersion: current.encryptionVersion };
       }
     }
 
@@ -120,13 +122,21 @@ export async function POST(request: Request) {
         return json({ error: error instanceof Error ? error.message : "API Key 格式无效。" }, 400);
       }
       try {
-        encrypted = await encryptApiKey(apiKey);
+        encrypted = await encryptApiKey(apiKey, scope);
       } catch {
         return json({ error: "当前部署尚未启用安全密钥存储。" }, 503);
       }
     }
     if (!encrypted) {
       return json({ error: current ? "更换服务商或 Base URL 时必须重新填写 API Key。" : "首次配置时需要填写 API Key。" }, 400);
+    }
+    if (encrypted.encryptionVersion !== 2) {
+      // Retaining an old credential upgrades it without asking the browser for it.
+      try {
+        encrypted = await encryptApiKey(await decryptApiKey(encrypted.encryptedApiKey, encrypted.keyIv, encrypted.encryptionVersion), scope);
+      } catch {
+        return json({ error: "无法升级当前密钥存储，请重新填写 API Key。" }, 503);
+      }
     }
 
     await db.insert(aiConfigs).values({
@@ -146,7 +156,6 @@ export async function POST(request: Request) {
         dailyLimit,
         timeoutSeconds,
         ...encrypted,
-        encryptionVersion: 1,
         updatedAt: sql`CURRENT_TIMESTAMP`,
       },
     });

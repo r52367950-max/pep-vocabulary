@@ -18,11 +18,11 @@ test("FSRS v6 schedules one main card and retention changes the interval", () =>
   assert.match(source("lib/storage.ts"), /meaning.*listening.*spelling.*context.*collocation.*output/s);
 });
 
-test("question engine exposes all fourteen required modes", () => {
+test("question engine exposes compatible modes and honest context gap", () => {
   const questionSource = source("lib/questions.ts");
-  const ids = [...questionSource.matchAll(/\{ id: "([a-z-]+)"/g)].map((match) => match[1]);
-  assert.equal(ids.length, 14);
-  assert.equal(new Set(ids).size, 14);
+  const ids = [...questionSource.matchAll(/\{\s*id: "([a-z-]+)"/g)].map((match) => match[1]);
+  assert.equal(ids.length, 15);
+  assert.equal(new Set(ids).size, ids.length);
   assert.match(questionSource, /localSentenceCheck/);
 });
 
@@ -40,9 +40,9 @@ test("PWA shell, offline worker, lazy chunks, backup and D1 sync are wired", () 
 test("destructive reset and AI degradation are explicit", () => {
   const app = source("components/vocab-app.tsx");
   const settings = source("components/console-settings.tsx");
-  assert.match(app, /window\.confirm\(["']将清空本机/);
+  assert.match(app, /window\.confirm\(\s*["']将清空本机/);
   assert.match(settings, /关闭后不会发起模型请求/);
-  assert.match(app, /系统语音/);
+  assert.match(source("components/studio/study-session.tsx"), /系统英语语音/);
 });
 
 test("AI deployment settings keep credentials server-side and validate compatible upstreams", () => {

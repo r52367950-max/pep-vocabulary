@@ -64,6 +64,22 @@ const detailCache = new Map<string, LexiconDetail>();
 const chunkPromises = new Map<number, Promise<void>>();
 const chunkById = new Map<string, number>();
 
+// Older releases converted NAmE (a regional label) as though it were IPA.
+// Repair the display boundary without rewriting source evidence or inventing
+// a complete pronunciation from a textbook's abbreviated form.
+export function normalizePronunciations<T extends LexiconIndexEntry>(entry: T): T {
+  const marker = /;\s*(?:NAmE|ŋɑmE)\s*/i;
+  if (!marker.test(entry.britishIpa) && !marker.test(entry.americanIpa)) return entry;
+  const british = entry.britishIpa.split(marker);
+  const american = entry.americanIpa.split(marker);
+  const candidate = (american[1] || british[1] || entry.americanIpa).trim();
+  const americanIpa = /^-|-$/.test(candidate) ? "" : candidate;
+  const detail = entry as T & { fieldStatus?: Record<string, string> };
+  return { ...entry, britishIpa: british[0].trim(), americanIpa,
+    ...(detail.fieldStatus && { fieldStatus: { ...detail.fieldStatus, ...(americanIpa ? {} : { americanIpa: "provisional" }) } }),
+  };
+}
+
 export function loadLexicon() {
   if (lexiconPromise) return lexiconPromise;
   lexiconPromise = (async () => {
@@ -85,7 +101,7 @@ export function loadLexicon() {
       }
     });
     if (position !== index.length) throw new Error("词库索引与分片数量不一致");
-    return { index, manifest };
+    return { index: index.map(normalizePronunciations), manifest };
   })().catch((error) => { lexiconPromise = null; chunkById.clear(); throw error; });
   return lexiconPromise;
 }
@@ -101,7 +117,7 @@ export async function loadDetails(ids: string[]) {
         if (!response.ok) throw new Error("词条详情分片暂时无法读取");
         const rows = await response.json() as LexiconDetail[];
         if (!Array.isArray(rows) || rows.length !== descriptor.count || new Set(rows.map((row) => row.id)).size !== rows.length || rows.some((row) => chunkById.get(row.id) !== chunk)) throw new Error("词条详情分片与索引不一致");
-        rows.forEach((row) => detailCache.set(row.id, row));
+        rows.forEach((row) => detailCache.set(row.id, normalizePronunciations(row)));
       })().catch((error) => { chunkPromises.delete(chunk); throw error; });
       chunkPromises.set(chunk, promise);
     }
