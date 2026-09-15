@@ -1,0 +1,43 @@
+{
+  "id": "lamb-old-china",
+  "title": "Old China",
+  "titleZh": "古瓷",
+  "author": "Charles Lamb",
+  "category": "essay",
+  "difficulty": "C1",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+  "background": "节选开篇对瓷器画面的描写，止于叙述者开始与表姐交谈之前。小小茶杯里，人物、远山和河流有自己的比例。",
+  "backgroundEn": "This opening description ends before the narrator’s conversation with his cousin. Figures, distant hills and rivers follow their own proportions on a painted tea-cup.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/10343",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 347,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "I have an almost feminine partiality for old china. When I go to see any great house, I inquire for the china-closet, and next for the picture gallery. I cannot defend the order of preference, but by saying, that we have all some taste or other, of too ancient a date to admit of our remembering distinctly that it was an acquired one. I can call to mind the first play, and the first exhibition, that I was taken to; but I am not conscious of a time when china jars and saucers were introduced into my imagination."
+    },
+    {
+      "en": "I had no repugnance then--why should I now have?--to those little, lawless, azure-tinctured grotesques, that under the notion of men and women, float about, uncircumscribed by any element, in that world before perspective--a china tea-cup."
+    },
+    {
+      "en": "I like to see my old friends--whom distance cannot diminish--figuring up in the air (so they appear to our optics), yet on terra firma still--for so we must in courtesy interpret that speck of deeper blue, which the decorous artist, to prevent absurdity, has made to spring up beneath their sandals."
+    },
+    {
+      "en": "I love the men with women's faces, and the women, if possible, with still more womanish expressions."
+    },
+    {
+      "en": "Here is a young and courtly Mandarin, handing tea to a lady from a salver--two miles off. See how distance seems to set off respect! And here the same lady, or another--for likeness is identity on tea-cups--is stepping into a little fairy boat, moored on the hither side of this calm garden river, with a dainty mincing foot, which in a right angle of incidence (as angles go in our world) must infallibly land her in the midst of a flowery mead--a furlong off on the other side of the same strange stream!"
+    },
+    {
+      "en": "Farther on--if far or near can be predicated of their world--see horses, trees, pagodas, dancing the hays."
+    },
+    {
+      "en": "Here--a cow and rabbit couchant, and co-extensive--so objects show, seen through the lucid atmosphere of fine Cathay."
+    }
+  ]
+}

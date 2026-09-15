@@ -1,0 +1,28 @@
+{
+  "id": "aesop-golden-goose",
+  "title": "The Goose That Laid the Golden Eggs",
+  "titleZh": "生金蛋的鹅",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "每天得到一枚金蛋的人，想要一次拥有更多。这则完整寓言讨论贪心与耐心。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "A couple receive a golden egg each day. This complete fable asks what happens when steady good fortune is not enough.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 106,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "A Man and his Wife had the good fortune to possess a Goose which laid a Golden Egg every day. Lucky though they were, they soon began to think they were not getting rich fast enough, and, imagining the bird must be made of gold inside, they decided to kill it in order to secure the whole store of precious metal at once. But when they cut it open they found it was just like any other goose. Thus, they neither got rich all at once, as they had hoped, nor enjoyed any longer the daily addition to their wealth."
+    },
+    {
+      "en": "Much wants more and loses all."
+    }
+  ]
+}

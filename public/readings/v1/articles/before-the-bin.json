@@ -1,0 +1,62 @@
+{
+  "id": "before-the-bin",
+  "title": "Before the Bin",
+  "titleZh": "扔进垃圾桶之前",
+  "paragraphs": [
+    {
+      "en": "Our school put recycling bins beside the playground, but the environmental club wanted to do more. For one week, members counted the disposable cups left after lunch. Then they asked students why they used them. Some had forgotten their bottles; others said the drinking fountains were too far from their classrooms.",
+      "zh": "学校在操场边放置了回收桶，但环保社团希望多做一些事。整整一周，成员们统计午饭后留下的一次性杯子，然后询问同学使用它们的原因。一些人忘带水瓶，另一些人说饮水处离教室太远。"
+    },
+    {
+      "en": "The club suggested adding a water station near the dining hall and keeping clean spare cups there. A month later, fewer disposable cups appeared in the bins. The project taught us to look beyond a simple message such as 'recycle more'. To reduce waste, we also need to understand the choices people face and make a better choice easier.",
+      "zh": "社团建议在食堂附近增设饮水点，并准备干净的备用杯。一个月后，垃圾桶里的一次性杯子减少了。这个项目让我们懂得，思考不能止于“多回收”这样简单的口号。要减少浪费，还需要了解人们面临的选择，让更好的选择更容易实现。"
+    }
+  ],
+  "targets": [
+    "recycle",
+    "reduce",
+    "suggest",
+    "waste",
+    "project",
+    "choice"
+  ],
+  "questions": [
+    {
+      "id": "bin-1",
+      "prompt": "Why did club members ask students questions?",
+      "options": [
+        "To find out why they used disposable cups.",
+        "To choose a new club leader.",
+        "To make a list of students who forgot lunch."
+      ],
+      "answerIndex": 0,
+      "explanation": "调查的目的是了解使用一次性杯子的原因，随后据此提出措施。"
+    },
+    {
+      "id": "bin-2",
+      "prompt": "Which idea best matches the project's lesson?",
+      "options": [
+        "Signs alone can solve every waste problem.",
+        "Recycling bins should be removed.",
+        "Practical changes can help people waste less."
+      ],
+      "answerIndex": 2,
+      "explanation": "饮水点与备用杯改变了使用条件，使减少浪费更容易做到。"
+    }
+  ],
+  "author": "词迹",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "science",
+  "wordCount": 110,
+  "difficulty": "B1",
+  "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+  "form": "original-writing",
+  "background": "环境主题短文，含中文译文与阅读理解练习。",
+  "addedIn": "2.0.0",
+  "backgroundEn": "An original reading about everyday waste and the choices that can give useful things another life."
+}

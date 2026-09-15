@@ -1,5 +1,5 @@
 import type { LexiconIndexEntry } from "./lexicon";
-import { findOriginalExample } from "./reading";
+import { findOriginalExample } from "./examples";
 import type { StoredCard } from "./storage";
 
 export type StudyBook = {

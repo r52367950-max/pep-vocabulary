@@ -1,0 +1,62 @@
+{
+  "id": "a-small-question",
+  "title": "A Small Question",
+  "titleZh": "一个小问题",
+  "paragraphs": [
+    {
+      "en": "Our biology group wanted to know whether light affected the growth of bean plants. We placed six similar plants near a window and another six farther away. We used the same soil and gave each plant the same amount of water. Every afternoon, we measured their height and wrote down what we could observe.",
+      "zh": "我们的生物小组想知道光照是否影响豆苗生长。我们把六株相似的豆苗放在窗边，另外六株放在离窗更远的地方。两组使用相同的土壤，每株获得等量的水。每天下午，我们测量株高，并记下观察到的现象。"
+    },
+    {
+      "en": "After two weeks, the groups looked different. However, our teacher asked us to check the temperature in both places. It was warmer by the window. We realised that one experiment could not answer every question. Good research requires careful records and a willingness to examine other explanations before treating a result as strong evidence.",
+      "zh": "两周后，两组豆苗看起来有所不同。不过，老师让我们检查两处的温度。窗边更暖和。我们意识到，一次实验无法回答所有问题。好的研究需要细致的记录，也需要愿意在把结果视为有力证据之前，考虑其他解释。"
+    }
+  ],
+  "targets": [
+    "observe",
+    "experiment",
+    "research",
+    "evidence",
+    "temperature",
+    "result"
+  ],
+  "questions": [
+    {
+      "id": "question-1",
+      "prompt": "What factor did the group fail to keep the same?",
+      "options": [
+        "The amount of water.",
+        "The type of soil.",
+        "The temperature."
+      ],
+      "answerIndex": 2,
+      "explanation": "两组水量与土壤相同，但窗边温度更高，因此温度也可能影响结果。"
+    },
+    {
+      "id": "question-2",
+      "prompt": "Why was the teacher's question useful?",
+      "options": [
+        "It proved that light had no effect.",
+        "It encouraged the group to consider another explanation.",
+        "It showed that measuring plants was unnecessary."
+      ],
+      "answerIndex": 1,
+      "explanation": "老师指出了另一个可能影响结果的因素；文章并未证明光照没有作用。"
+    }
+  ],
+  "author": "词迹",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "science",
+  "wordCount": 108,
+  "difficulty": "B1",
+  "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+  "form": "original-writing",
+  "background": "生物主题短文，含中文译文与阅读理解练习。",
+  "addedIn": "2.0.0",
+  "backgroundEn": "An original classroom story about observing a plant, asking a question and testing an explanation."
+}

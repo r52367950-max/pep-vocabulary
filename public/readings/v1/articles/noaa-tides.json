@@ -1,0 +1,28 @@
+{
+  "id": "noaa-tides",
+  "title": "What are Tides?",
+  "author": "NOAA",
+  "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_tides/tides01_intro.html",
+  "category": "science",
+  "background": "NOAA 潮汐教程用波峰、波谷和水平方向水流说明潮汐与潮流的基本概念。",
+  "titleZh": "潮汐",
+  "difficulty": "B1",
+  "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+  "backgroundEn": "This section of NOAA’s tides tutorial introduces high and low tides and distinguishes water level from the horizontal movement of water.",
+  "rights": {
+    "label": "NOAA 公开信息",
+    "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+    "url": "https://oceanservice.noaa.gov/disclaimer.html"
+  },
+  "form": "excerpt",
+  "wordCount": 203,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "Basically, tides are very long-period waves that move through the oceans in response to the forces exerted by the moon and sun. Tides originate in the oceans and progress toward the coastlines where they appear as the regular rise and fall of the sea surface. When the highest part, or crest of the wave reaches a particular location, high tide occurs; low tide corresponds to the lowest part of the wave, or its trough. The difference in height between the high tide and the low tide is called the tidal range."
+    },
+    {
+      "en": "A horizontal movement of water often accompanies the rising and falling of the tide. This is called the tidal current. The incoming tide along the coast and into the bays and estuaries is called a flood current; the outgoing tide is called an ebb current. The strongest flood and ebb currents usually occur before or near the time of the high and low tides. The weakest currents occur between the flood and ebb currents and are called \"slack water\" or \"slack current\". In the open ocean tidal currents are relatively weak. Near estuary entrances, narrow straits and inlets, the speed of tidal currents can reach up to several kilometers per hour."
+    }
+  ]
+}

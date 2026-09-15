@@ -1,0 +1,62 @@
+{
+  "id": "check-the-answer",
+  "title": "Check the Answer",
+  "titleZh": "核对答案",
+  "paragraphs": [
+    {
+      "en": "For a history project, our class tried an AI tool that could create a summary in seconds. Its first answer sounded clear and confident. Yet when we checked the dates against our textbook, we found two mistakes. One source mentioned in the answer did not seem to exist. Speed had made the task easier, but it had not made the information reliable.",
+      "zh": "做历史项目时，我们班尝试了一款能在几秒内生成摘要的人工智能工具。它的第一个回答清楚而肯定。然而，对照课本核对日期时，我们发现了两处错误。回答提到的一项资料似乎并不存在。速度让任务变得容易，却没有让信息变得可靠。"
+    },
+    {
+      "en": "We changed our approach. We used the tool to suggest questions, then searched for evidence ourselves. We also removed names and personal details before sharing any notes. Technology was still useful, but we remained responsible for the final work. The best result came from combining a helpful tool with careful human judgement.",
+      "zh": "我们改变了做法：让工具提出问题，再亲自查找证据。在分享笔记前，我们也删去了姓名和个人细节。技术仍然有用，但我们依旧需要对最终作品负责。将有帮助的工具与审慎的人类判断结合，才取得了最好的结果。"
+    }
+  ],
+  "targets": [
+    "create",
+    "reliable",
+    "evidence",
+    "technology",
+    "responsible",
+    "source"
+  ],
+  "questions": [
+    {
+      "id": "answer-1",
+      "prompt": "What showed that the first answer was unreliable?",
+      "options": [
+        "It took too long to appear.",
+        "It contained incorrect dates and a doubtful source.",
+        "It used words from the textbook."
+      ],
+      "answerIndex": 1,
+      "explanation": "第一段列出了日期错误和疑似不存在的资料来源。"
+    },
+    {
+      "id": "answer-2",
+      "prompt": "How did the class use the tool afterwards?",
+      "options": [
+        "They accepted every answer without checking.",
+        "They stopped asking any questions.",
+        "They used its questions as a starting point for their own research."
+      ],
+      "answerIndex": 2,
+      "explanation": "第二段说明，他们让工具提出问题，然后自己查证。"
+    }
+  ],
+  "author": "词迹",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "science",
+  "wordCount": 114,
+  "difficulty": "B2",
+  "difficultyNote": "包含抽象表达与议论，需要联系上下文理解。",
+  "form": "original-writing",
+  "background": "科技主题短文，含中文译文与阅读理解练习。",
+  "addedIn": "2.0.0",
+  "backgroundEn": "An original reading about checking information and thinking carefully before accepting an answer."
+}

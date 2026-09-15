@@ -1,0 +1,28 @@
+{
+  "id": "aesop-bear-travellers",
+  "title": "The Bear and the Travellers",
+  "titleZh": "熊与旅人",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "同行的朋友遇见一头熊。故事用一次危机，检验了友谊的含义。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "Two travelling companions meet a bear. A moment of danger tests the meaning of friendship in this complete fable.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 166,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "Two Travellers were on the road together, when a Bear suddenly appeared on the scene. Before he observed them, one made for a tree at the side of the road, and climbed up into the branches and hid there. The other was not so nimble as his companion; and, as he could not escape, he threw himself on the ground and pretended to be dead. The Bear came up and sniffed all round him, but he kept perfectly still and held his breath: for they say that a bear will not touch a dead body. The Bear took him for a corpse, and went away. When the coast was clear, the Traveller in the tree came down, and asked the other what it was the Bear had whispered to him when he put his mouth to his ear. The other replied, \"He told me never again to travel with a friend who deserts you at the first sign of danger.\""
+    },
+    {
+      "en": "Misfortune tests the sincerity of friendship."
+    }
+  ]
+}

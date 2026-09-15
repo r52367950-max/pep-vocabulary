@@ -1,0 +1,40 @@
+{
+  "id": "thoreau-autumnal-tints",
+  "title": "Autumnal Tints",
+  "titleZh": "秋日色彩",
+  "author": "Henry David Thoreau",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "选取讨论叶片成熟与秋色的连续六段。梭罗提醒读者，叶子变色并不只是衰败，也可以像果实一样成熟。",
+  "backgroundEn": "These six consecutive paragraphs explore ripeness and autumn colour. Thoreau invites the reader to see changing leaves as more than a sign of decay.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/9846",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 499,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "A great many, who have spent their lives in cities, and have never chanced to come into the country at this season, have never seen this, the flower, or rather the ripe fruit, of the year. I remember riding with one such citizen, who, though a fortnight too, late for the most brilliant tints, was taken by surprise, and would not believe that there had been any brighter. He had never heard of this phenomenon before. Not only many in our towns have never witnessed it, but it is scarcely remembered by the majority from year to year."
+    },
+    {
+      "en": "Most appear to confound changed leaves with withered ones, as if they were to confound ripe apples with rotten ones. I think that the change to some higher color in a leaf is an evidence that it has arrived at a late and perfect maturity, answering to the maturity of fruits. It is generally the lowest and oldest leaves which change first. But as the perfect winged and usually bright-colored insect is short-lived, so the leaves ripen but to fall."
+    },
+    {
+      "en": "Generally, every fruit, on ripening, and just before it falls, when it commences a more independent and individual existence, requiring less nourishment from any source, and that not so much from the earth through its stem as from the sun and air, acquires a bright tint. So do leaves. The physiologist says it is “due to an increased absorption of oxygen.” That is the scientific account of the matter,—only a reassertion of the fact. But I am more interested in the rosy cheek than I am to know what particular diet the maiden fed on. The very forest and herbage, the pellicle of the earth, must acquire a bright color, an evidence of its ripeness,—as if the globe itself were a fruit on its stem, with ever a cheek toward the sun."
+    },
+    {
+      "en": "Flowers are but colored leaves, fruits but ripe ones. The edible part of most fruits is, as the physiologist says, “the parenchyma or fleshy tissue of the leaf,” of which they are formed."
+    },
+    {
+      "en": "Our appetites have commonly confined our views of ripeness and its phenomena, color, mellowness, and perfectness, to the fruits which we eat, and we are wont to forget that an immense harvest which we do not eat, hardly use at all, is annually ripened by Nature. At our annual Cattle Shows and Horticultural Exhibitions, we make, as we think, a great show of fair fruits, destined, however, to a rather ignoble end, fruits not valued for their beauty chiefly. But round about and within our towns there is annually another show of fruits, on an infinitely grander scale, fruits which address our taste for beauty alone."
+    },
+    {
+      "en": "October is the month for painted leaves. Their rich glow now flashes round the world. As fruits and leaves and the day itself acquire a bright tint just before they fall, so the year near its setting. October is its sunset sky; November the later twilight."
+    }
+  ]
+}

@@ -30,7 +30,6 @@ export default function Activity({ data }: { data: Vocabulary }) {
     <div className="activity-view">
       <div className="page-heading">
         <div>
-          <p>回顾练习与复习安排</p>
           <h1>学习记录</h1>
         </div>
       </div>

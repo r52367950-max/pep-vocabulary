@@ -10,13 +10,8 @@ import {
   useState,
 } from "react";
 import {
-  BarChart3,
-  BookOpen,
-  Library,
   CloudOff,
-  Home,
   Search,
-  Settings2,
   X,
 } from "lucide-react";
 import { useVocabulary } from "@/hooks/use-vocabulary";
@@ -31,21 +26,22 @@ import { clearUserData, createLocalId } from "@/lib/storage";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import Today from "./studio/today";
 import { Brand } from "./studio/shared";
+import { StudioSymbol } from "./studio/symbol";
+import type { CSSProperties } from "react";
 
 const Lexicon = lazy(() => import("./studio/lexicon"));
 const Reading = lazy(() => import("./studio/reading"));
 const Activity = lazy(() => import("./studio/activity"));
-const Settings = lazy(() => import("./console-settings"));
-const DataTools = lazy(() => import("./studio/data-tools"));
+const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
 const StudySession = lazy(() => import("./studio/study-session"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
-type View = "today" | "lexicon" | "reading" | "activity" | "settings" | "data";
+type View = "today" | "lexicon" | "reading" | "activity";
 const navigation = [
-  { id: "today", label: "今日学习", short: "今日", Icon: Home },
-  { id: "lexicon", label: "词库", short: "词库", Icon: Library },
-  { id: "reading", label: "短文阅读", short: "阅读", Icon: BookOpen },
-  { id: "activity", label: "学习足迹", short: "记录", Icon: BarChart3 },
-  { id: "settings", label: "偏好设置", short: "设置", Icon: Settings2 },
+  { id: "today", label: "今日学习", short: "今日", symbol: "today" },
+  { id: "lexicon", label: "词库", short: "词库", symbol: "lexicon" },
+  { id: "reading", label: "阅读", short: "阅读", symbol: "reading" },
+  { id: "activity", label: "学习记录", short: "记录", symbol: "activity" },
+  { id: "settings", label: "设置", short: "设置", symbol: "settings" },
 ] as const;
 const modeTitle: Record<StudyMode, string> = {
   daily: "今日学习",
@@ -66,6 +62,7 @@ function Pending() {
 export default function VocabApp() {
   const data = useVocabulary();
   const [view, setView] = useState<View>("today");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
@@ -159,6 +156,7 @@ export default function VocabApp() {
       if (
         !session &&
         !selected &&
+        !settingsOpen &&
         (((event.metaKey || event.ctrlKey) &&
           event.key.toLowerCase() === "k") ||
           (!editing && event.key === "/"))
@@ -176,7 +174,7 @@ export default function VocabApp() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [session, selected]);
+  }, [session, selected, settingsOpen]);
 
   const checkpoint = useCallback(
     (next: StudySessionState) => {
@@ -244,12 +242,14 @@ export default function VocabApp() {
   const clear = async () => {
     if (
       !window.confirm(
-        "将清空本机学习记录、收藏和设置。请先导出备份。确认清空？",
+        "将清空本机学习记录、收藏、个人文章和设置。请先导出备份。确认清空？",
       )
     )
       return;
     try {
       await clearUserData();
+      const { clearPersonalReadings } = await import("@/lib/personal-readings");
+      await clearPersonalReadings();
       sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem("pep-vocab-cloud-link-v2");
       localStorage.removeItem("pep-vocab-sync-revision");
@@ -266,7 +266,7 @@ export default function VocabApp() {
       <main className="boot-screen">
         <Brand />
         <span className="boot-pulse" />
-        <p>正在打开你的词页…</p>
+        <p>正在载入词库…</p>
       </main>
     );
   if (data.error)
@@ -328,6 +328,7 @@ export default function VocabApp() {
         </button>
         <button
           className="sidebar-search"
+          aria-label="搜索词库"
           onClick={() => {
             setView("lexicon");
             setTimeout(
@@ -343,19 +344,20 @@ export default function VocabApp() {
           <span>搜索</span>
           <kbd>⌘ K</kbd>
         </button>
-        <p className="sidebar-label">学习空间</p>
         <nav className="desktop-nav" aria-label="主要导航">
-          {navigation.slice(0, 3).map(({ id, label, Icon }) => (
+          {navigation.slice(0, 3).map(({ id, label, symbol }) => (
             <button
               key={id}
+              aria-label={label}
+              title={label}
               aria-current={
-                view === id || (id === "settings" && view === "data")
+                view === id
                   ? "page"
                   : undefined
               }
-              onClick={() => setView(id)}
+              onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
             >
-              <Icon size={21} strokeWidth={1.8} />
+              <StudioSymbol name={symbol} tile size={21} />
               {label}
             </button>
           ))}
@@ -374,22 +376,24 @@ export default function VocabApp() {
               <span>{stats.todayWords}</span>
             </span>
             <span>
-              <strong>一点一滴，都算数</strong>
+              <strong>今日进度</strong>
               <small>今天已学习 {stats.todayWords} 词</small>
             </span>
           </button>
           <nav className="desktop-nav" aria-label="个人导航">
-            {navigation.slice(3).map(({ id, label, Icon }) => (
+            {navigation.slice(3).map(({ id, label, symbol }) => (
               <button
                 key={id}
+                aria-label={label}
+                title={label}
                 aria-current={
-                  view === id || (id === "settings" && view === "data")
+                  view === id
                     ? "page"
                     : undefined
                 }
-                onClick={() => setView(id)}
+                onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
               >
-                <Icon size={20} strokeWidth={1.8} />
+                <StudioSymbol name={symbol} tile size={21} />
                 {label}
               </button>
             ))}
@@ -426,6 +430,7 @@ export default function VocabApp() {
             </div>
           )}
           <Suspense fallback={<Pending />}>
+          <div className="view-surface" key={view}>
             {view === "today" && (
               <Today
                 data={data}
@@ -480,40 +485,29 @@ export default function VocabApp() {
               />
             )}
             {view === "activity" && <Activity data={data} />}
-            {view === "settings" && (
-              <Settings
-                settings={data.settings}
-                onUpdate={data.updateSettings}
-                onOpenData={() => setView("data")}
-                onClear={clear}
-              />
-            )}
-            {view === "data" && (
-              <DataTools
-                data={data}
-                onBack={() => setView("settings")}
-                onReplaced={onReplaced}
-              />
-            )}
+
+          </div>
           </Suspense>
         </main>
       </div>
-      <nav className="mobile-nav" aria-label="移动导航">
-        {navigation.map(({ id, short, Icon }) => (
+      <nav className="mobile-nav" aria-label="移动导航" style={{ "--nav-index": navigation.findIndex(item => item.id === view) } as CSSProperties}>
+        <span className="nav-selection" aria-hidden="true" />
+        {navigation.map(({ id, short, symbol }) => (
           <button
             key={id}
             aria-current={
-              view === id || (id === "settings" && view === "data")
+              view === id
                 ? "page"
                 : undefined
             }
-            onClick={() => setView(id)}
+            onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
           >
-            <Icon size={21} />
+            <StudioSymbol name={symbol} size={25} />
             <span>{short}</span>
           </button>
         ))}
       </nav>
+      {settingsOpen && <Suspense fallback={null}><SettingsDialog data={data} onClose={() => setSettingsOpen(false)} onClear={clear} onReplaced={onReplaced} /></Suspense>}
       {selected && (
         <Suspense fallback={null}>
           <WordDetail

@@ -1,0 +1,62 @@
+{
+  "id": "a-place-to-begin",
+  "title": "A Place to Begin",
+  "titleZh": "从阅览室开始",
+  "paragraphs": [
+    {
+      "en": "On her first week at a new school, Lin felt anxious about speaking in class. During lunch, she found a quiet reading room. A student volunteer showed her a shelf of short stories and invited her to join a small reading group. Lin agreed, although she was not confident about her English.",
+      "zh": "转学后的第一周，林对课堂发言感到不安。午饭时间，她找到了一间安静的阅览室。一名学生志愿者带她看了一架短篇小说，并邀请她参加一个小型阅读小组。林答应了，尽管她对自己的英语还不太有信心。"
+    },
+    {
+      "en": "The group met twice a week. Each person chose one paragraph and explained why it mattered. Lin prepared a few sentences before every meeting. Her goal was not to finish the most books, but to express one clear idea. After a month, she began to take part in class discussions too.",
+      "zh": "小组每周见面两次。每个人选一段文字，解释它为何重要。每次聚会前，林都会准备几句话。她的目标是表达清楚一个想法，而非读完最多的书。一个月后，她也开始参与课堂讨论了。"
+    }
+  ],
+  "targets": [
+    "anxious",
+    "volunteer",
+    "confident",
+    "prepare",
+    "express",
+    "take part in"
+  ],
+  "questions": [
+    {
+      "id": "begin-1",
+      "prompt": "What did Lin do before each meeting?",
+      "options": [
+        "She prepared a few sentences.",
+        "She finished a whole novel.",
+        "She wrote a report for her teacher."
+      ],
+      "answerIndex": 0,
+      "explanation": "第二段明确写到，她在每次聚会前准备几句话。"
+    },
+    {
+      "id": "begin-2",
+      "prompt": "What change does the final sentence show?",
+      "options": [
+        "Lin stopped visiting the reading room.",
+        "Lin became more willing to share her ideas.",
+        "Lin decided to study a different language."
+      ],
+      "answerIndex": 1,
+      "explanation": "她开始参加课堂讨论，说明她逐渐愿意在更多场合表达想法。"
+    }
+  ],
+  "author": "词迹",
+  "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+  "rights": {
+    "label": "词迹原创",
+    "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+    "url": "https://github.com/r52367950-max/pep-vocabulary"
+  },
+  "category": "fiction",
+  "wordCount": 103,
+  "difficulty": "B1",
+  "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+  "form": "original-writing",
+  "background": "校园主题短文，含中文译文与阅读理解练习。",
+  "addedIn": "2.0.0",
+  "backgroundEn": "An original short story about finding a place in a new school and accepting an invitation to join in."
+}

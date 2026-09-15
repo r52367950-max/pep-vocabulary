@@ -1,20 +1,25 @@
-# 词迹 2.0 · 在语言中生长
+# 词迹 2.1.1
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
-[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [界面与动效更新](docs/INTERFACE_REFINEMENT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+
+本次 [2.1.1 更新](docs/RELEASE_2.1.1.md)新增彩色手绘插画与稳定的封面分配。主要功能见 [2.1.0 发布说明](docs/RELEASE_2.1.0.md)：60 篇可阅读内容、个人文章导入与扫描、独立设置浮层、iPad 布局与手绘分类封面。
 
 ## 功能
 
 - 今日学习：教材与单元选词、到期复习优先、时间预算与新词额度、刷新恢复。
 - 专注练习：词义回忆、拼写、听写与语境填空；先作答再揭示，错误与提示影响评分，本轮薄弱词重练，支持撤销。
 - 我的词库：4,681 个稳定词条，12 册教材与高中课标范围；中英文搜索、状态筛选、收藏、笔记、选择练习与 CSV 导出。
-- 短文阅读：6 篇原创短文、双语切换、12 道理解题、36 个目标词与 48 条原创例句；可粘贴文章匹配词库。
-- 学习足迹：真实作答、首次作答正确率、学习天数、近期趋势与未来复习负担。
+- 阅读：保留原有 6 篇并净新增 54 篇，独立篇幅与难度筛选、来源和双语简介、查词与词汇练习。原有 6 篇保留译文和理解题。
+- 个人文章：TXT、Markdown、HTML、DOCX、PDF 和英文图片扫描；本机保存、统一排版、可选 AI 分类、Markdown 导出。
+- 学习记录：真实作答、首次作答正确率、学习天数、近期趋势与未来复习负担。
 - 数据与偏好：浅色 / 深色、FSRS 保持率与学习预算、JSON 备份恢复、手动私有云端备份、显式离线下载。
 - 可选 AI：词条用法讲解，密钥仅在服务器加密保存。核心学习无需 AI。
 
-![词迹 2.0 桌面界面](artifacts/screenshots/studio-v2-desktop.jpg)
+下图为 9 月 14 日版本。9 月 15 日的字体、图标、今日页、词库及动画调整见[界面更新说明](docs/INTERFACE_REFINEMENT.md)。
+
+![9 月 14 日桌面界面，历史截图](artifacts/screenshots/studio-v2-desktop.jpg)
 
 ## 本地开发
 
@@ -27,7 +32,7 @@ npm run dev
 
 | 命令 | 用途 |
 | --- | --- |
-| `npm test` | 数据审计、类型检查、89 项单元测试、生产构建、Worker / D1 验证 |
+| `npm test` | 完整验收入口；日常更新按发布说明中的版本规模选择必要检查 |
 | `npm run lint` | ESLint 检查 |
 | `npm run benchmark` | 与 3b12529 比较出题耗时和并发加载 |
 | `npm run build` | 有超时限制的生产构建与产物验证 |

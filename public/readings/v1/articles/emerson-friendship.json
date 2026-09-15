@@ -1,0 +1,31 @@
+{
+  "id": "emerson-friendship",
+  "title": "Friendship",
+  "titleZh": "友谊",
+  "author": "Ralph Waldo Emerson",
+  "category": "essay",
+  "difficulty": "B2",
+  "form": "excerpt",
+  "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+  "background": "节选正文开头三段。作者从日常善意谈到朋友如何改变一个人的感受，适合留意抽象想法与具体形象的转换。",
+  "backgroundEn": "These first three prose paragraphs move from everyday kindness to the changes a friend brings to one’s inner life. Notice how abstract ideas become concrete images.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/2944",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 506,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "We have a great deal more kindness than is ever spoken. Maugre all the selfishness that chills like east winds the world, the whole human family is bathed with an element of love like a fine ether. How many persons we meet in houses, whom we scarcely speak to, whom yet we honor, and who honor us! How many we see in the street, or sit with in church, whom, though silently, we warmly rejoice to be with! Read the language of these wandering eye-beams. The heart knoweth."
+    },
+    {
+      "en": "The effect of the indulgence of this human affection is a certain cordial exhilaration. In poetry and in common speech, the emotions of benevolence and complacency which are felt towards others are likened to the material effects of fire; so swift, or much more swift, more active, more cheering, are these fine inward irradiations. From the highest degree of passionate love to the lowest degree of good-will, they make the sweetness of life."
+    },
+    {
+      "en": "Our intellectual and active powers increase with our affection. The scholar sits down to write, and all his years of meditation do not furnish him with one good thought or happy expression; but it is necessary to write a letter to a friend,—and forthwith troops of gentle thoughts invest themselves, on every hand, with chosen words. See, in any house where virtue and self-respect abide, the palpitation which the approach of a stranger causes. A commended stranger is expected and announced, and an uneasiness betwixt pleasure and pain invades all the hearts of a household. His arrival almost brings fear to the good hearts that would welcome him. The house is dusted, all things fly into their places, the old coat is exchanged for the new, and they must get up a dinner if they can. Of a commended stranger, only the good report is told by others, only the good and new is heard by us. He stands to us for humanity. He is what we wish. Having imagined and invested him, we ask how we should stand related in conversation and action with such a man, and are uneasy with fear. The same idea exalts conversation with him. We talk better than we are wont. We have the nimblest fancy, a richer memory, and our dumb devil has taken leave for the time. For long hours we can continue a series of sincere, graceful, rich communications, drawn from the oldest, secretest experience, so that they who sit by, of our own kinsfolk and acquaintance, shall feel a lively surprise at our unusual powers. But as soon as the stranger begins to intrude his partialities, his definitions, his defects, into the conversation, it is all over. He has heard the first, the last and best he will ever hear from us. He is no stranger now. Vulgarity, ignorance, misapprehension are old acquaintances. Now, when he comes, he may get the order, the dress and the dinner,—but the throbbing of the heart and the communications of the soul, no more."
+    }
+  ]
+}

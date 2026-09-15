@@ -1,0 +1,25 @@
+{
+  "id": "aesop-lion-mouse",
+  "title": "The Lion and the Mouse",
+  "titleZh": "狮子与老鼠",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "一次放过弱小者的举动，在意想不到的时候得到了回报。本文为完整寓言。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "An act of mercy receives an unexpected return. This complete fable explores how help can come from someone small.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 176,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "A Lion asleep in his lair was waked up by a Mouse running over his face. Losing his temper he seized it with his paw and was about to kill it. The Mouse, terrified, piteously entreated him to spare its life. \"Please let me go,\" it cried, \"and one day I will repay you for your kindness.\" The idea of so insignificant a creature ever being able to do anything for him amused the Lion so much that he laughed aloud, and good-humouredly let it go. But the Mouse's chance came, after all. One day the Lion got entangled in a net which had been spread for game by some hunters, and the Mouse heard and recognised his roars of anger and ran to the spot. Without more ado it set to work to gnaw the ropes with its teeth, and succeeded before long in setting the Lion free. \"There!\" said the Mouse, \"you laughed at me when I promised I would repay you: but now you see, even a Mouse can help a Lion.\""
+    }
+  ]
+}

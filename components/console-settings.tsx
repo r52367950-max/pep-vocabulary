@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   BookOpenCheck,
   Bot,
   Check,
@@ -22,7 +23,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AppSettings } from "@/lib/storage";
 
 type Section = "general" | "learning" | "ai" | "privacy" | "about";
@@ -108,6 +109,9 @@ export default function ConsoleSettings({
   onClear: () => void;
 }) {
   const [section, setSection] = useState<Section>("general");
+  const [mobilePanel, setMobilePanel] = useState(false);
+  const panelHeading = useRef<HTMLHeadingElement>(null);
+  const sectionButtons = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({});
   const [aiConfig, setAIConfig] = useState<AIConfig>(defaultAIConfig);
   const [apiKey, setApiKey] = useState("");
   const [loadingConfig, setLoadingConfig] = useState(true),
@@ -252,33 +256,19 @@ export default function ConsoleSettings({
   };
 
   return (
-    <div className="settings-console">
-      <header className="settings-titlebar">
-        <div>
-          <h1>偏好设置</h1>
-          <p>按照自己的习惯，调整学习与显示方式。</p>
-        </div>
-        <div
-          className={
-            aiConfig.hasApiKey ? "settings-status ready" : "settings-status"
-          }
-        >
-          <i />
-          {loadingConfig
-            ? "AI 可选配置"
-            : aiConfig.hasApiKey
-              ? "AI 接口已配置"
-              : "AI 接口未配置"}
-        </div>
-      </header>
+    <div className={`settings-console${mobilePanel ? " has-panel" : ""}`}>
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="设置分类">
           {sections.map((item) => (
             <button
               key={item.id}
+              ref={element => { sectionButtons.current[item.id] = element; }}
               className={section === item.id ? "active" : ""}
+              aria-current={section === item.id ? "page" : undefined}
               onClick={() => {
                 setSection(item.id);
+                setMobilePanel(true);
+                requestAnimationFrame(() => panelHeading.current?.focus());
                 if (item.id === "ai") setLoadingConfig(true);
                 setMessage(null);
               }}
@@ -290,6 +280,11 @@ export default function ConsoleSettings({
           ))}
         </nav>
         <div className="settings-content">
+          <button className="settings-mobile-back text-button" onClick={() => {
+            setMobilePanel(false);
+            requestAnimationFrame(() => sectionButtons.current[section]?.focus({ preventScroll: true }));
+          }}><ArrowLeft size={18} />设置</button>
+          <h2 className="settings-panel-heading" ref={panelHeading} tabIndex={-1}>{sections.find(item => item.id === section)?.label}</h2>
           {section === "general" && (
             <>
               <section className="settings-card">
@@ -297,23 +292,24 @@ export default function ConsoleSettings({
                   <Palette size={20} />
                   <div>
                     <h2>外观</h2>
-                    <p>只改变本机显示，不影响学习记录。</p>
+                    <p>选择适合你的显示方式。</p>
                   </div>
                 </header>
                 <div className="settings-row">
                   <div>
-                    <strong>配色方案</strong>
-                    <small>可跟随当前设备的浅色或深色设置</small>
+                    <strong>显示模式</strong>
+                    <small>跟随设备，或单独设置</small>
                   </div>
                   <div
                     className="segmented-control"
                     role="group"
-                    aria-label="配色方案"
+                    aria-label="显示模式"
                   >
                     {(["system", "light", "dark"] as const).map((theme) => (
                       <button
                         key={theme}
                         className={settings.theme === theme ? "active" : ""}
+                        aria-pressed={settings.theme === theme}
                         onClick={() => onUpdate({ theme })}
                       >
                         {theme === "system"
@@ -330,8 +326,8 @@ export default function ConsoleSettings({
                 <header>
                   <Sparkles size={20} />
                   <div>
-                    <h2>增强功能</h2>
-                    <p>可在词条详情中生成用法讲解。复习安排始终在本机完成。</p>
+                    <h2>单词讲解</h2>
+                    <p>为单词补充讲解和例句。</p>
                   </div>
                 </header>
                 <label className="settings-row toggle-row">
@@ -345,12 +341,14 @@ export default function ConsoleSettings({
                   </div>
                   <input
                     type="checkbox"
+                    role="switch"
+                    aria-label="启用 AI 增强"
                     checked={settings.aiEnabled}
                     onChange={(event) =>
                       onUpdate({ aiEnabled: event.target.checked })
                     }
                   />
-                  <span className="switch" />
+                  <span className="switch" aria-hidden="true" />
                 </label>
               </section>
             </>
@@ -362,12 +360,12 @@ export default function ConsoleSettings({
                   <BookOpenCheck size={20} />
                   <div>
                     <h2>每日学习</h2>
-                    <p>这些设置会直接影响今日队列和未来负担。</p>
+                    <p>按你的时间安排新词与复习。</p>
                   </div>
                 </header>
                 <label className="settings-slider">
                   <div>
-                    <strong>每日时间预算</strong>
+                    <strong>每日学习时间</strong>
                     <span>{settings.dailyMinutes} 分钟</span>
                   </div>
                   <input
@@ -405,7 +403,7 @@ export default function ConsoleSettings({
                   <SlidersHorizontal size={20} />
                   <div>
                     <h2>学习模式</h2>
-                    <p>临时切换即可，历史事件不会被改写。</p>
+                    <p>选择当前的学习节奏。</p>
                   </div>
                 </header>
                 <label className="settings-row">
@@ -460,8 +458,7 @@ export default function ConsoleSettings({
                   <div>
                     <strong>服务端加密保存</strong>
                     <p>
-                      API Key 经 HTTPS 送达服务端后用 AES-GCM
-                      加密；页面、浏览器存储、备份和日志均不保存明文。
+                      API Key 经 HTTPS 送达服务端后加密保存，不写入本机备份。
                     </p>
                   </div>
                 </div>
@@ -798,18 +795,18 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.0.0</dd>
+                  <dd>2.1.1</dd>
                 </div>
                 <div>
-                  <dt>用户数据 schema</dt>
+                  <dt>数据格式</dt>
                   <dd>1.1.0</dd>
                 </div>
                 <div>
                   <dt>词库发布状态</dt>
-                  <dd>带已声明缺口的发布候选</dd>
+                  <dd>教材与课程词汇（含已标注缺项）</dd>
                 </div>
                 <div>
-                  <dt>AI 密钥边界</dt>
+                  <dt>AI 密钥</dt>
                   <dd>服务端加密，不随备份导出</dd>
                 </div>
               </dl>

@@ -1,0 +1,161 @@
+Currents: NOAA's National Ocean Service Education (https://oceanservice.noaa.gov/education/tutorial_currents/)
+citeturn101view0 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/education/tutorial_currents/","lineno":null}); Total lines: 67
+L0: cite0†National Ocean Service cite1†National Oceanic and Atmospheric Administration†www.noaa.gov L1: 
+L2: [Input] Search [Input: Search] Search National Ocean Service
+L3: 
+L4: # Currents
+L5: ## Currents Tutorial
+L6: 
+L7: cite2†Image: Fishing vessel in high seas L8: 
+L9: Oceanic currents are driven by tides, winds, and differences in water density. Currents are essential for maintaining the existing balance of life on Earth, but they can be deadly as well.
+L10: 
+L11: * * *
+L12: When used in association with water, the term "current" describes the motion of the water. Some currents you may be familiar with are the motion of rainwater as it flows down the street, or the motion of the water in a creek, stream, or river flowing from higher elevation to lower elevation. This motion is caused by gravity. The speed and direction (velocity) of currents can be measured and recorded.
+L13: Oceanic currents are driven by several factors. One is the rise and fall of the tides, which is driven by the gravitational attraction of the sun and moon on Earth's oceans. Tides create a current in the oceans, near the shore, and in bays and estuaries along the coast. These are called "tidal currents." Tidal currents are the only type of currents that change in a very regular pattern and can be predicted for future dates.
+L14: A second factor that drives ocean currents is wind. Winds drive currents that are at or near the ocean's surface. These currents are generally measured in meters per second or in knots (1 knot = 1.15 miles per hour or 1.85 kilometers per hour). Winds drive currents near coastal areas on a localized scale, and in the open ocean on a global scale.
+L15: A third factor that drives currents is thermohaline circulation - a process driven by density differences in water due to temperature (thermo) and salinity (haline) in different parts of the ocean. Currents driven by thermohaline circulation occur at both deep and shallow ocean levels and move much slower than tidal or surface currents.
+L16: 
+L17: The Currents Tutorial is an overview of the types of currents, what causes them, how they are measured, and how they affect people's lives.
+L18: The Roadmap to Resources directs you to online data and education materials from NOAA and other reliable resources.
+L19: ### Currents Lessons
+L20: 
+L21:   * cite3†Welcome L22:   * cite4†Tidal Currents 1 L23:   * cite5†Tidal Currents 2 L24: 
+L25: ##### Coastal Currents
+L26: 
+L27:   * cite6†Waves L28:   * cite7†Longshore Currents L29:   * cite8†Rip Currents L30:   * cite9†Upwelling L31: 
+L32: ##### Surface Ocean Currents
+L33: 
+L34:   * cite10†The Coriolis Effect L35:   * cite11†Surface Ocean Currents L36:   * cite12†Boundary Currents L37:   * cite13†The Ekman Spiral L38: 
+L39: ##### The Global Conveyor Belt
+L40: 
+L41:   * cite14†Thermohaline Circulation L42:   * cite15†The Global Conveyor Belt L43:   * cite16†Effects of Climate Change L44: ##### How Are Currents Measured?
+L45: 
+L46:   * cite17†Age of Exploration L47:   * cite18†What is a "knot"? L48:   * cite19†Shallow Water Drifter L49:   * cite20†Deep Ocean Drifter L50:   * cite21†Current Profiler L51:   * cite22†Shore-based Current Meters L52: 
+L53: * * *
+L54: 
+L55:   * cite23†How Currents Affect Our Lives? L56:   * cite24†References L57:   * cite25†Roadmap to Resources L58:   * cite26†Subject Review L59: 
+L60: ###### Search Education
+L61: 
+L62: [Input] [Input] [Input] [Input: search] [Input]
+L63: 
+L64: ###### Get Social
+L65: 
+L66: Contact Us (nos.info@noaa.gov)
+--------------------------------------------------------------------------------
+Estuarine Habitats: Estuaries Tutorial (https://oceanservice.noaa.gov/education/tutorial_estuaries/est06_habitats.html)
+citeturn101view1 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/education/tutorial_estuaries/est06_habitats.html","lineno":null}); Total lines: 58
+L0: # Estuarine Habitats
+L1: ## Estuaries Tutorial
+L2: 
+L3: A rich array of habitats surround estuaries. The type of habitat is usually determined by the local geology and climate. Habitats associated with estuaries include salt marshes, mangrove forests, mud flats, tidal streams, rocky intertidal shores, reefs, and barrier beaches.
+L4: 
+L5: cite0†Image: Estuaries L6: 
+L7: Animation shows low tide, medium tide, high tide, and very high tide.
+L8: Examples of nearly every type of estuarine habitat exist along the coastline of the United States. In New England, salt-tolerant grasses fill salt marshes along the shores of tidal rivers. As one travels further south, the Atlantic Coast becomes much sandier, and barrier beaches enclose huge bays or sounds. In this region, estuarine habitats cover large areas along tidal rivers, and salt marshes reach far inland.
+L9: Along the southern coast of Florida and lining the Gulf of Mexico are extensive mazes of mangrove forests, also called mangals.
+L10: From northwestern Florida to the Texas coast are long, narrow, sandy barrier islands and shallow estuaries lined with marshes. Along the Texas coast, barrier islands protect estuaries that have formed narrow cite1†lagoons with small openings to the Gulf of Mexico. In these areas, estuaries with very little freshwater input often become hypersaline, or super salty.
+L11: Along the Pacific Coast of the United States, from northern California to Alaska, coastal rivers flow quickly out of the mountains and into very small estuaries. San Francisco Bay is one of the largest estuaries on the U.S. West Coast, and one of only a few that is similar in size to those found on the East Coast.
+L12: ### Salt Marshes
+L13: Levees are areas of higher ground that border marsh creeks. Between the levees and tidal creeks are marsh flats, which contain pools and salt pannes. Salt pannes are shallow depressions that contain very high concentrations of salt. Pannes retain seawater for very short periods of time. When the seawater evaporates, the salts remain and accumulate over many tidal cycles. Glasswort, a plant tolerant to very high salt concentrations, is one of the only organisms able to survive in salt pannes.
+L14: Pools are generally deeper than pannes, and retain water all year long. Salt-marsh snails and green crabs are some of the creatures found in pools scattered across the marsh.
+L15: Low-lying areas of the marsh are often covered with large, flat expanses of mud called mud flats. Composed of fine silts and clays, mud flats harbor burrowing creatures including clams, mussels, oysters, fiddler crabs, sand shrimp, and bloodworms.
+L16: Salt marshes are salty because they are flooded by seawater every day. They are marshy because their ground is composed of peat. Peat is made of decomposing plant matter that is often several feet thick. Peat is waterlogged, root-filled, and very spongy. Because salt marshes are waterlogged and contain lots of decomposing plant material, oxygen levels in the peat are extremely low—a condition called hypoxia.
+L17: Hypoxia promotes the growth of bacteria which produce the rotten-egg smell that is attributed to marshes and mud flats.
+L18: Salt marshes are covered with salt-tolerant plants, or halophytes, like salt hay, black rush, and smooth cordgrass. However, these plants do not grow together in the same area. Marshes are divided into distinct zones, the high marsh and the low marsh. The difference in elevation between these two areas is usually only a few centimeters, but for the plants that inhabit each of these zones, a few centimeters makes a world of difference. The low marsh floods daily at high tide.
+L19: The high marsh usually floods about twice a month during very high tides associated with new and full moons. The more often an area is flooded, the more saline it has. Plants living in salt marshes have different tolerances to salt. Those with higher tolerances are found in the low marsh, and those with lower tolerances to salt are found in the high marsh zones. Plants from one marsh zone are never found in the other.
+L20: Smooth cordgrass (Spartina alterniflora) dominates the low marsh all the way down to the estuary’s edge. It is tall, sturdy, broad-leaved, and one of the main components of peat. As one moves toward the high marsh, salt hay (Spartina patens), a very fine-leaved grass about 1-2 feet tall, and spike grass (Distichlis spicata) dominate the area. The highest parts of the marsh are characterized by black rush (Juncus gerardii), which grows in dense swaths.
+L21: Surrounding the high marsh are the upland habitats. Uplands are rarely, if ever, flooded with saltwater.
+L22: ### Mangrove Forests
+L23: 
+L24: cite2†Image: Estuaries L25: 
+L26: A unique mix of marine and terrestrial species lives in mangal ecosystems. The still, sheltered waters among the mangrove roots provide protective breeding, feeding, and nursery areas for snapper, tarpon, oysters, crabs, shrimp and other species important to commercial and recreational fisheries. Herons, brown pelicans, and spoonbills all make their nests in the upper branches of mangrove trees. (Photo: Jobos Bay National Estuarine Research Reserve)
+L27: cite3†Mangrove forests , or mangals grow at tropical and subtropical latitudes near the equator where the sea surface temperatures never fall below 16°C. Mangals line about two-thirds of the coastlines in tropical areas of the world.
+L28: There are about 80 species of mangrove trees, all of which grow in hypoxic (oxygen poor) soils where slow-moving waters allow fine sediments to accumulate. Many mangrove forests can be recognized by their dense tangle of prop roots that make the trees appear to be standing on stilts above the water. This tangle of roots helps to slow the movement of tidal waters, causing even more sediments to settle out of the water and build up the muddy bottom.
+L29: Mangrove forests stabilize the coastline, reducing erosion from storm surges, currents, waves and tides.
+L30: Just like the high and low areas of salt marshes where specific types of grasses are found, mangals have distinct zones characterized by the species of mangrove tree that grows there. Where a species of mangrove tree exists depends on its tolerance for tidal flooding, soil salinity, and the availability of nutrients. Three dominant species of mangrove trees are found in Florida.
+L31: The red mangrove (Rhizophora mangle) colonizes the seaward side of the mangal, so it receives the greatest amount of tidal flooding. Further inland and at a slightly higher elevation, black mangroves (Avicennia germinanas) grow. The zone in which black mangrove trees are found is only shallowly flooded during high tides. White mangrove (Laguncularia racemosa) and buttonwood trees (Conocarpus erectus), a non-mangrove species, face inland and dominate the highest parts of the mangal.
+L32: The zone where white mangrove and buttonwood trees grow is almost never flooded by tidal waters.
+L33: ##### Estuaries Lessons
+L34: 
+L35: cite4†Welcome cite5†What is an Estuary? cite6†Economy and Environment cite7†Ecosystem Services cite8†Geology cite9†Water Circulation cite10†Estuarine Habitats cite11†Adaptations to Life in the Estuary cite12†Natural Disturbances to Estuaries cite13†Human Disturbances to Estuaries cite14†Monitoring Estuaries cite15†The Future cite16†References L36: ##### More Information
+L37: 
+L38: cite17†Roadmap to Resources cite18†Subject Review L39: 
+L40: The cite19†National Science Teaching Association (NSTA)†www.nsta.org includes this resource in its database. NSTA provides educators and students access to Web-based, educationally appropriate science content that has been formally evaluated by master teachers.
+L41: 
+L42: ##### Search Our facts
+L43: 
+L44: [Input] [Input] [Input] [Input: search]
+L45: 
+L46: ##### cite20†Get Social L47: 
+L48: ###### Social
+L49: 
+L50:   *   *   *   *   * ##### Last updated:
+L51: ###### 08/12/24
+L52: 
+L53: Author: NOAA
+L54: 
+L55: cite21†How to cite this article L56: 
+L57: cite22†Contact Us --------------------------------------------------------------------------------
+What are Tides - Tides and Water Levels: NOAA's National Ocean Service Education (https://oceanservice.noaa.gov/education/tutorial_tides/tides01_intro.html)
+citeturn101view2 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/education/tutorial_tides/tides01_intro.html","lineno":null}); Total lines: 45
+L0: cite0†National Ocean Service cite1†National Oceanic and Atmospheric Administration†www.noaa.gov L1: 
+L2: [Input] Search [Input: Search] Search National Ocean Service
+L3: 
+L4: # Tides and Water Levels
+L5: ## What are Tides?
+L6: 
+L7: Tides are one of the most reliable phenomena in the world. As the sun rises in the east and the stars come out at night, we are confident that the ocean waters will regularly rise and fall along our shores. The following pages describe the tremendous forces that cause the world’s tides, and why it is important for us to understand how they work.
+L8: 
+L9: cite2†Image: Tide Animation L10: This animation shows the relationship between the vertical and horizontal components of tides. As the tide rises, water moves toward the shore. This is called a flood current. As the tide recedes, the waters move away from the shore. This is called an ebb current. The movement of water toward and away from the shore is illustrated by the movement of the green seaweed.
+L11: Basically, tides are very long-period waves that move through the oceans in response to the forces exerted by the moon and sun. Tides originate in the oceans and progress toward the coastlines where they appear as the regular rise and fall of the sea surface. When the highest part, or crest of the wave reaches a particular location, high tide occurs; low tide corresponds to the lowest part of the wave, or its trough.
+L12: The difference in height between the high tide and the low tide is called the tidal range.
+L13: A horizontal movement of water often accompanies the rising and falling of the tide. This is called the tidal current. The incoming tide along the coast and into the bays and estuaries is called a flood current; the outgoing tide is called an ebb current. The strongest flood and ebb currents usually occur before or near the time of the high and low tides. The weakest currents occur between the flood and ebb currents and are called "slack water" or "slack current".
+L14: In the open ocean tidal currents are relatively weak. Near estuary entrances, narrow straits and inlets, the speed of tidal currents can reach up to several kilometers per hour.
+L15: ### Tides and Water Levels
+L16: 
+L17:   * cite3†Welcome L18:   * cite4†What are Tides? L19:   * cite5†What Causes Tides? L20:   * cite6†Gravity, Inertia, and Bulges L21:   * cite7†Changing Angles and Tides L22:   * cite8†The Frequency of Tides L23:   * cite9†Tidal Variations L24:   * cite10†Types and Causes of Tidal Cycles L25:   * cite11†What Else Affects Tides? L26:   * cite12†Monitoring the Tides L27:   * cite13†Old System L28:   * cite14†New System L29: 
+L30: * * *
+L31: 
+L32:   * cite15†References L33:   * cite16†Roadmap to Resources L34:   * cite17†Subject Review L35: 
+L36: * * *
+L37: The cite18†National Science Teaching Association (NSTA)†www.nsta.org includes this resource in its database. NSTA provides educators and students access to Web-based, educationally appropriate science content that has been formally evaluated by master teachers.
+L38: ###### Search Education
+L39: 
+L40: [Input] [Input] [Input] [Input: search] [Input]
+L41: 
+L42: ###### Get Social
+L43: 
+L44: Contact Us (nos.info@noaa.gov)
+--------------------------------------------------------------------------------
+Why is the ocean salty? (https://oceanservice.noaa.gov/facts/whysalty.html)
+citeturn101view3 [wordlim: 200] Crawled: today; Content type: text/html; Source: open({"ref_id":"https://oceanservice.noaa.gov/facts/whysalty.html","lineno":null}); Total lines: 37
+L0: # Why is the ocean salty?
+L1: ## Ocean salt primarily comes from rocks on land and openings in the seafloor.
+L2: 
+L3: cite0†Image: methane mussels growing 650 feet (198 meters) below the surface L4: A cite1†brine seep†flowergarden.noaa.gov located at the base of East Flower Garden Bank at a depth of about 240 feet (73.15 meters). The seep lies within cite2†Flower Garden Banks National Marine Sanctuary†flowergarden.noaa.gov in the Gulf of America (formerly Gulf of Mexico). It is formed from super-saline water flowing from cite3†under the seafloor†flowergarden.noaa.gov . The image was taken by the ROV Argus as part of the cite1†Secrets of the Gulf Expedition†flowergarden.noaa.gov in March 2007.
+L5: Credit: Sea Research Foundation and the Ocean Exploration Trust
+L6: Salt in the ocean comes from two sources: runoff from the land and openings in the seafloor.
+L7: 
+L8: Rocks on land are the major source of salts dissolved in seawater. Rainwater that falls on land is slightly acidic, so it erodes rocks. This releases ions that are carried away to streams and rivers that eventually feed into the ocean. Many of the dissolved ions are used by organisms in the ocean and are removed from the water. Others are not removed, so their concentrations increase over time.
+L9: Another source of salts in the ocean is hydrothermal fluids, which come from cite4†vents in the seafloor . Ocean water seeps into cracks in the seafloor and is heated by magma from the Earth’s core. The heat causes a series of chemical reactions. The water tends to lose oxygen, magnesium, and sulfates, and pick up metals such as iron, zinc, and copper from surrounding rocks. The heated water is released through vents in the seafloor, carrying the metals with it.
+L10: Some ocean salts come from underwater volcanic eruptions, which directly release minerals into the ocean.
+L11: cite3†Salt domes†flowergarden.noaa.gov also contribute to the ocean's saltiness. These domes, vast deposits of salt that form over geological timescales, are found underground and undersea around the world. They are common across the continental shelf of the northwestern Gulf of America.
+L12: Two of the most prevalent ions in seawater are chloride and sodium. Together, they make up around 85 percent of all dissolved ions in the ocean. Magnesium and sulfate make up another 10 percent of the total. Other ions are found in very small concentrations. The concentration of salt in seawater (salinity) cite5†varies with temperature, evaporation, and precipitation†www.climate.gov . Salinity is generally low at the equator and at the poles, and high at mid-latitudes.
+L13: The average salinity is about 35 parts per thousand. Stated in another way, about 3.5 percent of the weight of seawater comes from the dissolved salts.
+L14: ##### More Information
+L15: 
+L16: cite4†What is a hydrothermal vent? L17: 
+L18: cite6†Flower Garden Banks National Marine Sanctuary: Salt Domes†flowergarden.noaa.gov L19: 
+L20: cite7†NASA: Measuring salinity via satellite†science.nasa.gov L21: 
+L22: cite8†U.S. Geological Survey: Why is the ocean salty?†www.usgs.gov L23: 
+L24: ##### cite9†Get Social L25: 
+L26: ###### Social
+L27: 
+L28:   *   *   *   *   * ##### Last updated:
+L29: 
+L30: ###### 02/21/25
+L31: 
+L32: Author: NOAA
+L33: 
+L34: cite10†How to cite this article L35: 
+L36: cite11†Contact Us 

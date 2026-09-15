@@ -1,0 +1,205 @@
+[
+  {
+    "id": "noaa-blue-carbon",
+    "file": "noaa-evidence/official-a.txt",
+    "section": 0,
+    "lineGroups": [
+      [
+        10
+      ],
+      [
+        11
+      ],
+      [
+        12
+      ],
+      [
+        13
+      ],
+      [
+        14
+      ],
+      [
+        15
+      ],
+      [
+        16
+      ],
+      [
+        17
+      ]
+    ],
+    "bodySha256": "1126b1db19c2c3e79c7844b0b84c14c7067cd89d3b4de07f19780ad5ee98caba"
+  },
+  {
+    "id": "noaa-ocean-oxygen",
+    "file": "noaa-evidence/official-a.txt",
+    "section": 1,
+    "lineGroups": [
+      [
+        6
+      ],
+      [
+        7,
+        8
+      ],
+      [
+        9,
+        10
+      ],
+      [
+        11,
+        12
+      ]
+    ],
+    "bodySha256": "1f20824f13c2958bf9565ee01f96f0f7c7dc8faccb536b9142ebefe0719653f7"
+  },
+  {
+    "id": "noaa-phytoplankton",
+    "file": "noaa-evidence/official-a.txt",
+    "section": 2,
+    "lineGroups": [
+      [
+        10
+      ],
+      [
+        11
+      ],
+      [
+        12
+      ],
+      [
+        13
+      ]
+    ],
+    "bodySha256": "2273d0df069b92cf4134967ae1ee4fd1a00d01c8116104ac9837a259c3d82871"
+  },
+  {
+    "id": "noaa-estuaries",
+    "file": "noaa-evidence/official-a.txt",
+    "section": 3,
+    "lineGroups": [
+      [
+        2
+      ],
+      [
+        4
+      ],
+      [
+        5
+      ]
+    ],
+    "bodySha256": "a9685ab80a10f43696f8e448eb1f17d16acd0bf2f7f0bddf59ef3dcf4b7bd71e"
+  },
+  {
+    "id": "noaa-currents",
+    "file": "noaa-evidence/official-b.txt",
+    "section": 0,
+    "lineGroups": [
+      [
+        12
+      ],
+      [
+        13
+      ],
+      [
+        14
+      ],
+      [
+        15
+      ]
+    ],
+    "bodySha256": "1c900b0a34f4586f7d6c14542a059346916b445f37246905a3c8ea49c35bfd8c"
+  },
+  {
+    "id": "noaa-mangroves",
+    "file": "noaa-evidence/official-b.txt",
+    "section": 1,
+    "lineGroups": [
+      [
+        27
+      ],
+      [
+        28
+      ],
+      [
+        29
+      ],
+      [
+        30
+      ],
+      [
+        31
+      ],
+      [
+        32
+      ]
+    ],
+    "bodySha256": "844ac31c29e51efad5419572c8b9600dfad9b17700c02bb37573fd1ba52e0caf"
+  },
+  {
+    "id": "noaa-tides",
+    "file": "noaa-evidence/official-b.txt",
+    "section": 2,
+    "lineGroups": [
+      [
+        11,
+        12
+      ],
+      [
+        13,
+        14
+      ]
+    ],
+    "bodySha256": "bc1899f810c50247d5e83cabb3028d510b249cfb68c5bf7e0f6680a8671fa321"
+  },
+  {
+    "id": "noaa-salinity",
+    "file": "noaa-evidence/official-b.txt",
+    "section": 3,
+    "lineGroups": [
+      [
+        6
+      ],
+      [
+        8
+      ],
+      [
+        9
+      ],
+      [
+        10
+      ],
+      [
+        11
+      ],
+      [
+        12
+      ],
+      [
+        13
+      ]
+    ],
+    "bodySha256": "86e95ce9122395ea428874f2002e97ac264dc2dc867660b1ef8a23d07b163d30"
+  },
+  {
+    "id": "noaa-ocean-formation",
+    "file": "noaa-evidence/official-c.txt",
+    "section": 0,
+    "lineGroups": [
+      [
+        9
+      ],
+      [
+        10
+      ],
+      [
+        12
+      ],
+      [
+        13
+      ]
+    ],
+    "bodySha256": "cf5ec1d4eb12bb5ca202a4e96067a13b53117975825e43dee01cd4b191b69bcb"
+  }
+]

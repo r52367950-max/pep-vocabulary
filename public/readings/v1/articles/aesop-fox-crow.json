@@ -1,0 +1,25 @@
+{
+  "id": "aesop-fox-crow",
+  "title": "The Fox and the Crow",
+  "titleZh": "狐狸和乌鸦",
+  "author": "Aesop · V. S. Vernon Jones 英译",
+  "category": "fiction",
+  "difficulty": "B1",
+  "form": "original",
+  "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+  "background": "一块奶酪和一番赞美，让乌鸦作出了决定。注意狐狸的话与它的目的之间的距离。 英文采用 V. S. Vernon Jones 1912 年译本。",
+  "backgroundEn": "A piece of cheese and a flattering speech lead a crow to make a decision. Notice the difference between the fox’s words and its purpose.",
+  "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+  "rights": {
+    "label": "公版原文",
+    "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+    "url": "https://www.gutenberg.org/policy/permission.html"
+  },
+  "wordCount": 136,
+  "addedIn": "2.1.0",
+  "paragraphs": [
+    {
+      "en": "A Crow was sitting on a branch of a tree with a piece of cheese in her beak when a Fox observed her and set his wits to work to discover some way of getting the cheese. Coming and standing under the tree he looked up and said, \"What a noble bird I see above me! Her beauty is without equal, the hue of her plumage exquisite. If only her voice is as sweet as her looks are fair, she ought without doubt to be Queen of the Birds.\" The Crow was hugely flattered by this, and just to show the Fox that she could sing she gave a loud caw. Down came the cheese, of course, and the Fox, snatching it up, said, \"You have a voice, madam, I see: what you want is wits.\""
+    }
+  ]
+}

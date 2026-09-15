@@ -6,8 +6,8 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>词迹视口验收框</title>
     <style>
-      html, body { margin: 0; padding: 0; background: #f4f7f5; overflow: hidden; }
-      iframe { display: block; border: 0; margin: 0; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #eff0f2; overflow: hidden; }
+      iframe { display: block; position: fixed; top: 0; left: 0; border: 0; margin: 0; transform-origin: 0 0; }
     </style>
   </head>
   <body>
@@ -19,10 +19,9 @@
       const frame = document.querySelector("iframe");
       frame.width = String(width);
       frame.height = String(height);
-      document.documentElement.style.width = `${width}px`;
-      document.documentElement.style.height = `${height}px`;
-      document.body.style.width = `${width}px`;
-      document.body.style.height = `${height}px`;
+      // The iframe retains the requested CSS viewport; only the QA presentation is scaled to fit.
+      const fit = () => { frame.style.transform = `scale(${Math.min(1, innerWidth / width, innerHeight / height)})`; };
+      fit(); addEventListener("resize", fit);
     </script>
   </body>
 </html>

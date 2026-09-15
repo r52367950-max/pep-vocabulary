@@ -1,0 +1,81 @@
+{
+  "runtime": "workerd via Miniflare, local ephemeral D1",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 4838
+    },
+    {
+      "path": "/sw.js",
+      "status": 200,
+      "bytes": 5589
+    },
+    {
+      "path": "/offline-assets.json",
+      "status": 200,
+      "bytes": 941
+    },
+    {
+      "path": "/data/v1/index.json",
+      "status": 200,
+      "bytes": 2313458
+    },
+    {
+      "path": "/readings/v1/index.json",
+      "status": 200,
+      "bytes": 65173
+    },
+    {
+      "path": "/readings/v1/articles/andersen-real-princess.json",
+      "status": 200,
+      "bytes": 3501
+    },
+    {
+      "path": "/api/sync",
+      "status": 401,
+      "bytes": 66
+    },
+    {
+      "path": "/api/ai/config",
+      "status": 401,
+      "bytes": 65
+    },
+    {
+      "path": "/api/reading/classify unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/reading/classify cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify oversized input",
+      "status": 400
+    },
+    {
+      "path": "/api/ai/config cross-origin",
+      "status": 403
+    },
+    {
+      "path": "database bootstrap with existing legacy rate limit table",
+      "status": "passed",
+      "preservedRequests": 7
+    },
+    {
+      "path": "/api/ai/config authenticated save",
+      "status": 200
+    },
+    {
+      "path": "/api/sync concurrent first upload",
+      "statuses": [
+        200,
+        409
+      ]
+    },
+    {
+      "path": "database bootstrap replay preserves snapshots and encrypted configuration",
+      "status": "passed"
+    }
+  ]
+}

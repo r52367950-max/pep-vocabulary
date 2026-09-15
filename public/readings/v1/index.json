@@ -1,0 +1,1202 @@
+[
+  {
+    "id": "andersen-real-princess",
+    "title": "The Real Princess",
+    "titleZh": "真正的公主",
+    "author": "Hans Christian Andersen",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "故事线清晰；个别比喻、旧式用词和讽刺需要结合语境。",
+    "background": "一位王子想寻找真正的公主，一个雨夜的来客接受了意想不到的考验。本文为完整童话。 据公版英语合集，原始电子书未注明译者。",
+    "backgroundEn": "A prince seeks a real princess. A visitor arriving on a stormy night faces an unusual test in this complete fairy tale.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/1597",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 413,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "stevenson-walking-tours",
+    "title": "Walking Tours",
+    "titleZh": "徒步旅行",
+    "author": "Robert Louis Stevenson",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "徒步的乐趣，是否一定在目的地和风景？这两个开篇段落谈独行、节奏，以及身体与思绪的关系。",
+    "backgroundEn": "Does the pleasure of a walking tour lie only in scenery? These two opening paragraphs consider solitude, pace and the relation between body and mind.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/386",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 617,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-estuaries",
+    "title": "Estuaries",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_estuaries/welcome.html",
+    "category": "science",
+    "background": "文章定义河口，介绍淡咸水混合形成的独特生态系统及其对动物、人类和城市的作用。",
+    "titleZh": "河口",
+    "difficulty": "B1",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "This opening section of NOAA’s estuaries tutorial describes where rivers and the sea meet, and why these places matter.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "excerpt",
+    "wordCount": 144,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "sewell-my-early-home",
+    "title": "My Early Home",
+    "titleZh": "最初的家",
+    "author": "Anna Sewell",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "黑骏马回忆最初的家，以及母亲教给他的生活准则。本文是《黑骏马》第一章全文，以马的眼睛观察人和动物的相处。",
+    "backgroundEn": "Black Beauty remembers his earliest home and his mother’s advice. The complete first chapter introduces a world seen through a horse’s eyes.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/271",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 783,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "cather-art-fiction",
+    "title": "On the Art of Fiction",
+    "titleZh": "论小说的艺术",
+    "author": "Willa Cather",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "original",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "这篇完整短论最初刊于 1920 年。凯瑟以写作与绘画为例，说明艺术中的取舍，以及删去好材料的必要。",
+    "backgroundEn": "First published in 1920, this complete short essay uses writing and painting to explain selection in art and the need to leave good material out.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/25586",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 491,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-tides",
+    "title": "What are Tides?",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_tides/tides01_intro.html",
+    "category": "science",
+    "background": "NOAA 潮汐教程用波峰、波谷和水平方向水流说明潮汐与潮流的基本概念。",
+    "titleZh": "潮汐",
+    "difficulty": "B1",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "This section of NOAA’s tides tutorial introduces high and low tides and distinguishes water level from the horizontal movement of water.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "excerpt",
+    "wordCount": 203,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "carroll-rabbit-hole",
+    "title": "Down the Rabbit-Hole",
+    "titleZh": "掉进兔子洞",
+    "author": "Lewis Carroll",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "爱丽丝跟着一只匆忙的白兔，开始了一次奇异的坠落。选自《爱丽丝漫游奇境》第一章，从追逐白兔到落地，保留完整场景。",
+    "backgroundEn": "Alice follows a hurried White Rabbit and begins an extraordinary fall. This continuous opening scene ends when she reaches the ground.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 960,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "thoreau-winter-walk",
+    "title": "A Winter Walk",
+    "titleZh": "冬日漫步",
+    "author": "Henry David Thoreau",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "一夜风雪之后，作者推门走入冬晨。节选随笔开篇三个完整段落，止于村落的炊烟升起。",
+    "backgroundEn": "After a night of snow, the narrator steps into a winter morning. These three opening paragraphs end as smoke begins rising from the village chimneys.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/9846",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 596,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-ocean-formation",
+    "title": "Why do we have an ocean?",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/facts/why_oceans.html",
+    "category": "science",
+    "background": "文章按地球冷却和水蒸气凝结的时间顺序，概述原始海洋形成及重力保留海水的过程。",
+    "titleZh": "海洋的形成",
+    "difficulty": "B1",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "This short NOAA explainer presents the cooling and degassing account of the early ocean’s formation.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "original",
+    "wordCount": 155,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "a-place-to-begin",
+    "title": "A Place to Begin",
+    "titleZh": "从阅览室开始",
+    "author": "词迹",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "fiction",
+    "wordCount": 103,
+    "difficulty": "B1",
+    "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+    "form": "original-writing",
+    "background": "校园主题短文，含中文译文与阅读理解练习。",
+    "addedIn": "2.0.0",
+    "backgroundEn": "An original short story about finding a place in a new school and accepting an invitation to join in."
+  },
+  {
+    "id": "a-small-question",
+    "title": "A Small Question",
+    "titleZh": "一个小问题",
+    "author": "词迹",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "science",
+    "wordCount": 108,
+    "difficulty": "B1",
+    "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+    "form": "original-writing",
+    "background": "生物主题短文，含中文译文与阅读理解练习。",
+    "addedIn": "2.0.0",
+    "backgroundEn": "An original classroom story about observing a plant, asking a question and testing an explanation."
+  },
+  {
+    "id": "aesop-bear-travellers",
+    "title": "The Bear and the Travellers",
+    "titleZh": "熊与旅人",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "同行的朋友遇见一头熊。故事用一次危机，检验了友谊的含义。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "Two travelling companions meet a bear. A moment of danger tests the meaning of friendship in this complete fable.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 166,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-fox-crow",
+    "title": "The Fox and the Crow",
+    "titleZh": "狐狸和乌鸦",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "一块奶酪和一番赞美，让乌鸦作出了决定。注意狐狸的话与它的目的之间的距离。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "A piece of cheese and a flattering speech lead a crow to make a decision. Notice the difference between the fox’s words and its purpose.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 136,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-fox-stork",
+    "title": "The Fox and the Stork",
+    "titleZh": "狐狸与鹳",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "两次邀请、两种餐具，构成一个关于待客与换位思考的完整故事。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "Two invitations and two different dishes make a complete story about hospitality and seeing another creature’s needs.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 111,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-golden-goose",
+    "title": "The Goose That Laid the Golden Eggs",
+    "titleZh": "生金蛋的鹅",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "每天得到一枚金蛋的人，想要一次拥有更多。这则完整寓言讨论贪心与耐心。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "A couple receive a golden egg each day. This complete fable asks what happens when steady good fortune is not enough.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 106,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-lion-mouse",
+    "title": "The Lion and the Mouse",
+    "titleZh": "狮子与老鼠",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "一次放过弱小者的举动，在意想不到的时候得到了回报。本文为完整寓言。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "An act of mercy receives an unexpected return. This complete fable explores how help can come from someone small.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 176,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-mice-council",
+    "title": "The Mice in Council",
+    "titleZh": "老鼠开会",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "老鼠们提出了一个保护自己的妙计，却还需要有人去实行。全文保留故事的最后一问。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "The mice agree on a clever plan to protect themselves. One practical question remains at the end of this complete fable.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 140,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-milkmaid",
+    "title": "The Milkmaid and Her Pail",
+    "titleZh": "挤奶姑娘与奶桶",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "姑娘提着牛奶走回家，心里已经安排好了未来的生活。这则完整寓言写梦想与眼前之事。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "A milkmaid plans her future as she carries milk home. This complete fable sets an imagined tomorrow against the task in her hands.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 194,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-wind-sun",
+    "title": "The North Wind and the Sun",
+    "titleZh": "北风与太阳",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "北风和太阳比赛让旅人脱下外衣，用不同的方式证明自己的力量。本文保留完整故事与寓意。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "The North Wind and the Sun compete to make a traveller remove his cloak. Their different methods give this complete fable its lesson.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 162,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "aesop-woodman",
+    "title": "Mercury and the Woodman",
+    "titleZh": "墨丘利与樵夫",
+    "author": "Aesop · V. S. Vernon Jones 英译",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "情节简短清楚；保留 1912 年英译的个别旧词与句式。",
+    "background": "樵夫丢失了斧头，河神般的援手考验了他的诚实。这则完整寓言也写到模仿者的选择。 英文采用 V. S. Vernon Jones 1912 年译本。",
+    "backgroundEn": "A woodman loses his axe and receives an unexpected test of honesty. The complete fable also follows a neighbour who tries to copy his good fortune.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 312,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "alcott-playing-pilgrims",
+    "title": "Playing Pilgrims",
+    "titleZh": "四姐妹的圣诞心事",
+    "author": "Louisa May Alcott",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "父亲在外参战，马奇家的四姐妹围着炉火谈起礼物、钱和家庭。节选《小妇人》开篇的一段完整交谈，止于姐妹间的小小和解。",
+    "backgroundEn": "The March sisters discuss money, presents and family while their father is away at war. This opening conversation from Little Women ends with a small reconciliation.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/514",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 783,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "andersen-false-collar",
+    "title": "The False Collar",
+    "titleZh": "衬衫领子",
+    "author": "Hans Christian Andersen",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "故事线清晰；个别比喻、旧式用词和讽刺需要结合语境。",
+    "background": "一只衬衫领子向身边的物品夸耀自己的经历。完整故事以拟人手法讨论虚荣与说谎。 据公版英语合集，原始电子书未注明译者。",
+    "backgroundEn": "A shirt collar boasts about its adventures to the objects around it. This complete tale uses personification to explore vanity and false claims.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/1597",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 916,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "andersen-leap-frog",
+    "title": "The Leap-Frog",
+    "titleZh": "跳高者",
+    "author": "Hans Christian Andersen",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "故事线清晰；个别比喻、旧式用词和讽刺需要结合语境。",
+    "background": "跳蚤、蚱蜢和跳蛙一起比赛，国王的判断却不只关乎高度。这篇完整童话带有轻巧的讽刺。 据公版英语合集，原始电子书未注明译者。",
+    "backgroundEn": "A flea, a grasshopper and a leap-frog enter a jumping contest. The king’s judgement makes this complete tale a quiet satire.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/1597",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 681,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "andersen-naughty-boy",
+    "title": "The Naughty Boy",
+    "titleZh": "顽皮的孩子",
+    "author": "Hans Christian Andersen",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "original",
+    "difficultyNote": "故事线清晰；个别比喻、旧式用词和讽刺需要结合语境。",
+    "background": "一位诗人收留了雨夜里的孩子，却发现这位小客人另有身份。本文为完整童话。 据公版英语合集，原始电子书未注明译者。",
+    "backgroundEn": "A poet shelters a child from a storm, then discovers that his visitor is not an ordinary boy. The complete tale draws on the figure of Cupid.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/1597",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 838,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "austen-first-chapter",
+    "title": "Pride and Prejudice · Chapter One",
+    "titleZh": "傲慢与偏见 · 第一章",
+    "author": "Jane Austen",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "一位富有的新邻居引起了班纳特太太的兴趣。本文为《傲慢与偏见》第一章全文，省去原版插图说明，保留对话中的幽默。",
+    "backgroundEn": "News of a wealthy new neighbour prompts a revealing conversation between Mr and Mrs Bennet. This is the complete first chapter, with illustration captions omitted.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/1342",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 853,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "bacon-studies",
+    "title": "Of Studies",
+    "titleZh": "谈读书",
+    "author": "Francis Bacon",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "original",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "培根以凝练的对照句讨论读书、思考和实践。本文是完整短文；保留早期现代英语和少量拉丁语，适合进阶细读。",
+    "backgroundEn": "Bacon considers how reading, thought and practice support one another. This complete essay retains its early modern language and brief Latin expressions.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/575",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 503,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "bacon-travel",
+    "title": "Of Travel",
+    "titleZh": "谈旅行",
+    "author": "Francis Bacon",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "original",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "旅行怎样成为学习，而不只是走过一些地方？本文为完整短文，呈现培根对观察、语言和记录的建议。",
+    "backgroundEn": "How can travel become an education? This complete essay offers Bacon’s advice on observation, language and keeping a record of what one sees.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/575",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 774,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "baum-cyclone",
+    "title": "The Cyclone",
+    "titleZh": "龙卷风",
+    "author": "L. Frank Baum",
+    "category": "fiction",
+    "difficulty": "B1",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "多萝西与叔叔婶婶住在堪萨斯草原上。本文是《绿野仙踪》第一章全文，一阵龙卷风让熟悉的家开始了一段旅程。",
+    "backgroundEn": "Dorothy lives with her aunt and uncle on the Kansas prairie. This complete first chapter of The Wonderful Wizard of Oz carries her home into a cyclone.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/55",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1142,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "before-the-bin",
+    "title": "Before the Bin",
+    "titleZh": "扔进垃圾桶之前",
+    "author": "词迹",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "science",
+    "wordCount": 110,
+    "difficulty": "B1",
+    "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+    "form": "original-writing",
+    "background": "环境主题短文，含中文译文与阅读理解练习。",
+    "addedIn": "2.0.0",
+    "backgroundEn": "An original reading about everyday waste and the choices that can give useful things another life."
+  },
+  {
+    "id": "between-two-stations",
+    "title": "Between Two Stations",
+    "titleZh": "两站之间",
+    "author": "词迹",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "fiction",
+    "wordCount": 111,
+    "difficulty": "B1",
+    "difficultyNote": "常见校园与生活词汇，叙事顺序清晰，含少量从句。",
+    "form": "original-writing",
+    "background": "旅行主题短文，含中文译文与阅读理解练习。",
+    "addedIn": "2.0.0",
+    "backgroundEn": "An original short story about a journey and the small choices people make along the way."
+  },
+  {
+    "id": "check-the-answer",
+    "title": "Check the Answer",
+    "titleZh": "核对答案",
+    "author": "词迹",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "science",
+    "wordCount": 114,
+    "difficulty": "B2",
+    "difficultyNote": "包含抽象表达与议论，需要联系上下文理解。",
+    "form": "original-writing",
+    "background": "科技主题短文，含中文译文与阅读理解练习。",
+    "addedIn": "2.0.0",
+    "backgroundEn": "An original reading about checking information and thinking carefully before accepting an answer."
+  },
+  {
+    "id": "dickens-christmas-visit",
+    "title": "A Christmas Visit",
+    "titleZh": "圣诞来访",
+    "author": "Charles Dickens",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "选自《圣诞颂歌》第一节：外甥在圣诞前夕拜访斯克鲁奇。这段完整对话展现两人对节日和生活的不同理解。",
+    "backgroundEn": "Scrooge’s nephew visits his uncle on Christmas Eve. This complete exchange from the first stave of A Christmas Carol contrasts two views of the holiday.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/46",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1094,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "douglass-escape",
+    "title": "My Escape from Slavery",
+    "titleZh": "逃离奴隶制",
+    "author": "Frederick Douglass",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "道格拉斯在多年后回忆逃离奴隶制的经过。节选从解释当年为何隐去细节，到一次铁路证件检查结束；保留历史语境与作者原话。",
+    "backgroundEn": "Douglass recalls his escape from slavery years after the event. This continuous excerpt begins with his reasons for earlier secrecy and ends after a railway document inspection.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/99",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1343,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "emerson-friendship",
+    "title": "Friendship",
+    "titleZh": "友谊",
+    "author": "Ralph Waldo Emerson",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "节选正文开头三段。作者从日常善意谈到朋友如何改变一个人的感受，适合留意抽象想法与具体形象的转换。",
+    "backgroundEn": "These first three prose paragraphs move from everyday kindness to the changes a friend brings to one’s inner life. Notice how abstract ideas become concrete images.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/2944",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 506,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "emerson-nature",
+    "title": "Nature · Chapter One",
+    "titleZh": "自然 · 第一章",
+    "author": "Ralph Waldo Emerson",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "本文保留《自然》第一章的完整六段。爱默生从星空、田野与童年的感受出发，思考人的内心怎样参与观看自然。",
+    "backgroundEn": "The complete first chapter of Nature considers stars, fields and childhood perception, asking how the mind participates in what it sees.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/29433",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1007,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "emerson-self-reliance",
+    "title": "Self-Reliance",
+    "titleZh": "论自立",
+    "author": "Ralph Waldo Emerson",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "节选正文开头三段，不含题前诗句。作者鼓励人相信自己的观察与判断，表达带有鲜明的十九世纪思想和宗教语言。",
+    "backgroundEn": "These first three prose paragraphs, excluding the epigraph, urge readers to trust their perceptions and judgement. Their language reflects nineteenth-century thought and religious imagery.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/2944",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 636,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "grahame-river-bank",
+    "title": "The River Bank",
+    "titleZh": "河岸初遇",
+    "author": "Kenneth Grahame",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "鼹鼠放下春日大扫除，来到河边，结识了水鼠。选自《柳林风声》第一章，场景止于两位新朋友决定一同泛舟。",
+    "backgroundEn": "Mole leaves his spring cleaning and discovers the river and the Water Rat. This continuous scene from The Wind in the Willows ends with an invitation to spend the day boating.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/289",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1395,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "henry-gift-magi",
+    "title": "The Gift of the Magi",
+    "titleZh": "麦琪的礼物",
+    "author": "O. Henry",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "original",
+    "difficultyNote": "日常情节与比喻交织，含文化典故；篇幅约两千词，适合分次阅读。",
+    "background": "圣诞前夕，年轻夫妻各自为一件礼物作出选择。本文保留完整故事与结尾，题目中的 Magi 指《圣经》故事里献礼的智者。",
+    "backgroundEn": "On Christmas Eve, a young couple each make a sacrifice for a gift. This is the complete story; its title refers to the gift-bearing Magi of the biblical account.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/2776",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 2077,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "henry-twenty-years",
+    "title": "After Twenty Years",
+    "titleZh": "二十年后",
+    "author": "O. Henry",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "original",
+    "difficultyNote": "对话较易进入；叙述中的线索与结尾需要推断。",
+    "background": "纽约街头，一个人在等待二十年前约定见面的老朋友。全文保留最后的信，阅读时可以留意人物的观察。",
+    "backgroundEn": "On a New York street, a man waits for a friend he promised to meet twenty years earlier. The complete story includes the final letter.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/2776",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1269,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "lamb-books-reading",
+    "title": "Detached Thoughts on Books and Reading",
+    "titleZh": "关于书与阅读的随想",
+    "author": "Charles Lamb",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "节选题前引语与正文开头五段。兰姆从一句关于书内与书外世界的俏皮话出发，谈自己怎样与书相处，也借装帧表达对阅读的偏爱。",
+    "backgroundEn": "An epigraph sets a reader’s own thoughts against the world inside a book. These first five prose paragraphs then explore Lamb’s affection for reading and well-used volumes.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/10343",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 657,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "lamb-dream-children",
+    "title": "Dream-Children: A Reverie",
+    "titleZh": "梦中的孩子",
+    "author": "Charles Lamb",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "original",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "叙述者向两个孩子讲述家人的往事，直到结尾才显露这场交谈的性质。本文保留完整随笔和原有的长段落。",
+    "backgroundEn": "A narrator tells two children about the family’s past. Only the ending reveals the nature of their conversation. This complete essay preserves its original long paragraph.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/10343",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1638,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "lamb-old-china",
+    "title": "Old China",
+    "titleZh": "古瓷",
+    "author": "Charles Lamb",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "节选开篇对瓷器画面的描写，止于叙述者开始与表姐交谈之前。小小茶杯里，人物、远山和河流有自己的比例。",
+    "backgroundEn": "This opening description ends before the narrator’s conversation with his cousin. Figures, distant hills and rivers follow their own proportions on a painted tea-cup.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/10343",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 347,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "montgomery-rachel-lynde",
+    "title": "Mrs. Rachel Lynde Is Surprised",
+    "titleZh": "林德太太的疑问",
+    "author": "L. M. Montgomery",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "阿冯利村最留意邻里动静的林德太太，发现了一次反常的出行。节选《绿山墙的安妮》开篇，从观察到决定去问个究竟。",
+    "backgroundEn": "An unexpected journey interrupts the routine of Avonlea’s most observant neighbour. This opening scene from Anne of Green Gables follows her decision to investigate.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/45",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1005,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-blue-carbon",
+    "title": "What is Blue Carbon?",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/facts/bluecarbon.html",
+    "category": "science",
+    "background": "文章解释海洋和海岸生态系统如何捕获并长期储存碳，并联系湿地保护、渔业栖息地和碳市场。",
+    "titleZh": "蓝碳",
+    "difficulty": "B2",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "NOAA explains how coastal habitats capture carbon, and why protecting those habitats matters for climate and communities.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "original",
+    "wordCount": 395,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-currents",
+    "title": "Currents",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_currents/",
+    "category": "science",
+    "background": "教程概览潮流、风生表层流和由温度盐度差异驱动的深层环流。",
+    "titleZh": "洋流",
+    "difficulty": "B2",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "This section of NOAA’s currents tutorial explains three causes of moving ocean water: tides, wind and differences in density.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "excerpt",
+    "wordCount": 257,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-mangroves",
+    "title": "Mangrove Forests",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_estuaries/est06_habitats.html",
+    "category": "science",
+    "background": "河口教程的红树林部分说明其分布、缺氧土壤、根系沉积作用、海岸防护和潮汐分区。",
+    "titleZh": "红树林",
+    "difficulty": "B2",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "This complete section from NOAA’s habitats tutorial explains mangrove roots, coastal protection and zones within a mangrove forest.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "excerpt",
+    "wordCount": 280,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-ocean-oxygen",
+    "title": "How much oxygen comes from the ocean?",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/facts/ocean-oxygen.html",
+    "category": "science",
+    "background": "文章说明海洋浮游生物的产氧作用，同时解释海洋生物消耗氧气以及藻华分解造成低氧区的机制。",
+    "titleZh": "海洋与氧气",
+    "difficulty": "B2",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "This NOAA explainer distinguishes oxygen production from oxygen consumption and describes how marine life affects both.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "original",
+    "wordCount": 322,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-phytoplankton",
+    "title": "What are phytoplankton?",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/facts/phyto.html",
+    "category": "science",
+    "background": "文章介绍浮游植物的光合作用、食物网作用、两大类群及营养过剩导致的有害藻华。",
+    "titleZh": "浮游植物",
+    "difficulty": "B2",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "NOAA introduces microscopic marine plants, their place in food webs and the problems caused by harmful algal blooms.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "original",
+    "wordCount": 251,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "noaa-salinity",
+    "title": "Why is the ocean salty?",
+    "author": "NOAA",
+    "sourceUrl": "https://oceanservice.noaa.gov/facts/whysalty.html",
+    "category": "science",
+    "background": "文章解释海盐主要来自陆地岩石风化、海底热液和火山活动，并说明盐度的组成与变化。 原文对海底热源使用了简化说法；岩浆主要形成于地幔和地壳，并非地核。",
+    "titleZh": "海水为什么是咸的",
+    "difficulty": "B2",
+    "difficultyNote": "根据词汇、句法与专业术语估计；科学名词不熟悉时可先理解解释句。未经标准化测评。",
+    "backgroundEn": "NOAA traces ocean salts to rocks, rivers and the seafloor, then explains how salinity is measured. The text preserves the source’s terminology.",
+    "rights": {
+      "label": "NOAA 公开信息",
+      "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+      "url": "https://oceanservice.noaa.gov/disclaimer.html"
+    },
+    "form": "original",
+    "wordCount": 316,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "notes-in-the-margin",
+    "title": "Notes in the Margin",
+    "titleZh": "书页旁的笔记",
+    "author": "词迹",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "由词迹项目创作为应用提供的原创英文和中文译文，非教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "essay",
+    "wordCount": 111,
+    "difficulty": "B2",
+    "difficultyNote": "包含抽象表达与议论，需要联系上下文理解。",
+    "form": "original-writing",
+    "background": "文学生活主题短文，含中文译文与阅读理解练习。",
+    "addedIn": "2.0.0",
+    "backgroundEn": "An original reading about the notes we make while reading and how questions help us understand a text."
+  },
+  {
+    "id": "original-library-hour",
+    "title": "An Hour at the Library",
+    "titleZh": "图书馆的一小时",
+    "author": "词迹编辑",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "为词迹 2.1.0 补充的原创入门读物，使用模型起草并经编辑审校，不代表教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "fiction",
+    "wordCount": 132,
+    "difficulty": "A2",
+    "difficultyNote": "使用常见词汇、简单过去时与短句，补充经典原文中较少的入门难度。未经标准化测评。",
+    "form": "original-writing",
+    "background": "一篇为入门阅读补充的原创小故事。林第一次尝试借英文书，发现选择适合自己的难度也是阅读的一部分。",
+    "backgroundEn": "This original beginner story follows Lin’s first visit to the English shelves at a library. Choosing a suitable book is part of learning to read.",
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "original-rain-notebook",
+    "title": "The Rain Notebook",
+    "titleZh": "雨天笔记",
+    "author": "词迹编辑",
+    "sourceUrl": "https://github.com/r52367950-max/pep-vocabulary",
+    "rights": {
+      "label": "词迹原创",
+      "basis": "为词迹 2.1.0 补充的原创入门读物，使用模型起草并经编辑审校，不代表教材原文。",
+      "url": "https://github.com/r52367950-max/pep-vocabulary"
+    },
+    "category": "science",
+    "wordCount": 132,
+    "difficulty": "A2",
+    "difficultyNote": "使用常见词汇、简单过去时与短句，补充经典原文中较少的入门难度。未经标准化测评。",
+    "form": "original-writing",
+    "background": "一篇补充观察与记录题材的原创入门读物。它介绍一个简单的班级观察活动，提醒读者有限的记录不能代替长期数据。",
+    "backgroundEn": "This original beginner text describes a class weather diary. It also shows why a short record cannot tell us everything about a place’s weather.",
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "saki-open-window",
+    "title": "The Open Window",
+    "titleZh": "敞开的窗户",
+    "author": "Saki (H. H. Munro)",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "original",
+    "difficultyNote": "含间接引语、社交用语与叙述反转，需要区分人物说法和事实。",
+    "background": "一位来访者听少女解释为什么窗户一直敞开。本文为完整故事，保留了最后一句带来的反转。",
+    "backgroundEn": "A visitor listens to a girl explain why a window has been left open. The complete story preserves its revealing final sentence.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/269",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1219,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "stevenson-el-dorado",
+    "title": "El Dorado",
+    "titleZh": "理想之地",
+    "author": "Robert Louis Stevenson",
+    "category": "essay",
+    "difficulty": "C1",
+    "form": "original",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。含较密集的抽象论述或旧式表达，建议进阶细读。",
+    "background": "El Dorado 原指传说中的黄金之地。这篇完整随笔借这个意象讨论追求、满足与“抵达”的意义。",
+    "backgroundEn": "El Dorado is the legendary land of gold. This complete essay uses that image to consider aspiration, satisfaction and the meaning of arrival.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/386",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 1169,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "stevenson-idlers",
+    "title": "An Apology for Idlers",
+    "titleZh": "为闲人辩护",
+    "author": "Robert Louis Stevenson",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "这里的 apology 是“辩护”。节选文章开头三个完整段落，作者用反讽讨论忙碌、教育与思考的空间。",
+    "backgroundEn": "Here, apology means a defence. These first three complete paragraphs question whether visible busyness is the only form of useful activity.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/386",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 665,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "stevenson-sea-dog",
+    "title": "The Old Sea-dog at the Admiral Benbow",
+    "titleZh": "旅店里的老海员",
+    "author": "Robert Louis Stevenson",
+    "category": "fiction",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "根据原句词汇、句法与叙述方式估计；篇幅单独标注，不作为难度依据。",
+    "background": "吉姆·霍金斯回忆一位神秘海员来到自家旅店的往事。本文为《金银岛》第一章全文，保留歌谣和医生与海员的交锋。",
+    "backgroundEn": "Jim Hawkins remembers the arrival of a mysterious seaman at his family’s inn. This is the complete first chapter of Treasure Island.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/120",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 2228,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "thoreau-autumnal-tints",
+    "title": "Autumnal Tints",
+    "titleZh": "秋日色彩",
+    "author": "Henry David Thoreau",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "选取讨论叶片成熟与秋色的连续六段。梭罗提醒读者，叶子变色并不只是衰败，也可以像果实一样成熟。",
+    "backgroundEn": "These six consecutive paragraphs explore ripeness and autumn colour. Thoreau invites the reader to see changing leaves as more than a sign of decay.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/9846",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 499,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "thoreau-solitude",
+    "title": "Solitude",
+    "titleZh": "独处",
+    "author": "Henry David Thoreau",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "选自《瓦尔登湖》“独处”章开头三个段落：一个人在林边生活，却并不与周围的世界隔绝。",
+    "backgroundEn": "These three opening paragraphs from the Solitude chapter of Walden describe a life beside the woods that is private but deeply connected to its surroundings.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/205",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 690,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "thoreau-walking",
+    "title": "Walking",
+    "titleZh": "散步",
+    "author": "Henry David Thoreau",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "梭罗把散步看作一种接近自然的能力。节选开篇四段，其中关于 sauntering 的词源说法是作者的文学联想。",
+    "backgroundEn": "Thoreau treats walking as a way of approaching nature. These four opening paragraphs include his imaginative account of the word sauntering.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/1022",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 547,
+    "addedIn": "2.1.0"
+  },
+  {
+    "id": "twain-telling-story",
+    "title": "How to Tell a Story",
+    "titleZh": "怎样讲故事",
+    "author": "Mark Twain",
+    "category": "essay",
+    "difficulty": "B2",
+    "form": "excerpt",
+    "difficultyNote": "以词汇、句法、修辞及历史语言估计，未经 CEFR 标准化测评。保留原作的表达，部分长句可结合上下文慢读。",
+    "background": "节选开篇关于讲述方式的讨论，止于第一个故事示例之前。马克·吐温区分幽默、滑稽与机智，也强调停顿和语气。",
+    "backgroundEn": "This opening discussion ends before the first example story. Twain distinguishes humorous, comic and witty storytelling, paying close attention to delivery and timing.",
+    "sourceUrl": "https://www.gutenberg.org/ebooks/3250",
+    "rights": {
+      "label": "公版原文",
+      "basis": "本版本据 Project Gutenberg 的美国公版电子书提取；保留原句，仅整理换行与排版。版权状态的地域依据为美国，其他地区须以当地法律为准。",
+      "url": "https://www.gutenberg.org/policy/permission.html"
+    },
+    "wordCount": 499,
+    "addedIn": "2.1.0"
+  }
+]

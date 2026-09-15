@@ -30,6 +30,12 @@ export function sites(): Plugin {
       const hostingConfig = resolve(root, ".openai", "hosting.json");
       const drizzleSource = resolve(root, "drizzle");
 
+      // Browser QA pages deliberately import source modules and test fixtures.
+      // They remain available in development, never in the published artifact.
+      for (const file of ["qa-reading-import.html", "qa-fixtures"]) {
+        await rm(resolve(root, "dist", "client", file), { recursive: true, force: true });
+      }
+
       await rm(outputDirectory, { recursive: true, force: true });
       await mkdir(outputDirectory, { recursive: true });
 
@@ -44,6 +50,10 @@ export function sites(): Plugin {
         const dataRoot = resolve(root, "public", "data", "v1");
         for (const file of (await readdir(dataRoot, { recursive: true })).filter((file) => file.endsWith(".json")).sort()) {
           fingerprint.update(await readFile(resolve(dataRoot, file)));
+        }
+        const readingRoot = resolve(root, "public", "readings", "v1");
+        if (await exists(readingRoot)) for (const file of (await readdir(readingRoot, { recursive: true })).filter(file => file.endsWith(".json")).sort()) {
+          fingerprint.update(await readFile(resolve(readingRoot, file)));
         }
         for (const directory of ["icons", "images"]) {
           const staticRoot = resolve(root, "public", directory);

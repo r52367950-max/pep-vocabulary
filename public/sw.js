@@ -76,7 +76,7 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/") || /^\/(?:signin-with-chatgpt|signout-with-chatgpt|callback)(?:\/|$)/.test(url.pathname) ||
     event.request.headers.get("rsc") === "1" || url.searchParams.has("_rsc")) return;
   const navigation = event.request.mode === "navigate" && url.pathname === "/" && !url.search;
-  const asset = /^\/(?:assets\/|_next\/static\/|data\/v1\/|icons\/|images\/)/.test(url.pathname) || url.pathname === "/manifest.webmanifest";
+  const asset = /^\/(?:assets\/|_next\/static\/|data\/v1\/|readings\/v1\/|vendor\/|icons\/|images\/)/.test(url.pathname) || url.pathname === "/manifest.webmanifest";
   if (!navigation && !asset) return;
   // Asset names from Vite are content hashed. Data files live in a versioned shell cache.
   const operation = (async () => {

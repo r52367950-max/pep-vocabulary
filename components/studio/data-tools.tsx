@@ -204,7 +204,7 @@ export default function DataTools({
           <HardDrive size={25} />
           <h2>本机学习记录</h2>
           <p>
-            含单词记忆状态、完整作答、收藏、笔记和偏好。备份不包含模型密钥。
+            含单词记忆状态、完整作答、收藏、笔记和偏好。学习备份不包含模型密钥或个人文章。个人文章请在阅读器中单独导出。
           </p>
           <div className="button-row">
             <button
