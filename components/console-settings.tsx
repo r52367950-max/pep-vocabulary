@@ -255,8 +255,8 @@ export default function ConsoleSettings({
     <div className="settings-console">
       <header className="settings-titlebar">
         <div>
-          <h1>偏好设置</h1>
-          <p>按照自己的习惯，调整学习与显示方式。</p>
+          <h1>设置</h1>
+
         </div>
         <div
           className={

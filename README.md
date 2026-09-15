@@ -1,8 +1,8 @@
-# 词迹 2.0 · 在语言中生长
+# 词迹 2.0
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
-[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [界面与动效更新](docs/INTERFACE_REFINEMENT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
 
 ## 功能
 
@@ -10,11 +10,13 @@
 - 专注练习：词义回忆、拼写、听写与语境填空；先作答再揭示，错误与提示影响评分，本轮薄弱词重练，支持撤销。
 - 我的词库：4,681 个稳定词条，12 册教材与高中课标范围；中英文搜索、状态筛选、收藏、笔记、选择练习与 CSV 导出。
 - 短文阅读：6 篇原创短文、双语切换、12 道理解题、36 个目标词与 48 条原创例句；可粘贴文章匹配词库。
-- 学习足迹：真实作答、首次作答正确率、学习天数、近期趋势与未来复习负担。
+- 学习记录：真实作答、首次作答正确率、学习天数、近期趋势与未来复习负担。
 - 数据与偏好：浅色 / 深色、FSRS 保持率与学习预算、JSON 备份恢复、手动私有云端备份、显式离线下载。
 - 可选 AI：词条用法讲解，密钥仅在服务器加密保存。核心学习无需 AI。
 
-![词迹 2.0 桌面界面](artifacts/screenshots/studio-v2-desktop.jpg)
+下图为 9 月 14 日版本。9 月 15 日的字体、图标、今日页、词库及动画调整见[界面更新说明](docs/INTERFACE_REFINEMENT.md)。
+
+![9 月 14 日桌面界面，历史截图](artifacts/screenshots/studio-v2-desktop.jpg)
 
 ## 本地开发
 

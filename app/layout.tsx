@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./studio-controls.css";
 import "./globals.css";
 import "./reading-surfaces.css";
+import "./interface.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",
-  description: "面向山东高中生的本地优先、可追溯人教版初高中英语词汇学习应用。",
+  description: "人教版英语词汇学习。复习单词、练习听写，也在短文中理解词义。",
   applicationName: "词迹",
   manifest: "/manifest.webmanifest",
   other: { "codex-preview": "development" },

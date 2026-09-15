@@ -340,8 +340,8 @@ export default function StudySession({
         <span className="complete-check">
           <Check size={36} />
         </span>
-        <p>这一轮，完成了</p>
-        <h1>把今天的进步记下来。</h1>
+        <h1>练习完成</h1>
+        <p>学习记录已保存</p>
         <div className="complete-stats">
           <span>
             <strong>{first.length}</strong>学习词数
@@ -443,10 +443,10 @@ export default function StudySession({
           <X size={22} />
         </button>
         <span>{session.title}</span>
-        <div className="study-track">
+        <div className="study-track" role="progressbar" aria-label="本轮进度" aria-valuemin={0} aria-valuemax={session.queue.length} aria-valuenow={session.position}>
           <span
             style={{
-              width: `${(session.position / session.queue.length) * 100}%`,
+              transform: `scaleX(${session.position / session.queue.length})`,
             }}
           />
         </div>
