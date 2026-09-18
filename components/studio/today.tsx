@@ -1,15 +1,18 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Responsive local WebP illustration, without an image proxy. */
 
-import { ChevronRight, Play } from "lucide-react";
+import { BookOpen, ChevronRight, Play } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
+import type { StudyOrder } from "@/lib/study-order";
+import { StudyOrderPicker } from "./study-order";
 import type { StudyMode } from "@/lib/study";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { studyStats } from "@/lib/progress";
 import { CoursePicker } from "./shared";
 import { StudioSymbol } from "./symbol";
 
-export default function Today({ data, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onWords, onReading, onActivity, resume, resumeLabel }: {
+export default function Today({ data, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onWords, onReading, onActivity, resume, resumeLabel, onMemorize, order, textbookAvailable, onOrder }: {
+  onMemorize: () => void; order: StudyOrder; textbookAvailable: boolean; onOrder: (order: StudyOrder) => void;
   data: Vocabulary; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
   due: number; newCount: number; weak: number; total: number; learned: number;
   queue: LexiconIndexEntry[]; onStart: (mode: StudyMode) => void; onWords: () => void;
@@ -42,16 +45,18 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
           <h2 id="daily-title">{resume ? "接着上次学" : queue.length ? `今天学 ${queue.length} 个词` : "今日计划已完成"}</h2>
           <p>{resume ? resumeLabel : queue.length ? `复习 ${Math.min(due, queue.length)} 词，学习 ${newCount} 个新词。` : "可以在词库中选择单词，继续练习。"}</p>
           <div className="feature-action">
-            <button className="primary" disabled={!resume && !queue.length} onClick={resume ?? (() => onStart("daily"))}>
-              <Play size={14} fill="currentColor" strokeWidth={0} aria-hidden="true" />
-              {resume ? "继续学习" : queue.length ? "开始学习" : "已完成"}
+            <button className="primary" disabled={!resume && !queue.length} onClick={resume ?? onMemorize}>
+              {resume ? <Play size={14} fill="currentColor" strokeWidth={0} aria-hidden="true" /> : <BookOpen size={17} aria-hidden="true" />}
+              {resume ? "继续学习" : queue.length ? "开始背诵" : "已完成"}
             </button>
+            {!resume && queue.length > 0 && <button className="text-button" onClick={() => onStart("daily")}>直接练习<ChevronRight size={15} /></button>}
             {!resume && minutes > 0 && <span>约 {minutes} 分钟</span>}
           </div>
-          {resume && queue.length > 0 && <button className="fresh-plan" onClick={() => onStart("daily")}>开始今日计划<ChevronRight size={14} aria-hidden="true" /></button>}
+          {resume && queue.length > 0 && <button className="fresh-plan" onClick={onMemorize}>背诵今日单词<ChevronRight size={14} aria-hidden="true" /></button>}
         </div>
-        <img className="today-artwork" src="/images/reading-fiction-480.webp" srcSet="/images/reading-fiction-480.webp 480w, /images/reading-fiction-960.webp 960w" sizes="(max-width: 760px) 112px, 264px" width={960} height={640} alt="" decoding="async" onError={event => { event.currentTarget.style.visibility = "hidden"; }} />
+        <img className="today-artwork" src="/images/reading-fiction-480.webp" srcSet="/images/reading-fiction-480.webp 480w, /images/reading-fiction-960.webp 960w" sizes="(max-width: 760px) 260px, 480px" width={960} height={640} alt="" decoding="async" onError={event => { event.currentTarget.style.visibility = "hidden"; }} />
       </section>
+      <div className="today-study-order"><StudyOrderPicker value={order} textbookAvailable={textbookAvailable} onChange={onOrder} /></div>
       <section className="practice-section" aria-labelledby="practice-title">
         <div className="section-heading"><h2 id="practice-title">专项练习</h2></div>
         <div className="practice-grid">

@@ -41,8 +41,8 @@
 .course-progress progress::-webkit-progress-bar { background: var(--line); }
 .course-progress progress::-webkit-progress-value { background: var(--blue); border-radius: 4px; }
 .course-progress progress::-moz-progress-bar { background: var(--blue); border-radius: 4px; }
-.daily-feature { display: grid; grid-template-columns: minmax(0, 1fr) clamp(176px, 30%, 264px); align-items: center; gap: 12px; padding-right: 24px; overflow: hidden; min-height: 260px; border-radius: 18px; background: var(--grouped); color: var(--ink); border: 1px solid var(--line); }
-.today-artwork { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; pointer-events: none; user-select: none; }
+.daily-feature { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 38%; align-items: center; gap: 0; overflow: hidden; min-height: 292px; border-radius: 18px; background: var(--grouped); color: var(--ink); border: 1px solid var(--line); }
+.today-artwork { position: absolute; z-index: -1; right: -32px; top: 50%; transform: translateY(-50%); display: block; width: 58%; height: 110%; object-fit: cover; pointer-events: none; user-select: none; -webkit-mask-image: radial-gradient(ellipse 66% 64% at 62% 48%, #000 24%, #000b 51%, transparent 78%); mask-image: radial-gradient(ellipse 66% 64% at 62% 48%, #000 24%, #000b 51%, transparent 78%); }
 .daily-feature-copy { min-width: 0; padding: 32px 0 34px 36px; }
 .lesson-label { display: flex; align-items: center; gap: 8px; font-size: .875rem; color: var(--muted); margin-bottom: 20px; }
 .lesson-label .studio-symbol { color: var(--blue); }
@@ -174,9 +174,9 @@ button:not(:disabled):active { opacity: 1; }
   .course-picker select { max-width: 100%; width: 100%; font-size: .9375rem; }
   .course-progress { width: 100%; padding: 0; min-height: 35px; gap: 6px; }
   .course-progress > span { font-size: .75rem; }
-  .daily-feature { grid-template-columns: minmax(0, 1fr) 112px; grid-template-areas: "label art" "title art" "description description" "actions actions" "fresh fresh"; gap: 0 8px; padding: 24px; min-height: 0; border-radius: 21px; }
+  .daily-feature { grid-template-columns: minmax(0, 1fr) 92px; grid-template-areas: "label art" "title art" "description description" "actions actions" "fresh fresh"; gap: 0 8px; padding: 24px; min-height: 0; border-radius: 21px; }
   .daily-feature-copy { display: contents; }
-  .today-artwork { grid-area: art; align-self: center; }
+  .today-artwork { grid-area: auto; top: -12px; right: -40px; transform: none; width: 245px; height: 195px; object-fit: cover; opacity: .9; -webkit-mask-image: radial-gradient(ellipse 57% 61% at 65% 42%, #000 18%, #000a 48%, transparent 80%); mask-image: radial-gradient(ellipse 57% 61% at 65% 42%, #000 18%, #000a 48%, transparent 80%); }
   .lesson-label { grid-area: label; align-self: end; min-height: 22px; margin-bottom: 14px; }
   .daily-feature h2 { grid-area: title; align-self: start; font-size: 1.625rem; }
   .daily-feature-copy > p { grid-area: description; font-size: .9375rem; margin-top: 12px; }

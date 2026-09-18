@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { useVocabulary } from "@/hooks/use-vocabulary";
-import { buildStudyQueue, summarizeStudy, type StudyMode } from "@/lib/study";
+import { buildStudyQueue, selectEntries, summarizeStudy, type StudyMode } from "@/lib/study";
+import { hasTextbookOrder, orderStudyEntries, type StudyOrder } from "@/lib/study-order";
 import { studyStats } from "@/lib/progress";
 import {
   SESSION_KEY,
@@ -34,6 +35,7 @@ const Reading = lazy(() => import("./studio/reading"));
 const Activity = lazy(() => import("./studio/activity"));
 const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
 const StudySession = lazy(() => import("./studio/study-session"));
+const Memorize = lazy(() => import("./studio/memorize"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
 type View = "today" | "lexicon" | "reading" | "activity";
 const navigation = [
@@ -66,11 +68,17 @@ export default function VocabApp() {
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
+  const [memorize, setMemorize] = useState<LexiconIndexEntry[] | null>(null);
   const [resume, setResume] = useState<StudySessionState | null>(null);
   const [clock, setClock] = useState(() => Date.now());
   const initialized = useRef(false);
   const heading = useRef<HTMLElement>(null);
   const bookId = data.settings.selectedBooks[0] || "HS-R1";
+  const studyOrder = data.settings.studyOrder === "textbook" ? "textbook" : "random";
+  const courseEntries = useMemo(() => selectEntries(data.index, { bookId, unit }), [data.index, bookId, unit]);
+  const textbookAvailable = hasTextbookOrder(courseEntries, bookId, unit);
+  const effectiveOrder = textbookAvailable ? studyOrder : "random";
+  const updateOrder = (order: StudyOrder) => { void data.updateSettings({ studyOrder: order }); };
   const stats = useMemo(
     () => studyStats(data.events, new Date(clock)),
     [data.events, clock],
@@ -155,6 +163,7 @@ export default function VocabApp() {
       );
       if (
         !session &&
+        !memorize &&
         !selected &&
         !settingsOpen &&
         (((event.metaKey || event.ctrlKey) &&
@@ -174,7 +183,7 @@ export default function VocabApp() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [session, selected, settingsOpen]);
+  }, [session, memorize, selected, settingsOpen]);
 
   const checkpoint = useCallback(
     (next: StudySessionState) => {
@@ -189,14 +198,16 @@ export default function VocabApp() {
     },
     [data],
   );
-  const startSession = (mode: StudyMode, custom?: LexiconIndexEntry[]) => {
+  const startSession = (mode: StudyMode, custom?: LexiconIndexEntry[], preserveOrder = false) => {
     const queue = custom?.length
       ? custom
           .filter((entry) => data.cards.get(entry.id)?.status !== "paused")
           .slice(0, 80)
       : mode === "daily"
         ? dailyQueue
-        : buildStudyQueue(data.index, data.cards, {
+        : mode === "dictation"
+          ? orderStudyEntries(courseEntries.filter(entry => data.cards.get(entry.id)?.status !== "paused"), effectiveOrder, bookId, unit).slice(0, 20)
+          : buildStudyQueue(data.index, data.cards, {
             bookId,
             unit,
             mode,
@@ -215,15 +226,21 @@ export default function VocabApp() {
       id: createLocalId(),
       mode,
       title: modeTitle[mode],
-      queue: [...new Set(queue.map((entry) => entry.id))],
+      queue: [...new Set((preserveOrder ? queue : orderStudyEntries(queue, studyOrder, bookId, unit)).map((entry) => entry.id))],
       position: 0,
       startedAt: Date.now(),
       results: [],
       retries: {},
     };
     setSelected(null);
+    setMemorize(null);
     setResume(null);
     checkpoint(next);
+  };
+  const startMemorize = (custom?: LexiconIndexEntry[]) => {
+    const words = (custom ?? dailyQueue).filter(entry => data.cards.get(entry.id)?.status !== "paused").slice(0, 80);
+    if (!words.length) { data.notify("当前范围没有可背诵的单词，可从词库选择。"); return; }
+    setMemorize(orderStudyEntries(words, studyOrder, bookId, unit));
   };
   const onCourse = (book: string, nextUnit: string) => {
     setUnit(nextUnit);
@@ -292,6 +309,11 @@ export default function VocabApp() {
       </button>
     </div>
   );
+  if (memorize)
+    return <>
+      <Suspense fallback={<Pending />}><Memorize entries={memorize} bookId={bookId} unit={unit} initialOrder={hasTextbookOrder(memorize, bookId, unit) ? studyOrder : "random"} onOrder={updateOrder} notify={data.notify} onExit={() => setMemorize(null)} onPractice={(mode, words) => startSession(mode, words, true)} /></Suspense>
+      {toast}
+    </>;
   if (session)
     return (
       <>
@@ -448,6 +470,10 @@ export default function VocabApp() {
                 learned={summary.learned}
                 queue={dailyQueue}
                 onStart={startSession}
+                onMemorize={() => startMemorize()}
+                order={effectiveOrder}
+                textbookAvailable={textbookAvailable}
+                onOrder={updateOrder}
                 onWords={() => setView("lexicon")}
                 onReading={() => setView("reading")}
                 onActivity={() => setView("activity")}
@@ -475,6 +501,9 @@ export default function VocabApp() {
                 initialQuery=""
                 onDetail={setSelected}
                 onStart={startSession}
+                onMemorize={startMemorize}
+                order={studyOrder}
+                onOrder={updateOrder}
               />
             )}
             {view === "reading" && (

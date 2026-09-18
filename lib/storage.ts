@@ -71,6 +71,7 @@ export type AppSettings = {
   selectedBooks: string[];
   mode: "normal" | "unit" | "review-only" | "exam" | "browse";
   theme: "light" | "dark" | "system";
+  studyOrder?: "random" | "textbook";
   aiEnabled: boolean;
   diagnosisComplete: boolean;
   examDate: string | null;
@@ -84,6 +85,7 @@ export const defaultSettings: AppSettings = {
   selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
   mode: "normal",
   theme: "system",
+  studyOrder: "random",
   aiEnabled: false,
   diagnosisComplete: false,
   examDate: null,

@@ -11,6 +11,8 @@ export type SourcePosition = {
   volume: string;
   unit: string;
   printedPage: number | null;
+  /** Verified position in the textbook’s unit vocabulary list. */
+  textbookOrder?: number;
   physicalPage?: number | null;
   status?: string;
   curriculumLevel?: string | null;

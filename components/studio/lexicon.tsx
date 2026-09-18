@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import { matchesLexiconQuery, type LexiconIndexEntry } from "@/lib/lexicon";
+import { hasTextbookOrder, orderStudyEntries, type StudyOrder } from "@/lib/study-order";
+import { StudyOrderPicker } from "./study-order";
 import { BOOKS, selectEntries, type StudyMode } from "@/lib/study";
 import { delimitedCell } from "@/lib/export";
 import { StudioSymbol } from "./symbol";
@@ -26,7 +28,12 @@ export default function Lexicon({
   initialQuery,
   onDetail,
   onStart,
+  onMemorize,
+  order,
+  onOrder,
 }: {
+  onMemorize: (entries: LexiconIndexEntry[]) => void;
+  order: StudyOrder; onOrder: (order: StudyOrder) => void;
   data: Vocabulary;
   bookId: string;
   unit: string;
@@ -70,7 +77,11 @@ export default function Lexicon({
   );
   const visible = rows.slice(currentPage * 40, currentPage * 40 + 40);
   const picks = rows.filter((entry) => selected.has(entry.id));
-  const practice = picks.length ? picks : rows.slice(0, 20);
+  const candidates = picks.length ? picks : rows;
+  const textbookAvailable = scope === "book" && hasTextbookOrder(candidates, bookId, unit);
+  const effectiveOrder = textbookAvailable ? order : "random";
+  const practice = () => orderStudyEntries(candidates.filter(entry => data.cards.get(entry.id)?.status !== "paused"), effectiveOrder, scope === "book" ? bookId : "all", unit).slice(0, picks.length ? 80 : 20);
+  const practiceCount = Math.min(picks.length ? 80 : 20, candidates.filter(entry => data.cards.get(entry.id)?.status !== "paused").length);
   const exportRows = () => {
     const content =
       "\uFEFF" +
@@ -208,6 +219,7 @@ export default function Lexicon({
           </select>
         </label>
       </div>
+      <div className="lexicon-study-order"><StudyOrderPicker value={effectiveOrder} textbookAvailable={textbookAvailable} onChange={onOrder} /></div>
       <div className="word-list-meta">
         <span role="status" aria-live="polite">
           共 {rows.length.toLocaleString("zh-CN")} 词{" "}
@@ -224,16 +236,17 @@ export default function Lexicon({
           )}
           <button
             className="text-button"
-            disabled={!practice.length}
-            onClick={() => onStart("dictation", practice)}
+            disabled={!practiceCount}
+            onClick={() => onStart("dictation", practice())}
           >
             <StudioSymbol name="listen" size={19} />
-            {picks.length ? "听写所选" : `听写 ${practice.length} 词`}
+            {picks.length ? "听写所选" : `听写 ${practiceCount} 词`}
           </button>
+          <button className="primary small" disabled={!practiceCount} onClick={() => onMemorize(practice())}>{picks.length ? "背诵所选" : `背诵 ${practiceCount} 词`}</button>
           <button
-            className="primary small"
-            disabled={!practice.length}
-            onClick={() => onStart("daily", practice)}
+            className="text-button"
+            disabled={!practiceCount}
+            onClick={() => onStart("daily", practice())}
           >
             开始练习 <ChevronRight size={15} />
           </button>
