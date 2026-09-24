@@ -13,7 +13,7 @@ export default function Activity({ data }: { data: Vocabulary }) {
     () => new Map(data.index.map((word) => [word.id, word])),
     [data.index],
   );
-  const week = Array.from({ length: 7 }, (_, i) => {
+  const week = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - 6 + i);
     const key = date.toLocaleDateString("sv-SE");
@@ -23,9 +23,9 @@ export default function Activity({ data }: { data: Vocabulary }) {
       label: date.toLocaleDateString("zh-CN", { weekday: "short" }),
       count: new Set(events.map((e) => e.cardId)).size,
     };
-  });
+  }), [stats.reviews]);
   const maximum = Math.max(10, ...week.map((day) => day.count));
-  const forecast = forecastDueLoad(data.cards.values(), 7);
+  const forecast = useMemo(() => forecastDueLoad(data.cards.values(), 7), [data.cards]);
   return (
     <div className="activity-view">
       <div className="page-heading">
@@ -117,7 +117,8 @@ export default function Activity({ data }: { data: Vocabulary }) {
                     event.correct ? "log-mark correct" : "log-mark incorrect"
                   }
                 >
-                  {event.correct ? "✓" : "↻"}
+                  <span aria-hidden="true">{event.correct ? "✓" : "↻"}</span>
+                  <span className="sr-only">{event.correct ? "正确" : "需巩固"}</span>
                 </span>
                 <div>
                   <strong>

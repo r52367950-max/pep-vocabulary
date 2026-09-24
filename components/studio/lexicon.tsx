@@ -124,7 +124,7 @@ export default function Lexicon({
       </div>
       <div className="lexicon-toolbar">
         <div className="search-field">
-          <Search size={19} />
+          <Search size={19} aria-hidden="true" />
           <input
             id="lexicon-search"
             name="word-search"
@@ -143,14 +143,18 @@ export default function Lexicon({
             <button
               className="icon-button"
               aria-label="清空搜索"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setPage(0);
+                document.querySelector<HTMLInputElement>("#lexicon-search")?.focus();
+              }}
             >
-              <X size={16} />
+              <X size={16} aria-hidden="true" />
             </button>
           )}
         </div>
         <div className="lexicon-scope-row">
-        <div className="segmented scope-switch" data-scope={scope} aria-label="搜索范围">
+        <div className="segmented scope-switch" data-scope={scope} role="group" aria-label="搜索范围">
           <span className="scope-selection" aria-hidden="true" />
           <button
             aria-pressed={scope === "book"}
@@ -235,7 +239,7 @@ export default function Lexicon({
             disabled={!practice.length}
             onClick={() => onStart("daily", practice)}
           >
-            开始练习 <ChevronRight size={15} />
+            开始练习 <ChevronRight size={15} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -244,35 +248,37 @@ export default function Lexicon({
           <div className="word-list-heading" aria-hidden="true"><span>单词</span><span>释义</span><span>状态</span></div>
           <div
             className={`word-list${selecting ? " is-selecting" : ""}`}
+            role="list"
             aria-label="词库搜索结果"
           >
             {visible.map((entry) => {
               const card = data.cards.get(entry.id);
+              const toggle = () =>
+                setSelected((previous) => {
+                  const next = new Set(previous);
+                  if (next.has(entry.id)) next.delete(entry.id);
+                  else if (next.size < 80) next.add(entry.id);
+                  else data.notify("每轮最多选择 80 个词。");
+                  return next;
+                });
               return (
-                <div className="word-row" key={entry.id}>
+                <div className="word-row" role="listitem" key={entry.id}>
                   {selecting && (
                     <label className="word-select">
                       <input
                         type="checkbox"
                         aria-label={`选择 ${entry.headword}`}
                         checked={selected.has(entry.id)}
-                        onChange={() =>
-                          setSelected((previous) => {
-                            const next = new Set(previous);
-                            if (next.has(entry.id)) next.delete(entry.id);
-                            else if (next.size < 80) next.add(entry.id);
-                            else data.notify("每轮最多选择 80 个词。");
-                            return next;
-                          })
-                        }
+                        onChange={toggle}
                       />
                       <span>
-                        <Check size={12} />
+                        <Check size={12} aria-hidden="true" />
                       </span>
                     </label>
                   )}
-                  <button className="word-open" onClick={() => onDetail(entry)}>
-                    <span className="word-en" lang="en">
+                  {/* In selection mode a tap anywhere on the row selects it, as in iOS edit mode. */}
+                  <button className="word-open" aria-pressed={selecting ? selected.has(entry.id) : undefined} onClick={() => (selecting ? toggle() : onDetail(entry))}>
+                    <span className="word-en" lang="en" translate="no">
                       <strong>{entry.headword}</strong>
                       <small>
                         {entry.britishIpa ? `/${entry.britishIpa}/` : ""}
@@ -317,7 +323,7 @@ export default function Lexicon({
               disabled={currentPage === 0}
               onClick={() => setPage(currentPage - 1)}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} aria-hidden="true" />
               上一页
             </button>
             <button
@@ -326,7 +332,7 @@ export default function Lexicon({
               onClick={() => setPage(currentPage + 1)}
             >
               下一页
-              <ChevronRight size={16} />
+              <ChevronRight size={16} aria-hidden="true" />
             </button>
           </div>
         </>

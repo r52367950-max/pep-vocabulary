@@ -9,7 +9,7 @@
 .reader-title { margin-bottom: 37px; }
 .reader-meta { display: flex; align-items: center; gap: 16px; margin-bottom: 19px; color: var(--muted); font-size: 0.75rem; }
 .reader-meta > span:first-child { color: var(--muted); font-weight: 500; }
-.reader-title h1 { max-width: none; font-family: var(--font-reading); font-size: clamp(32px, 3.5vw, 46px); font-weight: 500; line-height: 1.15; letter-spacing: -.02em; outline: none; }
+.reader-title h1 { text-wrap: balance; max-width: none; font-family: var(--font-reading); font-size: clamp(32px, 3.5vw, 46px); font-weight: 500; line-height: 1.15; letter-spacing: -.02em; outline: none; }
 .reader-title-zh { margin-top: 16px; font-size: 1.25rem; color: var(--muted); }
 .reader-duration { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-size: 0.8125rem; color: var(--muted); }
 .reader-prose { font-family: var(--font-reading); font-size: 1.3125rem; line-height: 1.85; letter-spacing: normal; overflow-wrap: break-word; }
@@ -47,7 +47,7 @@
 .reader-choices > button { display: grid; grid-template-columns: 18px 1fr 18px; align-items: center; gap: 12px; width: 100%; min-height: 55px; padding: 13px 17px; border: 1px solid var(--line, #e5e5e7); border-radius: 12px; background: var(--surface, #fff); color: var(--ink); text-align: left; font-size: 0.9375rem; line-height: 1.55; }
 .reader-choice-letter { color: var(--muted); font-size: 0.75rem; }
 .reader-choices > button:hover:not(:disabled) { border-color: var(--blue); background: var(--blue-pale, #eef5ff); }
-.reader-choices > button:disabled { opacity: 1; cursor: default; }
+.reader-choices > button:disabled, .reader-choices > button[aria-disabled="true"] { opacity: 1; cursor: default; }
 .reader-choices > button.is-correct { border-color: var(--green, #248a3d); background: var(--green-pale, #f0f8f2); }
 .reader-choices > button.is-correct > svg { color: var(--green, #248a3d); }
 .reader-choices > button.is-incorrect { border-color: var(--danger, #c93429); }
@@ -76,17 +76,17 @@
 .reading-result-count { display: flex; justify-content: space-between; gap: 10px; margin: 22px 0 20px; font-size: .8125rem; color: var(--muted); }
 .reading-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 30px 24px; }
 .reading-card { display: flex; flex-direction: column; padding: 0; text-align: left; min-width: 0; background: var(--bg); border-radius: 11px 11px 0 0; }
-.reading-cover { position: relative; display: block; isolation: isolate; width: 100%; aspect-ratio: 3/2; border-radius: 11px; overflow: hidden; background: #e3e9ee; }
-.reading-cover img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform 220ms var(--ease-feedback); }
-.cover-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: #141413; background: #e3dacc; }
-.cover-fiction .cover-fallback { background: #cbcadb; }
-.cover-science .cover-fallback { background: #bcd1ca; }
+.reading-cover { position: relative; display: block; isolation: isolate; width: 100%; aspect-ratio: 3/2; border-radius: 12px; overflow: hidden; background: #eceae5; }
+.cover-fiction { background: #e4e0d8; }
+.cover-science { background: #dfe6e6; }
+.reading-cover .artwork { position: absolute; inset: 0; width: 100%; height: 100%; }
+.reader-art { display: block; width: 100%; aspect-ratio: 12 / 5; margin-bottom: 30px; border-radius: 16px; background: var(--grouped); }
 .reading-card-copy { display: flex; flex: 1; flex-direction: column; width: 100%; padding: 16px 1px 0; }
-.reading-card-category { color: var(--muted); font-size: .6875rem; letter-spacing: .03em; }
+.reading-card-category { color: var(--muted); font-size: .75rem; }
 .reading-card strong { display: block; font-family: var(--font-reading); font-size: 1.375rem; font-weight: 500; line-height: 1.25; letter-spacing: -.015em; margin: 7px 0 6px; overflow-wrap: anywhere; }
 .reading-card-author { font-size: .8125rem; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
 .reading-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; margin-top: auto; font-size: .75rem; color: var(--muted); }
-.reading-card-meta > span:first-child { font-size: .6875rem; line-height: 1.4; padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); }
+.reading-card-meta > span:first-child { font-size: .75rem; font-variant-numeric: tabular-nums; line-height: 1.4; padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); }
 .reading-card:focus-visible { outline-offset: 6px; }
 .reading-pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--line); font-size: .875rem; }
 .reading-pagination button { display: flex; align-items: center; gap: 8px; min-height: 44px; color: var(--blue); }
@@ -135,14 +135,15 @@
   .reading-search input { font-size: 1rem; }
   .reading-filters { display: grid; grid-template-columns: 1fr 1fr 1fr; width: 100%; gap: 6px; }
   .reading-filters select { width: 100%; min-width: 0; padding-left: 6px; padding-right: 2px; font-size: .75rem; }
-  .reading-result-count > span { font-size: .6875rem; }
+  .reading-result-count > span { font-size: .75rem; }
   .reader-toolbar { margin-bottom: 30px; gap: 8px; flex-wrap: wrap; }
   .reader-tools { flex: 1; gap: 6px; }
   .reader-toolbar button { padding: 8px 9px; font-size: .8125rem; }
   .reader-back { margin-left: -8px; }
   .reader-title h1 { font-size: 2.125rem; }
   .reader-title { margin-bottom: 28px; }
-  .reader-meta { font-size: .6875rem; gap: 8px 11px; }
+  .reader-meta { font-size: .75rem; gap: 8px 11px; }
+  .reader-art { aspect-ratio: 16 / 9; margin-bottom: 24px; border-radius: 14px; }
   .reader-background { margin-top: 22px; font-size: .8125rem; }
   .reader-prose { line-height: 1.85; }
   .reader-paragraph + .reader-paragraph { margin-top: 26px; }
@@ -153,4 +154,3 @@
   .reader-finish { gap: 10px; flex-wrap: wrap; }
   .reader-own textarea { font-size: 1rem; }
 }
-@media (prefers-reduced-motion: reduce) { .reading-cover img, .reader-disclosure { transition: none; } }

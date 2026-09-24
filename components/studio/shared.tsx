@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Volume2 } from "lucide-react";
 import { speakSystem, type LexiconIndexEntry } from "@/lib/lexicon";
 import { StudioSymbol } from "./symbol";
@@ -8,6 +9,7 @@ import { BOOKS, getBookUnits } from "@/lib/study";
 export function Brand() {
   return (
     <span className="brand">
+      <span className="brand-seal" aria-hidden="true">迹</span>
       词迹
     </span>
   );
@@ -24,6 +26,7 @@ export function CoursePicker({
   unit: string;
   onChange: (book: string, unit: string) => void;
 }) {
+  const units = useMemo(() => getBookUnits(entries, bookId), [entries, bookId]);
   return (
     <div className="course-picker">
       <label>
@@ -50,7 +53,7 @@ export function CoursePicker({
           onChange={(e) => onChange(bookId, e.target.value)}
         >
           <option value="all">全部单元</option>
-          {getBookUnits(entries, bookId).map((value) => (
+          {units.map((value) => (
             <option key={value} value={value}>
               {value}
             </option>
@@ -83,7 +86,7 @@ export function Pronounce({
         speakSystem(text);
       }}
     >
-      <Volume2 size={19} />
+      <Volume2 size={19} aria-hidden="true" />
     </button>
   );
 }

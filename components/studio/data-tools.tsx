@@ -61,7 +61,7 @@ export default function DataTools({
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = `词迹备份-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `词迹备份-${new Date().toLocaleDateString("sv-SE")}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -190,18 +190,18 @@ export default function DataTools({
   return (
     <div className="data-view">
       <button className="text-button" onClick={onBack}>
-        <ArrowLeft size={17} />
+        <ArrowLeft size={17} aria-hidden="true" />
         返回设置
       </button>
       <div className="page-heading">
         <div>
           <p>学习记录由你保管</p>
-          <h1>数据与备份</h1>
+          <h3>数据与备份</h3>
         </div>
       </div>
       <div className="data-cards">
         <section>
-          <HardDrive size={25} />
+          <HardDrive size={25} aria-hidden="true" />
           <h2>本机学习记录</h2>
           <p>
             含单词记忆状态、完整作答、收藏、笔记和偏好。学习备份不包含模型密钥或个人文章。个人文章请在阅读器中单独导出。
@@ -212,7 +212,7 @@ export default function DataTools({
               disabled={busy}
               onClick={() => run(backup)}
             >
-              <Download size={17} />
+              <Download size={17} aria-hidden="true" />
               导出 JSON 备份
             </button>
             <button
@@ -220,7 +220,7 @@ export default function DataTools({
               disabled={busy}
               onClick={() => input.current?.click()}
             >
-              <Upload size={17} />
+              <Upload size={17} aria-hidden="true" />
               恢复备份
             </button>
           </div>
@@ -237,7 +237,7 @@ export default function DataTools({
           />
         </section>
         <section>
-          <Cloud size={25} />
+          <Cloud size={25} aria-hidden="true" />
           <h2>私有云端备份</h2>
           <p>
             手动上传或恢复。检测到其他设备的更新时，会阻止覆盖；首次连接会确认账号关联。
@@ -248,7 +248,7 @@ export default function DataTools({
               disabled={busy || !data.online}
               onClick={() => sync("push")}
             >
-              <Upload size={17} />
+              <Upload size={17} aria-hidden="true" />
               上传本机备份
             </button>
             <button
@@ -256,13 +256,13 @@ export default function DataTools({
               disabled={busy || !data.online}
               onClick={() => sync("pull")}
             >
-              <Download size={17} />
+              <Download size={17} aria-hidden="true" />
               从云端恢复
             </button>
           </div>
         </section>
         <section>
-          <WifiOff size={25} />
+          <WifiOff size={25} aria-hidden="true" />
           <h2>准备离线学习</h2>
           <p>
             下载全部词条详情。阅读、复习和拼写可在断网时使用；听写取决于设备的离线英语语音。

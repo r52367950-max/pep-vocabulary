@@ -24,6 +24,7 @@ import {
 } from "@/lib/session";
 import { clearUserData, createLocalId } from "@/lib/storage";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
+import type { LearnMode } from "@/lib/learn";
 import Today from "./studio/today";
 import { Brand } from "./studio/shared";
 import { StudioSymbol } from "./studio/symbol";
@@ -35,6 +36,7 @@ const Activity = lazy(() => import("./studio/activity"));
 const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
 const StudySession = lazy(() => import("./studio/study-session"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
+const LearnActivity = lazy(() => import("./studio/learn/learn-activity"));
 type View = "today" | "lexicon" | "reading" | "activity";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
@@ -66,6 +68,7 @@ export default function VocabApp() {
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
+  const [learn, setLearn] = useState<LearnMode | null>(null);
   const [resume, setResume] = useState<StudySessionState | null>(null);
   const [clock, setClock] = useState(() => Date.now());
   const initialized = useRef(false);
@@ -155,6 +158,7 @@ export default function VocabApp() {
       );
       if (
         !session &&
+        !learn &&
         !selected &&
         !settingsOpen &&
         (((event.metaKey || event.ctrlKey) &&
@@ -174,7 +178,7 @@ export default function VocabApp() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [session, selected, settingsOpen]);
+  }, [session, learn, selected, settingsOpen]);
 
   const checkpoint = useCallback(
     (next: StudySessionState) => {
@@ -308,6 +312,26 @@ export default function VocabApp() {
                 data.index.filter((entry) => ids.includes(entry.id)),
               )
             }
+          />
+        </Suspense>
+        {toast}
+      </>
+    );
+  if (learn)
+    return (
+      <>
+        <Suspense fallback={<Pending />}>
+          <LearnActivity
+            data={data}
+            mode={learn}
+            bookId={bookId}
+            unit={unit}
+            onCourse={onCourse}
+            onExit={() => setLearn(null)}
+            onPractice={(entries, mode) => {
+              setLearn(null);
+              startSession(mode, entries);
+            }}
           />
         </Suspense>
         {toast}
@@ -448,6 +472,10 @@ export default function VocabApp() {
                 learned={summary.learned}
                 queue={dailyQueue}
                 onStart={startSession}
+                onLearn={(mode: LearnMode) => {
+                  setSelected(null);
+                  setLearn(mode);
+                }}
                 onWords={() => setView("lexicon")}
                 onReading={() => setView("reading")}
                 onActivity={() => setView("activity")}

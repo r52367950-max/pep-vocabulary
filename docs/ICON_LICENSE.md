@@ -1,6 +1,6 @@
 # Interface icons
 
-Navigation uses seven unmodified regular-weight outlines from [Phosphor Icons](https://github.com/phosphor-icons/core/tree/main/assets/regular), retrieved 2026-09-15. Action icons use the existing Lucide dependency (ISC). No Apple font files, SF Symbols, or Apple artwork are distributed.
+Feature and navigation symbols use ten unmodified regular-weight outlines from [Phosphor Icons](https://github.com/phosphor-icons/core/tree/main/assets) 2.1.1, plus the matching fill-weight outlines for the five navigation symbols (shown for the current page), retrieved 2026-09-24. Action icons use the existing Lucide dependency (ISC), drawn at the same 1.5/24 stroke ratio as Phosphor regular. No Apple font files, SF Symbols, or Apple artwork are distributed.
 
 MIT License
 

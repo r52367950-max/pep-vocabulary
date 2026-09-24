@@ -133,12 +133,16 @@ export function matchesLexiconQuery(entry: LexiconIndexEntry, query: string) {
     (Boolean(prefix) && entry.headword.toLowerCase().startsWith(prefix));
 }
 
-export function speakSystem(text: string, locale = "en-US") {
+/** Speaks with a British voice when the device has one, matching the British IPA shown and the dictation voice. */
+export function speakSystem(text: string, locale = "en-GB") {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = locale;
-  utterance.rate = 0.86;
+  const voices = window.speechSynthesis.getVoices();
+  const voice = voices.find((v) => v.lang.toLowerCase() === locale.toLowerCase()) || voices.find((v) => /^en[-_]/i.test(v.lang));
+  if (voice) utterance.voice = voice;
+  utterance.lang = voice?.lang || locale;
+  utterance.rate = 0.84;
   window.speechSynthesis.speak(utterance);
   return true;
 }
