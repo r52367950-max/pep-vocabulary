@@ -18,15 +18,12 @@
   --ink: #1d1d1f;
   --muted: #6e6e73;
   --line: #e5e5e7;
-  --blue: #0071e3;
-  --blue-dark: #0066cc;
   --blue-pale: #eaf2fc;
   --green: #248a3d;
   --green-pale: #f0f8f2;
   --amber: #9a6700;
   --amber-pale: #fff8eb;
   --danger: #c93429;
-  --shadow: none;
   --bar: #ffffffed;
   color-scheme: light;
 }
@@ -37,8 +34,6 @@ html[data-theme="dark"] {
   --ink: #f5f5f7;
   --muted: #a1a1a6;
   --line: #333336;
-  --blue: #2997ff;
-  --blue-dark: #64b2ff;
   --blue-pale: #112337;
   --green: #32d74b;
   --green-pale: #16251a;
@@ -60,8 +55,6 @@ html[data-theme="dark"] {
     --ink: #f5f5f7;
     --muted: #a1a1a6;
     --line: #333336;
-    --blue: #2997ff;
-    --blue-dark: #64b2ff;
     --blue-pale: #112337;
     --green: #32d74b;
     --green-pale: #16251a;
@@ -116,9 +109,6 @@ button:disabled {
 button,
 a {
   touch-action: manipulation;
-}
-button:not(:disabled):active {
-  opacity: 0.75;
 }
 input,
 textarea,
@@ -212,10 +202,6 @@ a:hover {
   background: var(--blue);
   color: #fff;
 }
-.primary:hover:not(:disabled),
-.console-primary:hover:not(:disabled) {
-  background: var(--blue-dark);
-}
 .secondary,
 .console-secondary {
   background: var(--grouped);
@@ -272,13 +258,6 @@ a:hover {
   font-size: 0.8125rem;
   background: var(--grouped);
   color: var(--muted);
-}
-.quiet-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 0.875rem;
 }
 .section-heading {
   display: flex;
@@ -376,20 +355,11 @@ a:hover {
   min-height: 44px;
 }
 .word-list {
-  border: 0;
   border-radius: 0;
-  background: transparent;
 }
 
 .word-dialog {
-  border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 22px;
-  box-shadow: 0 24px 90px #00000026;
-}
-.word-dialog::backdrop {
-  background: #0000004d;
-  backdrop-filter: blur(4px);
 }
 .detail-word h2 {
   font-size: 2.625rem;
@@ -400,8 +370,6 @@ a:hover {
   line-height: 1.65;
 }
 .example-block {
-  border-radius: 14px;
-  background: var(--grouped);
   border: 0;
 }
 .example-block > p {
@@ -452,74 +420,24 @@ a:hover {
 .study-screen {
   background: var(--bg);
 }
-.study-header {
-  border-bottom: 1px solid var(--line);
-  background: var(--bar);
-  padding: 16px max(24px, calc((100vw - 1060px) / 2));
-}
 .study-track {
   background: var(--line);
-  height: 4px;
 }
 .study-stage {
-  max-width: 740px;
-  padding: 0 28px 35px;
   margin-top: 35px;
-}
-.study-question {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  border-radius: 0;
-  padding: 30px 24px;
-  min-height: 310px;
-}
-.question-instruction {
-  color: var(--muted);
-  font-size: 0.9375rem;
 }
 .recall-word {
   font-family: inherit;
-  font-weight: 600;
-  font-size: 4.25rem;
-  letter-spacing: -0.025em;
-  margin-top: 42px;
 }
 .question-text {
-  font-size: 1.875rem;
   font-weight: 500;
   line-height: 1.55;
 }
-.study-pronunciation .ipa {
-  font-size: 1.125rem;
-}
 .study-controls {
-  border-top: 1px solid var(--line);
   padding-top: 24px;
-}
-.study-main-actions button {
-  min-height: 49px;
-  font-size: 1rem;
 }
 .rating-buttons {
   gap: 10px;
-}
-.rating-buttons button {
-  background: var(--grouped);
-  border: 1px solid transparent;
-  border-radius: 14px;
-  padding: 16px 10px;
-}
-.rating-buttons button.recommended {
-  border-color: var(--blue);
-  background: var(--blue-pale);
-  color: var(--blue);
-}
-.rating-buttons strong {
-  font-size: 0.9375rem;
-}
-.rating-buttons small {
-  font-size: 0.8125rem;
 }
 .answer-en {
   font-family: inherit;
@@ -543,16 +461,6 @@ a:hover {
 }
 
 /* Optional configuration stays quieter than the learning content. */
-.settings-page-header {
-  padding-bottom: 30px;
-}
-.settings-page-header h1 {
-  font-size: 2.5rem;
-}
-.settings-page-header p {
-  font-size: 0.9375rem;
-  color: var(--muted);
-}
 .settings-layout {
   gap: 40px;
 }
@@ -592,10 +500,6 @@ a:hover {
 }
 .settings-content .segmented-control {
   background: var(--line);
-}
-.api-key-note,
-.settings-note {
-  font-size: 0.875rem;
 }
 .data-cards {
   gap: 20px;
@@ -653,28 +557,14 @@ html[data-theme="dark"] {
 .lexicon-toolbar .search-field {
   background: var(--grouped);
   border-color: transparent;
-  min-height: 48px;
-}
-
-.word-list.is-selecting .word-row {
-  grid-template-columns: 30px 1fr 40px;
-}
-
-.status-unseen {
-  background: transparent;
-  color: var(--muted);
 }
 
 .word-dialog {
   border: 1px solid var(--line);
-  border-radius: 24px;
   box-shadow: 0 30px 100px #00000025;
 }
 .detail-word h2 {
   font-weight: 600;
-}
-.detail-actions {
-  gap: 8px;
 }
 
 /* A quiet full-screen stage for recall and dictation. */
@@ -869,16 +759,10 @@ html[data-theme="dark"] {
   }
 
   .status-filter {
-    width: 100%;
-    justify-content: space-between;
     font-size: 0.75rem;
   }
   .status-filter select {
     font-size: 0.75rem;
-  }
-
-  .word-list.is-selecting .word-row {
-    grid-template-columns: 25px minmax(0, 1fr) 37px;
   }
   .word-open {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -959,14 +843,7 @@ html[data-theme="dark"] {
   }
   .rating-buttons button {
     border-radius: 12px;
-    min-height: 72px;
     padding: 12px 4px;
-  }
-  .rating-buttons strong {
-    font-size: 0.8125rem;
-  }
-  .rating-buttons small {
-    font-size: 0.75rem;
   }
   .study-footer {
     padding: 6px 0;
@@ -994,9 +871,6 @@ html[data-theme="dark"] {
   .activity-metrics > div:nth-child(3) {
     padding-left: 0;
     border-left: 0;
-  }
-  .settings-page-header h1 {
-    font-size: 2rem;
   }
   .settings-layout {
     gap: 18px;
@@ -1086,8 +960,7 @@ html[data-theme="dark"] {
   input,
   textarea,
   .mobile-nav,
-  .daily-feature,
-  .discovery-card {
+  .daily-feature {
     border: 1px solid ButtonText;
   }
   progress,
