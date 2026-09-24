@@ -32,7 +32,6 @@ export const PRIVATE_API_ROUTES: Readonly<Record<string, readonly string[]>> = {
 
 const PERMISSIONS_POLICY = [
   "accelerometer=()",
-  "bluetooth=()",
   "browsing-topics=()",
   "camera=()",
   "display-capture=()",
