@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeft,
   Check,
@@ -64,12 +71,11 @@ export default function StudySession({
   const answerTime = useRef(0);
   const submission = useRef<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const index = useMemo(
-    () => new Map(data.index.map((entry) => [entry.id, entry])),
-    [data.index],
-  );
+  const index = data.byId;
+  const { cards, notify, saveReview, reload } = data;
+  const retention = data.settings.desiredRetention;
   const entry = index.get(session.queue[session.position]);
-  const card = entry ? data.cards.get(entry.id) : undefined;
+  const card = entry ? cards.get(entry.id) : undefined;
   const detail = entry ? details.get(entry.id) : undefined;
   const done = session.position >= session.queue.length;
   const type: QuestionType =
@@ -97,8 +103,8 @@ export default function StudySession({
     [entry, detail, type, data.index],
   );
   const intervals = useMemo(
-    () => previewReviewIntervals(card, data.settings.desiredRetention),
-    [card, data.settings.desiredRetention],
+    () => previewReviewIntervals(card, retention),
+    [card, retention],
   );
   const stepId = sessionEventId(session);
   // Details for the next five words are prefetched, so a cached card is ready at once
@@ -189,7 +195,7 @@ export default function StudySession({
     (forgot = false) => {
       if (!question || revealed || busy.current || !ready) return;
       if (!forgot && question.inputMode !== "reveal" && !answer.trim()) {
-        data.notify("先输入答案，或选择暂时想不起来。");
+        notify("先输入答案，或选择暂时想不起来。");
         return;
       }
       answerTime.current = Math.min(
@@ -199,7 +205,7 @@ export default function StudySession({
       setCorrect(forgot ? false : gradeQuestion(question, answer));
       setRevealed(true);
     },
-    [question, revealed, answer, data, ready],
+    [question, revealed, answer, notify, ready],
   );
 
   const rate = useCallback(
@@ -218,10 +224,10 @@ export default function StudySession({
       const rating = effectiveRating({ rating: requested, correct, hints });
       const result = correct ?? rating > 1;
       const scheduled = scheduleReview({
-        stored: data.cards.get(entry.id) || null,
+        stored: cards.get(entry.id) || null,
         cardId: entry.id,
         rating,
-        retention: data.settings.desiredRetention,
+        retention,
         skill: question.skill,
         questionType: question.type,
         correct: result,
@@ -245,16 +251,16 @@ export default function StudySession({
         eventId: stepId,
       };
       try {
-        await data.saveReview(event);
+        await saveReview(event);
         submission.current = stepId;
         setUndo({ event, previous: session });
         onChange(advanceSession(session, event));
         reset();
       } catch {
-        data.notify(
+        notify(
           "本次评分尚未保存。可能有另一页面更新了此词，请重试。学习位置已保留。",
         );
-        await data.reload().catch(() => undefined);
+        await reload().catch(() => undefined);
       } finally {
         busy.current = false;
         setSaving(false);
@@ -268,7 +274,11 @@ export default function StudySession({
       stepId,
       correct,
       hints,
-      data,
+      cards,
+      retention,
+      saveReview,
+      notify,
+      reload,
       answer,
       session,
       onChange,
@@ -282,7 +292,7 @@ export default function StudySession({
     setSaving(true);
     try {
       const now = new Date();
-      await data.saveReview({
+      await saveReview({
         ...undo.event,
         eventId: createLocalId(),
         eventType: "undo",
@@ -295,43 +305,46 @@ export default function StudySession({
       setUndo(null);
       reset();
     } catch {
-      data.notify("撤销未完成，词条可能已在其他页面更新。请重新加载后检查。");
+      notify("撤销未完成，词条可能已在其他页面更新。请重新加载后检查。");
     } finally {
       busy.current = false;
       setSaving(false);
     }
-  }, [undo, session.revision, data, onChange, reset]);
+  }, [undo, session.revision, saveReview, notify, onChange, reset]);
 
+  // Reads the latest answer state when a key arrives, so the listener is bound once per session
+  // instead of after every keypress.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (
+      event.repeat ||
+      event.isComposing ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      busy.current
+    )
+      return;
+    const target = event.target as HTMLElement;
+    if (
+      ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
+      target.isContentEditable
+    )
+      return;
+    if (event.code === "Space") {
+      event.preventDefault();
+      if (revealed) void rate(correct === false ? 1 : 3);
+      else check();
+    }
+    if (revealed && /^[1-4]$/.test(event.key))
+      void rate(Number(event.key) as 1 | 2 | 3 | 4);
+    if (event.key.toLowerCase() === "r") play();
+    if (event.key.toLowerCase() === "z") void undoLast();
+  });
   useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (
-        event.repeat ||
-        event.isComposing ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
-        busy.current
-      )
-        return;
-      const target = event.target as HTMLElement;
-      if (
-        ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
-        target.isContentEditable
-      )
-        return;
-      if (event.code === "Space") {
-        event.preventDefault();
-        if (revealed) void rate(correct === false ? 1 : 3);
-        else check();
-      }
-      if (revealed && /^[1-4]$/.test(event.key))
-        void rate(Number(event.key) as 1 | 2 | 3 | 4);
-      if (event.key.toLowerCase() === "r") play();
-      if (event.key.toLowerCase() === "z") void undoLast();
-    };
+    const key = (event: KeyboardEvent) => onKey(event);
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [revealed, correct, rate, check, play, undoLast]);
+  }, []);
 
   if (done) {
     const first = session.results.filter((result) => !result.retry);
