@@ -4,7 +4,7 @@
 .reader-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 9px 13px; font-size: 0.875rem; border-radius: 999px; }
 .reader-back { color: var(--blue); margin-left: -12px; }
 .reader-translation-toggle { background: var(--grouped, #f5f5f7); color: var(--muted); }
-.reader-translation-toggle[aria-pressed="true"] { color: var(--blue); background: var(--blue-pale, #eaf3ff); }
+.reader-translation-toggle[aria-pressed="true"] { color: var(--blue-ink); background: var(--blue-pale, #eaf3ff); }
 .reader-column { width: 100%; max-width: 690px; margin: 0 auto; }
 .reader-title { margin-bottom: 37px; }
 .reader-meta { display: flex; align-items: center; margin-bottom: 19px; color: var(--muted); font-size: 0.75rem; }

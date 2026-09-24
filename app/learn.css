@@ -226,7 +226,7 @@
 .learn-length input:checked + span {
   border-color: var(--blue);
   background: var(--blue-pale);
-  color: var(--blue);
+  color: var(--blue-ink);
   font-weight: 500;
 }
 .learn-length input:focus-visible + span {
@@ -611,14 +611,14 @@
 .learn-tile.is-selected {
   border-color: var(--blue);
   background: var(--blue-pale);
-  color: var(--blue);
+  color: var(--blue-ink);
   box-shadow: inset 0 0 0 1px var(--blue);
 }
 /* Correct: lock green for a beat, then fade in place so the grid never reflows. */
 .learn-tile.is-matched {
   border-color: var(--green);
   background: var(--green-pale);
-  color: var(--green);
+  color: var(--green-ink);
   animation: learn-tile-out 280ms var(--ease-settle) 220ms both;
 }
 .learn-tile.is-wrong-a,
@@ -702,7 +702,7 @@
   height: 96px;
   border-radius: 50%;
   background: var(--blue-pale);
-  color: var(--blue);
+  color: var(--blue-ink);
 }
 .learn-q-support {
   font-size: 0.875rem;
@@ -756,7 +756,7 @@
 .learn-choice.is-correct {
   border-color: var(--green);
   background: var(--green-pale);
-  color: var(--green);
+  color: var(--green-ink);
 }
 .learn-choice.is-wrong {
   border-color: var(--danger);
@@ -1023,7 +1023,7 @@ html[data-theme="dark"] .learn-art {
 }
 .learn-mark.is-right {
   background: var(--green-pale);
-  color: var(--green);
+  color: var(--green-ink);
 }
 .learn-mark.is-wrong {
   background: color-mix(in srgb, var(--danger) 12%, var(--surface));
@@ -1085,6 +1085,35 @@ html[data-theme="dark"] .learn-art {
   .learn-flip-button {
     padding-inline: 8px;
     font-size: 0.875rem;
+  }
+}
+
+/* Large browser text (about 150% and up on a phone). Media-query ems follow the
+   user's text-size setting, so layouts at normal size are untouched. */
+@media (max-width: 21em) {
+  .learn-header-title {
+    display: none;
+  }
+  .learn-count {
+    white-space: nowrap;
+  }
+  /* 再看看 and 认识 side by side, the flip button on its own row below. */
+  .learn-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .learn-flip-button {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    white-space: normal;
+  }
+  .learn-decide {
+    word-break: keep-all;
+  }
+  /* A clamped meaning cannot be matched; let the tile grow instead. */
+  .learn-tile > span {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: none;
   }
 }
 

@@ -19,6 +19,10 @@
   --muted: #6e6e73;
   --line: #e5e5e7;
   --blue-pale: #eaf2fc;
+  /* Text on tinted fills (selected, correct) keeps 4.5:1. */
+  --blue-ink: #005fc4;
+  --green-ink: #1f7a35;
+  --muted-strong: #5f5f64;
   --green: #248a3d;
   --green-pale: #f0f8f2;
   --amber: #9a6700;
@@ -35,6 +39,9 @@ html[data-theme="dark"] {
   --muted: #a1a1a6;
   --line: #333336;
   --blue-pale: #112337;
+  --blue-ink: #69afff;
+  --green-ink: #32d74b;
+  --muted-strong: #a1a1a6;
   --green: #32d74b;
   --green-pale: #16251a;
   --amber: #ffd60a;
@@ -56,6 +63,9 @@ html[data-theme="dark"] {
     --muted: #a1a1a6;
     --line: #333336;
     --blue-pale: #112337;
+    --blue-ink: #69afff;
+    --green-ink: #32d74b;
+    --muted-strong: #a1a1a6;
     --green: #32d74b;
     --green-pale: #16251a;
     --amber: #ffd60a;
@@ -933,11 +943,23 @@ html[data-theme="dark"] {
   :root {
     --line: #aeaeb2;
     --muted: #48484a;
+    --muted-strong: #2c2c2e;
   }
   html[data-theme="dark"] {
     --line: #636366;
     --muted: #d1d1d6;
+    --muted-strong: #f5f5f7;
   }
+}
+/* System dark outranks :root above, so it needs its own increased-contrast values. */
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --line: #636366;
+    --muted: #d1d1d6;
+    --muted-strong: #f5f5f7;
+  }
+}
+@media (prefers-contrast: more) {
   .mobile-nav,
   .study-controls {
     background: var(--surface) !important;

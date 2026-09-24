@@ -147,11 +147,11 @@
 }
 .status-learning {
   background: var(--blue-pale);
-  color: var(--blue);
+  color: var(--blue-ink);
 }
 .status-mastered {
   background: var(--green-pale);
-  color: var(--green);
+  color: var(--green-ink);
 }
 .is-favorite {
   color: var(--amber);
@@ -387,7 +387,7 @@
   height: 31px;
   border-radius: 50%;
   background: var(--green-pale);
-  color: var(--green);
+  color: var(--green-ink);
 }
 .log-mark.incorrect {
   background: var(--amber-pale);
@@ -521,7 +521,7 @@
 .study-choices button[aria-pressed="true"] {
   border-color: var(--blue);
   background: var(--blue-pale);
-  color: var(--blue);
+  color: var(--blue-ink);
 }
 .hint-text {
   display: flex;
@@ -725,7 +725,7 @@
 }
 .settings-nav button.active {
   background: var(--blue-pale);
-  color: var(--blue);
+  color: var(--blue-ink);
 }
 .settings-content {
   display: flex;
@@ -822,7 +822,7 @@
   background: var(--green-pale);
   border-radius: 9px;
   font-size: 0.8125rem;
-  color: var(--green);
+  color: var(--green-ink);
 }
 .security-callout p {
   font-size: 0.8125rem;
