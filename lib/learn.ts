@@ -1,7 +1,13 @@
-import type { LexiconIndexEntry } from "./lexicon";
+import type { LexiconDetail, LexiconIndexEntry } from "./lexicon";
 import type { StoredCard } from "./storage";
 import { findOriginalExample } from "./examples";
-import { buildQuestion, normalizeAnswer, type Question } from "./questions";
+import {
+  buildQuestion,
+  getEntryExample,
+  normalizeAnswer,
+  type EntryExample,
+  type Question,
+} from "./questions";
 import { BOOKS, getBookUnits, selectEntries } from "./study";
 
 /**
@@ -211,6 +217,26 @@ export function summarizeFlash(state: FlashState) {
     known: first.filter((d) => d.known).map((d) => d.id),
     review: first.filter((d) => !d.known).map((d) => d.id),
   };
+}
+
+/**
+ * The card's example sentence. A few lexicon rows store `openExample` as an
+ * object ({ source, text }, e.g. an album title), which getEntryExample cannot
+ * read; treat those as having no open example rather than failing the card.
+ */
+export function learnExample(
+  entry: LexiconIndexEntry,
+  detail?: LexiconDetail,
+): EntryExample | undefined {
+  const safe =
+    detail && detail.openExample != null && typeof detail.openExample !== "string"
+      ? { ...detail, openExample: null }
+      : detail;
+  try {
+    return getEntryExample(entry, safe);
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------

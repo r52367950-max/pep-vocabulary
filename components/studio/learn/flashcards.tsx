@@ -16,13 +16,13 @@ import {
   type LexiconDetail,
   type LexiconIndexEntry,
 } from "@/lib/lexicon";
-import { getEntryExample } from "@/lib/questions";
 import {
   FLASH_DECK_SIZE,
   buildFlashDeck,
   decideFlash,
   flashDone,
   isUnseen,
+  learnExample,
   learnPool,
   project,
   rubberband,
@@ -209,6 +209,8 @@ type Motion = {
   frame: number;
   /** A decision whose card is still flying off; committed when it leaves the screen. */
   pending: boolean | null;
+  /** prefers-reduced-motion, read once per interaction rather than every frame. */
+  reduced: boolean;
   drag: Drag | null;
 };
 
@@ -229,6 +231,11 @@ function releaseVelocity(samples: Drag["samples"], now: number) {
     vy: clamp((last.y - first.y) / seconds, -6000, 6000),
   };
 }
+
+const undoKeys =
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+    ? "⌘Z"
+    : "Ctrl+Z";
 
 function exitDistance(width: number) {
   return window.innerWidth / 2 + width / 2 + 80;
@@ -272,6 +279,7 @@ function FlashPlay({
     width: 360,
     frame: 0,
     pending: null,
+    reduced: false,
     drag: null,
   });
   const heading = useScreenFocus<HTMLHeadingElement>("play");
@@ -281,7 +289,7 @@ function FlashPlay({
     const card = cardRef.current;
     const width = m.width || 360;
     if (card) {
-      const rotate = prefersReducedMotion() ? 0 : clamp((m.x / width) * 12, -16, 16);
+      const rotate = m.reduced ? 0 : clamp((m.x / width) * 12, -16, 16);
       card.style.transform =
         m.x || m.y
           ? `translate3d(${m.x.toFixed(1)}px, ${m.y.toFixed(1)}px, 0) rotate(${rotate.toFixed(2)}deg)`
@@ -368,7 +376,7 @@ function FlashPlay({
   };
 
   const settleBack = (vx = 0, vy = 0) => {
-    if (prefersReducedMotion()) {
+    if (motion.current.reduced) {
       stop();
       Object.assign(motion.current, { x: 0, y: 0, vx: 0, vy: 0 });
       paint();
@@ -379,7 +387,7 @@ function FlashPlay({
 
   const fling = (direction: 1 | -1, vx: number, vy: number) => {
     const known = direction > 0;
-    if (prefersReducedMotion()) {
+    if (motion.current.reduced) {
       stop();
       onDecide(known);
       return;
@@ -405,6 +413,7 @@ function FlashPlay({
       return;
     }
     m.width = cardRef.current?.offsetWidth || m.width;
+    m.reduced = prefersReducedMotion();
     const direction = known ? 1 : -1;
     fling(direction, direction * 900 + m.vx, -160);
   };
@@ -439,7 +448,8 @@ function FlashPlay({
     const returning = enter.current;
     enter.current = null;
     m.width = cardRef.current?.offsetWidth || m.width;
-    if (returning && returning.key === topKey && !prefersReducedMotion()) {
+    m.reduced = prefersReducedMotion();
+    if (returning && returning.key === topKey && !m.reduced) {
       Object.assign(m, {
         x: returning.from * exitDistance(m.width),
         y: 0,
@@ -494,6 +504,7 @@ function FlashPlay({
     // Grabbing a moving card catches it where it is, keeping the finger's offset.
     stop();
     m.pending = null;
+    m.reduced = prefersReducedMotion();
     m.width = event.currentTarget.offsetWidth || m.width;
     m.drag = {
       id: event.pointerId,
@@ -593,7 +604,7 @@ function FlashPlay({
           onClick={undo}
           disabled={!done}
           aria-label="撤销上一张"
-          title="撤销上一张（⌘Z / Ctrl+Z）"
+          title={`撤销上一张（${undoKeys}）`}
         >
           <Undo2 size={20} aria-hidden="true" />
         </button>
@@ -686,7 +697,7 @@ function FlashPlay({
             <kbd>→</kbd> 认识
           </span>
           <span>
-            <kbd>⌘Z</kbd> 撤销
+            <kbd>{undoKeys}</kbd> 撤销
           </span>
         </p>
       </main>
@@ -751,7 +762,7 @@ function CardBack({
   data: Vocabulary;
   hidden: boolean;
 }) {
-  const example = getEntryExample(entry, detail);
+  const example = learnExample(entry, detail);
   return (
     <div className="learn-face is-back" inert={hidden}>
       <div className="learn-card-head">

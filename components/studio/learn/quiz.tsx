@@ -126,6 +126,7 @@ export default function QuizMode({
       >
         <fieldset className="learn-lengths">
           <legend>题量</legend>
+          <div className="learn-length-options">
           {LENGTHS.map((option) => {
             const size = quizLength(option, available);
             const label =
@@ -145,6 +146,7 @@ export default function QuizMode({
               </label>
             );
           })}
+          </div>
           {available > QUIZ_MAX ? (
             <small className="learn-lengths-note">“全部”最多 {QUIZ_MAX} 题，随机抽取。</small>
           ) : null}
