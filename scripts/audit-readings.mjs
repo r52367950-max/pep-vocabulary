@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { validLibraryArticle, lengthBand } from '../lib/reading-library.ts';
 
@@ -17,7 +17,8 @@ for (const meta of catalog) {
   if (seen.has(hash)) errors.push(`${meta.id}: duplicate of ${seen.get(hash)}`);
   seen.set(hash, meta.id);
   if (/\uFFFD|\[Illustration|\[Picture|\[Footnote|START OF THE PROJECT|END OF THE PROJECT|<script|<iframe/i.test(body)) errors.push(`${meta.id}: extraction debris`);
-  for (const size of [480, 960]) if (!existsSync(`public/images/reading-${meta.category}-${size}.webp`)) errors.push(`${meta.id}: cover missing`);
+  // Covers are generated at runtime from the article ID (lib/art); each category needs a generator.
+  if (!['essay', 'fiction', 'science'].includes(meta.category)) errors.push(`${meta.id}: no cover generator for ${meta.category}`);
   if (meta.addedIn === '2.1.0') {
     if (!meta.backgroundEn || !meta.background || !meta.rights.basis || !meta.sourceUrl) errors.push(`${meta.id}: required provenance/introduction missing`);
     increment(distribution.category, meta.category); increment(distribution.difficulty, meta.difficulty);

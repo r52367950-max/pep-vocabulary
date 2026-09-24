@@ -6,6 +6,12 @@
   --font-reading: ui-serif, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --ease-settle: cubic-bezier(.22, 1, .36, 1);
   --ease-feedback: cubic-bezier(.2, .7, .3, 1);
+  /* A critically damped spring (damping 1, response .35s); settles by ~300ms, fully by 500ms. */
+  --ease-spring: cubic-bezier(.22, 1, .36, 1);
+  --dur-spring: 500ms;
+  --dur-press: 100ms;
+  --dur-release: 240ms;
+  --material-edge: #ffffff8c;
   --bg: #ffffff;
   --surface: #ffffff;
   --grouped: #f6f6f8;
@@ -40,7 +46,11 @@ html[data-theme="dark"] {
   --amber-pale: #292510;
   --danger: #ff6961;
   --bar: #141414ed;
+  --material-edge: #ffffff17;
   color-scheme: dark;
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --ease-spring: linear(0, .008 1.5%, .061 4.4%, .178 8.5%, .341 13.5%, .516 19.3%, .672 25.8%, .795 33%, .881 40.8%, .935 49.3%, .967 58.4%, .984 68%, .993 78.1%, .997 88.8%, 1); }
 }
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
@@ -59,6 +69,7 @@ html[data-theme="dark"] {
     --amber-pale: #292510;
     --danger: #ff6961;
     --bar: #141414ed;
+    --material-edge: #ffffff17;
     color-scheme: dark;
   }
 }
@@ -72,6 +83,7 @@ html {
 }
 body {
   margin: 0;
+  transition: background-color 240ms ease, color 240ms ease;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
@@ -470,7 +482,7 @@ a:hover {
   font-family: inherit;
   font-weight: 600;
   font-size: 4.25rem;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.025em;
   margin-top: 42px;
 }
 .question-text {
@@ -725,7 +737,7 @@ html[data-theme="dark"] {
 .recall-word {
   font-size: clamp(50px, 6vw, 76px);
   font-weight: 600;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.025em;
   margin-top: 37px;
 }
 .study-pronunciation .ipa {
@@ -742,7 +754,8 @@ html[data-theme="dark"] {
 }
 .spelling-input:focus {
   outline: 0;
-  border-bottom: 2px solid var(--blue);
+  border-bottom-color: var(--blue);
+  box-shadow: inset 0 -1px 0 var(--blue);
 }
 .spelling-input::placeholder {
   font-size: 1rem;
@@ -769,9 +782,22 @@ html[data-theme="dark"] {
   padding: 25px 18px 8px;
   position: sticky;
   bottom: 0;
-  background: var(--bar);
-  backdrop-filter: blur(20px);
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   border-radius: 22px 22px 0 0;
+}
+/* A soft scroll edge where content slides under the floating controls, instead of a hard divider. */
+.study-controls::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 24px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--bg) 78%, transparent), transparent);
+  pointer-events: none;
 }
 .study-main-actions {
   gap: 14px;
@@ -992,13 +1018,66 @@ html[data-theme="dark"] {
   }
 }
 
+/* Reduced motion keeps feedback that does not move: fades and colour changes stay, slides, springs and scaling go. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
     animation: none !important;
-    transition: none !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow !important;
+  }
+  .view-surface,
+  .word-dialog[open],
+  .settings-dialog[open],
+  .import-dialog[open],
+  .answer-feedback,
+  .reader-explanation,
+  .toast {
+    animation: surface-in 160ms ease-out !important;
+  }
+  :is(button, a, .reading-card):active,
+  :is(button, a, .reading-card):active * {
+    transform: none !important;
+  }
+  button:not(:disabled):active {
+    opacity: 0.7;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mobile-nav,
+  .study-controls {
+    background: var(--surface) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .study-controls::before {
+    display: none;
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --line: #aeaeb2;
+    --muted: #48484a;
+  }
+  html[data-theme="dark"] {
+    --line: #636366;
+    --muted: #d1d1d6;
+  }
+  .mobile-nav,
+  .study-controls {
+    background: var(--surface) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border: 1px solid var(--ink);
+  }
+  .secondary,
+  .search-field,
+  .reading-search,
+  .rating-buttons button,
+  .study-choices button,
+  .practice-option {
+    border: 1px solid var(--ink);
   }
 }
 @media (forced-colors: active) {

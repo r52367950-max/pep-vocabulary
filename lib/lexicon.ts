@@ -42,7 +42,8 @@ export type LexiconDetail = LexiconIndexEntry & {
   pronunciation: { mode: string; label: string; source: string };
   grammar: { countability: string | null; transitivity: string | null };
   englishCore: string | null;
-  openExample: string | null;
+  /** A few source rows carry { source, text } instead of a sentence; readers must check for a string. */
+  openExample: string | { source: string; text: string } | null;
   relations: { family: string[]; phrases: string[]; confusables: string[] };
   license: Record<string, string | null>;
   fieldStatus: Record<string, string>;
@@ -80,6 +81,32 @@ export function normalizePronunciations<T extends LexiconIndexEntry>(entry: T): 
   };
 }
 
+const CLOSERS: Record<string, string> = { "）": "（", ")": "(" };
+/**
+ * 144 release rows lost the opening bracket of a leading note during extraction
+ * ("源自拉丁语）上午"). Restore it for display when the note starts with real text;
+ * anything more broken is left exactly as published.
+ */
+export function repairMeaning(text: string): string {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "（" || c === "(") depth++;
+    else if (c in CLOSERS) {
+      if (depth > 0) { depth--; continue; }
+      return /^[\u4e00-\u9fffA-Za-z]/.test(text) ? CLOSERS[c] + text : text;
+    }
+  }
+  return text;
+}
+/** The display-boundary repairs applied to every entry as it loads. */
+export function normalizeEntry<T extends LexiconIndexEntry>(entry: T): T {
+  const fixed = normalizePronunciations(entry);
+  if (typeof fixed.chineseCore !== "string") return fixed;
+  const chineseCore = repairMeaning(fixed.chineseCore);
+  return chineseCore === fixed.chineseCore ? fixed : { ...fixed, chineseCore };
+}
+
 export function loadLexicon() {
   if (lexiconPromise) return lexiconPromise;
   lexiconPromise = (async () => {
@@ -101,7 +128,7 @@ export function loadLexicon() {
       }
     });
     if (position !== index.length) throw new Error("词库索引与分片数量不一致");
-    return { index: index.map(normalizePronunciations), manifest };
+    return { index: index.map(normalizeEntry), manifest };
   })().catch((error) => { lexiconPromise = null; chunkById.clear(); throw error; });
   return lexiconPromise;
 }
@@ -117,7 +144,7 @@ export async function loadDetails(ids: string[]) {
         if (!response.ok) throw new Error("词条详情分片暂时无法读取");
         const rows = await response.json() as LexiconDetail[];
         if (!Array.isArray(rows) || rows.length !== descriptor.count || new Set(rows.map((row) => row.id)).size !== rows.length || rows.some((row) => chunkById.get(row.id) !== chunk)) throw new Error("词条详情分片与索引不一致");
-        rows.forEach((row) => detailCache.set(row.id, normalizePronunciations(row)));
+        rows.forEach((row) => detailCache.set(row.id, normalizeEntry(row)));
       })().catch((error) => { chunkPromises.delete(chunk); throw error; });
       chunkPromises.set(chunk, promise);
     }
@@ -133,12 +160,16 @@ export function matchesLexiconQuery(entry: LexiconIndexEntry, query: string) {
     (Boolean(prefix) && entry.headword.toLowerCase().startsWith(prefix));
 }
 
-export function speakSystem(text: string, locale = "en-US") {
+/** Speaks with a British voice when the device has one, matching the British IPA shown and the dictation voice. */
+export function speakSystem(text: string, locale = "en-GB") {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = locale;
-  utterance.rate = 0.86;
+  const voices = window.speechSynthesis.getVoices();
+  const voice = voices.find((v) => v.lang.toLowerCase() === locale.toLowerCase()) || voices.find((v) => /^en[-_]/i.test(v.lang));
+  if (voice) utterance.voice = voice;
+  utterance.lang = voice?.lang || locale;
+  utterance.rate = 0.84;
   window.speechSynthesis.speak(utterance);
   return true;
 }

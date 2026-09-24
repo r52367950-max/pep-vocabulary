@@ -90,6 +90,11 @@ export function useVocabulary() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
+    // Keep the browser chrome in step with the in-app theme, not only the system one.
+    if (settings.theme === "system") return;
+    const color = settings.theme === "dark" ? "#000000" : "#ffffff";
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => { meta.dataset.system ??= meta.content; meta.content = color; });
+    return () => document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => { if (meta.dataset.system) meta.content = meta.dataset.system; });
   }, [settings.theme]);
   useEffect(() => {
     if (toast) {
