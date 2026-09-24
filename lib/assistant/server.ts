@@ -1,4 +1,4 @@
-import { readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
+import { consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-import";
 import type { D1Database } from "@cloudflare/workers-types";
 import { env } from "cloudflare:workers";
@@ -220,25 +220,16 @@ async function releaseIndex(request: Request): Promise<ReleaseIndexRow[]> {
 }
 
 async function incrementBucket(bucketKey: string, expiresAt: number, limit: number): Promise<void> {
-  const db = bindings().DB;
-  if (!db) throw new AiRuntimeConfigError("rate_limit_unavailable", "服务端限流存储不可用。");
-  let row: { request_count: number } | null;
+  let retryAfter: number | null;
   try {
-    row = await db.prepare(
-      `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at)
-       VALUES (?, 1, ?)
-       ON CONFLICT(bucket_key) DO UPDATE SET request_count = request_count + 1
-       RETURNING request_count`,
-    ).bind(bucketKey, expiresAt).first<{ request_count: number }>();
+    retryAfter = await consumeRateLimit(bindings().DB, bucketKey, expiresAt, limit);
   } catch (error) {
-    if (error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message)) {
+    if (error instanceof RateLimitStoreError && error.migrationRequired) {
       throw new AiRuntimeConfigError("rate_limit_migration_required", "AI 限流表尚未创建，请先部署最新 D1 迁移。");
     }
     throw new AiRuntimeConfigError("rate_limit_unavailable", "服务端限流存储不可用。");
   }
-  if (Number(row?.request_count || 0) > limit) {
-    throw new AssistantRateLimitError(Math.max(1, Math.ceil((expiresAt - Date.now()) / 1000)));
-  }
+  if (retryAfter !== null) throw new AssistantRateLimitError(retryAfter);
 }
 
 async function enforceRateLimit(userKey: string, dailyLimit: number) {
