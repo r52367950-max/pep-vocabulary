@@ -136,7 +136,7 @@ test('sync is rate limited per identity with 429 and Retry-After', async () => {
   assert.equal((await modules['/api/sync'].GET()).status, 200);
 });
 
-test('sync writes also have a daily budget and the rate limit fails closed without storage', async () => {
+test('sync writes have a daily budget; no storage answers 503, a missing limiter table does not block sync', async () => {
   asIdentity('daily@example.test');
   const key = await authenticatedUserKey();
   const dayStart = Math.floor(Date.now() / 86_400_000) * 86_400_000;
