@@ -252,7 +252,7 @@ test("routes, D1 limits, no-store responses and client secret boundaries stay wi
   const configLayer = source("lib/ai-config.ts");
   const testRoute = source("app/api/ai/test/route.ts");
   const storage = source("lib/storage.ts");
-  const client = source("components/console-settings.tsx");
+  const client = source("components/console-settings.tsx") + source("components/studio/ai-connection.tsx");
   const configMigration = source("drizzle/0002_swift_cerise.sql");
   const rateLimitMigration = source("drizzle/0001_flawless_human_cannonball.sql");
   const migrationJournal = source("drizzle/meta/_journal.json");
