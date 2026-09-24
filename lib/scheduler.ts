@@ -143,11 +143,6 @@ export function forecastDueLoad(cards: Iterable<StoredCard>, days = 14, now = ne
   return result.map((day) => ({ ...day, minutes: Math.max(day.count ? 2 : 0, Math.round(day.count * .62)) }));
 }
 
-export function workloadEstimate(minutesAtNinety: number, retention: number) {
-  const multiplier = Math.pow((1 - 0.9) / Math.max(0.015, 1 - retention), 0.48);
-  return Math.max(8, Math.round(minutesAtNinety * multiplier));
-}
-
 export function isDue(card: StoredCard, now = new Date()) {
   return new Date(card.due).getTime() <= now.getTime() && card.status !== "paused" && card.status !== "unseen";
 }
