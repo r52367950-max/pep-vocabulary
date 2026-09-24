@@ -504,10 +504,6 @@ a:hover {
   font-size: 1rem;
   font-weight: 500;
 }
-.settings-row small,
-.settings-card header p {
-  font-size: 0.875rem;
-}
 .settings-content .segmented-control {
   background: var(--line);
 }
