@@ -47,24 +47,28 @@ export default function Reading({ data, onDetail, onPractice }: {
   const listPosition = useRef(0);
   const lastArticle = useRef<string | null>(null);
   const returning = useRef(false);
+  // The article already on screen, so showing the reading tab again does not reload or refocus it.
+  const loadedArticle = useRef("");
 
   useEffect(() => { let active = true; listPersonalReadings().then(a => { if (active) setPersonal(a); }).catch(e => { if (active) setPersonalError(e.message); }); return () => { active = false; }; }, []);
   useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort("timeout"), 15000);
     let active = true;
-    loadReadingCatalog(controller.signal).then(value => { if (active) setCatalog(value); }).catch(() => {
+    loadReadingCatalog(controller.signal).then(value => { if (active) { setCatalog(value); setCatalogError(""); } }).catch(() => {
       if (active) setCatalogError("请检查网络连接，或稍后再试。已保存的学习记录不受影响。");
     }).finally(() => clearTimeout(timeout));
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [catalogRetry]);
   useEffect(() => {
     if (!articleId) return;
+    const key = `${articleId}:${articleRetry}`;
+    if (loadedArticle.current === key) return;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort("timeout"), 15000);
     let active = true;
     (articleId.startsWith("personal-") ? readPersonalArticle(articleId) : loadLibraryArticle(articleId, controller.signal)).then(value => {
-      if (active) { setArticle(value); requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true })); }
+      if (active) { loadedArticle.current = key; setArticle(value); requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true })); }
     }).catch(() => { if (active) setArticleError("这篇文章尚未载入。请检查网络后重试。"); }).finally(() => clearTimeout(timeout));
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [articleId, articleRetry]);
@@ -78,6 +82,17 @@ export default function Reading({ data, onDetail, onPractice }: {
   }, [articleId]);
   const targets = useMemo(() => article ? matchReadingWords(article.paragraphs, data.index, article.targets) : [], [article, data.index]);
   const lookup = useMemo(() => new Map(targets.map(e => [e.headword.toLowerCase(), e])), [targets]);
+  // Lookup mode splits every paragraph into tokens; keep the result across translation and font-size changes.
+  const lookupProse = useMemo(() => {
+    if (!article || !lookupEnabled) return null;
+    const used = new Set<string>();
+    return article.paragraphs.map(paragraph => (paragraph.en.match(/[A-Za-z]+(?:['’][A-Za-z]+)*|[^A-Za-z]+/g) ?? []).map((token, j) => {
+      const word = token.toLowerCase(); const entry = lookup.get(word);
+      if (!entry || used.has(word)) return token;
+      used.add(word);
+      return <button className="reader-inline-word" key={j} onClick={() => onDetail(entry)} aria-label={`查看 ${token} 的释义`}>{token}</button>;
+    }));
+  }, [article, lookup, lookupEnabled, onDetail]);
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
     return (shelf === "personal" ? personal : catalog ?? []).filter(a => (category === "all" || a.category === category) && (difficulty === "all" || a.difficulty === difficulty) && (!length || lengthBand(a.wordCount) === length) && (!q || [a.title, a.titleZh, a.author].join(" ").toLocaleLowerCase().includes(q)));
@@ -86,7 +101,7 @@ export default function Reading({ data, onDetail, onPractice }: {
   const currentPage = Math.min(page, pages);
   const displayed = filtered.slice((currentPage - 1) * 12, currentPage * 12);
   const open = (id: string) => {
-    listPosition.current = window.scrollY; lastArticle.current = id;
+    listPosition.current = window.scrollY; lastArticle.current = id; loadedArticle.current = "";
     setArticle(null); setArticleError(""); setArticleId(id); setTranslation(false); setAnswers({});
   };
   const back = () => { returning.current = true; setArticleId(null); };
@@ -95,7 +110,6 @@ export default function Reading({ data, onDetail, onPractice }: {
   if (articleId) {
     const questions = article?.questions ?? [];
     const hasTranslation = article?.paragraphs.some(p => p.zh);
-    const used = new Set<string>();
     return <div className="reader-view">
       <div className="reader-toolbar">
         <button className="reader-back" onClick={back}><ArrowLeft size={18} aria-hidden="true" />阅读</button>
@@ -121,12 +135,7 @@ export default function Reading({ data, onDetail, onPractice }: {
         {lookupEnabled && targets.length > 0 && <p className="reader-lookup-hint"><BookOpen size={15} aria-hidden="true" />点按带下划线的单词，查看释义。</p>}
         <article className="reader-prose" lang="en" translate="no" aria-label={article.title} style={{ fontSize: `${fontSize / 16}rem` }}>
           {article.paragraphs.map((paragraph, i) => <div className="reader-paragraph" key={i}>
-            <p>{!lookupEnabled ? paragraph.en : (paragraph.en.match(/[A-Za-z]+(?:['’][A-Za-z]+)*|[^A-Za-z]+/g) ?? []).map((token, j) => {
-              const word = token.toLowerCase(); const entry = lookup.get(word);
-              if (!entry || used.has(word)) return token;
-              used.add(word);
-              return <button className="reader-inline-word" key={j} onClick={() => onDetail(entry)} aria-label={`查看 ${token} 的释义`}>{token}</button>;
-            })}</p>
+            <p>{lookupProse ? lookupProse[i] : paragraph.en}</p>
             {translation && paragraph.zh && <p lang="zh-CN" className="reader-translation">{paragraph.zh}</p>}
           </div>)}
         </article>
