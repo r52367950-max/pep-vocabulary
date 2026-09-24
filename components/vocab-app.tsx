@@ -1,10 +1,14 @@
 "use client";
 
 import {
+  Activity,
   lazy,
+  memo,
   Suspense,
   useCallback,
+  useDeferredValue,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -15,7 +19,9 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useBackGuard } from "@/hooks/use-back-guard";
 import { useVocabulary } from "@/hooks/use-vocabulary";
+import { notify, useToastMessage } from "@/hooks/toast-store";
 import { buildStudyQueue, summarizeStudy, type StudyMode } from "@/lib/study";
 import { studyStats } from "@/lib/progress";
 import {
@@ -29,11 +35,13 @@ import type { LearnMode } from "@/lib/learn";
 import Today from "./studio/today";
 import { Brand } from "./studio/shared";
 import { StudioSymbol } from "./studio/symbol";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
-const Lexicon = lazy(() => import("./studio/lexicon"));
-const Reading = lazy(() => import("./studio/reading"));
-const Activity = lazy(() => import("./studio/activity"));
+// Memoized: once visited, these stay mounted behind <Activity> and skip unrelated shell renders.
+const TodayView = memo(Today);
+const Lexicon = lazy(() => import("./studio/lexicon").then((m) => ({ default: memo(m.default) })));
+const Reading = lazy(() => import("./studio/reading").then((m) => ({ default: memo(m.default) })));
+const ActivityView = lazy(() => import("./studio/activity").then((m) => ({ default: memo(m.default) })));
 const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
 const StudySession = lazy(() => import("./studio/study-session"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
@@ -61,6 +69,42 @@ function Pending() {
     </div>
   );
 }
+/**
+ * One main view. A visited view stays mounted while hidden, so its search, page and open article
+ * survive tab switches; hidden views run no effects (listeners, observers, timers). Showing it
+ * again replays the surface fade, as the former remount did.
+ */
+function ViewPane({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <Activity mode={active ? "visible" : "hidden"}>
+      <Suspense fallback={<Pending />}>
+        <div className="view-surface">{children}</div>
+      </Suspense>
+    </Activity>
+  );
+}
+
+// Owns the toast subscription, so a message appearing or clearing re-renders only this region.
+// The live region stays mounted so screen readers announce each message as it appears.
+const Toaster = memo(function Toaster() {
+  const message = useToastMessage();
+  return (
+    <div className="toast-region" role="status" aria-live="polite">
+      {message && (
+        <div className="toast">
+          <span>{message}</span>
+          <button
+            className="icon-button"
+            aria-label="关闭提示"
+            onClick={() => notify(null)}
+          >
+            <X size={17} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
 
 const subscribeNothing = () => () => {};
 const shortcutLabel = () => (/Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "⌘ K" : "Ctrl K");
@@ -69,6 +113,9 @@ export default function VocabApp() {
   const data = useVocabulary();
   const shortcut = useSyncExternalStore(subscribeNothing, shortcutLabel, () => "⌘ K");
   const [view, setView] = useState<View>("today");
+  // Views stay mounted once visited (hidden with <Activity>), keeping search, page and open article.
+  const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set(["today"]));
+  if (!visited.has(view)) setVisited(new Set(visited).add(view));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
@@ -79,18 +126,25 @@ export default function VocabApp() {
   const initialized = useRef(false);
   const heading = useRef<HTMLElement>(null);
   const bookId = data.settings.selectedBooks[0] || "HS-R1";
+  // While practising, the Today plan is off screen: recount it in a background render after each
+  // answer rather than before the next card can paint. Elsewhere it stays in step with the data.
+  const deferredCards = useDeferredValue(data.cards);
+  const deferredEvents = useDeferredValue(data.events);
+  const offscreen = session !== null || learn !== null;
+  const planCards = offscreen ? deferredCards : data.cards;
+  const planEvents = offscreen ? deferredEvents : data.events;
   const stats = useMemo(
-    () => studyStats(data.events, new Date(clock)),
-    [data.events, clock],
+    () => studyStats(planEvents, new Date(clock)),
+    [planEvents, clock],
   );
   const summary = useMemo(
     () =>
-      summarizeStudy(data.index, data.cards, {
+      summarizeStudy(data.index, planCards, {
         bookId,
         unit,
         now: new Date(clock),
       }),
-    [data.index, data.cards, bookId, unit, clock],
+    [data.index, planCards, bookId, unit, clock],
   );
   const budget = Math.max(
     0,
@@ -109,7 +163,7 @@ export default function VocabApp() {
       : budget;
   const dailyQueue = useMemo(
     () =>
-      buildStudyQueue(data.index, data.cards, {
+      buildStudyQueue(data.index, planCards, {
         bookId,
         unit,
         mode: "daily",
@@ -122,7 +176,7 @@ export default function VocabApp() {
       }),
     [
       data.index,
-      data.cards,
+      planCards,
       bookId,
       unit,
       data.settings.dailyMinutes,
@@ -178,34 +232,36 @@ export default function VocabApp() {
     window.scrollTo(0, 0);
     heading.current?.focus({ preventScroll: true });
   }, [view]);
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      const editing = (event.target as HTMLElement)?.closest(
-        "input, textarea, select, [contenteditable]",
+  // Reads the latest state when a key arrives, so practice checkpoints do not rebind the listener.
+  const onSearchKey = useEffectEvent((event: KeyboardEvent) => {
+    const editing = (event.target as HTMLElement)?.closest(
+      "input, textarea, select, [contenteditable]",
+    );
+    if (
+      !session &&
+      !learn &&
+      !selected &&
+      !settingsOpen &&
+      (((event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k") ||
+        (!editing && event.key === "/"))
+    ) {
+      event.preventDefault();
+      setView("lexicon");
+      setTimeout(
+        () =>
+          document
+            .querySelector<HTMLInputElement>("#lexicon-search")
+            ?.focus(),
+        150,
       );
-      if (
-        !session &&
-        !learn &&
-        !selected &&
-        !settingsOpen &&
-        (((event.metaKey || event.ctrlKey) &&
-          event.key.toLowerCase() === "k") ||
-          (!editing && event.key === "/"))
-      ) {
-        event.preventDefault();
-        setView("lexicon");
-        setTimeout(
-          () =>
-            document
-              .querySelector<HTMLInputElement>("#lexicon-search")
-              ?.focus(),
-          150,
-        );
-      }
-    };
+    }
+  });
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => onSearchKey(event);
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [session, learn, selected, settingsOpen]);
+  }, []);
 
   const checkpoint = useCallback(
     (next: StudySessionState) => {
@@ -215,12 +271,14 @@ export default function VocabApp() {
           sessionStorage.removeItem(SESSION_KEY);
         else sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
       } catch {
-        data.notify("本机作答已保存，但此浏览器未允许保存临时学习位置。");
+        notify("本机作答已保存，但此浏览器未允许保存临时学习位置。");
       }
     },
-    [data],
+    [],
   );
-  const startSession = (mode: StudyMode, custom?: LexiconIndexEntry[]) => {
+  // Stable between data changes, so views kept mounted in the background are not re-rendered
+  // by every shell render.
+  const startSession = useCallback((mode: StudyMode, custom?: LexiconIndexEntry[]) => {
     const queue = custom?.length
       ? custom
           .filter((entry) => data.cards.get(entry.id)?.status !== "paused")
@@ -235,7 +293,7 @@ export default function VocabApp() {
             newLimit: 20,
           });
     if (!queue.length) {
-      data.notify(
+      notify(
         mode === "mistakes"
           ? "当前范围没有待巩固词。可以换个教材或继续学习。"
           : "当前范围没有待学词，可从词库选择练习。",
@@ -255,11 +313,40 @@ export default function VocabApp() {
     setSelected(null);
     setResume(null);
     checkpoint(next);
-  };
-  const onCourse = (book: string, nextUnit: string) => {
+  }, [data.cards, data.index, dailyQueue, bookId, unit, checkpoint]);
+  const { updateSettings } = data;
+  const onCourse = useCallback((book: string, nextUnit: string) => {
     setUnit(nextUnit);
-    void data.updateSettings({ selectedBooks: [book] });
-  };
+    void updateSettings({ selectedBooks: [book] });
+  }, [updateSettings]);
+  const practiseReading = useCallback(
+    (entries: LexiconIndexEntry[]) => startSession("context", entries),
+    [startSession],
+  );
+  // Stable Today props, so switching tabs does not re-render the Today view behind them.
+  const onLearn = useCallback((mode: LearnMode) => {
+    setSelected(null);
+    setLearn(mode);
+  }, []);
+  const showLexicon = useCallback(() => setView("lexicon"), []);
+  const showReading = useCallback(() => setView("reading"), []);
+  const showActivity = useCallback(() => setView("activity"), []);
+  const resumeSession = useMemo(
+    () =>
+      resume
+        ? () => {
+            checkpoint(resume);
+            setResume(null);
+          }
+        : null,
+    [resume, checkpoint],
+  );
+  const newCount = useMemo(
+    () =>
+      dailyQueue.filter((entry) => !data.cards.get(entry.id)?.lastReviewed)
+        .length,
+    [dailyQueue, data.cards],
+  );
   const closeSession = () => {
     if (session && session.position < session.queue.length) setResume(session);
     else setResume(null);
@@ -270,6 +357,17 @@ export default function VocabApp() {
     setResume(null);
     setSession(null);
   };
+  // The system back gesture closes the top layer instead of leaving the app.
+  useBackGuard(
+    !!(selected || settingsOpen || session || learn || view !== "today"),
+    () => {
+      if (selected) setSelected(null);
+      else if (settingsOpen) setSettingsOpen(false);
+      else if (session) closeSession();
+      else if (learn) setLearn(null);
+      else setView("today");
+    },
+  );
   const clear = async () => {
     if (
       !window.confirm(
@@ -311,23 +409,7 @@ export default function VocabApp() {
         </button>
       </main>
     );
-  // The live region stays mounted so screen readers announce each message as it appears.
-  const toast = (
-    <div className="toast-region" role="status" aria-live="polite">
-      {data.toast && (
-        <div className="toast">
-          <span>{data.toast}</span>
-          <button
-            className="icon-button"
-            aria-label="关闭提示"
-            onClick={() => data.notify(null)}
-          >
-            <X size={17} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  const toast = <Toaster />;
   if (session)
     return (
       <>
@@ -338,12 +420,14 @@ export default function VocabApp() {
             session={session}
             onChange={checkpoint}
             onExit={closeSession}
-            onRetry={(ids) =>
+            onRetry={(ids) => {
+              // Keep lexicon order, as before, without an O(n·m) includes scan.
+              const wanted = new Set(ids);
               startSession(
                 "mistakes",
-                data.index.filter((entry) => ids.includes(entry.id)),
-              )
-            }
+                data.index.filter((entry) => wanted.has(entry.id)),
+              );
+            }}
           />
         </Suspense>
         {toast}
@@ -485,48 +569,33 @@ export default function VocabApp() {
               离线模式 · 已缓存词条仍可学习，作答会保存在本机。
             </div>
           )}
-          <Suspense fallback={<Pending />}>
-          <div className="view-surface" key={view}>
-            {view === "today" && (
-              <Today
-                data={data}
-                bookId={bookId}
-                unit={unit}
-                onCourse={onCourse}
-                due={summary.due}
-                newCount={
-                  dailyQueue.filter(
-                    (entry) => !data.cards.get(entry.id)?.lastReviewed,
-                  ).length
-                }
-                weak={summary.weak}
-                total={summary.total}
-                learned={summary.learned}
-                queue={dailyQueue}
-                onStart={startSession}
-                onLearn={(mode: LearnMode) => {
-                  setSelected(null);
-                  setLearn(mode);
-                }}
-                onWords={() => setView("lexicon")}
-                onReading={() => setView("reading")}
-                onActivity={() => setView("activity")}
-                resumeLabel={
-                  resume
-                    ? `${resume.title} · 第 ${resume.position + 1} / ${resume.queue.length} 词`
-                    : null
-                }
-                resume={
-                  resume
-                    ? () => {
-                        checkpoint(resume);
-                        setResume(null);
-                      }
-                    : null
-                }
-              />
-            )}
-            {view === "lexicon" && (
+          <ViewPane active={view === "today"}>
+            <TodayView
+              data={data}
+              bookId={bookId}
+              unit={unit}
+              onCourse={onCourse}
+              due={summary.due}
+              newCount={newCount}
+              weak={summary.weak}
+              total={summary.total}
+              learned={summary.learned}
+              queue={dailyQueue}
+              onStart={startSession}
+              onLearn={onLearn}
+              onWords={showLexicon}
+              onReading={showReading}
+              onActivity={showActivity}
+              resumeLabel={
+                resume
+                  ? `${resume.title} · 第 ${resume.position + 1} / ${resume.queue.length} 词`
+                  : null
+              }
+              resume={resumeSession}
+            />
+          </ViewPane>
+          {visited.has("lexicon") && (
+            <ViewPane active={view === "lexicon"}>
               <Lexicon
                 data={data}
                 bookId={bookId}
@@ -536,18 +605,23 @@ export default function VocabApp() {
                 onDetail={setSelected}
                 onStart={startSession}
               />
-            )}
-            {view === "reading" && (
+            </ViewPane>
+          )}
+          {visited.has("reading") && (
+            <ViewPane active={view === "reading"}>
               <Reading
                 data={data}
                 onDetail={setSelected}
-                onPractice={(entries) => startSession("context", entries)}
+                onPractice={practiseReading}
               />
-            )}
-            {view === "activity" && <Activity data={data} />}
-
-          </div>
-          </Suspense>
+            </ViewPane>
+          )}
+          {visited.has("activity") && (
+            <ViewPane active={view === "activity"}>
+              {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} />
+            </ViewPane>
+          )}
         </main>
       </div>
       <nav className="mobile-nav" aria-label="移动导航" style={{ "--nav-index": navigation.findIndex(item => item.id === view) } as CSSProperties}>

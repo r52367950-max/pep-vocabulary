@@ -60,10 +60,7 @@ export default function QuizMode({
 }: LearnModeProps) {
   const [length, setLength] = useState<QuizLength>(10);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
-  const byId = useMemo(
-    () => new Map(data.index.map((entry) => [entry.id, entry])),
-    [data.index],
-  );
+  const byId = data.byId;
   const distractors = useMemo(() => quizDistractorPool(data.index), [data.index]);
   const available = useMemo(
     () => learnPool(data.index, data.cards, { bookId, unit }).length,

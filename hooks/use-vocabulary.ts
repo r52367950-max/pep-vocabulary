@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadLexicon,
   type LexiconIndexEntry,
@@ -18,6 +18,7 @@ import {
   type ReviewEvent,
   type StoredCard,
 } from "@/lib/storage";
+import { notify } from "./toast-store";
 
 export function useVocabulary() {
   const [index, setIndex] = useState<LexiconIndexEntry[]>([]);
@@ -28,7 +29,6 @@ export function useVocabulary() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
-  const [toast, setToast] = useState<string | null>(null);
   const writes = useRef(Promise.resolve());
   const channel = useRef<BroadcastChannel | null>(null);
 
@@ -76,7 +76,7 @@ export function useVocabulary() {
       const listener = new BroadcastChannel("vocab-changes");
       channel.current = listener;
       listener.onmessage = () => {
-        void reload().catch(() => setToast("其他页面更新了数据，请重新加载。"));
+        void reload().catch(() => notify("其他页面更新了数据，请重新加载。"));
       };
     }
     return () => {
@@ -96,12 +96,6 @@ export function useVocabulary() {
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => { meta.dataset.system ??= meta.content; meta.content = color; });
     return () => document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => { if (meta.dataset.system) meta.content = meta.dataset.system; });
   }, [settings.theme]);
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   const updateSettings = useCallback(async (patch: Partial<AppSettings>) => {
     writes.current = writes.current
@@ -113,7 +107,7 @@ export function useVocabulary() {
         setSettings(next);
         channel.current?.postMessage("settings");
       })
-      .catch(() => setToast("设置未能保存，请重试。"));
+      .catch(() => notify("设置未能保存，请重试。"));
     await writes.current;
   }, []);
 
@@ -139,29 +133,54 @@ export function useVocabulary() {
         channel.current?.postMessage("metadata");
         return true;
       } catch {
-        setToast("未能保存，请重试。");
+        notify("未能保存，请重试。");
         return false;
       }
     },
     [],
   );
 
-  return {
-    index,
-    manifest,
-    settings,
-    cards,
-    events,
-    loading,
-    error,
-    online,
-    toast,
-    notify: setToast,
-    updateSettings,
-    saveReview,
-    metadata,
-    reload,
-  };
+  // Built once per lexicon load and shared, so views do not rescan the 4,681 entries.
+  const byId = useMemo(
+    () => new Map(index.map((entry) => [entry.id, entry])),
+    [index],
+  );
+
+  // A stable object: consumers that depend on `data` re-run only when the data itself changes.
+  // Toast messages live in ./toast-store so they do not re-render the app.
+  return useMemo(
+    () => ({
+      index,
+      byId,
+      manifest,
+      settings,
+      cards,
+      events,
+      loading,
+      error,
+      online,
+      notify,
+      updateSettings,
+      saveReview,
+      metadata,
+      reload,
+    }),
+    [
+      index,
+      byId,
+      manifest,
+      settings,
+      cards,
+      events,
+      loading,
+      error,
+      online,
+      updateSettings,
+      saveReview,
+      metadata,
+      reload,
+    ],
+  );
 }
 
 export type Vocabulary = ReturnType<typeof useVocabulary>;

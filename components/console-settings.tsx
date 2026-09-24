@@ -25,9 +25,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AppSettings } from "@/lib/storage";
+import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from "./studio/ai-connection";
 
 type Section = "general" | "learning" | "ai" | "privacy" | "about";
-type AIProvider = "deepseek" | "openai-compatible";
 type AIConfig = {
   provider: AIProvider;
   baseUrl: string;
@@ -37,31 +37,6 @@ type AIConfig = {
   hasApiKey: boolean;
   updatedAt: string | null;
   secretStorage: "server-encrypted";
-};
-type ConnectionCheck = {
-  id: string;
-  label: string;
-  status: "passed" | "failed" | "unknown";
-  detail: string;
-  latencyMs?: number;
-};
-type ConnectionTestResult = {
-  ok: boolean;
-  checkedAt?: string;
-  latencyMs?: number;
-  provider?: AIProvider;
-  model?: string;
-  endpointHost?: string;
-  serviceStatusUrl?: string | null;
-  checks?: ConnectionCheck[];
-  error?:
-    | {
-        message?: string;
-        code?: string;
-        providerStatus?: number | null;
-        networkReason?: string | null;
-      }
-    | string;
 };
 const providerDefaults: Record<
   AIProvider,
@@ -157,13 +132,24 @@ export default function ConsoleSettings({
     setConnectionResult(null);
   };
 
-  const saveAIConfig = async () => {
-    setSaving(true);
+  // Every AI request clears the last outcome, marks one button busy and shows failures the same way.
+  const run = async (setBusy: (busy: boolean) => void, fallback: string, work: () => Promise<void>) => {
+    setBusy(true);
     setMessage(null);
     setConnectionResult(null);
+    try {
+      await work();
+    } catch (error) {
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : fallback });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveAIConfig = () => {
     const transientApiKey = apiKey.trim();
     setApiKey("");
-    try {
+    return run(setSaving, "保存失败", async () => {
       const response = await fetch("/api/ai/config", {
         method: "POST",
         headers: apiHeaders(),
@@ -180,79 +166,29 @@ export default function ConsoleSettings({
       if (!response.ok) throw new Error(result.error || "保存失败");
       setAIConfig(result);
       if (!settings.aiEnabled) onUpdate({ aiEnabled: true });
-      setMessage({
-        kind: "success",
-        text: "API 配置已保存，密钥不会返回浏览器。",
-      });
-    } catch (error) {
-      setMessage({
-        kind: "error",
-        text: error instanceof Error ? error.message : "保存失败",
-      });
-    } finally {
-      setSaving(false);
-    }
+      setMessage({ kind: "success", text: "API 配置已保存，密钥不会返回浏览器。" });
+    });
   };
-  const testAIConfig = async () => {
-    setTesting(true);
-    setMessage(null);
-    setConnectionResult(null);
-    try {
-      const response = await fetch("/api/ai/test", {
-        method: "POST",
-        headers: apiHeaders(),
-        body: "{}",
-        cache: "no-store",
-      });
+  const testAIConfig = () =>
+    run(setTesting, "连接测试失败", async () => {
+      const response = await fetch("/api/ai/test", { method: "POST", headers: apiHeaders(), body: "{}", cache: "no-store" });
       const result = (await response.json()) as ConnectionTestResult;
       setConnectionResult(result);
       if (!response.ok && !result.checks?.length) {
-        setMessage({
-          kind: "error",
-          text:
-            typeof result.error === "string"
-              ? result.error
-              : result.error?.message || "连接测试失败",
-        });
+        setMessage({ kind: "error", text: typeof result.error === "string" ? result.error : result.error?.message || "连接测试失败" });
       }
-    } catch (error) {
-      setMessage({
-        kind: "error",
-        text: error instanceof Error ? error.message : "连接测试失败",
-      });
-    } finally {
-      setTesting(false);
-    }
-  };
-  const removeAIConfig = async () => {
-    if (
-      !window.confirm(
-        "移除服务端保存的 API Key 和接口设置？本地词库与学习记录不会受影响。",
-      )
-    )
-      return;
-    setSaving(true);
-    setMessage(null);
-    setConnectionResult(null);
-    try {
-      const response = await fetch("/api/ai/config", {
-        method: "DELETE",
-        headers: apiHeaders(),
-      });
+    });
+  const removeAIConfig = () => {
+    if (!window.confirm("移除服务端保存的 API Key 和接口设置？本地词库与学习记录不会受影响。")) return;
+    return run(setSaving, "移除失败", async () => {
+      const response = await fetch("/api/ai/config", { method: "DELETE", headers: apiHeaders() });
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error || "移除失败");
       setAIConfig(defaultAIConfig);
       setApiKey("");
       onUpdate({ aiEnabled: false });
       setMessage({ kind: "success", text: "API 配置已移除。" });
-    } catch (error) {
-      setMessage({
-        kind: "error",
-        text: error instanceof Error ? error.message : "移除失败",
-      });
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   return (
@@ -647,81 +583,7 @@ export default function ConsoleSettings({
                   </p>
                 )}
                 {connectionResult?.checks?.length ? (
-                  <div
-                    className={`connection-diagnostic ${connectionResult.ok ? "passed" : "failed"}`}
-                    role="status"
-                  >
-                    <div className="connection-diagnostic-head">
-                      <div>
-                        {connectionResult.ok ? (
-                          <Check size={17} aria-hidden="true" />
-                        ) : (
-                          <CircleAlert size={17} aria-hidden="true" />
-                        )}
-                        <strong>
-                          {connectionResult.ok
-                            ? "连接与服务均正常"
-                            : "连接诊断未通过"}
-                        </strong>
-                      </div>
-                      <span>
-                        {connectionResult.endpointHost || "服务端点"}
-                        {connectionResult.latencyMs !== undefined
-                          ? ` · ${connectionResult.latencyMs} ms`
-                          : ""}
-                      </span>
-                    </div>
-                    <div className="connection-check-list">
-                      {connectionResult.checks.map((check) => (
-                        <div key={check.id} data-status={check.status}>
-                          <i>
-                            {check.status === "passed" ? (
-                              <Check size={13} aria-hidden="true" />
-                            ) : (
-                              <CircleAlert size={13} aria-hidden="true" />
-                            )}
-                          </i>
-                          <div>
-                            <strong>{check.label}</strong>
-                            <small>
-                              {check.detail}
-                              {check.latencyMs !== undefined
-                                ? ` · ${check.latencyMs} ms`
-                                : ""}
-                            </small>
-                          </div>
-                          <em>
-                            {check.status === "passed"
-                              ? "通过"
-                              : check.status === "failed"
-                                ? "失败"
-                                : "未检测"}
-                          </em>
-                        </div>
-                      ))}
-                    </div>
-                    {connectionResult.error && (
-                      <p className="connection-error">
-                        {typeof connectionResult.error === "string"
-                          ? connectionResult.error
-                          : connectionResult.error.message}
-                        {typeof connectionResult.error !== "string" &&
-                        connectionResult.error.providerStatus
-                          ? `（服务商 HTTP ${connectionResult.error.providerStatus}）`
-                          : ""}
-                      </p>
-                    )}
-                    {connectionResult.serviceStatusUrl && (
-                      <a
-                        className="provider-status-link"
-                        href={connectionResult.serviceStatusUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        查看 DeepSeek 官方服务状态 <ExternalLink size={13} aria-hidden="true" />
-                      </a>
-                    )}
-                  </div>
+                  <ConnectionDiagnostic result={connectionResult} />
                 ) : aiConfig.provider === "deepseek" ? (
                   <a
                     className="provider-status-link standalone"
@@ -795,7 +657,7 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.2.1</dd>
+                  <dd>2.3.0</dd>
                 </div>
                 <div>
                   <dt>数据格式</dt>

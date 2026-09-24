@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { makeRng, hashString } from "../lib/art/core.ts";
-import { blueGreen, botanical, currents, cutPaper, geometry, inkVillage } from "../lib/art/scenes.ts";
+import { blueGreen, botanical, currents, cutPaper, inkVillage } from "../lib/art/scenes.ts";
 import { artKey, readingArtKind, timeOfDay } from "../lib/art/index.ts";
 
 // A stand-in 2D context that records every drawing call, so scenes can run without a browser.
@@ -18,7 +18,7 @@ function recordingContext() {
   });
   return { ctx, log };
 }
-const scenes = { inkVillage, blueGreen, geometry, currents, cutPaper, botanical };
+const scenes = { inkVillage, blueGreen, currents, cutPaper, botanical };
 
 test("seeded randomness is stable across runs and differs between seeds", () => {
   const a = makeRng("noaa-tides"), b = makeRng("noaa-tides"), c = makeRng("noaa-currents");

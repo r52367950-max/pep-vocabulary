@@ -11,8 +11,9 @@
 | 身份、备份与 AI | [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md)、[AI_ASSISTANT_DEPLOYMENT.md](../AI_ASSISTANT_DEPLOYMENT.md) |
 | 阅读语料与复现 | [READING_2.1.md](READING_2.1.md) |
 | 来源、许可与隐私 | [SOURCE_MANIFEST.md](../SOURCE_MANIFEST.md)、[LICENSES_AND_RIGHTS.md](../LICENSES_AND_RIGHTS.md)、[PRIVACY.md](../PRIVACY.md)、[ICON_LICENSE.md](ICON_LICENSE.md) |
-| 发布记录 | [2.1.0](RELEASE_2.1.0.md)、[2.1.1](RELEASE_2.1.1.md)、[2.2.0](RELEASE_2.2.0.md)、[2.2.1](RELEASE_2.2.1.md) |
-| 性能、精简与安全架构的交接 | [OPTIMIZATION_HANDOFF.md](OPTIMIZATION_HANDOFF.md) |
+| 发布记录 | [2.1.0](RELEASE_2.1.0.md)、[2.1.1](RELEASE_2.1.1.md)、[2.2.0](RELEASE_2.2.0.md)、[2.2.1](RELEASE_2.2.1.md)、[2.3.0](RELEASE_2.3.0.md) |
+| 性能、精简与安全架构的交接 | [OPTIMIZATION_HANDOFF.md](OPTIMIZATION_HANDOFF.md)；结果见 [2.3.0 优化报告](OPTIMIZATION_REPORT_2.3.0.md)，待确认方案见 [SECURITY_PLAN.md](SECURITY_PLAN.md) |
+| 浏览器与样式检查脚本 | [artifacts/qa/README.md](../artifacts/qa/README.md) |
 | 插画制作记录 | [阅读 2.1](ASSET_READING_2.1.md)、[2.1.1 提示词](ART_PROMPTS_2.1.1.md)、[早期阅读](ASSET_READING.md)、[早期今日页](ASSET_DAILY.md) |
 
 ## 历史记录
