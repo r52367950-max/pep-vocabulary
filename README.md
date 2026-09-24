@@ -2,7 +2,7 @@
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
-[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [本次重构说明](docs/REFACTOR_REPORT.md) · [界面与动效更新](docs/INTERFACE_REFINEMENT.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
 
 本次 [2.1.1 更新](docs/RELEASE_2.1.1.md)新增彩色手绘插画与稳定的封面分配。主要功能见 [2.1.0 发布说明](docs/RELEASE_2.1.0.md)：60 篇可阅读内容、个人文章导入与扫描、独立设置浮层、iPad 布局与手绘分类封面。
 
@@ -17,7 +17,7 @@
 - 数据与偏好：浅色 / 深色、FSRS 保持率与学习预算、JSON 备份恢复、手动私有云端备份、显式离线下载。
 - 可选 AI：词条用法讲解，密钥仅在服务器加密保存。核心学习无需 AI。
 
-下图为 9 月 14 日版本。9 月 15 日的字体、图标、今日页、词库及动画调整见[界面更新说明](docs/INTERFACE_REFINEMENT.md)。
+下图为 9 月 14 日版本。9 月 15 日的字体、图标、今日页、词库及动画调整见[界面更新说明](docs/history/INTERFACE_REFINEMENT.md)。
 
 ![9 月 14 日桌面界面，历史截图](artifacts/screenshots/studio-v2-desktop.jpg)
 
@@ -32,9 +32,10 @@ npm run dev
 
 | 命令 | 用途 |
 | --- | --- |
-| `npm test` | 完整验收入口；日常更新按发布说明中的版本规模选择必要检查 |
+| `npm test` | 完整验收入口；日常按[改动影响选择检查](docs/DEVELOPMENT.md) |
+| `npm run typecheck` / `npm run test:unit` | 类型检查 / 单元与回归测试 |
 | `npm run lint` | ESLint 检查 |
-| `npm run benchmark` | 与 3b12529 比较出题耗时和并发加载 |
+| `npm run benchmark -- <baseline-ref>` | 对照指定历史提交；本地需已取得该提交 |
 | `npm run build` | 有超时限制的生产构建与产物验证 |
 | `npm run data:audit` | 审核发布词库与来源字段 |
 | `npm run data:manifest` / `npm run data:build` | 在具备来源缓存时重新生成词库 |
@@ -62,4 +63,4 @@ npm run dev
 
 云端目前是带 revision 冲突保护的手动快照备份，尚未实现自动多设备合并。站点保持仅所有者访问；托管身份依赖受信任网关，迁移平台需接入服务端认证。详见[架构说明](docs/BACKEND_ARCHITECTURE.md)。
 
-旧版设计与测试报告作为历史记录保留；2.0 以[本次重构说明](docs/REFACTOR_REPORT.md)为准。数据权利见 [LICENSES_AND_RIGHTS.md](LICENSES_AND_RIGHTS.md)。
+旧版设计与测试报告已移至 [docs/history](docs/history/)，仅供追溯。现行开发入口为 [AGENTS.md](AGENTS.md)，功能与运行行为以当前代码和本次验证为准。数据权利见 [LICENSES_AND_RIGHTS.md](LICENSES_AND_RIGHTS.md)。

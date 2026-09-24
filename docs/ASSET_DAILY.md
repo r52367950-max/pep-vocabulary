@@ -1,5 +1,7 @@
 # Daily lesson artwork
 
+> 版本记录：本文的分工、过程与验证限制只描述该次更新；日常开发见 [开发说明](DEVELOPMENT.md)。
+
 Generated with the built-in ImageGen tool on 2026-09-15. Generate mode, no reference image. The chosen result is a 1536 × 1024 studio still life. Delivery: `public/images/daily-book.webp`, 71,628 bytes, WebP quality 85. Encoding only; original pixels were not cropped or retouched. Display framing and fading are CSS. This is original content artwork, not an Apple asset.
 
 ## Final prompt

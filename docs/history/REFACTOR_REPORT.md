@@ -1,5 +1,7 @@
 # 词迹 2.0 重构交付
 
+> 历史记录：保留当时的设计、过程与验证证据。文中的当前状态、下一步、分工、工具限制和测试安排仅适用于当时轮次；现行开发约定见 [AGENTS.md](../../AGENTS.md)。文内代码路径仍以仓库根目录为基准。
+
 日期：2026-09-15。GitHub 基线：`3b12529`。应用版本：`2.0.0`；词库版本、稳定 ID 与已有本机数据保持兼容。
 
 本次重建前端信息结构、视觉系统与学习流程，保留已有 FSRS、来源可追溯词库、IndexedDB 与服务器能力，并修复审查中发现的安全和可靠性问题。
@@ -64,7 +66,7 @@
 - Service Worker 按构建指纹分版本，完整 shell 保存失败不会替换旧版本。API、身份请求、RSC 不缓存；确认所有词库分片写入当前缓存后才提示离线准备成功。
 - 页面加载失败有恢复提示，模型不可用不影响本机学习。
 
-云端目前是手动整份快照备份，不是自动增量同步；本地也没有按账号分区。公开部署依赖受信任网关，URL 校验不等于完整 DNS 重绑定防御。后续 outbox、幂等事件、游标拉取、词卡并发、删除传播方案见 [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md)，均明确标注尚未实现。
+云端目前是手动整份快照备份，不是自动增量同步；本地也没有按账号分区。公开部署依赖受信任网关，URL 校验不等于完整 DNS 重绑定防御。后续 outbox、幂等事件、游标拉取、词卡并发、删除传播方案见 [BACKEND_ARCHITECTURE.md](../BACKEND_ARCHITECTURE.md)，均明确标注尚未实现。
 
 ## 验证
 
@@ -81,7 +83,7 @@
 
 没有调用实际付费模型接口。受控缓存测试不等于真实移动设备的离线语音、存储配额或托管认证网关端到端测试。
 
-截图：[桌面](../artifacts/screenshots/studio-v2-desktop.jpg)、[听写](../artifacts/screenshots/studio-v2-dictation.jpg)、[手机首页](../artifacts/screenshots/studio-v2-mobile.jpg)、[深色界面](../artifacts/screenshots/studio-v2-dark.jpg)。另见[阅读目录](../artifacts/screenshots/studio-v2-reading.jpg)。机器记录：[verification-v2.json](../artifacts/verification-v2.json)。
+截图：[桌面](../../artifacts/screenshots/studio-v2-desktop.jpg)、[听写](../../artifacts/screenshots/studio-v2-dictation.jpg)、[手机首页](../../artifacts/screenshots/studio-v2-mobile.jpg)、[深色界面](../../artifacts/screenshots/studio-v2-dark.jpg)。另见[阅读目录](../../artifacts/screenshots/studio-v2-reading.jpg)。机器记录：[verification-v2.json](../../artifacts/verification-v2.json)。
 
 ## 发布兼容修复
 
