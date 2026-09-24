@@ -19,6 +19,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useBackGuard } from "@/hooks/use-back-guard";
 import { useVocabulary } from "@/hooks/use-vocabulary";
 import { notify, useToastMessage } from "@/hooks/toast-store";
 import { buildStudyQueue, summarizeStudy, type StudyMode } from "@/lib/study";
@@ -356,6 +357,17 @@ export default function VocabApp() {
     setResume(null);
     setSession(null);
   };
+  // The system back gesture closes the top layer instead of leaving the app.
+  useBackGuard(
+    !!(selected || settingsOpen || session || learn || view !== "today"),
+    () => {
+      if (selected) setSelected(null);
+      else if (settingsOpen) setSettingsOpen(false);
+      else if (session) closeSession();
+      else if (learn) setLearn(null);
+      else setView("today");
+    },
+  );
   const clear = async () => {
     if (
       !window.confirm(
