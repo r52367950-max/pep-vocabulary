@@ -1,14 +1,13 @@
 import { grain, makeRng } from "./core";
-import { blueGreen, botanical, currents, cutPaper, geometry, inkVillage, type Scene, type TimeOfDay } from "./scenes";
+import { blueGreen, botanical, currents, cutPaper, inkVillage, type Scene, type TimeOfDay } from "./scenes";
 import type { ReadingCategory } from "../reading-library";
 
 export type { TimeOfDay } from "./scenes";
-export type ArtKind = "ink" | "shanshui" | "geometry" | "currents" | "cutout" | "botanical";
+export type ArtKind = "ink" | "shanshui" | "currents" | "cutout" | "botanical";
 
 const SCENES: Record<ArtKind, { scene: Scene; grain: number }> = {
   ink: { scene: inkVillage, grain: 0.55 },
   shanshui: { scene: blueGreen, grain: 0.45 },
-  geometry: { scene: geometry, grain: 0.6 },
   currents: { scene: currents, grain: 0.4 },
   cutout: { scene: cutPaper, grain: 0.7 },
   botanical: { scene: botanical, grain: 0.45 },
