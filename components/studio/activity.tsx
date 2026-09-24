@@ -9,10 +9,7 @@ import { Empty } from "./shared";
 
 export default function Activity({ data }: { data: Vocabulary }) {
   const stats = useMemo(() => studyStats(data.events), [data.events]);
-  const index = useMemo(
-    () => new Map(data.index.map((word) => [word.id, word])),
-    [data.index],
-  );
+  const index = data.byId;
   const week = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - 6 + i);
