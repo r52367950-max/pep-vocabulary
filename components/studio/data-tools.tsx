@@ -92,12 +92,17 @@ export default function DataTools({
       cache: "no-store",
       signal: AbortSignal.timeout(20000),
     });
-    if (!response.ok)
+    if (!response.ok) {
+      // A rate-limited read explains how long to wait.
+      const limited = response.status === 429
+        ? ((await response.json().catch(() => null)) as { error?: string } | null)?.error
+        : undefined;
       throw new Error(
         response.status === 401
           ? "云端同步需要在已登录的站点中使用。本地学习不受影响。"
-          : "无法读取云端备份，请稍后重试。",
+          : limited || "无法读取云端备份，请稍后重试。",
       );
+    }
     const result = (await response.json()) as CloudState;
     if (typeof result.identity !== "string")
       throw new Error("云端版本需要更新，暂不能安全同步。");

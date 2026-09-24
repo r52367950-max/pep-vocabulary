@@ -50,12 +50,22 @@ export default function Reading({ data, onDetail, onPractice }: {
   // The article already on screen, so showing the reading tab again does not reload or refocus it.
   const loadedArticle = useRef("");
 
-  useEffect(() => { let active = true; listPersonalReadings().then(a => { if (active) setPersonal(a); }).catch(e => { if (active) setPersonalError(e.message); }); return () => { active = false; }; }, []);
+  // Hidden tabs re-run effects when shown again; lists already loaded are kept rather than refetched.
+  const personalLoaded = useRef(false);
+  const catalogLoaded = useRef(-1);
+
   useEffect(() => {
+    if (personalLoaded.current) return;
+    let active = true;
+    listPersonalReadings().then(a => { if (active) { personalLoaded.current = true; setPersonal(a); } }).catch(e => { if (active) setPersonalError(e.message); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (catalogLoaded.current === catalogRetry) return;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort("timeout"), 15000);
     let active = true;
-    loadReadingCatalog(controller.signal).then(value => { if (active) { setCatalog(value); setCatalogError(""); } }).catch(() => {
+    loadReadingCatalog(controller.signal).then(value => { if (active) { catalogLoaded.current = catalogRetry; setCatalog(value); setCatalogError(""); } }).catch(() => {
       if (active) setCatalogError("请检查网络连接，或稍后再试。已保存的学习记录不受影响。");
     }).finally(() => clearTimeout(timeout));
     return () => { active = false; clearTimeout(timeout); controller.abort(); };

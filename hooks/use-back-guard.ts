@@ -42,12 +42,18 @@ export function useBackGuard(active: boolean, onBack: () => void) {
   const pending = useRef(false);
   // Re-check after every handled back, in case the layer below also needs a guard.
   const [pops, setPops] = useState(0);
+  // Read at popstate, before this hook handles it: the layer that was open, or our own back().
+  const involved = () => pending.current || activeRef.current || guarded(history.state);
 
   useEffect(() => {
     activeRef.current = active;
     if (pending.current) return;
     const onGuard = guarded(history.state);
-    if (active && !onGuard) history.pushState({ ...(history.state as GuardState), [KEY]: true }, "");
+    if (active && !onGuard) {
+      // Idempotent; retried here in case the router's navigator was not ready at mount.
+      skipGuardTraversals(involved);
+      history.pushState({ ...(history.state as GuardState), [KEY]: true }, "");
+    }
     else if (!active && onGuard) {
       pending.current = true;
       history.back();
@@ -55,8 +61,7 @@ export function useBackGuard(active: boolean, onBack: () => void) {
   }, [active, pops]);
 
   useEffect(() => {
-    // Read before this pop is handled: the layer that was open, or our own back().
-    skipGuardTraversals(() => pending.current || activeRef.current || guarded(history.state));
+    skipGuardTraversals(involved);
     const onPop = (event: PopStateEvent) => {
       if (pending.current) {
         pending.current = false;
