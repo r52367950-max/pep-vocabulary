@@ -518,7 +518,7 @@ function QuizPlay({
           )}
         </div>
         <p className="learn-keys" aria-hidden="true">
-          {question.inputMode === "choice" ? (
+          {!result && question.inputMode === "choice" ? (
             <span>
               <kbd>A</kbd>–<kbd>{String.fromCharCode(64 + question.choices.length)}</kbd> 选择
             </span>
@@ -528,9 +528,11 @@ function QuizPlay({
               <kbd>R</kbd> 重播
             </span>
           ) : null}
-          <span>
-            <kbd>Enter</kbd> {result ? "下一题" : "提交"}
-          </span>
+          {result || question.inputMode === "text" ? (
+            <span>
+              <kbd>Enter</kbd> {result ? (last ? "查看结果" : "下一题") : "核对"}
+            </span>
+          ) : null}
         </p>
       </main>
     </>

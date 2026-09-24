@@ -16,13 +16,13 @@ import {
   type LexiconDetail,
   type LexiconIndexEntry,
 } from "@/lib/lexicon";
+import { getEntryExample } from "@/lib/questions";
 import {
   FLASH_DECK_SIZE,
   buildFlashDeck,
   decideFlash,
   flashDone,
   isUnseen,
-  learnExample,
   learnPool,
   project,
   rubberband,
@@ -762,7 +762,7 @@ function CardBack({
   data: Vocabulary;
   hidden: boolean;
 }) {
-  const example = learnExample(entry, detail);
+  const example = getEntryExample(entry, detail);
   return (
     <div className="learn-face is-back" inert={hidden}>
       <div className="learn-card-head">

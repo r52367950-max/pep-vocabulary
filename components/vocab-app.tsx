@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   CloudOff,
@@ -61,8 +62,12 @@ function Pending() {
   );
 }
 
+const subscribeNothing = () => () => {};
+const shortcutLabel = () => (/Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "⌘ K" : "Ctrl K");
+
 export default function VocabApp() {
   const data = useVocabulary();
+  const shortcut = useSyncExternalStore(subscribeNothing, shortcutLabel, () => "⌘ K");
   const [view, setView] = useState<View>("today");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [unit, setUnit] = useState("all");
@@ -127,9 +132,31 @@ export default function VocabApp() {
   );
 
   useEffect(() => {
-    const timer = setInterval(() => setClock(Date.now()), 60000);
-    return () => clearInterval(timer);
+    // Recount due words once a minute while visible, and at once on returning to the tab.
+    const tick = () => {
+      if (document.visibilityState === "visible") setClock(Date.now());
+    };
+    const timer = setInterval(tick, 60000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, []);
+  useEffect(() => {
+    if (data.loading) return;
+    // Warm the practice and word-detail chunks so the first tap opens without a loading step.
+    const warm = () => {
+      void import("./studio/study-session");
+      void import("./studio/word-detail");
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(warm, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(warm, 1500);
+    return () => clearTimeout(id);
+  }, [data.loading]);
   useEffect(() => {
     if (data.loading || initialized.current) return;
     initialized.current = true;
@@ -218,7 +245,7 @@ export default function VocabApp() {
     const next: StudySessionState = {
       id: createLocalId(),
       mode,
-      title: modeTitle[mode],
+      title: custom?.length && mode === "daily" ? "单词练习" : modeTitle[mode],
       queue: [...new Set(queue.map((entry) => entry.id))],
       position: 0,
       startedAt: Date.now(),
@@ -276,7 +303,7 @@ export default function VocabApp() {
   if (data.error)
     return (
       <main className="boot-screen">
-        <CloudOff size={35} />
+        <CloudOff size={35} aria-hidden="true" />
         <h1>暂时无法打开词迹</h1>
         <p>{data.error}</p>
         <button className="primary" onClick={() => location.reload()}>
@@ -284,16 +311,21 @@ export default function VocabApp() {
         </button>
       </main>
     );
-  const toast = data.toast && (
-    <div className="toast" role="status">
-      <span>{data.toast}</span>
-      <button
-        className="icon-button"
-        aria-label="关闭提示"
-        onClick={() => data.notify(null)}
-      >
-        <X size={17} />
-      </button>
+  // The live region stays mounted so screen readers announce each message as it appears.
+  const toast = (
+    <div className="toast-region" role="status" aria-live="polite">
+      {data.toast && (
+        <div className="toast">
+          <span>{data.toast}</span>
+          <button
+            className="icon-button"
+            aria-label="关闭提示"
+            onClick={() => data.notify(null)}
+          >
+            <X size={17} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </div>
   );
   if (session)
@@ -364,9 +396,9 @@ export default function VocabApp() {
             );
           }}
         >
-          <Search size={17} />
+          <Search size={17} aria-hidden="true" />
           <span>搜索</span>
-          <kbd>⌘ K</kbd>
+          <kbd>{shortcut}</kbd>
         </button>
         <nav className="desktop-nav" aria-label="主要导航">
           {navigation.slice(0, 3).map(({ id, label, symbol }) => (
@@ -381,7 +413,7 @@ export default function VocabApp() {
               }
               onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
             >
-              <StudioSymbol name={symbol} tile size={21} />
+              <StudioSymbol name={symbol} size={21} />
               {label}
             </button>
           ))}
@@ -417,7 +449,7 @@ export default function VocabApp() {
                 }
                 onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
               >
-                <StudioSymbol name={symbol} tile size={21} />
+                <StudioSymbol name={symbol} size={21} />
                 {label}
               </button>
             ))}
@@ -437,7 +469,7 @@ export default function VocabApp() {
           aria-label="搜索词库"
           onClick={() => setView("lexicon")}
         >
-          <Search size={21} />
+          <Search size={21} aria-hidden="true" />
         </button>
       </header>
       <div className="studio-workspace">
@@ -448,8 +480,8 @@ export default function VocabApp() {
           tabIndex={-1}
         >
           {!data.online && (
-            <div className="offline-banner">
-              <CloudOff size={16} />
+            <div className="offline-banner" role="status">
+              <CloudOff size={16} aria-hidden="true" />
               离线模式 · 已缓存词条仍可学习，作答会保存在本机。
             </div>
           )}

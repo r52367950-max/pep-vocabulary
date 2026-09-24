@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { getEntryExample } from "../lib/questions.ts";
+import { repairMeaning } from "../lib/lexicon.ts";
 import {
   FLASH_DECK_SIZE,
   MATCH_PAIRS,
@@ -13,7 +15,6 @@ import {
   decideFlash,
   flashDone,
   formatClock,
-  learnExample,
   learnPool,
   project,
   quizDistractorPool,
@@ -263,13 +264,21 @@ test("swipe physics: projected momentum decides, and the spring settles", () => 
   assert.equal(rubberband(10, 0), 0);
 });
 
-test("card examples tolerate malformed open examples in the lexicon", () => {
+test("card examples tolerate malformed open examples in the lexicon (also used by the practice session)", () => {
   const word = entry("album", { meaning: "专辑" });
   const detail = (openExample) => ({ ...word, openExample });
-  assert.equal(learnExample(word, detail({ source: "Title of album", text: "Made in the A.M." })), undefined);
-  assert.equal(learnExample(word, detail(null)), undefined);
-  assert.deepEqual(learnExample(word, detail("We listened to the new album together.")), {
+  assert.equal(getEntryExample(word, detail({ source: "Title of album", text: "Made in the A.M." })), undefined);
+  assert.equal(getEntryExample(word, detail(null)), undefined);
+  assert.deepEqual(getEntryExample(word, detail("We listened to the new album together.")), {
     en: "We listened to the new album together.", source: "开放词典例句",
   });
-  assert.equal(learnExample(entry("challenge")).source, "词迹原创");
+  assert.equal(getEntryExample(entry("challenge")).source, "词迹原创");
+});
+
+test("meanings that lost the opening bracket of a leading note are repaired for display", () => {
+  assert.equal(repairMeaning("源自拉丁语）上午；午前"), "（源自拉丁语）上午；午前");
+  assert.equal(repairMeaning("喻）（希腊神话） 阿喀琉斯的脚跟"), "（喻）（希腊神话） 阿喀琉斯的脚跟");
+  assert.equal(repairMeaning("（艺术）研究院"), "（艺术）研究院");
+  assert.equal(repairMeaning("上午 (a.m.)"), "上午 (a.m.)");
+  assert.equal(repairMeaning(": 美国 ) 国家航空与航天局"), ": 美国 ) 国家航空与航天局");
 });

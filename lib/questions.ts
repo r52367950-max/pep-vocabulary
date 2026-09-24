@@ -197,7 +197,7 @@ export function getEntryExample(
     return { en: original.en, zh: original.zh, source: original.source };
   // A dictionary definition is not a sentence context. Only an actual example
   // containing this exact word/phrase can become a cloze exercise.
-  const example = detail?.openExample?.trim();
+  const example = typeof detail?.openExample === "string" ? detail.openExample.trim() : undefined;
   if (
     !example ||
     example.length > 500 ||
