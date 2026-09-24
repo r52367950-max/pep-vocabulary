@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { syncStates } from "@/db/schema";
 import { USER_DATA_SCHEMA_VERSION, validateBackup } from "@/lib/storage";
 import { authenticatedUserKey } from "@/lib/server-user";
-import { consumeRateLimit, privateJson, rateLimitWindow, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
+import { consumeRateLimit, privateJson, RateLimitStoreError, rateLimitWindow, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 
 const MAX_PAYLOAD_BYTES = 5_000_000;
 // A person syncs a few times a day; these bounds only stop runaway clients and
@@ -31,14 +31,23 @@ async function enforceSyncRateLimit(userKey: string, write: boolean) {
   const db = env.DB;
   const now = Date.now();
   const minute = rateLimitWindow(now, 60_000);
-  let retryAfter = await consumeRateLimit(db, `sync:minute:${userKey}:${minute.start}`, minute.expiresAt, SYNC_REQUESTS_PER_MINUTE, now);
-  if (retryAfter === null && write) {
-    const day = rateLimitWindow(now, 86_400_000);
-    retryAfter = await consumeRateLimit(db, `sync:write-day:${userKey}:${day.start}`, day.expiresAt, SYNC_WRITES_PER_DAY, now);
+  let retryAfter: number | null;
+  try {
+    retryAfter = await consumeRateLimit(db, `sync:minute:${userKey}:${minute.start}`, minute.expiresAt, SYNC_REQUESTS_PER_MINUTE, now);
+    if (retryAfter === null && write) {
+      const day = rateLimitWindow(now, 86_400_000);
+      retryAfter = await consumeRateLimit(db, `sync:write-day:${userKey}:${day.start}`, day.expiresAt, SYNC_WRITES_PER_DAY, now);
+    }
+  } catch (error) {
+    // Only guards against runaway clients: a deployment without the limiter
+    // table keeps syncing as before. Any other store failure still answers 503.
+    if (error instanceof RateLimitStoreError && error.migrationRequired) return;
+    throw error;
   }
   if (retryAfter !== null) throw new SyncRateLimited(retryAfter);
   if (crypto.getRandomValues(new Uint8Array(1))[0] < 2) {
-    db?.prepare("DELETE FROM ai_rate_limits WHERE expires_at < ?").bind(now - 86_400_000).run().catch(() => undefined);
+    // Awaited: a promise left pending after the response may be dropped by the runtime.
+    await db?.prepare("DELETE FROM ai_rate_limits WHERE expires_at < ?").bind(now - 86_400_000).run().catch(() => undefined);
   }
 }
 

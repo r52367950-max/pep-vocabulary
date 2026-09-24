@@ -240,7 +240,8 @@ async function enforceRateLimit(userKey: string, dailyLimit: number) {
   await incrementBucket(`day:${userKey}:${dayStart}`, dayStart + 86_400_000, dailyLimit);
 
   if (crypto.getRandomValues(new Uint8Array(1))[0] < 4) {
-    bindings().DB?.prepare("DELETE FROM ai_rate_limits WHERE expires_at < ?")
+    // Awaited: a promise left pending after the response may be dropped by the runtime.
+    await bindings().DB?.prepare("DELETE FROM ai_rate_limits WHERE expires_at < ?")
       .bind(now - 86_400_000)
       .run()
       .catch(() => undefined);

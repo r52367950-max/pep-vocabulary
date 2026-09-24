@@ -125,23 +125,16 @@ function normalizeApiResponse(response: Response, pathname: string): Response {
   }
   if (response.status >= 500 && !isJson(response)) {
     void response.body?.cancel().catch(() => undefined);
-    return apiErrorResponse(response.status === 503 ? 503 : 500);
+    // Keep the status (502/503/504 tell clients to retry); drop the body.
+    return apiErrorResponse(response.status);
   }
   return response;
 }
 
-/** Headers must be mutable; responses from fetch/ASSETS can be immutable. */
-function mutable(response: Response) {
-  try {
-    response.headers.set("x-content-type-options", "nosniff");
-    return response;
-  } catch {
-    return new Response(response.body, response);
-  }
-}
 
 export function applySecurityHeaders(response: Response, url: URL, nonce: string | null): Response {
-  const result = mutable(response);
+  // Responses from fetch/ASSETS can have immutable headers; a re-wrap streams the same body.
+  const result = new Response(response.body, response);
   const headers = result.headers;
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-frame-options", "DENY");

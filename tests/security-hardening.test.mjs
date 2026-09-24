@@ -149,6 +149,9 @@ test('sync writes also have a daily budget and the rate limit fails closed witho
   const binding = env.DB;
   delete env.DB;
   try { await assertPrivateError(await modules['/api/sync'].GET(), 503); } finally { env.DB = binding; }
+  // A deployment that never applied the limiter migration keeps syncing.
+  database.exec('ALTER TABLE ai_rate_limits RENAME TO ai_rate_limits_hidden');
+  try { assert.equal((await modules['/api/sync'].GET()).status, 200); } finally { database.exec('ALTER TABLE ai_rate_limits_hidden RENAME TO ai_rate_limits'); }
   await assert.rejects(consumeRateLimit({ prepare() { throw new Error('no such table: ai_rate_limits'); } }, 'k', 1, 1), error => error instanceof RateLimitStoreError && error.migrationRequired);
 });
 
@@ -249,6 +252,7 @@ test('framework API errors become private JSON: 404, 405 with Allow, and 500 wit
     [async () => new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain' } }), '/api/unknown', 404, 'not_found'],
     [async () => new Response(null, { status: 405 }), '/api/sync', 405, 'method_not_allowed'],
     [async () => new Response('Error: boom\n    at handler (route.ts:1:1)', { status: 500 }), '/api/sync', 500, 'internal_error'],
+    [async () => new Response('upstream timed out', { status: 504 }), '/api/sync', 504, 'internal_error'],
     [async () => { throw new Error('D1_ERROR: SELECT * FROM sync_states'); }, '/api/sync', 500, 'internal_error'],
   ];
   for (const [inner, path, status, code] of cases) {
