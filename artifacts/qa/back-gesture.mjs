@@ -10,7 +10,6 @@ await p.goto('about:blank'); await p.goto(base, { waitUntil: 'networkidle' }); a
 await p.evaluate(() => { window.__marker = 1; });
 const results = [];
 const check = async (name, fn, expect) => { await fn(); await p.waitForTimeout(500); const ok = await expect(); results.push(`${ok ? 'PASS' : 'FAIL'} ${name}`); };
-const rscBefore = () => rsc;
 await check('lexicon -> back -> today', async () => { await p.locator('.mobile-nav button:has-text("词库")').click(); await p.waitForSelector('.word-row'); await p.goBack(); }, () => p.locator('.today-view').isVisible());
 await check('word detail -> back closes dialog, stays in lexicon', async () => { await p.locator('.mobile-nav button:has-text("词库")').click(); await p.locator('.word-open').first().click(); await p.waitForSelector('dialog[open]'); await p.goBack(); }, async () => !(await p.locator('dialog[open]').count()) && await p.locator('.word-row').first().isVisible());
 await check('lexicon -> back -> today (after dialog)', async () => { await p.goBack(); }, () => p.locator('.today-view').isVisible());

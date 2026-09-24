@@ -112,10 +112,7 @@ export default function Match({
   const board = useRef<HTMLDivElement>(null);
   const playing = Boolean(game && game.finishedMs === null);
   const clock = useStopwatch(playing);
-  const byId = useMemo(
-    () => new Map(data.index.map((entry) => [entry.id, entry])),
-    [data.index],
-  );
+  const byId = data.byId;
   const preview = useMemo(
     () =>
       buildMatchRounds(data.index, data.cards, { bookId, unit, seed: "preview" }),

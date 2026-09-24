@@ -65,10 +65,7 @@ export default function Flashcards({
   const [lastAction, setLastAction] = useState<LastAction>(null);
   const [day, setDay] = useState("");
   const seen = useRef(new Set<string>());
-  const byId = useMemo(
-    () => new Map(data.index.map((entry) => [entry.id, entry])),
-    [data.index],
-  );
+  const byId = data.byId;
   const pool = useMemo(
     () => learnPool(data.index, data.cards, { bookId, unit }),
     [data.index, data.cards, bookId, unit],
