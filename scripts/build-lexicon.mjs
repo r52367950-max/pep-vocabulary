@@ -486,8 +486,6 @@ const entries = [...grouped.entries()].map(([key, records]) => {
     recordId: item.sourceRecordId, bookId: item.bookId, volume: item.volume, unit: item.unit,
     physicalPage: item.physicalPage, printedPage: item.printedPage, status: item.sourceStatus,
     curriculumLevel: item.curriculumLevel || null,
-    ...(item.bookId.startsWith("HS-") && item.sourceStatus === "verified-primary" && item.extraction === "pdf-text-layer"
-      ? { textbookOrder: Number(item.sourceRecordId.split(":").at(-1)) } : {}),
   }));
   const tier = high ? (records.length >= 3 || highValueSeeds.has(primary.lookup) ? "B" : "A") : "C";
   const scopes = [...new Set(records.filter((item) => item.bookId !== "STD-HS").map((item) => item.scope))];
@@ -554,7 +552,7 @@ const released = entries.filter((entry) => entry.flags.formalReleaseEligible);
 const index = released.map((entry) => ({
   id: entry.id, headword: entry.headword, lookup: entry.lookup, tier: entry.tier, scopes: entry.scopes,
   chineseCore: entry.chineseCore, britishIpa: entry.britishIpa, americanIpa: entry.americanIpa,
-  partsOfSpeech: entry.partsOfSpeech, sources: entry.sources.map(({ bookId, volume, unit, printedPage, textbookOrder }) => ({ bookId, volume, unit, printedPage, ...(textbookOrder ? { textbookOrder } : {}) })),
+  partsOfSpeech: entry.partsOfSpeech, sources: entry.sources.map(({ bookId, volume, unit, printedPage }) => ({ bookId, volume, unit, printedPage })),
   flags: entry.flags,
 }));
 

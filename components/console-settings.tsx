@@ -25,9 +25,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AppSettings } from "@/lib/storage";
+import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from "./studio/ai-connection";
 
 type Section = "general" | "learning" | "ai" | "privacy" | "about";
-type AIProvider = "deepseek" | "openai-compatible";
 type AIConfig = {
   provider: AIProvider;
   baseUrl: string;
@@ -37,31 +37,6 @@ type AIConfig = {
   hasApiKey: boolean;
   updatedAt: string | null;
   secretStorage: "server-encrypted";
-};
-type ConnectionCheck = {
-  id: string;
-  label: string;
-  status: "passed" | "failed" | "unknown";
-  detail: string;
-  latencyMs?: number;
-};
-type ConnectionTestResult = {
-  ok: boolean;
-  checkedAt?: string;
-  latencyMs?: number;
-  provider?: AIProvider;
-  model?: string;
-  endpointHost?: string;
-  serviceStatusUrl?: string | null;
-  checks?: ConnectionCheck[];
-  error?:
-    | {
-        message?: string;
-        code?: string;
-        providerStatus?: number | null;
-        networkReason?: string | null;
-      }
-    | string;
 };
 const providerDefaults: Record<
   AIProvider,
@@ -157,13 +132,24 @@ export default function ConsoleSettings({
     setConnectionResult(null);
   };
 
-  const saveAIConfig = async () => {
-    setSaving(true);
+  // Every AI request clears the last outcome, marks one button busy and shows failures the same way.
+  const run = async (setBusy: (busy: boolean) => void, fallback: string, work: () => Promise<void>) => {
+    setBusy(true);
     setMessage(null);
     setConnectionResult(null);
+    try {
+      await work();
+    } catch (error) {
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : fallback });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveAIConfig = () => {
     const transientApiKey = apiKey.trim();
     setApiKey("");
-    try {
+    return run(setSaving, "保存失败", async () => {
       const response = await fetch("/api/ai/config", {
         method: "POST",
         headers: apiHeaders(),
@@ -180,79 +166,29 @@ export default function ConsoleSettings({
       if (!response.ok) throw new Error(result.error || "保存失败");
       setAIConfig(result);
       if (!settings.aiEnabled) onUpdate({ aiEnabled: true });
-      setMessage({
-        kind: "success",
-        text: "API 配置已保存，密钥不会返回浏览器。",
-      });
-    } catch (error) {
-      setMessage({
-        kind: "error",
-        text: error instanceof Error ? error.message : "保存失败",
-      });
-    } finally {
-      setSaving(false);
-    }
+      setMessage({ kind: "success", text: "API 配置已保存，密钥不会返回浏览器。" });
+    });
   };
-  const testAIConfig = async () => {
-    setTesting(true);
-    setMessage(null);
-    setConnectionResult(null);
-    try {
-      const response = await fetch("/api/ai/test", {
-        method: "POST",
-        headers: apiHeaders(),
-        body: "{}",
-        cache: "no-store",
-      });
+  const testAIConfig = () =>
+    run(setTesting, "连接测试失败", async () => {
+      const response = await fetch("/api/ai/test", { method: "POST", headers: apiHeaders(), body: "{}", cache: "no-store" });
       const result = (await response.json()) as ConnectionTestResult;
       setConnectionResult(result);
       if (!response.ok && !result.checks?.length) {
-        setMessage({
-          kind: "error",
-          text:
-            typeof result.error === "string"
-              ? result.error
-              : result.error?.message || "连接测试失败",
-        });
+        setMessage({ kind: "error", text: typeof result.error === "string" ? result.error : result.error?.message || "连接测试失败" });
       }
-    } catch (error) {
-      setMessage({
-        kind: "error",
-        text: error instanceof Error ? error.message : "连接测试失败",
-      });
-    } finally {
-      setTesting(false);
-    }
-  };
-  const removeAIConfig = async () => {
-    if (
-      !window.confirm(
-        "移除服务端保存的 API Key 和接口设置？本地词库与学习记录不会受影响。",
-      )
-    )
-      return;
-    setSaving(true);
-    setMessage(null);
-    setConnectionResult(null);
-    try {
-      const response = await fetch("/api/ai/config", {
-        method: "DELETE",
-        headers: apiHeaders(),
-      });
+    });
+  const removeAIConfig = () => {
+    if (!window.confirm("移除服务端保存的 API Key 和接口设置？本地词库与学习记录不会受影响。")) return;
+    return run(setSaving, "移除失败", async () => {
+      const response = await fetch("/api/ai/config", { method: "DELETE", headers: apiHeaders() });
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error || "移除失败");
       setAIConfig(defaultAIConfig);
       setApiKey("");
       onUpdate({ aiEnabled: false });
       setMessage({ kind: "success", text: "API 配置已移除。" });
-    } catch (error) {
-      setMessage({
-        kind: "error",
-        text: error instanceof Error ? error.message : "移除失败",
-      });
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   return (
@@ -275,7 +211,7 @@ export default function ConsoleSettings({
             >
               <item.icon size={17} />
               <span>{item.label}</span>
-              <ChevronRight size={14} />
+              <ChevronRight size={14} aria-hidden="true" />
             </button>
           ))}
         </nav>
@@ -283,13 +219,13 @@ export default function ConsoleSettings({
           <button className="settings-mobile-back text-button" onClick={() => {
             setMobilePanel(false);
             requestAnimationFrame(() => sectionButtons.current[section]?.focus({ preventScroll: true }));
-          }}><ArrowLeft size={18} />设置</button>
+          }}><ArrowLeft size={18} aria-hidden="true" />设置</button>
           <h2 className="settings-panel-heading" ref={panelHeading} tabIndex={-1}>{sections.find(item => item.id === section)?.label}</h2>
           {section === "general" && (
             <>
               <section className="settings-card">
                 <header>
-                  <Palette size={20} />
+                  <Palette size={20} aria-hidden="true" />
                   <div>
                     <h2>外观</h2>
                     <p>选择适合你的显示方式。</p>
@@ -324,7 +260,7 @@ export default function ConsoleSettings({
               </section>
               <section className="settings-card">
                 <header>
-                  <Sparkles size={20} />
+                  <Sparkles size={20} aria-hidden="true" />
                   <div>
                     <h2>单词讲解</h2>
                     <p>为单词补充讲解和例句。</p>
@@ -357,7 +293,7 @@ export default function ConsoleSettings({
             <>
               <section className="settings-card">
                 <header>
-                  <BookOpenCheck size={20} />
+                  <BookOpenCheck size={20} aria-hidden="true" />
                   <div>
                     <h2>每日学习</h2>
                     <p>按你的时间安排新词与复习。</p>
@@ -400,7 +336,7 @@ export default function ConsoleSettings({
               </section>
               <section className="settings-card">
                 <header>
-                  <SlidersHorizontal size={20} />
+                  <SlidersHorizontal size={20} aria-hidden="true" />
                   <div>
                     <h2>学习模式</h2>
                     <p>选择当前的学习节奏。</p>
@@ -433,7 +369,7 @@ export default function ConsoleSettings({
             <>
               <section className="settings-card api-overview">
                 <header>
-                  <PlugZap size={20} />
+                  <PlugZap size={20} aria-hidden="true" />
                   <div>
                     <h2>模型 API</h2>
                     <p>
@@ -454,7 +390,7 @@ export default function ConsoleSettings({
                   </span>
                 </header>
                 <div className="security-callout">
-                  <LockKeyhole size={18} />
+                  <LockKeyhole size={18} aria-hidden="true" />
                   <div>
                     <strong>服务端加密保存</strong>
                     <p>
@@ -465,7 +401,7 @@ export default function ConsoleSettings({
               </section>
               <section className="settings-card api-form">
                 <header>
-                  <Link2 size={20} />
+                  <Link2 size={20} aria-hidden="true" />
                   <div>
                     <h2>接口参数</h2>
                     <p>
@@ -538,7 +474,7 @@ export default function ConsoleSettings({
                   <label>
                     <span>API Key</span>
                     <div className="secret-input">
-                      <KeyRound size={15} />
+                      <KeyRound size={15} aria-hidden="true" />
                       <input
                         type="password"
                         value={apiKey}
@@ -602,7 +538,7 @@ export default function ConsoleSettings({
                     onClick={saveAIConfig}
                     disabled={saving || loadingConfig}
                   >
-                    <Save size={16} />
+                    <Save size={16} aria-hidden="true" />
                     {saving
                       ? "保存中…"
                       : aiConfig.hasApiKey
@@ -614,7 +550,7 @@ export default function ConsoleSettings({
                     onClick={testAIConfig}
                     disabled={testing || !aiConfig.hasApiKey}
                   >
-                    <PlugZap size={16} />
+                    <PlugZap size={16} aria-hidden="true" />
                     {testing ? "正在执行真实测试…" : "测试连接与服务"}
                   </button>
                   {aiConfig.hasApiKey && (
@@ -623,7 +559,7 @@ export default function ConsoleSettings({
                       onClick={removeAIConfig}
                       disabled={saving}
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={15} aria-hidden="true" />
                       移除密钥
                     </button>
                   )}
@@ -639,89 +575,15 @@ export default function ConsoleSettings({
                     role="status"
                   >
                     {message.kind === "success" ? (
-                      <Check size={16} />
+                      <Check size={16} aria-hidden="true" />
                     ) : (
-                      <CircleAlert size={16} />
+                      <CircleAlert size={16} aria-hidden="true" />
                     )}{" "}
                     {message.text}
                   </p>
                 )}
                 {connectionResult?.checks?.length ? (
-                  <div
-                    className={`connection-diagnostic ${connectionResult.ok ? "passed" : "failed"}`}
-                    role="status"
-                  >
-                    <div className="connection-diagnostic-head">
-                      <div>
-                        {connectionResult.ok ? (
-                          <Check size={17} />
-                        ) : (
-                          <CircleAlert size={17} />
-                        )}
-                        <strong>
-                          {connectionResult.ok
-                            ? "连接与服务均正常"
-                            : "连接诊断未通过"}
-                        </strong>
-                      </div>
-                      <span>
-                        {connectionResult.endpointHost || "服务端点"}
-                        {connectionResult.latencyMs !== undefined
-                          ? ` · ${connectionResult.latencyMs} ms`
-                          : ""}
-                      </span>
-                    </div>
-                    <div className="connection-check-list">
-                      {connectionResult.checks.map((check) => (
-                        <div key={check.id} data-status={check.status}>
-                          <i>
-                            {check.status === "passed" ? (
-                              <Check size={13} />
-                            ) : (
-                              <CircleAlert size={13} />
-                            )}
-                          </i>
-                          <div>
-                            <strong>{check.label}</strong>
-                            <small>
-                              {check.detail}
-                              {check.latencyMs !== undefined
-                                ? ` · ${check.latencyMs} ms`
-                                : ""}
-                            </small>
-                          </div>
-                          <em>
-                            {check.status === "passed"
-                              ? "通过"
-                              : check.status === "failed"
-                                ? "失败"
-                                : "未检测"}
-                          </em>
-                        </div>
-                      ))}
-                    </div>
-                    {connectionResult.error && (
-                      <p className="connection-error">
-                        {typeof connectionResult.error === "string"
-                          ? connectionResult.error
-                          : connectionResult.error.message}
-                        {typeof connectionResult.error !== "string" &&
-                        connectionResult.error.providerStatus
-                          ? `（服务商 HTTP ${connectionResult.error.providerStatus}）`
-                          : ""}
-                      </p>
-                    )}
-                    {connectionResult.serviceStatusUrl && (
-                      <a
-                        className="provider-status-link"
-                        href={connectionResult.serviceStatusUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        查看 DeepSeek 官方服务状态 <ExternalLink size={13} />
-                      </a>
-                    )}
-                  </div>
+                  <ConnectionDiagnostic result={connectionResult} />
                 ) : aiConfig.provider === "deepseek" ? (
                   <a
                     className="provider-status-link standalone"
@@ -729,13 +591,13 @@ export default function ConsoleSettings({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    查看 DeepSeek 官方服务状态 <ExternalLink size={13} />
+                    查看 DeepSeek 官方服务状态 <ExternalLink size={13} aria-hidden="true" />
                   </a>
                 ) : null}
               </section>
               <section className="settings-card compact-card">
                 <header>
-                  <Eye size={19} />
+                  <Eye size={19} aria-hidden="true" />
                   <div>
                     <h2>发送范围</h2>
                     <p>
@@ -751,7 +613,7 @@ export default function ConsoleSettings({
             <>
               <section className="settings-card">
                 <header>
-                  <Database size={20} />
+                  <Database size={20} aria-hidden="true" />
                   <div>
                     <h2>本地数据</h2>
                     <p>卡片状态、复习事件、词单和注释默认保存在本机。</p>
@@ -762,12 +624,12 @@ export default function ConsoleSettings({
                     <strong>备份、恢复与私有同步</strong>
                     <small>前往数据页管理 JSON、CSV 与同步状态</small>
                   </div>
-                  <ChevronRight size={16} />
+                  <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </section>
               <section className="settings-card danger-card">
                 <header>
-                  <RotateCcw size={20} />
+                  <RotateCcw size={20} aria-hidden="true" />
                   <div>
                     <h2>重置本机数据</h2>
                     <p>
@@ -777,7 +639,7 @@ export default function ConsoleSettings({
                   </div>
                 </header>
                 <button className="danger-button" onClick={onClear}>
-                  <Trash2 size={16} />
+                  <Trash2 size={16} aria-hidden="true" />
                   清空本机个人数据
                 </button>
               </section>
@@ -786,7 +648,7 @@ export default function ConsoleSettings({
           {section === "about" && (
             <section className="settings-card about-card">
               <header>
-                <Laptop size={20} />
+                <Laptop size={20} aria-hidden="true" />
                 <div>
                   <h2>词迹</h2>
                   <p>人教版初高中英语词汇学习 · 本地优先</p>
@@ -795,7 +657,7 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.1.1</dd>
+                  <dd>2.3.0</dd>
                 </div>
                 <div>
                   <dt>数据格式</dt>

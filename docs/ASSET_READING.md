@@ -1,5 +1,7 @@
 # Reading artwork
 
+> 版本记录：本文的分工、过程与验证限制只描述该次更新；日常开发见 [开发说明](DEVELOPMENT.md)。
+
 Generated on 2026-09-15 using the built-in ImageGen tool. Original raster output is 1536 × 1024; delivery uses WebP quality 91, method 6. Encoding only: no crop, retouching, resize, or pixel edits.
 
 | Asset | Meaning and use |

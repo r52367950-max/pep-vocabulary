@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bookmark, Check, ChevronRight, Sparkles, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import {
@@ -9,6 +9,7 @@ import {
   type LexiconIndexEntry,
 } from "@/lib/lexicon";
 import { getEntryExample } from "@/lib/questions";
+import { useModal } from "@/hooks/use-modal";
 import { Pronounce } from "./shared";
 
 export default function WordDetail({
@@ -22,16 +23,22 @@ export default function WordDetail({
   onClose: () => void;
   onPractice: (entry: LexiconIndexEntry) => void;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const [detail, setDetail] = useState<LexiconDetail>();
   const [failure, setFailure] = useState("");
-  const [note, setNote] = useState(data.cards.get(entry.id)?.note || "");
+  const savedNote = data.cards.get(entry.id)?.note || "";
+  const [note, setNote] = useState(savedNote);
+  const { metadata } = data;
+  // Closing keeps an unsaved note rather than discarding it.
+  const close = useCallback(() => {
+    if (note !== savedNote) void metadata(entry.id, { note });
+    onClose();
+  }, [note, savedNote, metadata, entry.id, onClose]);
+  const { dialog, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(close);
   const [saved, setSaved] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [thinking, setThinking] = useState(false);
   const abort = useRef<AbortController | null>(null);
   useEffect(() => {
-    dialog.current?.showModal();
     let active = true;
     loadDetails([entry.id])
       .then((rows) => {
@@ -106,10 +113,10 @@ export default function WordDetail({
     <dialog
       className="word-dialog"
       ref={dialog}
-      onCancel={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+      data-closing={closing}
+      onCancel={onCancel}
+      onPointerDown={onPointerDown}
+      onClick={onClick}
       aria-labelledby="detail-title"
     >
       <div className="detail-content">
@@ -117,14 +124,14 @@ export default function WordDetail({
           <span>词条详情</span>
           <button
             className="icon-button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="关闭词条"
           >
-            <X size={22} />
+            <X size={22} aria-hidden="true" />
           </button>
         </div>
         <div className="detail-word">
-          <h2 id="detail-title" className="english">
+          <h2 id="detail-title" className="english" translate="no">
             {entry.headword}
           </h2>
           <Pronounce text={entry.headword} notify={data.notify} />
@@ -135,7 +142,7 @@ export default function WordDetail({
             }
             onClick={() => data.metadata(entry.id, { toggleFavorite: true })}
           >
-            <Bookmark size={19} />
+            <Bookmark size={19} aria-hidden="true" />
           </button>
         </div>
         <p className="ipa">
@@ -186,7 +193,7 @@ export default function WordDetail({
           >
             {saved ? (
               <>
-                <Check size={15} />
+                <Check size={15} aria-hidden="true" />
                 已保存
               </>
             ) : (
@@ -197,7 +204,7 @@ export default function WordDetail({
         {data.settings.aiEnabled && (
           <div className="ai-explanation">
             <button className="secondary" disabled={thinking} onClick={explain}>
-              <Sparkles size={17} />
+              <Sparkles size={17} aria-hidden="true" />
               {thinking ? "正在生成讲解…" : "生成用法讲解"}
             </button>
             {explanation && <p role="status">{explanation}</p>}
@@ -208,7 +215,7 @@ export default function WordDetail({
           className="primary detail-practice"
           onClick={() => onPractice(entry)}
         >
-          练习这个词 <ChevronRight size={17} />
+          练习这个词 <ChevronRight size={17} aria-hidden="true" />
         </button>
       </div>
     </dialog>

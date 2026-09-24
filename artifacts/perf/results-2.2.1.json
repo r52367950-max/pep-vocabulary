@@ -1,0 +1,107 @@
+{
+  "date": "2026-09-24",
+  "baseline": "58ac110 (2.2.1)",
+  "conditions": "production build served by workerd (artifacts/perf/serve.mjs), headless Chromium 1194, 4x CPU throttle, 1280x800, fresh profile per run, 7 alternating runs per side, medians; another build was running on the machine",
+  "initialJsGzipBytes": {
+    "before": 124122,
+    "after": 124542,
+    "chunks": 8
+  },
+  "benchmark": {
+    "note": "npm run benchmark measures lib/questions and lib/lexicon only (unchanged); choice_100_calls median of 5 runs",
+    "before": 28.3,
+    "after": 27.48
+  },
+  "runtime": {
+    "before": {
+      "runs": 7,
+      "load": {
+        "appReadyMs": 1215.1000000000931,
+        "ttiMs": 1215.1000000000931,
+        "tbtMs": 234
+      },
+      "toast": {
+        "showRendered": 50,
+        "hideRendered": 48,
+        "showInteractionMs": 72
+      },
+      "tabs": {
+        "switchMedianMs": 69.45000000018626,
+        "switchMaxMs": 95.70000000018626,
+        "renderedPerSwitch": 78
+      },
+      "paging": {
+        "clickToPaintMs": 92.60000000009313,
+        "longTasks": 10,
+        "tbtMs": 213,
+        "longFrames": 9,
+        "droppedFrames": 36,
+        "renderedPerClick": 94
+      },
+      "reading": {
+        "fontClickToPaintMs": 40.550000000046566,
+        "longTasks": 0,
+        "tbtMs": 0
+      },
+      "practice": {
+        "keyPresses": 40,
+        "longTasks": 0,
+        "tbtMs": 0,
+        "interactionMedianMs": 48,
+        "interactionP90Ms": 56,
+        "interactionMaxMs": 64,
+        "renderedPerKey": 25.85,
+        "revealKeyToFrameMs": 33.8499999998603,
+        "nextCardKeyToFrameMs": 75.54999999981374,
+        "nextCardKeyToFrameP90Ms": 104.29999999981374,
+        "keydownListenerAdds": 61
+      },
+      "errors": []
+    },
+    "after": {
+      "runs": 7,
+      "load": {
+        "appReadyMs": 1122.1000000000931,
+        "ttiMs": 1217.5,
+        "tbtMs": 293
+      },
+      "toast": {
+        "showRendered": 3,
+        "hideRendered": 1,
+        "showInteractionMs": 56
+      },
+      "tabs": {
+        "switchMedianMs": 44.99999999976717,
+        "switchMaxMs": 72.1999999997206,
+        "renderedPerSwitch": 23
+      },
+      "paging": {
+        "clickToPaintMs": 95.35000000009313,
+        "longTasks": 10,
+        "tbtMs": 207,
+        "longFrames": 9,
+        "droppedFrames": 36,
+        "renderedPerClick": 94
+      },
+      "reading": {
+        "fontClickToPaintMs": 39,
+        "longTasks": 0,
+        "tbtMs": 0
+      },
+      "practice": {
+        "keyPresses": 40,
+        "longTasks": 0,
+        "tbtMs": 0,
+        "interactionMedianMs": 48,
+        "interactionP90Ms": 56,
+        "interactionMaxMs": 64,
+        "renderedPerKey": 33.575,
+        "revealKeyToFrameMs": 33.35000000009313,
+        "nextCardKeyToFrameMs": 72.64999999990687,
+        "nextCardKeyToFrameP90Ms": 93.89999999990687,
+        "keydownListenerAdds": 0
+      },
+      "errors": []
+    }
+  }
+}

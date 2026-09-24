@@ -84,7 +84,7 @@ test('version 2 credentials authenticate the account, provider and destination t
 });
 
 const database = new DatabaseSync(':memory:');
-for (const migration of ['0000_curvy_newton_destine', '0002_swift_cerise']) {
+for (const migration of ['0000_curvy_newton_destine', '0001_flawless_human_cannonball', '0002_swift_cerise']) {
   database.exec(readFileSync(new URL(`../drizzle/${migration}.sql`, import.meta.url), 'utf8'));
 }
 class Statement {
@@ -93,6 +93,7 @@ class Statement {
   async raw() { const stmt = database.prepare(this.sql); stmt.setReturnArrays(true); return stmt.all(...this.args); }
   async all() { return { results: database.prepare(this.sql).all(...this.args) }; }
   async run() { return database.prepare(this.sql).run(...this.args); }
+  async first() { return database.prepare(this.sql).get(...this.args) ?? null; }
 }
 env.DB = { prepare: sql => new Statement(sql) };
 const request = (path, body) => new Request(`https://app.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-vocab-action': 'settings' }, body: JSON.stringify(body) });

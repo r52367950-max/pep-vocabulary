@@ -1,5 +1,7 @@
 # Reading artwork 2.1.1 — prompts
 
+> 版本记录：本文的分工、过程与验证限制只描述该次更新；日常开发见 [开发说明](DEVELOPMENT.md)。
+
 ## Today targeted correction
 
 Edit the supplied today illustration only for final output sizing and spacing. Preserve the same original orange hand holding a cobalt pencil over three ivory vocabulary cards, the blank blue speech-bubble outline, the small gold four-point star, and the bold hand-drawn black contours. Keep all colors and drawing. Required delivery is exactly 1024 by 1024 pixels with genuinely transparent alpha background. Center the entire scene within the middle 70% of the canvas, leaving a minimum 15% completely transparent padding on all four edges, with no stray opaque pixels in that padding. No background, no panel, no white fill outside the objects, no checkerboard, no extra object or text. Preserve real transparency. Output only this single square image.

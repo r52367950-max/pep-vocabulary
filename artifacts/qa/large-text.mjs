@@ -1,0 +1,25 @@
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/opt/node22/lib/node_modules/playwright/index.mjs');
+const [url = 'http://127.0.0.1:5199/', prefix = 'large-text'] = process.argv.slice(2);
+let failed = false;
+const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce', locale: 'zh-CN', timezoneId: 'Asia/Shanghai' });
+const p = await ctx.newPage(); p.setDefaultTimeout(8000);
+const cdp = await ctx.newCDPSession(p); await cdp.send('Page.enable'); await cdp.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
+await p.clock.setFixedTime(new Date('2026-09-24T10:00:00+08:00'));
+const home = async () => { await p.goto(url, { waitUntil: 'networkidle' }); await p.waitForSelector('.today-view'); };
+const report = async (name) => {
+  await p.waitForTimeout(900);
+  const over = await p.evaluate(() => [...document.querySelectorAll('button, a, h1, h2, p, span, strong')].filter(e => { const r = e.getBoundingClientRect(); return r.width && (r.right > innerWidth + 1 || r.left < -1); }).map(e => `${e.tagName}.${e.className} "${(e.textContent||e.getAttribute('aria-label')||'').trim().slice(0,12)}" ${Math.round(e.getBoundingClientRect().left)}..${Math.round(e.getBoundingClientRect().right)}`).slice(0, 8));
+  const clipped = await p.evaluate(() => [...document.querySelectorAll('.learn-tile, .learn-tile *')].filter(e => e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2).map(e => `${e.className} "${e.textContent.trim().slice(0,14)}"`).slice(0, 6));
+  if (over.length || clipped.length) failed = true;
+  console.log(name, JSON.stringify({ offscreen: over, clipped, scrollX: await p.evaluate(() => document.documentElement.scrollWidth > innerWidth) }));
+  await p.screenshot({ path: `${prefix}-${name}.png` });
+};
+await home(); await p.locator('.practice-option:has-text("词卡速记")').click(); await p.waitForTimeout(600);
+await p.locator('.learn-stage button.primary, button:has-text("开始")').first().click().catch(e => console.log('start?', e.message.split('\n')[0]));
+await report('cards');
+await home(); await p.locator('.practice-option:has-text("配对消除")').click(); await p.waitForTimeout(600);
+await p.locator('.learn-stage button.primary, button:has-text("开始")').first().click().catch(e => console.log('start?', e.message.split('\n')[0]));
+await report('match');
+await b.close();
+if (failed) process.exitCode = 1;

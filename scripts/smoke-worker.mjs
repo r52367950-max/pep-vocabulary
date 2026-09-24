@@ -15,7 +15,18 @@ try {
     if (path === '/') {
       assert.match(text, /词迹/);
       assert.doesNotMatch(response.headers.get('cache-control') || '', /\bno-store\b/i, 'The public app shell must be cacheable for offline installation');
+      const csp = response.headers.get('content-security-policy') || '';
+      const nonce = csp.match(/'nonce-([^']+)'/)?.[1];
+      assert.ok(nonce, 'document CSP must carry a nonce');
+      const inline = [...text.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>/g)];
+      assert.ok(inline.length > 0 && inline.every(m => m[1].includes(`nonce="${nonce}"`)), 'every inline script carries the nonce');
+      for (const directive of ["frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'"]) assert.ok(csp.includes(directive), directive);
+      assert.equal(response.headers.get('x-frame-options'), 'DENY');
+      assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+      assert.ok(response.headers.get('referrer-policy'));
+      assert.ok(response.headers.get('permissions-policy'));
     }
+    if (path.startsWith('/api/')) assert.match(response.headers.get('cache-control') || '', /no-store/);
     if (path === '/sw.js') assert.match(text, /vocab-shell-v2-[a-f0-9]{16}/);
     if (path === '/offline-assets.json') {
       const assets = JSON.parse(text);
@@ -33,6 +44,11 @@ try {
     assert.match(result.headers.get('cache-control') || '',/no-store/);
     results.push({path:`/api/reading/classify ${name}`,status:result.status});
   }
+  const put = await request('/api/sync', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: '{}' });
+  assert.equal(put.status, 405);
+  assert.match(put.headers.get('allow') || '', /GET/);
+  assert.equal((await put.json()).code, 'method_not_allowed');
+  results.push({ path: 'PUT /api/sync', status: put.status });
   const response = await request('/api/ai/config', { method: 'POST', headers: { origin: 'http://evil.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' }, body: '{}' });
   assert.equal(response.status, 403);
   results.push({ path: '/api/ai/config cross-origin', status: response.status });

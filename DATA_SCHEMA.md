@@ -61,6 +61,8 @@ IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
 
 `1.0.0` JSON 备份恢复前会确定性迁移为 `1.1.0`，补入新增证据字段并合并当前设置默认值；未知 schema 仍在写入前拒绝。
 
+个人文章保存在独立 IndexedDB `pep-vocab-personal-readings`（版本 1）的 `index` 与 `articles` 表，可逐篇导出 Markdown；不包含在学习备份与 D1 快照中。
+
 ## D1 同步
 
 `sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是站点身份邮箱的 SHA-256；payload 上限 5 MB；服务端同时校验请求与备份 payload 的 schema。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
@@ -75,7 +77,7 @@ IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
 
 AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`，不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；更换服务商或规范化 Base URL 时必须重新提交 API Key，禁止把已保存密钥转发到新目标。
 
-`ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。四类助手接口按分钟和每日双重限流，模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
+`ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。四类词条助手接口及阅读分类接口按分钟和每日双重限流，模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
 
 ## 审核状态
 

@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="词迹图标">
-  <rect width="512" height="512" rx="108" fill="#2f6f6a"/>
-  <path d="M126 128h260v34H126zm0 78h260v34H126zm0 78h166v34H126z" fill="#f4f7f5" opacity=".94"/>
-  <path d="M315 286c0-20 16-36 36-36s36 16 36 36v84c0 20-16 36-36 36s-36-16-36-36z" fill="none" stroke="#f4f7f5" stroke-width="20"/>
-  <path d="M280 365c0 40 32 72 72 72s72-32 72-72M352 437v34" fill="none" stroke="#f4f7f5" stroke-width="20" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="词迹图标">
+  <!-- Full-bleed for home screens and maskable icons: the system applies its own corner mask. The mark stays inside the 80% safe circle. -->
+  <rect width="100" height="100" fill="#ffffff"/>
+  <g transform="translate(14 14) scale(.72)">
+    <path stroke="#16181d" d="M14 26C19 44 24 52 33 55V33C39 46 45 50 55 52V38C62 46 70 48 82 48" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 78H86" stroke="#0071E3" stroke-width="2" stroke-linecap="round"/><circle cx="82" cy="48" r="7" fill="#0071E3"/>
+  </g>
 </svg>

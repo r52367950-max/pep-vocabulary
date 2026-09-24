@@ -4,7 +4,7 @@ import "./globals.css";
 import "./reading-surfaces.css";
 import "./interface.css";
 import "./settings-dialog.css";
-import "./memorize.css";
+import "./learn.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
-    apple: "/icons/icon-192.png",
+    apple: "/icons/app-192.png",
   },
 };
 

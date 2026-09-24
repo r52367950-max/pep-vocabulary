@@ -8,13 +8,16 @@ import { GET, POST } from '../app/api/sync/route.ts';
 import { POST as saveConfig, DELETE as deleteConfig } from '../app/api/ai/config/route.ts';
 
 const database = new DatabaseSync(':memory:');
-database.exec(readFileSync(new URL('../drizzle/0000_curvy_newton_destine.sql', import.meta.url), 'utf8'));
+for (const migration of ['0000_curvy_newton_destine', '0001_flawless_human_cannonball']) {
+  database.exec(readFileSync(new URL(`../drizzle/${migration}.sql`, import.meta.url), 'utf8'));
+}
 class Statement {
   constructor(sql, args = []) { this.sql = sql; this.args = args; }
   bind(...args) { return new Statement(this.sql, args); }
   async raw() { const stmt = database.prepare(this.sql); stmt.setReturnArrays(true); return stmt.all(...this.args); }
   async all() { return { results: database.prepare(this.sql).all(...this.args) }; }
   async run() { return database.prepare(this.sql).run(...this.args); }
+  async first() { return database.prepare(this.sql).get(...this.args) ?? null; }
 }
 const binding = { prepare: sql => new Statement(sql) };
 env.DB = binding;

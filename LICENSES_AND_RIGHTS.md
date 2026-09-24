@@ -1,6 +1,8 @@
 # 许可证与权利审计
 
-核验日期：2026-08-03。发布目录只包含词头事实、短核心义、开放词典字段、应用代码和系统 TTS 指令；不包含教材 PDF、整页 OCR、整篇课文、商业词典批量内容或未核验真人音频。
+词库来源核验日期：2026-08-03。词库发布内容包括词头事实、短核心义、开放词典字段和系统 TTS 指令；不包含教材 PDF、整页 OCR、整篇教材课文、商业词典批量内容或未核验真人音频。
+
+后续阅读版本另包含带来源与权利记录的文学原文/节选、NOAA 科普及明确标注的原创内容，见 [阅读内容说明](docs/READING_2.1.md)。界面插画、图标及第三方阅读工具的许可记录按各资产保留；本次开发文档清理不重新认定上游许可。
 
 | 资产 | 使用方式 | 权利/署名 | 发布处理 |
 |---|---|---|---|
@@ -16,7 +18,7 @@
 | 系统 TTS | 浏览器 Web Speech API 即时朗读 | 不捆绑音频文件 | UI 明示“系统语音”，失败时不阻断学习 |
 | `ts-fsrs` | FSRS v6 调度适配 | MIT | 作为依赖保留许可 |
 | Lucide | 统一图标 | ISC | 无 emoji 代替主图标 |
-| Noto Sans / Noto Sans SC / Source Serif 4 | 本地打包字体 | SIL Open Font License 1.1 | 随依赖分发并保留许可 |
+| 系统字体与旧字体资产 | 当前界面使用系统字体栈 | 不分发 Apple 系统字体；若仍分发旧 OFL 字体文件则保留其许可 | 早期 Noto / Source Serif 方案不再要求后续开发恢复字体下载 |
 
 上游入口：[OEWN](https://en-word.net/)、[ECDICT](https://github.com/skywind3000/ECDICT)、[IPA Dict](https://github.com/open-dict-data/ipa-dict)、[Kaikki](https://kaikki.org/dictionary/)、[Tatoeba 下载](https://tatoeba.org/en/downloads)、[Tatoeba 条款](https://tatoeba.org/en/terms_of_use)、[Commons 复用说明](https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia)。
 
@@ -28,5 +30,4 @@
 - 模型单独生成且未经人工规则/人工审校的词典内容：保持 `provisional`，不得冒充正式字段。
 - 商业词典内容：仅允许少量人工核对，不做批量抓取或改写发布。
 
-当前无 R2 音频包，未配置付费 API，也没有前端密钥。
-
+当前仓库未配置 R2 音频包。AI 支持用户在服务端保存自己的密钥；实际生产配置与费用不能由仓库推断，密钥不进入前端。

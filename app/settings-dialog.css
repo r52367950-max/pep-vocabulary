@@ -110,7 +110,7 @@
 .import-footer > span { font-size: .75rem; color: var(--muted); }
 .import-footer button { min-height: 44px; }
 .reading-header-actions { display: flex; align-items: center; gap: 20px; }
-.reading-import-button { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 9px 12px; color: var(--blue); font-size: .875rem; border-radius: 12px; background: var(--blue-pale); white-space: nowrap; }
+.reading-import-button { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 9px 12px; color: var(--blue-ink); font-size: .875rem; border-radius: 12px; background: var(--blue-pale); white-space: nowrap; }
 .reading-shelves { display: flex; gap: 26px; margin: -5px 0 24px; border-bottom: 1px solid var(--line); }
 .reading-shelves button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 1px 12px; color: var(--muted); font-size: .875rem; border-bottom: 2px solid transparent; }
 .reading-shelves button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }

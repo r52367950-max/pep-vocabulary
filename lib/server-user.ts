@@ -1,5 +1,10 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 
+/**
+ * SHA-256 of the trimmed, lower-cased gateway email. Existing cloud snapshots
+ * and encrypted AI settings are stored under this key, so the derivation must
+ * not change (no Unicode normalisation or alias folding) without a migration.
+ */
 export async function authenticatedUserKey() {
   const user = await getChatGPTUser();
   if (!user) return null;

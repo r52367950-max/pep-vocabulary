@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeft,
   Check,
@@ -29,6 +36,7 @@ import {
   type StudySessionState,
 } from "@/lib/session";
 import { sourceLabel } from "./shared";
+import { Artwork } from "./art";
 
 const labels = { 1: "忘记了", 2: "有些费力", 3: "记得", 4: "很熟悉" };
 export default function StudySession({
@@ -63,12 +71,11 @@ export default function StudySession({
   const answerTime = useRef(0);
   const submission = useRef<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const index = useMemo(
-    () => new Map(data.index.map((entry) => [entry.id, entry])),
-    [data.index],
-  );
+  const index = data.byId;
+  const { cards, notify, saveReview, reload } = data;
+  const retention = data.settings.desiredRetention;
   const entry = index.get(session.queue[session.position]);
-  const card = entry ? data.cards.get(entry.id) : undefined;
+  const card = entry ? cards.get(entry.id) : undefined;
   const detail = entry ? details.get(entry.id) : undefined;
   const done = session.position >= session.queue.length;
   const type: QuestionType =
@@ -96,10 +103,13 @@ export default function StudySession({
     [entry, detail, type, data.index],
   );
   const intervals = useMemo(
-    () => previewReviewIntervals(card, data.settings.desiredRetention),
-    [card, data.settings.desiredRetention],
+    () => previewReviewIntervals(card, retention),
+    [card, retention],
   );
   const stepId = sessionEventId(session);
+  // Details for the next five words are prefetched, so a cached card is ready at once
+  // and the question stays on screen between cards instead of flashing the loader.
+  const ready = readyStep === stepId || detailError || (entry ? details.has(entry.id) : false);
   const reset = useCallback(() => {
     setAnswer("");
     setRevealed(false);
@@ -140,8 +150,11 @@ export default function StudySession({
       active = false;
     };
   }, [session.queue, session.position, stepId]);
+  const controls = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (entry && !revealed) input.current?.focus();
+    // The answer field unmounts on reveal; hand focus to the next action instead of the page body.
+    if (revealed) controls.current?.querySelector<HTMLButtonElement>(".recommended, .wrong-next .primary")?.focus({ preventScroll: true });
   }, [entry, revealed]);
   useEffect(
     () => () => {
@@ -180,9 +193,9 @@ export default function StudySession({
 
   const check = useCallback(
     (forgot = false) => {
-      if (!question || revealed || busy.current || readyStep !== stepId) return;
+      if (!question || revealed || busy.current || !ready) return;
       if (!forgot && question.inputMode !== "reveal" && !answer.trim()) {
-        data.notify("先输入答案，或选择暂时想不起来。");
+        notify("先输入答案，或选择暂时想不起来。");
         return;
       }
       answerTime.current = Math.min(
@@ -192,7 +205,7 @@ export default function StudySession({
       setCorrect(forgot ? false : gradeQuestion(question, answer));
       setRevealed(true);
     },
-    [question, revealed, answer, data, readyStep, stepId],
+    [question, revealed, answer, notify, ready],
   );
 
   const rate = useCallback(
@@ -211,10 +224,10 @@ export default function StudySession({
       const rating = effectiveRating({ rating: requested, correct, hints });
       const result = correct ?? rating > 1;
       const scheduled = scheduleReview({
-        stored: data.cards.get(entry.id) || null,
+        stored: cards.get(entry.id) || null,
         cardId: entry.id,
         rating,
-        retention: data.settings.desiredRetention,
+        retention,
         skill: question.skill,
         questionType: question.type,
         correct: result,
@@ -238,16 +251,16 @@ export default function StudySession({
         eventId: stepId,
       };
       try {
-        await data.saveReview(event);
+        await saveReview(event);
         submission.current = stepId;
         setUndo({ event, previous: session });
         onChange(advanceSession(session, event));
         reset();
       } catch {
-        data.notify(
+        notify(
           "本次评分尚未保存。可能有另一页面更新了此词，请重试。学习位置已保留。",
         );
-        await data.reload().catch(() => undefined);
+        await reload().catch(() => undefined);
       } finally {
         busy.current = false;
         setSaving(false);
@@ -261,7 +274,11 @@ export default function StudySession({
       stepId,
       correct,
       hints,
-      data,
+      cards,
+      retention,
+      saveReview,
+      notify,
+      reload,
       answer,
       session,
       onChange,
@@ -275,7 +292,7 @@ export default function StudySession({
     setSaving(true);
     try {
       const now = new Date();
-      await data.saveReview({
+      await saveReview({
         ...undo.event,
         eventId: createLocalId(),
         eventType: "undo",
@@ -288,43 +305,46 @@ export default function StudySession({
       setUndo(null);
       reset();
     } catch {
-      data.notify("撤销未完成，词条可能已在其他页面更新。请重新加载后检查。");
+      notify("撤销未完成，词条可能已在其他页面更新。请重新加载后检查。");
     } finally {
       busy.current = false;
       setSaving(false);
     }
-  }, [undo, session.revision, data, onChange, reset]);
+  }, [undo, session.revision, saveReview, notify, onChange, reset]);
 
+  // Reads the latest answer state when a key arrives, so the listener is bound once per session
+  // instead of after every keypress.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (
+      event.repeat ||
+      event.isComposing ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      busy.current
+    )
+      return;
+    const target = event.target as HTMLElement;
+    if (
+      ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
+      target.isContentEditable
+    )
+      return;
+    if (event.code === "Space") {
+      event.preventDefault();
+      if (revealed) void rate(correct === false ? 1 : 3);
+      else check();
+    }
+    if (revealed && /^[1-4]$/.test(event.key))
+      void rate(Number(event.key) as 1 | 2 | 3 | 4);
+    if (event.key.toLowerCase() === "r") play();
+    if (event.key.toLowerCase() === "z") void undoLast();
+  });
   useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (
-        event.repeat ||
-        event.isComposing ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
-        busy.current
-      )
-        return;
-      const target = event.target as HTMLElement;
-      if (
-        ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
-        target.isContentEditable
-      )
-        return;
-      if (event.code === "Space") {
-        event.preventDefault();
-        if (revealed) void rate(correct === false ? 1 : 3);
-        else check();
-      }
-      if (revealed && /^[1-4]$/.test(event.key))
-        void rate(Number(event.key) as 1 | 2 | 3 | 4);
-      if (event.key.toLowerCase() === "r") play();
-      if (event.key.toLowerCase() === "z") void undoLast();
-    };
+    const key = (event: KeyboardEvent) => onKey(event);
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [revealed, correct, rate, check, play, undoLast]);
+  }, []);
 
   if (done) {
     const first = session.results.filter((result) => !result.retry);
@@ -337,9 +357,7 @@ export default function StudySession({
     ];
     return (
       <main className="study-complete">
-        <span className="complete-check">
-          <Check size={36} />
-        </span>
+        <Artwork kind="botanical" seed={session.id} className="complete-art" eager />
         <h1>练习完成</h1>
         <p>学习记录已保存</p>
         <div className="complete-stats">
@@ -394,7 +412,7 @@ export default function StudySession({
               disabled={saving}
               onClick={undoLast}
             >
-              <RotateCcw size={16} />
+              <RotateCcw size={16} aria-hidden="true" />
               撤销最后评分
             </button>
           )}
@@ -411,7 +429,7 @@ export default function StudySession({
         </button>
       </main>
     );
-  if (readyStep !== stepId)
+  if (!ready)
     return (
       <main className="boot-screen">
         <p role="status">正在准备词条…</p>
@@ -440,7 +458,7 @@ export default function StudySession({
           onClick={onExit}
           aria-label="保存进度并退出"
         >
-          <X size={22} />
+          <X size={22} aria-hidden="true" />
         </button>
         <span>{session.title}</span>
         <div className="study-track" role="progressbar" aria-label="本轮进度" aria-valuemin={0} aria-valuemax={session.queue.length} aria-valuenow={session.position}>
@@ -461,7 +479,7 @@ export default function StudySession({
             onClick={undoLast}
             aria-label="撤销上一次评分"
           >
-            <RotateCcw size={18} />
+            <RotateCcw size={18} aria-hidden="true" />
           </button>
         )}
       </header>
@@ -474,9 +492,13 @@ export default function StudySession({
           <span>{sourceLabel(entry)}</span>
         </div>
         <section
+          key={stepId}
           className={`study-question ${revealed ? "is-revealed" : ""}`}
           aria-label="学习卡片"
         >
+          <p className="sr-only" aria-live="polite">
+            {revealed && correct !== null ? (correct ? "答对了" : `这次没记住，正确答案是 ${entry.headword}`) : ""}
+          </p>
           <span className="question-instruction">
             {question.audio
               ? "听一听，再写下来"
@@ -494,7 +516,7 @@ export default function StudySession({
                 aria-label="播放听写发音"
                 aria-pressed={speaking}
               >
-                <Volume2 size={37} />
+                <Volume2 size={37} aria-hidden="true" />
               </button>
               <p className="audio-note" role="status">
                 {speaking ? "正在播放…" : "轻点播放 · 系统英语语音"}
@@ -512,6 +534,7 @@ export default function StudySession({
                   ? "english recall-word"
                   : "question-text"
               }
+              translate={question.inputMode === "reveal" ? "no" : undefined}
             >
               {question.prompt}
             </h1>
@@ -526,7 +549,7 @@ export default function StudySession({
                 onClick={() => speakSystem(entry.headword)}
                 aria-label="播放单词发音"
               >
-                <Volume2 size={18} />
+                <Volume2 size={18} aria-hidden="true" />
               </button>
             </div>
           )}
@@ -560,7 +583,9 @@ export default function StudySession({
                   autoCorrect="off"
                   autoCapitalize="none"
                   spellCheck={false}
-                  placeholder="输入完整拼写"
+                  placeholder="输入完整拼写…"
+                  name="answer"
+                  enterKeyHint="done"
                 />
               )}
               {question.inputMode === "textarea" && (
@@ -589,7 +614,7 @@ export default function StudySession({
               )}
               {hints > 0 && (
                 <p className="hint-text" role="status">
-                  <Lightbulb size={16} />
+                  <Lightbulb size={16} aria-hidden="true" />
                   {hint}
                 </p>
               )}
@@ -599,10 +624,10 @@ export default function StudySession({
             </>
           )}
           {revealed && (
-            <div className="answer-feedback" aria-live="polite">
+            <div className="answer-feedback">
               {correct !== null && (
                 <p className={correct ? "feedback-good" : "feedback-again"}>
-                  {correct ? <Check size={18} /> : <RotateCcw size={18} />}{" "}
+                  {correct ? <Check size={18} aria-hidden="true" /> : <RotateCcw size={18} aria-hidden="true" />}{" "}
                   {correct
                     ? hints
                       ? "借助提示答对了，再巩固一次"
@@ -621,6 +646,7 @@ export default function StudySession({
                     ? "answer-zh"
                     : "english answer-en"
                 }
+                translate={question.inputMode === "reveal" ? undefined : "no"}
               >
                 {question.answer}
               </h2>
@@ -638,7 +664,7 @@ export default function StudySession({
             </div>
           )}
         </section>
-        <div className="study-controls">
+        <div className="study-controls" ref={controls}>
           {!revealed ? (
             <>
               <div className="study-main-actions">
@@ -647,7 +673,7 @@ export default function StudySession({
                 </button>
                 <button className="primary" onClick={() => check()}>
                   {question.inputMode === "reveal" ? "显示词义" : "核对答案"}
-                  <ChevronRight size={18} />
+                  <ChevronRight size={18} aria-hidden="true" />
                 </button>
               </div>
               <button
@@ -655,7 +681,7 @@ export default function StudySession({
                 disabled={hints > 0}
                 onClick={() => setHints(1)}
               >
-                <Lightbulb size={15} />
+                <Lightbulb size={15} aria-hidden="true" />
                 {hints ? "已使用提示" : "给我一点提示"}
               </button>
             </>
@@ -668,12 +694,12 @@ export default function StudySession({
                 onClick={() => rate(1)}
               >
                 {saving ? "正在保存…" : "继续学习"}
-                <ChevronRight size={18} />
+                <ChevronRight size={18} aria-hidden="true" />
               </button>
             </div>
           ) : (
             <>
-              <p className="rating-instruction">这次回忆有多费力？</p>
+              <p className="rating-instruction">{hints ? "用了提示，这次最高记为「有些费力」" : "这次回忆有多费力？"}</p>
               <div className="rating-buttons">
                 {intervals.map((item) => (
                   <button
@@ -694,11 +720,11 @@ export default function StudySession({
         </div>
         <footer className="study-footer">
           <span>
-            <Headphones size={14} />R 播放
+            <Headphones size={14} aria-hidden="true" />R 播放
           </span>
           <span>空格核对 · 1–4 评分</span>
           <button className="text-button" onClick={onExit} disabled={saving}>
-            <ArrowLeft size={14} />
+            <ArrowLeft size={14} aria-hidden="true" />
             稍后继续
           </button>
         </footer>

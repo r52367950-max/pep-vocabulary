@@ -1,0 +1,21 @@
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/opt/node22/lib/node_modules/playwright/index.mjs');
+const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+const p = await ctx.newPage(); p.setDefaultTimeout(8000);
+let docs = 0; p.on('request', r => { if (r.resourceType() === 'document') docs++; });
+await p.goto(process.argv[2], { waitUntil: 'networkidle' }); await p.waitForSelector('.today-view');
+// Warm lazy chunks online (the dev server has no service worker).
+await p.locator('.mobile-nav button:has-text("阅读")').click(); await p.waitForSelector('.reading-shelf');
+await p.locator('.mobile-nav button:has-text("今日")').click(); await p.waitForTimeout(500);
+await p.locator('.practice-option:has-text("配对消除")').click(); await p.waitForTimeout(800); await p.goBack(); await p.waitForTimeout(800);
+await p.evaluate(() => { window.__marker = 1; });
+await ctx.setOffline(true);
+const out = [];
+await p.locator('.mobile-nav button:has-text("阅读")').click(); await p.waitForTimeout(500);
+await p.goBack(); await p.waitForTimeout(1200); out.push(['reading -> back', await p.locator('.today-view').isVisible()]);
+await p.locator('.practice-option:has-text("配对消除")').click(); await p.waitForTimeout(600);
+await p.goBack(); await p.waitForTimeout(1200); out.push(['match -> back', await p.locator('.today-view').isVisible()]);
+out.push(['same document', await p.evaluate(() => window.__marker === 1)], ['documents loaded', docs]);
+console.log(out);
+if (!out.slice(0, 3).every(([, ok]) => ok === true) || out[3][1] !== 1) process.exitCode = 1;
+await b.close();

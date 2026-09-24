@@ -241,7 +241,6 @@ export function buildStudyQueue(
         (bookOrder.get(right?.bookId || "") ?? 99) ||
       compareUnits(left?.unit || "", right?.unit || "") ||
       (left?.printedPage ?? Infinity) - (right?.printedPage ?? Infinity) ||
-      (left?.textbookOrder ?? Infinity) - (right?.textbookOrder ?? Infinity) ||
       Number(b.flags.highValue) - Number(a.flags.highValue) ||
       unitCollator.compare(a.headword, b.headword)
     );

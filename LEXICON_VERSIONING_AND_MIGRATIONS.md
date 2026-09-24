@@ -1,34 +1,22 @@
 # 词库版本与迁移
 
-## 版本
+## 当前实现
 
-- 词库数据：`1.0.0-rc.1`，位于 `public/data/v1/`。
-- 词条 schema：`1.0.0`。
-- 用户数据 schema：`1.0.0`。
-- D1 迁移：`drizzle/0000_curvy_newton_destine.sql`。
+- 词库版本与词条 schema：见 `public/data/v1/manifest.json`；发布资产位于 `public/data/v1/`。
+- 学习备份 schema：`lib/storage.ts` 中的 `USER_DATA_SCHEMA_VERSION`，当前为 `1.1.0`；恢复时支持 `1.0.0 → 1.1.0`，拒绝未知版本。
+- D1 迁移：保留 `drizzle/0000_curvy_newton_destine.sql`、`0001_flawless_human_cannonball.sql`、`0002_swift_cerise.sql`，顺序以迁移 journal 为准。新增结构变化使用兼容迁移，不删除已执行的记录。
+- Service Worker 使用构建生成的资源指纹；完整安装失败时保留旧 Worker，新 Worker 等待旧页面退出后接管。无需手工固定缓存版本号。
 
-## 稳定 ID
+词条 ID 来自规范化后的 `kind:lookup`，不依赖册次；同一词跨教材共享学习状态，册次与单元保留为多值来源。`apply` 与 `apply for` 是不同 ID。
 
-ID 来自规范化后的 `kind:lookup`，不依赖册次，因此同一词跨教材共享一个学习状态；册次/Unit 作为多值来源关系保留。短语和单词不合并，例如 `apply`、`apply for` 是不同 ID，但可通过 `relations.phrases` 关联。
+## 修改词库时
 
-## 升级流程
+保留来源证据与稳定 ID，运行数据审计和受影响的行为测试。仅改界面不重建词库。来源提取需要原始缓存，缺少输入时不得用不完整结果覆盖发布包。
 
-1. 新来源先写 raw/normalized 层并生成逐单元对账。
-2. 生成 `id-migration.json`：`oldId → newId | split[] | mergedInto | removed(reason)`。
-3. 运行数据审计和状态迁移回放；任何未知/禁止权利字段阻断发布。
-4. 发布新版本目录，保留上一版本 manifest 和 checksum，Service Worker 采用新 cache 名。
-5. 客户端先下载新 manifest，再原子切换；失败继续使用上一缓存。
-6. 用户卡片按迁移表更新，事件保留原 ID 和迁移注记；无法解析的卡片暂停而非丢弃。
+当前没有通用 `id-migration.json` 消费器，也没有自动词条拆分/合并流程。改变 ID、拆分或删除词条前，需一并实现兼容迁移，并在备份副本上验证卡片、事件、笔记与恢复；不能假定旧文档中的迁移方案已经实现。
 
-## 拆分与合并
-
-- 词条拆分为多个义项/词形时：原卡保留到主条，其余新条为 `unseen`，不得复制稳定度制造虚假掌握。
-- 多条合并时：选择最近事件的主 FSRS 状态；能力向量按事件重放重算，不简单取最大值。
-- 被拒绝内容：用户注释和历史事件仍保留为 tombstone，不再进入学习队列。
+设计这类迁移时：拆分不复制已有稳定度作为新词掌握状态；合并保留原始答题证据并明确调度规则；停止发布的词条仍需保留可解释的历史引用。具体协议随实际需求设计。
 
 ## 同步冲突与回滚
 
-- D1 使用 revision 乐观并发；409 后必须由用户选择拉取、导出或重试，不静默 last-write-wins。
-- 回滚只切换词库静态 manifest；用户事件 schema 不降级。必要时由 forward migration 兼容旧字段。
-- 所有迁移先在备份副本上执行，恢复测试通过后才更新 `meta` 中的 schemaVersion。
-
+D1 快照使用 revision 乐观并发；409 后先保留本机数据，再由用户选择导出、恢复或重试，不静默覆盖。回滚应用或词库不应降级用户事件 schema；必要时新增向前兼容迁移。
