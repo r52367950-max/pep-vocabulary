@@ -1,6 +1,6 @@
 const VERSION = "vocab-shell-v2";
 const PREFIX = "vocab-shell-";
-const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/data/v1/manifest.json", "/data/v1/index.json"];
+const SHELL = ["/", "/manifest.webmanifest", "/icons/app-192.png", "/icons/app-512.png", "/data/v1/manifest.json", "/data/v1/index.json"];
 
 function cacheable(request, response) {
   return response.ok && !response.redirected && !/\bno-store\b/i.test(response.headers.get("cache-control") || "") &&

@@ -332,12 +332,19 @@ html[data-theme="dark"] :is(.reading-cover, .reader-art) { background: var(--gro
 .course-picker option, .reading-filters option { background: var(--surface); color: var(--ink); }
 :is(.study-complete h1, .empty h3, .reading-empty h2, .question-text, .reading-card strong) { text-wrap: balance; }
 
-/* A pressed specimen closes each practice round; the red seal from the paintings marks the name. */
+/* A pressed specimen closes each practice round. */
 .complete-art { width: min(100%, 520px); aspect-ratio: 2 / 1; margin: 0 auto 30px; border-radius: 18px; background: #f2f1ec; }
 html[data-theme="dark"] .complete-art { filter: brightness(.84) saturate(.92); }
 @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .complete-art { filter: brightness(.84) saturate(.92); } }
-.brand { display: inline-flex; align-items: center; gap: 9px; }
-.brand-seal { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid #c43a2c; border-radius: 3px; color: #c43a2c; font-family: "Songti SC", STSong, "Noto Serif SC", "Source Han Serif SC", serif; font-size: .8125rem; font-weight: 600; letter-spacing: 0; line-height: 1; }
-html[data-theme="dark"] .brand-seal { border-color: #ff7a6b; color: #ff7a6b; }
-@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .brand-seal { border-color: #ff7a6b; color: #ff7a6b; } }
-@media (min-width: 761px) and (max-width: 1000px) { .brand { gap: 0; font-size: 0; } .brand-seal { width: 28px; height: 28px; font-size: 1rem; } }
+.brand { display: inline-flex; align-items: center; gap: 10px; }
+/* The brand mark sits on white with a hairline in light mode and on black in dark mode, like the app icon. */
+.brand-mark { flex-shrink: 0; display: block; }
+.brand-mark-ground { fill: #fff; stroke: rgba(0, 0, 0, 0.08); stroke-width: 1.5px; }
+.brand-mark-curve { stroke: #16181d; }
+html[data-theme="dark"] .brand-mark-ground { fill: #000; stroke: rgba(255, 255, 255, 0.14); }
+html[data-theme="dark"] .brand-mark-curve { stroke: #fff; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .brand-mark-ground { fill: #000; stroke: rgba(255, 255, 255, 0.14); }
+  html:not([data-theme="light"]) .brand-mark-curve { stroke: #fff; }
+}
+@media (min-width: 761px) and (max-width: 1000px) { .brand-name { display: none; } }

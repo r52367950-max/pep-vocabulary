@@ -1,5 +1,7 @@
 # Interface icons
 
+The app icon and brand mark (`public/icons/icon-source.svg`, `public/favicon.svg`, `BrandMark` in `components/studio/shared.tsx`) are original to this project.
+
 Feature and navigation symbols use ten unmodified regular-weight outlines from [Phosphor Icons](https://github.com/phosphor-icons/core/tree/main/assets) 2.1.1, plus the matching fill-weight outlines for the five navigation symbols (shown for the current page), retrieved 2026-09-24. Action icons use the existing Lucide dependency (ISC), drawn at the same 1.5/24 stroke ratio as Phosphor regular. No Apple font files, SF Symbols, or Apple artwork are distributed.
 
 MIT License
