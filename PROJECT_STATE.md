@@ -1,15 +1,16 @@
 # 项目状态入口
 
-核对日期：2026-09-24；基于 GitHub `main` 的 `5f81603`。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
+核对日期：2026-09-29；基于分支 `claude/wizardly-faraday-yydubr`（2.4.0 升级）。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.1.1 | `package.json` |
+| 应用版本 | 2.4.0 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0 | `public/data/v1/manifest.json` |
-| 学习备份 schema | 1.1.0 | `lib/storage.ts` 的 `USER_DATA_SCHEMA_VERSION` |
+| 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/storage.ts` 的 `USER_DATA_SCHEMA_VERSION` |
+| AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
 | 本机个人文章 | 独立 IndexedDB；不包含在学习 JSON 备份中 | `lib/personal-readings.ts`、`lib/storage.ts` |
 | 云端备份 | 带 revision 冲突保护的手动快照，尚无自动事件合并 | `app/api/sync/route.ts` |
-| 数据库迁移 | 0000、0001、0002 | `drizzle/` 与迁移 journal |
+| 数据库迁移 | 0000–0003（0003 新建 `ai_preferences`） | `drizzle/` 与迁移 journal |
 
 当前仓库功能见 [README](README.md)，开发约定见 [AGENTS.md](AGENTS.md)。版本、测试数量和数据缺口以后以对应代码、生成数据与本次执行结果为准，不把这里的快照作为永久常量。
 
@@ -19,5 +20,6 @@
 - 自动多设备合并、词条拆分/合并的完整 ID 迁移尚未实现。文档中的方案不代表现成功能，也不自动构成下一项任务。
 - 历史浏览器验收、设备限制和测试记录见 [文档索引](docs/README.md)。根据本次改动与可用环境确定验证，不继承某轮工具故障或暂停安排。
 - 当前部署版本、访问成员、实际身份同步与设备表现需要独立核实。
+- 2.4.0 的 AI 功能只用模拟回答和离线 harness 验证过；真实服务商的质量、用量与缓存命中需用 `scripts/ai-harness.mjs --live` 确认。见 [2.4.0 更新报告](docs/UPGRADE_REPORT_2.4.0.md)。
 
 旧 A–G 关卡、固定下一步任务和 8 月份通过数量已从状态入口移除；原文可由 Git 历史追溯。
