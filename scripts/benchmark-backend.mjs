@@ -5,7 +5,7 @@ import ts from 'typescript';
 import { resolveLexiconEvidence } from '../lib/assistant/core.ts';
 
 // Benchmark the exact old resolver, independently of unrelated module changes.
-const baseline = process.argv[2] || 'b770478452e1b42ca5ee93cfb8e8fb7d77d25b94';
+const baseline = process.argv[2] || 'e2e9e25b350e9cbaf7b2fa6c5da4063cc26d2a70';
 const source = execFileSync('git', ['show', `${baseline}:lib/assistant/core.ts`], { encoding: 'utf8' });
 const start = source.indexOf('export function resolveLexiconEvidence');
 const end = source.indexOf('\nfunction privateIpv4', start);
