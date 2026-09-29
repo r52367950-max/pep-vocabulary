@@ -75,7 +75,7 @@ IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
 - DeepSeek 或 OpenAI-compatible 服务商、经安全校验的 HTTPS Base URL、模型、每日调用上限和超时；
 - API Key 的 AES-GCM 密文、随机 96-bit IV 与加密版本。
 
-AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`，不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；更换服务商或规范化 Base URL 时必须重新提交 API Key，禁止把已保存密钥转发到新目标。
+AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`（可选的 `AI_CONFIG_ENCRYPTION_KEYS` 与 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE` 启用版本化密钥：`encryption_version=3` 时 `encrypted_api_key` 为 `kid:base64`，表结构不变，见 `AI_ASSISTANT_DEPLOYMENT.md`），不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；更换服务商或规范化 Base URL 时必须重新提交 API Key，禁止把已保存密钥转发到新目标。
 
 `ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。四类词条助手接口及阅读分类接口按分钟和每日双重限流，模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
 

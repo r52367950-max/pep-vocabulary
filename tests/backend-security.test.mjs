@@ -189,7 +189,7 @@ function workerRuntime({ missingManifest = false, quotaFailure = false, privateS
     },
   };
   vm.runInNewContext(readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8'), runtime);
-  return { buckets, async install() { let pending; handlers.install({ waitUntil(promise) { pending = promise; } }); await pending; }, async download() { let pending, reply; handlers.message({ data: { type: 'PREPARE_LEXICON' }, ports: [{ postMessage(value) { reply = value; } }], waitUntil(promise) { pending = promise; } }); await pending; return reply; } };
+  return { buckets, async install() { let pending; handlers.install({ waitUntil(promise) { pending = promise; } }); await pending; }, async download() { let pending, reply; handlers.message({ data: { type: 'PREPARE_LEXICON' }, ports: [{ postMessage(value) { reply = value; } }], source: { url: 'https://app.test/' }, waitUntil(promise) { pending = promise; } }); await pending; return reply; } };
 }
 
 test('offline installation rejects missing assets, cache quota failures and non-cacheable shells', async () => {

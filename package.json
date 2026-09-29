@@ -24,16 +24,16 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "0.468.0",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "ts-fsrs": "^5.2.3",
+    "ts-fsrs": "5.2.3",
     "fflate": "0.7.5"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.54.9",
-    "@cloudflare/workers-types": "^5.20260914.1",
+    "@cloudflare/workers-types": "5.20260914.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
@@ -43,7 +43,7 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.3.5",
-    "fake-indexeddb": "^6.2.5",
+    "fake-indexeddb": "6.2.5",
     "react-server-dom-webpack": "19.2.8",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
