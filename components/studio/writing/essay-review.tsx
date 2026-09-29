@@ -8,6 +8,10 @@ import { locateIssues } from "@/lib/writing";
 type Issue = { quote: string; type: string; suggestion: string; reason: string };
 type TargetVerdict = { wordId: string; status: "good" | "issue" | "missing"; note: string };
 type Upgrade = { original: string; better: string; note: string };
+type Band = { level: number; range: [number, number]; reason: string | null };
+type Structure = { outline: { part: string; comment: string }[]; cohesion: string[]; comment: string | null };
+type Sentences = { strong: { quote: string; pattern: string; comment: string | null }[]; rewrites: { original: string; better: string; pattern: string; note: string | null }[]; comment: string | null };
+const BAND_NAMES = ["", "第一档", "第二档", "第三档", "第四档", "第五档"];
 
 const ISSUE_TYPES: Record<string, string> = {
   grammar: "语法", spelling: "拼写", "word-choice": "用词", collocation: "搭配", coherence: "衔接", punctuation: "标点", style: "表达",
@@ -50,6 +54,10 @@ export default function EssayReview({ essay, result, previous, targets, words, r
   const needsWork = verdicts.filter((item) => item.status === "issue").map((item) => item.wordId);
   // Target words the model did not mention are listed too, as not yet judged.
   const judged = new Set(verdicts.map((item) => item.wordId));
+  const band = result.band as Band | null | undefined;
+  const structure = result.structure as Structure | null | undefined;
+  const sentences = result.sentences as Sentences | null | undefined;
+  const continuation = result.continuation as { linkage: string | null; plot: string | null } | null | undefined;
   return (
     <article className="essay-review" aria-labelledby="review-title">
       <header className="essay-score">
@@ -73,6 +81,12 @@ export default function EssayReview({ essay, result, previous, targets, words, r
           </div>
         ))}
       </dl>
+      {band && (
+        <p className="essay-band">
+          <strong>{BAND_NAMES[band.level]}（{band.range[0]}–{band.range[1]} 分）</strong>
+          {band.reason && <span>{band.reason}</span>}
+        </p>
+      )}
       {typeof result.overall === "string" && <p className="ai-lead essay-overall">{result.overall}</p>}
 
       <div className="essay-body">
@@ -92,6 +106,60 @@ export default function EssayReview({ essay, result, previous, targets, words, r
           </ol>
         </section>
       </div>
+
+      {continuation && (continuation.linkage || continuation.plot) && (
+        <section className="essay-section" aria-labelledby="continuation-title">
+          <h2 id="continuation-title">续写衔接与情节</h2>
+          <dl className="essay-pairs">
+            {continuation.linkage && <div><dt>与原文衔接</dt><dd>{continuation.linkage}</dd></div>}
+            {continuation.plot && <div><dt>情节与描写</dt><dd>{continuation.plot}</dd></div>}
+          </dl>
+        </section>
+      )}
+
+      {structure && (structure.outline.length > 0 || structure.comment) && (
+        <section className="essay-section" aria-labelledby="structure-title">
+          <h2 id="structure-title">结构与衔接</h2>
+          {structure.outline.length > 0 && (
+            <dl className="essay-pairs">
+              {structure.outline.map((item, i) => <div key={i}><dt>{item.part}</dt><dd>{item.comment}</dd></div>)}
+            </dl>
+          )}
+          {structure.cohesion.length > 0 && (
+            <p className="essay-cohesion"><span>用到的衔接：</span>{structure.cohesion.map((word, i) => <span key={i} className="english">{word}</span>)}</p>
+          )}
+          {structure.comment && <p className="ai-note">{structure.comment}</p>}
+        </section>
+      )}
+
+      {sentences && (sentences.strong.length > 0 || sentences.rewrites.length > 0 || sentences.comment) && (
+        <section className="essay-section" aria-labelledby="sentences-title">
+          <h2 id="sentences-title">句式与难句</h2>
+          {sentences.comment && <p className="ai-note">{sentences.comment}</p>}
+          {sentences.strong.length > 0 && (
+            <ul className="essay-sentences">
+              {sentences.strong.map((item, i) => (
+                <li key={i}><span className="essay-pattern">{item.pattern}</span><p className="english">{item.quote}</p>{item.comment && <small>{item.comment}</small>}</li>
+              ))}
+            </ul>
+          )}
+          {sentences.rewrites.length > 0 && (
+            <>
+              <h3 className="essay-subhead">可以升级的句子</h3>
+              <ul className="essay-sentences">
+                {sentences.rewrites.map((item, i) => (
+                  <li key={i}>
+                    <span className="essay-pattern">{item.pattern}</span>
+                    <p><span className="english essay-before">{item.original}</span></p>
+                    <p><strong className="english">{item.better}</strong></p>
+                    {item.note && <small>{item.note}</small>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
 
       {targets.length > 0 && (
         <section className="essay-section" aria-labelledby="targets-review">

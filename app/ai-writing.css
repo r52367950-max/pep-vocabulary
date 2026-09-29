@@ -258,3 +258,20 @@
 .sentence-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .sentence-actions .secondary { min-height: 40px; padding: 8px 16px; gap: 6px; }
 .sentence-saved { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
+
+/* Deep review: band, structure, sentences. */
+.essay-band { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--blue-pale); max-width: 70ch; line-height: 1.6; }
+.essay-band strong { color: var(--blue-ink); font-weight: 600; }
+.essay-pairs { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.essay-pairs > div { display: grid; grid-template-columns: 7em 1fr; gap: 12px; line-height: 1.6; }
+.essay-pairs dt { font-weight: 500; color: var(--muted-strong); }
+.essay-cohesion { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; font-size: .875rem; color: var(--muted-strong); }
+.essay-cohesion .english { font-family: var(--font-reading); font-size: 1rem; color: var(--ink); padding: 1px 8px; border-radius: 999px; background: var(--grouped); }
+.essay-subhead { font-size: .875rem; font-weight: 600; color: var(--muted-strong); margin-top: 6px; }
+.essay-sentences { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.essay-sentences li { display: flex; flex-direction: column; gap: 3px; padding-left: 14px; border-left: 2px solid var(--line); }
+.essay-sentences p { font-family: var(--font-reading); font-size: 1.0625rem; line-height: 1.6; }
+.essay-sentences small { color: var(--muted-strong); font-size: .8125rem; }
+.essay-pattern { align-self: flex-start; font-size: .6875rem; font-weight: 600; color: var(--green-ink); padding: 1px 8px; border-radius: 999px; background: var(--green-pale); }
+.essay-before { color: var(--muted); }
+@media (max-width: 760px) { .essay-pairs > div { grid-template-columns: 1fr; gap: 2px; } }

@@ -11,7 +11,7 @@ POST /api/assistant/explain            词条讲解；focus 可选 meaning/gramm
 POST /api/assistant/check-sentence     造句检查
 POST /api/assistant/generate-practice  出题（1–10 题）
 POST /api/assistant/contrast-words     易混词辨析（2–4 词）
-POST /api/assistant/review-essay       作文批改（正文 ≤ 8,000 字符，目标词 ≤ 12）
+POST /api/assistant/review-essay       作文深度批改（正文 ≤ 8,000 字符，题目或读后续写原文 ≤ 4,000 字符，目标词 ≤ 12）
 POST /api/assistant/mnemonic           词根词缀与联想记忆
 POST /api/assistant/story              用 3–12 个词生成短文与理解题
 POST /api/assistant/diagnose           学习诊断与一周计划
@@ -31,7 +31,7 @@ POST /api/assistant/diagnose           学习诊断与一周计划
 
 请求按“最稳定的内容在前”排列，以便服务商的前缀缓存命中（DeepSeek 自动磁盘缓存，OpenAI 超过 1,024 token 自动缓存）：
 
-1. `SYSTEM_PROMPT`（`lib/assistant/prompt.ts`）：所有任务、所有请求完全相同，包含规则和八个任务的输出形状，约 2,400 token。
+1. `SYSTEM_PROMPT`（`lib/assistant/prompt.ts`）：所有任务、所有请求完全相同，包含规则、八个任务的输出形状和作文评分方法（[依据](docs/ESSAY_RUBRIC.md)），约 3,100 token。
 2. 学习画像：键顺序固定的 JSON；浏览器在同一天内、新增复习不足 30 次时复用同一份，保证字节相同。
 3. 本次任务、输入与证据。
 

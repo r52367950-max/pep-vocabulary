@@ -11,6 +11,7 @@
  * Nothing request-specific may be added to SYSTEM_PROMPT, or the shared prefix breaks.
  */
 import { stableJson } from "../stable-json";
+import { ESSAY_RUBRIC } from "./rubric";
 
 export { stableJson };
 
@@ -32,7 +33,7 @@ export const OUTPUT_SHAPES: Record<AssistantTask, string> = {
   "check-sentence": `{"verdict":"correct|needs-revision|uncertain","grammar":{"status":"ok|issue|uncertain","feedback":"string"},"collocation":{"status":"ok|issue|uncertain","feedback":"string"},"style":{"status":"ok|issue|uncertain","feedback":"string"},"revision":"string or null","personalNote":"string or null","evidenceIds":["pep-..."],"limitations":["string"]}`,
   "generate-practice": `{"title":"string","focusReason":"string","items":[{"type":"choice|gap|rewrite|sentence","prompt":"string","options":["string"],"answer":"string","explanation":"string","evidenceIds":["pep-..."]}],"evidenceIds":["pep-..."],"limitations":["string"]}`,
   "contrast-words": `{"summary":"string","differences":[{"wordId":"pep-...","use":"string","pattern":"string","contrast":"string"}],"examplePairs":[{"sentences":["string"],"note":"string"}],"personalNote":"string or null","evidenceIds":["pep-..."],"limitations":["string"]}`,
-  "review-essay": `{"overall":"string","scores":{"content":0,"vocabulary":0,"grammar":0,"structure":0},"estimatedScore":0,"issues":[{"quote":"string","type":"grammar|spelling|word-choice|collocation|coherence|punctuation|style","suggestion":"string","reason":"string"}],"targetWords":[{"wordId":"pep-...","status":"good|issue|missing","note":"string"}],"upgrades":[{"original":"string","better":"string","note":"string"}],"revised":"string","nextSteps":["string"],"evidenceIds":["pep-..."],"limitations":["string"]}`,
+  "review-essay": `{"overall":"string","band":{"level":1,"reason":"string"},"scores":{"content":0,"vocabulary":0,"grammar":0,"structure":0},"estimatedScore":0,"structure":{"outline":[{"part":"string","comment":"string"}],"cohesion":["string"],"comment":"string"},"sentences":{"strong":[{"quote":"string","pattern":"string","comment":"string"}],"rewrites":[{"original":"string","better":"string","pattern":"string","note":"string"}],"comment":"string"},"continuation":{"linkage":"string","plot":"string"},"issues":[{"quote":"string","type":"grammar|spelling|word-choice|collocation|coherence|punctuation|style","suggestion":"string","reason":"string"}],"targetWords":[{"wordId":"pep-...","status":"good|issue|missing","note":"string"}],"upgrades":[{"original":"string","better":"string","note":"string"}],"revised":"string","nextSteps":["string"],"evidenceIds":["pep-..."],"limitations":["string"]}`,
   mnemonic: `{"breakdown":[{"part":"string","meaning":"string"}],"memoryHook":"string","story":"string","family":["string"],"confidence":"high|medium|low","evidenceIds":["pep-..."],"limitations":["string"]}`,
   story: `{"title":"string","paragraphs":["string"],"usedWordIds":["pep-..."],"glossary":[{"wordId":"pep-...","meaningInContext":"string"}],"questions":[{"prompt":"string","options":["string"],"answerIndex":0,"explanation":"string"}],"evidenceIds":["pep-..."],"limitations":["string"]}`,
   diagnose: `{"summary":"string","strengths":["string"],"problems":[{"pattern":"string","evidence":"string","advice":"string"}],"plan":[{"day":"string","focus":"string","minutes":0}],"wordsToFocus":["pep-..."],"evidenceIds":["pep-..."],"limitations":["string"]}`,
@@ -59,13 +60,17 @@ const TASK_GUIDES: Record<AssistantTask, string> = {
     "examplePairs 给 2–4 组对比例句，每组说明为什么此处只能用某个词。若画像显示学生曾把其中一个词误作另一个，在 personalNote 里点明。",
   ].join("\n"),
   "review-essay": [
-    "批改一篇学生英语作文。input.genre：practical 应用文（书信、通知等，满分 15）；continuation 读后续写（满分 25）；free 自由写作（按 25 分估计）。input.prompt 是题目要求，input.essay 是作文原文，input.targetWordIds 是本次要求使用的目标词。",
-    "scores 四项各 0–5 分：content 内容与切题，vocabulary 词汇丰富与准确，grammar 语法与拼写，structure 结构与衔接。estimatedScore 按高考评分档次估计总分，只写数字。",
+    "按下方“高考书面表达评分方法”深度批改一篇学生英语作文。input.genre：practical 应用文（满分 15）；continuation 读后续写（满分 25，input.prompt 里有原文和段首句）；free 自由写作（按读后续写的 25 分量表估计）。input.prompt 是题目要求，input.essay 是作文原文，input.wordIds 是本次要求使用的目标词。",
+    "band.level 是 1–5 的档次（5 最高），band.reason 用两三句话说明为什么定这一档、档内偏高还是偏低。estimatedScore 必须落在该档的分数范围内，只写数字。scores 四项各 0–5 分：content 内容与切题，vocabulary 词汇丰富与准确，grammar 语法与拼写，structure 结构与衔接。",
+    "structure.outline 按作文实际的段落或部分逐一点评（part 写“开头”“第 2 段”“结尾”等）；structure.cohesion 列出作文里实际用到的衔接词或手段（逐字引用，没有就为空数组）；structure.comment 总结结构与衔接的主要问题和改法。",
+    "sentences.strong 列出作文里语法正确、表意清楚的复杂句（quote 逐字引用，pattern 写结构名称，如“定语从句”“非谓语作状语”“with 复合结构”“倒装”），最多 6 条；sentences.rewrites 挑 2–4 个可以升级的简单句，original 逐字引用，better 给改写，pattern 写用到的结构，note 说明好处；sentences.comment 评价句式的多样性。",
+    "continuation 只在读后续写时填写：linkage 评价与原文情境、人物和两段段首句的衔接，plot 评价情节是否合理完整、描写是否具体；其他文体 continuation 为 null。",
     "issues 逐条列出错误，按出现顺序，最多 30 条。quote 必须逐字复制作文中的原文片段（3–60 个字符，不要改动大小写和标点），suggestion 给改法，reason 用中文说明原因。没有错误时 issues 为空数组。",
     "targetWords 对每个目标词逐一给出 status：good 用得恰当，issue 用了但有问题，missing 没有用到；note 说明理由或给出可以怎样用。",
-    "upgrades 最多 8 条表达升级：original 逐字引用原文，better 给更好的写法（优先使用高中课标词汇和学生学过的词），note 说明好在哪里。",
-    "revised 给出保留学生原意和结构的修改稿，只修正错误并做少量润色，不要改写成另一篇文章。nextSteps 给 2–4 条下次写作可以练习的具体建议，可结合画像中的常见错误。",
+    "upgrades 最多 8 条词汇与表达升级：original 逐字引用原文，better 给更好的写法（优先使用高中课标词汇和学生学过的词），note 说明好在哪里。",
+    "revised 给出保留学生原意和结构的修改稿，修正错误并融入上面的部分升级，不要改写成另一篇文章。nextSteps 给 2–4 条下次写作可以练习的具体建议，可结合画像中的常见错误。",
     "评分要严格但鼓励，overall 用 2–4 句话先说优点再说最需要改进的一点。",
+    ESSAY_RUBRIC,
   ].join("\n"),
   mnemonic: [
     "为一个词条设计记忆方法。breakdown 按真实的词根、前缀、后缀拆分，并给出每部分的含义；只有确实可靠的词源才写进 breakdown，无法可靠拆分时 breakdown 为空数组。",

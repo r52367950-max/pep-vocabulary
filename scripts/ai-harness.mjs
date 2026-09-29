@@ -41,6 +41,8 @@ function checkExpectations(expect = {}, result) {
   if (expect.personalNote && !result.personalNote) failures.push('personalNote missing');
   if (expect.verdict && result.verdict !== expect.verdict) failures.push(`verdict ${result.verdict} ≠ ${expect.verdict}`);
   if (expect.minIssues && (result.issues?.length || 0) < expect.minIssues) failures.push(`only ${result.issues?.length || 0} issues`);
+  if (expect.band && !result.band) failures.push('band missing');
+  if (expect.sentences && !(result.sentences?.strong?.length || result.sentences?.rewrites?.length)) failures.push('sentence analysis missing');
   return failures;
 }
 

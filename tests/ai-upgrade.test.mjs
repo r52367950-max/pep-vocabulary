@@ -273,3 +273,37 @@ test('the offline prompt harness builds every case with the shared prefix', asyn
   assert.equal(run.status, 0, run.stderr);
   assert.doesNotMatch(run.stdout, /DIFFERENT/);
 });
+
+test('deep essay review follows the Gaokao bands and anchors sentence analysis in the essay', () => {
+  assert.match(SYSTEM_PROMPT, /第五档 13–15/);
+  assert.match(SYSTEM_PROMPT, /第五档 21–25/);
+  assert.match(SYSTEM_PROMPT, /先通读全文，按整体印象定档/);
+  const essay = 'When I opened the door, I saw my mother standing there. She smiled. I was very happy. Tears in her eyes, she hugged me.';
+  const request = parseAssistantRequest('review-essay', { genre: 'continuation', prompt: '原文……Paragraph 1: When I opened the door, ...', essay });
+  const evidence = [];
+  const result = sanitizeModelResult('review-essay', JSON.stringify({
+    overall: '情节完整。', band: { level: 4, reason: '衔接自然，句式较多样。' },
+    scores: { content: 4, vocabulary: 3, grammar: 4, structure: 4 }, estimatedScore: 24,
+    structure: { outline: [{ part: '第 1 段', comment: '承接段首句。' }], cohesion: ['When', 'however'], comment: '段内衔接可以更丰富。' },
+    sentences: {
+      strong: [{ quote: 'Tears in her eyes, she hugged me.', pattern: '独立主格', comment: '生动。' }, { quote: 'Not in the essay at all.', pattern: '倒装', comment: 'x' }],
+      rewrites: [{ original: 'I was very happy.', better: 'Overwhelmed with joy, I could hardly say a word.', pattern: '非谓语作状语', note: '更有画面感。' }],
+      comment: '有独立主格，但短句偏多。',
+    },
+    continuation: { linkage: '与第一段段首句衔接自然。', plot: '情节合理。' },
+    issues: [], targetWords: [], upgrades: [], revised: essay, nextSteps: ['多用心理描写。'], evidenceIds: [],
+  }), evidence, 8, request);
+  assert.deepEqual(result.band, { level: 4, range: [16, 20], reason: '衔接自然，句式较多样。' });
+  assert.equal(result.estimatedScore, 20, 'score is kept inside the chosen band');
+  assert.deepEqual(result.structure.cohesion, ['When'], 'cohesion devices must appear in the essay');
+  assert.equal(result.sentences.strong.length, 1);
+  assert.equal(result.sentences.rewrites[0].pattern, '非谓语作状语');
+  assert.equal(result.continuation.plot, '情节合理。');
+  assert.match(result.limitations.at(-1), /略去 1 条/);
+  const practical = sanitizeModelResult('review-essay', JSON.stringify({
+    overall: 'ok', band: { level: 5 }, scores: { content: 5, vocabulary: 5, grammar: 5, structure: 5 }, estimatedScore: 9,
+    continuation: { linkage: 'x', plot: 'y' }, issues: [], targetWords: [], upgrades: [], revised: 'x', nextSteps: [], evidenceIds: [],
+  }), evidence, 8, parseAssistantRequest('review-essay', { genre: 'practical', essay: 'Dear Tom, welcome to our school.' }));
+  assert.deepEqual([practical.band.range, practical.estimatedScore, practical.continuation], [[13, 15], 13, null]);
+  assert.equal(parseAssistantRequest('review-essay', { essay: 'A valid essay text here.', prompt: 'x'.repeat(4000) }).prompt.length, 4000);
+});

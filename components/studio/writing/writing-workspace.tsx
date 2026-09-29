@@ -145,8 +145,9 @@ function WritingSetup({ data, initialTargets, onCreate }: { data: Vocabulary; in
       </div>
       <p className="ai-note">{WRITING_GENRES[genre].detail}，目标 {WRITING_GENRES[genre].range[0]}–{WRITING_GENRES[genre].range[1]} 词。</p>
       <label className="ai-field">
-        <span>题目要求</span>
-        <textarea rows={3} maxLength={1200} value={prompt} onChange={(event) => setPrompt(event.target.value)} />
+        <span>{genre === "continuation" ? "原文与两段段首句" : "题目要求"}</span>
+        <textarea rows={genre === "continuation" ? 8 : 3} maxLength={4000} value={prompt} onChange={(event) => setPrompt(event.target.value)}
+          placeholder={genre === "continuation" ? "粘贴读后续写的原文和两段开头句，AI 会据此评价衔接与情节。" : undefined} />
       </label>
       <div className="writing-samples">
         <span>换个题目：</span>

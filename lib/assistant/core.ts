@@ -1,4 +1,5 @@
 import { ASSISTANT_TASKS, buildUserMessage, SYSTEM_PROMPT, type AssistantTask } from "./prompt";
+import { bandsFor } from "./rubric";
 
 export { ASSISTANT_TASKS, type AssistantTask };
 export type AiProvider = "deepseek" | "openai-compatible";
@@ -207,7 +208,7 @@ export function parseAssistantRequest(task: AssistantTask, value: unknown): Pars
       task,
       wordIds: body.wordIds === undefined || (Array.isArray(body.wordIds) && !body.wordIds.length) ? [] : wordIds(body.wordIds, 1, 12),
       genre: enumValue(body.genre, ["practical", "continuation", "free"] as const, "free"),
-      prompt: body.prompt === undefined || body.prompt === "" ? null : boundedString(body.prompt, "prompt", 1200),
+      prompt: body.prompt === undefined || body.prompt === "" ? null : boundedString(body.prompt, "prompt", 4000),
       essay: boundedString(body.essay, "essay", 8000, 20),
       masteryTags: tags,
     };
@@ -587,13 +588,55 @@ export function sanitizeModelResult(task: AssistantTask, content: string, eviden
       seen.add(wordId);
       return [{ wordId, status: outputEnum(item.status, ["good", "issue", "missing"] as const, `targetWords[${index}].status`), note: cleanOutputText(item.note, `targetWords[${index}].note`, 1000) }];
     });
-    const outOf = request?.task === "review-essay" && request.genre === "practical" ? 15 : 25;
+    const genre = request?.task === "review-essay" ? request.genre : "free";
+    const outOf = genre === "practical" ? 15 : 25;
+    // The score must sit inside the band the model chose; a missing band keeps the older shape.
+    const bandRecord = raw.band && typeof raw.band === "object" ? outputRecord(raw.band, "band") : null;
+    const level = bandRecord ? outputInteger(bandRecord.level, "band.level", 1, 5) : null;
+    const range = level ? bandsFor(genre)[level - 1] : null;
+    const score = outputInteger(raw.estimatedScore, "estimatedScore", 0, outOf);
+    const structureRecord = raw.structure && typeof raw.structure === "object" ? outputRecord(raw.structure, "structure") : null;
+    const sentenceRecord = raw.sentences && typeof raw.sentences === "object" ? outputRecord(raw.sentences, "sentences") : null;
+    const continuationRecord = genre === "continuation" && raw.continuation && typeof raw.continuation === "object" ? outputRecord(raw.continuation, "continuation") : null;
     result = {
       kind: task,
       overall: cleanOutputText(raw.overall, "overall", 2000),
+      band: level && range ? { level, range: [range[0], range[1]], reason: nullableText(bandRecord!.reason, "band.reason", 1200) } : null,
       scores: Object.fromEntries((["content", "vocabulary", "grammar", "structure"] as const).map((key) => [key, outputInteger(scores[key], `scores.${key}`, 0, 5)])),
-      estimatedScore: outputInteger(raw.estimatedScore, "estimatedScore", 0, outOf),
+      estimatedScore: range ? Math.min(range[1], Math.max(range[0], score)) : score,
       outOf,
+      structure: structureRecord ? {
+        outline: items(structureRecord.outline, "structure.outline", 10).map((value, index) => {
+          const item = outputRecord(value, `structure.outline[${index}]`);
+          return { part: cleanOutputText(item.part, `structure.outline[${index}].part`, 40), comment: cleanOutputText(item.comment, `structure.outline[${index}].comment`, 800) };
+        }),
+        cohesion: outputStringArray(items(structureRecord.cohesion, "structure.cohesion", 16), "structure.cohesion", 16, 80).filter(located),
+        comment: nullableText(structureRecord.comment, "structure.comment", 1200),
+      } : null,
+      sentences: sentenceRecord ? {
+        strong: items(sentenceRecord.strong, "sentences.strong", 8).flatMap((value, index) => {
+          const item = outputRecord(value, `sentences.strong[${index}]`);
+          const quote = cleanOutputText(item.quote, `sentences.strong[${index}].quote`, 600);
+          if (!located(quote)) { dropped++; return []; }
+          return [{ quote, pattern: cleanOutputText(item.pattern, `sentences.strong[${index}].pattern`, 60), comment: nullableText(item.comment, `sentences.strong[${index}].comment`, 600) }];
+        }),
+        rewrites: items(sentenceRecord.rewrites, "sentences.rewrites", 6).flatMap((value, index) => {
+          const item = outputRecord(value, `sentences.rewrites[${index}]`);
+          const original = cleanOutputText(item.original, `sentences.rewrites[${index}].original`, 600);
+          if (!located(original)) { dropped++; return []; }
+          return [{
+            original,
+            better: cleanOutputText(item.better, `sentences.rewrites[${index}].better`, 800),
+            pattern: cleanOutputText(item.pattern, `sentences.rewrites[${index}].pattern`, 60),
+            note: nullableText(item.note, `sentences.rewrites[${index}].note`, 800),
+          }];
+        }),
+        comment: nullableText(sentenceRecord.comment, "sentences.comment", 1200),
+      } : null,
+      continuation: continuationRecord ? {
+        linkage: nullableText(continuationRecord.linkage, "continuation.linkage", 1200),
+        plot: nullableText(continuationRecord.plot, "continuation.plot", 1200),
+      } : null,
       issues,
       targetWords,
       upgrades,
