@@ -22,8 +22,7 @@ import {
 import { useBackGuard } from "@/hooks/use-back-guard";
 import { useVocabulary } from "@/hooks/use-vocabulary";
 import { notify, useToastMessage } from "@/hooks/toast-store";
-import { buildStudyQueue, summarizeStudy, type StudyMode } from "@/lib/study";
-import { studyStats } from "@/lib/progress";
+import { buildStudyQueue, selectEntries, summarizeStudy, type StudyMode } from "@/lib/study";
 import {
   SESSION_KEY,
   restoreSession,
@@ -129,22 +128,29 @@ export default function VocabApp() {
   // While practising, the Today plan is off screen: recount it in a background render after each
   // answer rather than before the next card can paint. Elsewhere it stays in step with the data.
   const deferredCards = useDeferredValue(data.cards);
-  const deferredEvents = useDeferredValue(data.events);
+  const deferredHistory = useDeferredValue(data.history);
   const offscreen = session !== null || learn !== null;
   const planCards = offscreen ? deferredCards : data.cards;
-  const planEvents = offscreen ? deferredEvents : data.events;
+  const planHistory = offscreen ? deferredHistory : data.history;
+  // One computation per data change and local date: Today and Activity read the same object.
   const stats = useMemo(
-    () => studyStats(planEvents, new Date(clock)),
-    [planEvents, clock],
+    () => planHistory.stats(new Date(clock)),
+    [planHistory, clock],
+  );
+  // The book/unit selection does not depend on cards, so answers and clock ticks reuse it.
+  const scope = useMemo(
+    () => selectEntries(data.index, { bookId, unit }),
+    [data.index, bookId, unit],
   );
   const summary = useMemo(
     () =>
       summarizeStudy(data.index, planCards, {
         bookId,
         unit,
+        selected: scope,
         now: new Date(clock),
       }),
-    [data.index, planCards, bookId, unit, clock],
+    [data.index, planCards, bookId, unit, scope, clock],
   );
   const budget = Math.max(
     0,
@@ -166,6 +172,7 @@ export default function VocabApp() {
       buildStudyQueue(data.index, planCards, {
         bookId,
         unit,
+        selected: scope,
         mode: "daily",
         limit: Math.min(
           60,
@@ -179,6 +186,7 @@ export default function VocabApp() {
       planCards,
       bookId,
       unit,
+      scope,
       data.settings.dailyMinutes,
       newLimit,
       clock,
@@ -221,13 +229,13 @@ export default function VocabApp() {
         restoreSession(
           sessionStorage.getItem(SESSION_KEY),
           new Set(data.index.map((e) => e.id)),
-          data.events,
+          data.history,
         ),
       );
     } catch {
       /* Learning works when tab checkpoint storage is unavailable. */
     }
-  }, [data.loading, data.index, data.events]);
+  }, [data.loading, data.index, data.history]);
   useEffect(() => {
     window.scrollTo(0, 0);
     heading.current?.focus({ preventScroll: true });
@@ -288,6 +296,7 @@ export default function VocabApp() {
         : buildStudyQueue(data.index, data.cards, {
             bookId,
             unit,
+            selected: scope,
             mode,
             limit: 20,
             newLimit: 20,
@@ -313,7 +322,7 @@ export default function VocabApp() {
     setSelected(null);
     setResume(null);
     checkpoint(next);
-  }, [data.cards, data.index, dailyQueue, bookId, unit, checkpoint]);
+  }, [data.cards, data.index, dailyQueue, bookId, unit, scope, checkpoint]);
   const { updateSettings } = data;
   const onCourse = useCallback((book: string, nextUnit: string) => {
     setUnit(nextUnit);
@@ -572,6 +581,7 @@ export default function VocabApp() {
           <ViewPane active={view === "today"}>
             <TodayView
               data={data}
+              stats={stats}
               bookId={bookId}
               unit={unit}
               onCourse={onCourse}
@@ -619,7 +629,7 @@ export default function VocabApp() {
           {visited.has("activity") && (
             <ViewPane active={view === "activity"}>
               {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
-              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} />
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} />
             </ViewPane>
           )}
         </main>
