@@ -41,7 +41,14 @@ self.addEventListener("activate", (event) => {
 
 // Explicit downloads use this worker's release cache. A successful in-memory
 // fetch alone does not prove that the browser retained an offline copy.
+function sameOriginClient(source) {
+  try { return Boolean(source) && typeof source.url === "string" && new URL(source.url).origin === self.location.origin; }
+  catch { return false; }
+}
+
 self.addEventListener("message", (event) => {
+  // Only pages of this origin may start a download; anything else is ignored silently.
+  if (!sameOriginClient(event.source)) return;
   if (event.data?.type !== "PREPARE_LEXICON" || !event.ports?.[0]) return;
   const port = event.ports[0];
   event.waitUntil((async () => {

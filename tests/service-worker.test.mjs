@@ -48,3 +48,27 @@ test('activation only removes this application cache namespace', async () => {
   await completion;
   assert.deepEqual(deleted, ['vocab-shell-old']);
 });
+
+async function prepareLexicon(source) {
+  stored.set('https://app.test/data/v1/manifest.json', new Response(JSON.stringify({ chunks: [{ file: 'chunks/a.json' }] })));
+  stored.set('https://app.test/data/v1/chunks/a.json', new Response('{}'));
+  const replies = [];
+  const pending = [];
+  handlers.message({ data: { type: 'PREPARE_LEXICON' }, ports: [{ postMessage: (value) => replies.push(value) }], source, waitUntil: (promise) => pending.push(promise) });
+  await Promise.all(pending);
+  return { replies, scheduled: pending.length };
+}
+test('PREPARE_LEXICON is accepted from same-origin clients only', async () => {
+  const own = await prepareLexicon({ url: 'https://app.test/', id: 'client-1' });
+  assert.equal(JSON.stringify(own.replies), JSON.stringify([{ ok: true, files: 1 }]));
+  for (const source of [undefined, null, {}, { url: 'https://evil.test/' }, { url: 'https://app.test.evil.test/' }, { url: 'not a url' }, { url: 42 }]) {
+    const result = await prepareLexicon(source);
+    assert.deepEqual(result, { replies: [], scheduled: 0 }, JSON.stringify(source));
+  }
+});
+test('static host headers keep the immutable asset cache rule and add baseline security headers', () => {
+  const headers = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
+  assert.match(headers, /^\/assets\/\*\n  Cache-Control: public, max-age=31536000, immutable$/m);
+  for (const line of ['X-Content-Type-Options: nosniff', 'X-Frame-Options: DENY', 'Referrer-Policy: same-origin', 'Cross-Origin-Resource-Policy: same-origin']) assert.ok(headers.includes(`  ${line}\n`), line);
+  assert.doesNotMatch(headers.replace(/^#.*$/gm, ''), /Strict-Transport-Security/i);
+});
