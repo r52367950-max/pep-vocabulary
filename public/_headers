@@ -1,0 +1,14 @@
+# Static asset headers. Requests for static files bypass worker/security.ts, so
+# the baseline headers are repeated here. Keep the /assets/* rule: vinext only
+# generates the immutable cache rule when this file does not exist.
+# Strict-Transport-Security is deliberately not set here: the hosting layer
+# terminates TLS, and a header in a static file cannot be limited to HTTPS or
+# rolled back quickly once browsers have cached it. worker/security.ts sends it
+# on HTTPS responses; decide on the platform level after checking production.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

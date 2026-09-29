@@ -22,8 +22,7 @@ import {
 import { useBackGuard } from "@/hooks/use-back-guard";
 import { useVocabulary } from "@/hooks/use-vocabulary";
 import { notify, useToastMessage } from "@/hooks/toast-store";
-import { buildStudyQueue, summarizeStudy, type StudyMode } from "@/lib/study";
-import { studyStats } from "@/lib/progress";
+import { buildStudyQueue, selectEntries, summarizeStudy, type StudyMode } from "@/lib/study";
 import {
   SESSION_KEY,
   restoreSession,
@@ -46,6 +45,7 @@ const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
 const StudySession = lazy(() => import("./studio/study-session"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
 const LearnActivity = lazy(() => import("./studio/learn/learn-activity"));
+const WritingWorkspace = lazy(() => import("./studio/writing/writing-workspace"));
 type View = "today" | "lexicon" | "reading" | "activity";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
@@ -121,6 +121,7 @@ export default function VocabApp() {
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
   const [learn, setLearn] = useState<LearnMode | null>(null);
+  const [writing, setWriting] = useState<{ targets?: string[]; openId?: string | null } | null>(null);
   const [resume, setResume] = useState<StudySessionState | null>(null);
   const [clock, setClock] = useState(() => Date.now());
   const initialized = useRef(false);
@@ -129,22 +130,29 @@ export default function VocabApp() {
   // While practising, the Today plan is off screen: recount it in a background render after each
   // answer rather than before the next card can paint. Elsewhere it stays in step with the data.
   const deferredCards = useDeferredValue(data.cards);
-  const deferredEvents = useDeferredValue(data.events);
-  const offscreen = session !== null || learn !== null;
+  const deferredHistory = useDeferredValue(data.history);
+  const offscreen = session !== null || learn !== null || writing !== null;
   const planCards = offscreen ? deferredCards : data.cards;
-  const planEvents = offscreen ? deferredEvents : data.events;
+  const planHistory = offscreen ? deferredHistory : data.history;
+  // One computation per data change and local date: Today and Activity read the same object.
   const stats = useMemo(
-    () => studyStats(planEvents, new Date(clock)),
-    [planEvents, clock],
+    () => planHistory.stats(new Date(clock)),
+    [planHistory, clock],
+  );
+  // The book/unit selection does not depend on cards, so answers and clock ticks reuse it.
+  const scope = useMemo(
+    () => selectEntries(data.index, { bookId, unit }),
+    [data.index, bookId, unit],
   );
   const summary = useMemo(
     () =>
       summarizeStudy(data.index, planCards, {
         bookId,
         unit,
+        selected: scope,
         now: new Date(clock),
       }),
-    [data.index, planCards, bookId, unit, clock],
+    [data.index, planCards, bookId, unit, scope, clock],
   );
   const budget = Math.max(
     0,
@@ -166,6 +174,7 @@ export default function VocabApp() {
       buildStudyQueue(data.index, planCards, {
         bookId,
         unit,
+        selected: scope,
         mode: "daily",
         limit: Math.min(
           60,
@@ -179,6 +188,7 @@ export default function VocabApp() {
       planCards,
       bookId,
       unit,
+      scope,
       data.settings.dailyMinutes,
       newLimit,
       clock,
@@ -221,13 +231,13 @@ export default function VocabApp() {
         restoreSession(
           sessionStorage.getItem(SESSION_KEY),
           new Set(data.index.map((e) => e.id)),
-          data.events,
+          data.history,
         ),
       );
     } catch {
       /* Learning works when tab checkpoint storage is unavailable. */
     }
-  }, [data.loading, data.index, data.events]);
+  }, [data.loading, data.index, data.history]);
   useEffect(() => {
     window.scrollTo(0, 0);
     heading.current?.focus({ preventScroll: true });
@@ -240,6 +250,7 @@ export default function VocabApp() {
     if (
       !session &&
       !learn &&
+      !writing &&
       !selected &&
       !settingsOpen &&
       (((event.metaKey || event.ctrlKey) &&
@@ -288,6 +299,7 @@ export default function VocabApp() {
         : buildStudyQueue(data.index, data.cards, {
             bookId,
             unit,
+            selected: scope,
             mode,
             limit: 20,
             newLimit: 20,
@@ -313,12 +325,16 @@ export default function VocabApp() {
     setSelected(null);
     setResume(null);
     checkpoint(next);
-  }, [data.cards, data.index, dailyQueue, bookId, unit, checkpoint]);
+  }, [data.cards, data.index, dailyQueue, bookId, unit, scope, checkpoint]);
   const { updateSettings } = data;
   const onCourse = useCallback((book: string, nextUnit: string) => {
     setUnit(nextUnit);
     void updateSettings({ selectedBooks: [book] });
   }, [updateSettings]);
+  const practiseMistakes = useCallback(
+    (entries: LexiconIndexEntry[]) => startSession("mistakes", entries),
+    [startSession],
+  );
   const practiseReading = useCallback(
     (entries: LexiconIndexEntry[]) => startSession("context", entries),
     [startSession],
@@ -327,6 +343,10 @@ export default function VocabApp() {
   const onLearn = useCallback((mode: LearnMode) => {
     setSelected(null);
     setLearn(mode);
+  }, []);
+  const onWrite = useCallback((options: { targets?: string[]; openId?: string | null }) => {
+    setSelected(null);
+    setWriting(options);
   }, []);
   const showLexicon = useCallback(() => setView("lexicon"), []);
   const showReading = useCallback(() => setView("reading"), []);
@@ -359,12 +379,13 @@ export default function VocabApp() {
   };
   // The system back gesture closes the top layer instead of leaving the app.
   useBackGuard(
-    !!(selected || settingsOpen || session || learn || view !== "today"),
+    !!(selected || settingsOpen || session || learn || writing || view !== "today"),
     () => {
       if (selected) setSelected(null);
       else if (settingsOpen) setSettingsOpen(false);
       else if (session) closeSession();
       else if (learn) setLearn(null);
+      else if (writing) setWriting(null);
       else setView("today");
     },
   );
@@ -450,6 +471,36 @@ export default function VocabApp() {
             }}
           />
         </Suspense>
+        {toast}
+      </>
+    );
+  if (writing)
+    return (
+      <>
+        <Suspense fallback={<Pending />}>
+          <WritingWorkspace
+            data={data}
+            initialTargets={writing.targets}
+            openId={writing.openId}
+            onExit={() => setWriting(null)}
+            onWord={setSelected}
+            onPractice={(entries) => {
+              setWriting(null);
+              startSession("mistakes", entries);
+            }}
+          />
+        </Suspense>
+        {selected && (
+          <Suspense fallback={null}>
+            <WordDetail
+              key={selected.id}
+              entry={selected}
+              data={data}
+              onClose={() => setSelected(null)}
+              onPractice={(entry) => { setWriting(null); startSession("daily", [entry]); }}
+            />
+          </Suspense>
+        )}
         {toast}
       </>
     );
@@ -572,6 +623,7 @@ export default function VocabApp() {
           <ViewPane active={view === "today"}>
             <TodayView
               data={data}
+              stats={stats}
               bookId={bookId}
               unit={unit}
               onCourse={onCourse}
@@ -592,6 +644,7 @@ export default function VocabApp() {
                   : null
               }
               resume={resumeSession}
+              onWrite={onWrite}
             />
           </ViewPane>
           {visited.has("lexicon") && (
@@ -619,7 +672,7 @@ export default function VocabApp() {
           {visited.has("activity") && (
             <ViewPane active={view === "activity"}>
               {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
-              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} />
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} />
             </ViewPane>
           )}
         </main>

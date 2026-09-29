@@ -3,24 +3,28 @@
 import { useMemo } from "react";
 import { Check, Clock3, Leaf, Target } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
-import { studyStats } from "@/lib/progress";
+import type { StudyStats } from "@/lib/progress";
 import { forecastDueLoad } from "@/lib/scheduler";
+import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { Empty } from "./shared";
+import StudyInsights from "./ai/study-insights";
 
-export default function Activity({ data }: { data: Vocabulary }) {
-  const stats = useMemo(() => studyStats(data.events), [data.events]);
+export default function Activity({ data, stats, onPractice, onWord }: {
+  data: Vocabulary; stats: StudyStats;
+  onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void;
+}) {
+  const { history } = data;
   const index = data.byId;
   const week = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - 6 + i);
     const key = date.toLocaleDateString("sv-SE");
-    const events = stats.reviews.filter((e) => e.localDate === key);
     return {
       key,
       label: date.toLocaleDateString("zh-CN", { weekday: "short" }),
-      count: new Set(events.map((e) => e.cardId)).size,
+      count: history.dayWords(key),
     };
-  }), [stats.reviews]);
+  }), [history]);
   const maximum = Math.max(10, ...week.map((day) => day.count));
   const forecast = useMemo(() => forecastDueLoad(data.cards.values(), 7), [data.cards]);
   return (
@@ -34,7 +38,7 @@ export default function Activity({ data }: { data: Vocabulary }) {
         {[
           {
             Icon: BookIcon,
-            value: new Set(stats.reviews.map((e) => e.cardId)).size,
+            value: history.learnedWords,
             label: "累计学习词数",
           },
           { Icon: Leaf, value: `${stats.streak} 天`, label: "连续学习" },
@@ -98,15 +102,15 @@ export default function Activity({ data }: { data: Vocabulary }) {
           ))}
         </section>
       </div>
+      <StudyInsights data={data} onPractice={onPractice} onWord={onWord} />
       <section className="review-log">
         <div className="section-heading">
           <h2>最近的练习</h2>
           <span>含作答与订正</span>
         </div>
-        {stats.reviews.length ? (
-          [...stats.reviews]
-            .reverse()
-            .slice(0, 30)
+        {history.active.length ? (
+          history
+            .recent(30)
             .map((event) => (
               <div key={event.eventId} className="log-row">
                 <span

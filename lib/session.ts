@@ -1,6 +1,6 @@
 import type { ReviewEvent } from "./storage";
 import type { StudyMode } from "./study";
-import { activeReviews } from "./progress";
+import { activeOf, undosOf, type ReviewSource } from "./progress";
 
 export const SESSION_KEY = "vocab-session-v2";
 const MAX_INITIAL_WORDS = 200;
@@ -150,7 +150,7 @@ function validCheckpoint(
 export function restoreSession(
   raw: string | null,
   validIds: ReadonlySet<string>,
-  events: readonly ReviewEvent[],
+  events: ReviewSource,
   now = Date.now(),
 ): StudySessionState | null {
   if (!raw || raw.length > 150_000 || !Number.isFinite(now)) return null;
@@ -175,7 +175,7 @@ export function restoreSession(
       { event: ReviewEvent; revision: number }
     >();
     let revision = saved.revision || 0;
-    for (const event of activeReviews(events)) {
+    for (const event of activeOf(events)) {
       const coordinates = eventPosition(event.eventId);
       if (!coordinates) continue;
       revision = Math.max(revision, coordinates.revision);
@@ -187,8 +187,7 @@ export function restoreSession(
         });
     }
     const undonePositions = new Set<number>();
-    for (const event of events) {
-      if (event.eventType !== "undo") continue;
+    for (const event of undosOf(events)) {
       const coordinates = eventPosition(event.targetEventId);
       if (coordinates) {
         // The undo itself can commit before the checkpoint's revision is saved.

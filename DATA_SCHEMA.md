@@ -49,17 +49,20 @@ flowchart TD
 
 ## 用户数据
 
-IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
+IndexedDB：`pep-vocab-studio`，版本 3；用户数据 schema `1.2.0`。
 
 - `cards`：每词一个 `StoredCard`；FSRS 序列化状态、六项能力、状态、到期时间、收藏/注释/标签。
 - `events`：追加式 `ReviewEvent`；UTC、当地日期、时区、题型、题目、实际作答、期望答案、来源行、能力、评分、正误、反应时间、提示、错误类型、调度前后间隔/稳定度/难度、完整卡片快照和 scheduler log。
 - `lists`：自定义词单。
 - `settings`：每日时间、目标保持率、教材范围、模式、主题、AI 开关、诊断状态、考试日期。
 - `meta`：schema 与迁移元数据。
+- `writings`（版本 3 新增）：作文记录 `WritingRecord`——文体（`free`/`practical`/`continuation`）、题目、目标词 ID、目标词数范围，以及最多 30 个版本；每个版本保存正文（≤ 20,000 字符）、保存时间和可选的 AI 批改结果（校验后的 JSON，≤ 200 KB）。已批改的版本不再修改，后续编辑成为新版本。
 
 撤销不会删除原事件，而是追加 `eventType: undo` 并指向 `targetEventId`；分析与重放时排除已撤销事件。
 
-`1.0.0` JSON 备份恢复前会确定性迁移为 `1.1.0`，补入新增证据字段并合并当前设置默认值；未知 schema 仍在写入前拒绝。
+`1.0.0` JSON 备份恢复前会确定性迁移为当前版本，补入新增证据字段并合并当前设置默认值；`1.1.0` 备份迁移时补一个空的 `writings` 列表。`1.2.0` 备份必须包含 `writings` 数组（最多 2,000 条），逐条校验后与其他表在同一个事务中恢复。未知 schema 仍在写入前拒绝。云端同步只接受当前 schema 的上传。
+
+AI 回答缓存在另一个 IndexedDB `pep-vocab-ai-cache`（`results` 表，按“任务 + 输入”作键，最多约 600 条），不属于学习数据，不进入备份或同步。
 
 个人文章保存在独立 IndexedDB `pep-vocab-personal-readings`（版本 1）的 `index` 与 `articles` 表，可逐篇导出 Markdown；不包含在学习备份与 D1 快照中。
 
@@ -75,9 +78,11 @@ IndexedDB：`pep-vocab-studio`，版本 2；用户数据 schema `1.1.0`。
 - DeepSeek 或 OpenAI-compatible 服务商、经安全校验的 HTTPS Base URL、模型、每日调用上限和超时；
 - API Key 的 AES-GCM 密文、随机 96-bit IV 与加密版本。
 
-AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`，不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；更换服务商或规范化 Base URL 时必须重新提交 API Key，禁止把已保存密钥转发到新目标。
+AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`（可选的 `AI_CONFIG_ENCRYPTION_KEYS` 与 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE` 启用版本化密钥：`encryption_version=3` 时 `encrypted_api_key` 为 `kid:base64`，表结构不变，见 `AI_ASSISTANT_DEPLOYMENT.md`），不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；更换服务商或规范化 Base URL 时必须重新提交 API Key，禁止把已保存密钥转发到新目标。
 
-`ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。四类词条助手接口及阅读分类接口按分钟和每日双重限流，模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
+`ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。八个助手接口及阅读分类接口按分钟和每日双重限流，并按北京时间日期累计 token 用量（键前缀 `tokens:`、`tokens-hit:`、`tokens-out:`），模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
+
+`ai_preferences`（迁移 0003）按身份保存每日 token 预算（默认 200,000）和可选的单次输出上限，不含密钥或内容。
 
 ## 审核状态
 

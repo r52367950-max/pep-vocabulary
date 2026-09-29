@@ -22,8 +22,8 @@ class Statement {
 const binding = { prepare: sql => new Statement(sql) };
 env.DB = binding;
 requestHeaders.set('oai-authenticated-user-email', 'test@example.com');
-const backup = { schemaVersion: '1.1.0', cards: [], events: [], lists: [], settings: [] };
-const payload = (revision = 0) => ({ schemaVersion: '1.1.0', baseRevision: revision, clientUpdatedAt: '2026-09-14T00:00:00Z', payload: backup });
+const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
+const payload = (revision = 0) => ({ schemaVersion: '1.2.0', baseRevision: revision, clientUpdatedAt: '2026-09-14T00:00:00Z', payload: backup });
 const req = body => new Request('https://app.test/api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 test('first upload race accepts exactly one writer and returns non-cacheable responses', async () => {

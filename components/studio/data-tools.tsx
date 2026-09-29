@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Cloud,
@@ -12,12 +12,19 @@ import {
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import { prepareOfflineLexicon } from "@/lib/offline";
 import {
+  markBackupExported,
+  requestPersistentStorage,
+  storageStatus,
+  type StorageStatus,
+} from "@/lib/persistence";
+import {
   exportBackup,
   restoreBackup,
   USER_DATA_SCHEMA_VERSION,
 } from "@/lib/storage";
 import { SESSION_KEY } from "@/lib/session";
 
+const megabytes = (bytes: number) => (bytes / 1_048_576).toLocaleString("zh-CN", { maximumFractionDigits: bytes < 10_485_760 ? 1 : 0 });
 const LINK_KEY = "pep-vocab-cloud-link-v2";
 type CloudLink = { identity: string; revision: number };
 type CloudState = {
@@ -35,6 +42,7 @@ export default function DataTools({
   onReplaced: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [storage, setStorage] = useState<StorageStatus | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const lock = useRef(false);
   const run = async (action: () => Promise<void>) => {
@@ -52,6 +60,17 @@ export default function DataTools({
       setBusy(false);
     }
   };
+  useEffect(() => {
+    let active = true;
+    void storageStatus().then((status) => active && setStorage(status));
+    return () => {
+      active = false;
+    };
+  }, []);
+  const protect = async () => {
+    await requestPersistentStorage();
+    setStorage(await storageStatus());
+  };
   const backup = async () => {
     const payload = await exportBackup();
     const url = URL.createObjectURL(
@@ -64,6 +83,7 @@ export default function DataTools({
     a.download = `词迹备份-${new Date().toLocaleDateString("sv-SE")}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    markBackupExported();
   };
   const replaced = async () => {
     sessionStorage.removeItem(SESSION_KEY);
@@ -229,6 +249,22 @@ export default function DataTools({
               恢复备份
             </button>
           </div>
+          {storage && storage.persisted !== null && (
+            <small>
+              {storage.persisted
+                ? "本机数据已受浏览器保护，不会被自动清理"
+                : "浏览器可能在空间不足时清理本机数据，建议定期导出备份"}
+              {storage.usage !== null && storage.quota !== null && ` · 已用 ${megabytes(storage.usage)} / ${megabytes(storage.quota)} MB`}
+              {!storage.persisted && (
+                <>
+                  {" "}
+                  <button className="text-button" disabled={busy} onClick={() => void protect()}>
+                    申请保护
+                  </button>
+                </>
+              )}
+            </small>
+          )}
           <input
             ref={input}
             hidden

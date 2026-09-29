@@ -11,7 +11,7 @@ test("review event schema preserves learning evidence and supports 1.0 migration
     read("app/api/sync/route.ts"),
     read("app/layout.tsx"),
   ]);
-  assert.match(storage, /USER_DATA_SCHEMA_VERSION = "1\.1\.0"/);
+  assert.match(storage, /USER_DATA_SCHEMA_VERSION = "1\.2\.0"/);
   assert.match(storage, /payload\.schemaVersion !== "1\.0\.0"/);
   assert.match(storage, /answerGiven\?: string \| null/);
   assert.match(scheduler, /intervalAfterDays/);

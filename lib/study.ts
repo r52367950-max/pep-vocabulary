@@ -106,6 +106,8 @@ export type CardCollection =
   | ReadonlyMap<string, StoredCard>
   | readonly StoredCard[];
 export type StudyQueueOptions = StudySelection & {
+  /** The result of selectEntries(entries, selection), when the caller already has it. */
+  selected?: readonly LexiconIndexEntry[];
   mode?: StudyMode;
   limit?: number;
   newLimit?: number;
@@ -215,7 +217,7 @@ export function buildStudyQueue(
   const now = (options.now || new Date()).getTime();
   const limit = boundedCount(options.limit, 20);
   if (!limit || !Number.isFinite(now)) return [];
-  const selected = selectEntries(entries, options).filter(
+  const selected = (options.selected ?? selectEntries(entries, options)).filter(
     (entry) =>
       cardMap.get(entry.id)?.status !== "paused" &&
       (options.includeProperNames || !entry.flags.properName) &&
@@ -329,7 +331,10 @@ export type StudySummary = {
 export function summarizeStudy(
   entries: readonly LexiconIndexEntry[],
   cards: CardCollection,
-  options: StudySelection & { now?: Date } = {},
+  options: StudySelection & {
+    now?: Date;
+    selected?: readonly LexiconIndexEntry[];
+  } = {},
 ): StudySummary {
   const cardMap = asCardMap(cards),
     now = (options.now || new Date()).getTime();
@@ -342,7 +347,7 @@ export function summarizeStudy(
     mastered: 0,
     paused: 0,
   };
-  for (const entry of selectEntries(entries, options)) {
+  for (const entry of options.selected ?? selectEntries(entries, options)) {
     if (entry.flags.properName) continue;
     const card = cardMap.get(entry.id);
     result.total += 1;

@@ -24,6 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { assistantCacheSize, clearAssistantCache } from "@/lib/ai-client";
 import type { AppSettings } from "@/lib/storage";
 import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from "./studio/ai-connection";
 
@@ -37,6 +38,11 @@ type AIConfig = {
   hasApiKey: boolean;
   updatedAt: string | null;
   secretStorage: "server-encrypted";
+  dailyTokenBudget: number;
+  maxOutputTokens: number | null;
+  effectiveMaxOutputTokens?: number;
+  modelOutputLimit?: number | null;
+  usageToday?: { date: string; total: number; cacheHit: number; output: number; resetsAt: string } | null;
 };
 const providerDefaults: Record<
   AIProvider,
@@ -59,6 +65,8 @@ const defaultAIConfig: AIConfig = {
   hasApiKey: false,
   updatedAt: null,
   secretStorage: "server-encrypted",
+  dailyTokenBudget: 200_000,
+  maxOutputTokens: null,
 };
 const sections = [
   { id: "general" as const, label: "常规", icon: SlidersHorizontal },
@@ -159,6 +167,8 @@ export default function ConsoleSettings({
           model: aiConfig.model,
           dailyLimit: aiConfig.dailyLimit,
           timeoutSeconds: aiConfig.timeoutSeconds,
+          dailyTokenBudget: aiConfig.dailyTokenBudget,
+          maxOutputTokens: aiConfig.maxOutputTokens,
           ...(transientApiKey ? { apiKey: transientApiKey } : {}),
         }),
       });
@@ -467,6 +477,7 @@ export default function ConsoleSettings({
                     />
                     <datalist id="deepseek-models">
                       <option value="deepseek-v4-flash" />
+                      <option value="deepseek-flash" />
                       <option value="deepseek-v4-pro" />
                     </datalist>
                     <small>填写服务商当前开放的模型 ID。</small>
@@ -513,7 +524,7 @@ export default function ConsoleSettings({
                     <small>到达上限后自动回退到本地功能。</small>
                   </label>
                   <label>
-                    <span>请求超时</span>
+                    <span>无响应超时</span>
                     <div className="suffix-input">
                       <input
                         type="number"
@@ -529,7 +540,44 @@ export default function ConsoleSettings({
                       />
                       <span>秒</span>
                     </div>
-                    <small>建议 20–30 秒。</small>
+                    <small>回答以流式返回，超过这么久没有新内容才算超时；长回答最多等 5 分钟。</small>
+                  </label>
+                  <label>
+                    <span>每日 token 预算</span>
+                    <input
+                      type="number"
+                      min="10000"
+                      max="5000000"
+                      step="10000"
+                      value={aiConfig.dailyTokenBudget}
+                      onChange={(event) =>
+                        setAIConfig((current) => ({
+                          ...current,
+                          dailyTokenBudget: Number(event.target.value),
+                        }))
+                      }
+                    />
+                    <small>输入、输出和缓存命中都计入；北京时间 0 点重置。用完后 AI 暂停，本地学习不受影响。</small>
+                  </label>
+                  <label>
+                    <span>单次输出上限</span>
+                    <input
+                      type="number"
+                      min="256"
+                      max="10000"
+                      step="100"
+                      value={aiConfig.maxOutputTokens ?? ""}
+                      placeholder={`自动（${aiConfig.effectiveMaxOutputTokens ?? 10000}）`}
+                      onChange={(event) =>
+                        setAIConfig((current) => ({
+                          ...current,
+                          maxOutputTokens: event.target.value ? Number(event.target.value) : null,
+                        }))
+                      }
+                    />
+                    <small>
+                      留空时为 10000 token{aiConfig.modelOutputLimit && aiConfig.modelOutputLimit < 10000 ? `（当前模型上限 ${aiConfig.modelOutputLimit}）` : ""}；只在需要进一步控制费用时填写。
+                    </small>
                   </label>
                 </div>
                 <div className="api-actions">
@@ -595,14 +643,15 @@ export default function ConsoleSettings({
                   </a>
                 ) : null}
               </section>
+              <AiUsageCard config={aiConfig} />
               <section className="settings-card compact-card">
                 <header>
                   <Eye size={19} aria-hidden="true" />
                   <div>
                     <h2>发送范围</h2>
                     <p>
-                      四类助手接口只发送当前词条
-                      ID、必要作答文本、有限掌握标签，以及服务端重新读取的正式词库证据。
+                      AI 请求会附带一份学习画像：最近的错误作答、错误类型、薄弱词、易混词、最近 12 条笔记和写作概况，用来做个性化讲解与出题。
+                      作文批改会发送作文全文与题目。教材信息只来自服务端重新读取的正式词库证据；不发送整份词库或完整学习记录。
                     </p>
                   </div>
                 </header>
@@ -677,5 +726,39 @@ export default function ConsoleSettings({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Today's token use against the budget, and the answers kept on this device. */
+function AiUsageCard({ config }: { config: AIConfig }) {
+  const [cached, setCached] = useState<number | null>(null);
+  useEffect(() => { void assistantCacheSize().then(setCached); }, []);
+  const usage = config.usageToday;
+  const used = usage?.total ?? 0;
+  return (
+    <section className="settings-card">
+      <header>
+        <SlidersHorizontal size={19} aria-hidden="true" />
+        <div>
+          <h2>用量与缓存</h2>
+          <p>讲解、批改等结果保存在本机，再次查看不会重复请求。</p>
+        </div>
+      </header>
+      <div className="ai-usage">
+        <progress value={Math.min(used, config.dailyTokenBudget)} max={config.dailyTokenBudget} aria-label="今日 token 用量" />
+        <p className="ai-note">
+          今日已用 {used.toLocaleString()} / {config.dailyTokenBudget.toLocaleString()} token
+          {usage ? `；其中缓存命中 ${usage.cacheHit.toLocaleString()}，输出 ${usage.output.toLocaleString()}` : ""}。
+        </p>
+        <p className="ai-note">
+          本机保存了 {cached ?? "…"} 条 AI 回答。
+          <button className="text-button" disabled={!cached} onClick={async () => {
+            if (!window.confirm("清空本机保存的 AI 回答？学习记录和作文批改不受影响。")) return;
+            await clearAssistantCache().catch(() => undefined);
+            setCached(await assistantCacheSize());
+          }}>清空</button>
+        </p>
+      </div>
+    </section>
   );
 }

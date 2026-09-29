@@ -1,6 +1,6 @@
 # 安全加固：已实施项与待确认方案
 
-2026-09-24，基于 2.2.1（`58ac110`）。第一部分是本次已经实施并验证的加固；第二部分是需要所有者确认后才实施的方案。**服务端会话和密钥轮换只有方案，没有实现。**涉及线上身份、访问范围或生产数据的步骤，都要先征得所有者同意。
+2026-09-24，基于 2.2.1（`58ac110`）。第一部分是本次已经实施并验证的加固；第二部分是需要所有者确认后才实施的方案。**服务端会话只有方案，没有实现；密钥版本化与轮换（B）、`public/_headers`（C.4）、Service Worker 来源检查（D）和依赖版本锁定（E）已在 2026-09-29 实施。**涉及线上身份、访问范围或生产数据的步骤，都要先征得所有者同意。
 
 ## 一、本次已实施
 
@@ -104,9 +104,11 @@ upgrade-insecure-requests   （仅 HTTPS）
 
 ### B. 加密主密钥版本化与轮换
 
+**状态：已于 2026-09-29 实施**（`lib/ai-config.ts`、`app/api/ai/config/route.ts`，测试 `tests/key-rotation.test.mjs`，操作步骤见 `AI_ASSISTANT_DEPLOYMENT.md`“主密钥轮换”）。未配置 `AI_CONFIG_ENCRYPTION_KEYS` 时行为与之前完全一致（继续写 v2）。保存设置时保留旧凭据会按下面第 4 点重新加密；运行时读取路径通过导出的 `refreshStoredCredential()` 接入，调用点由助手服务端负责人添加，接入前只有保存设置和手动批量操作会迁移旧密文，所以移除旧密钥前必须用第 5 点的 SQL 确认。批量重加密操作尚未提供，需要时可以逐个用户保存设置触发。
+
 现状：`AI_CONFIG_ENCRYPTION_KEY` 只有一把。`encryption_version` 表示的是附加验证数据的格式（1 或 2），不表示密钥版本，所以换密钥会让已有密文全部无法解密。
 
-方案（需要改 `lib/ai-config.ts`，它不在本次边界内）：
+方案：
 
 1. 新 Secret `AI_CONFIG_ENCRYPTION_KEYS`，JSON 形式 `{"k1":"<旧值>","k2":"<新值>"}`；`AI_CONFIG_ENCRYPTION_KEY_ACTIVE="k2"`。未设置时，旧的 `AI_CONFIG_ENCRYPTION_KEY` 视为 `k1`，兼容现状。
 2. 新密文格式 v3：附加验证数据为 `["pep-vocab-ai-config:v3", kid, userKey, provider, baseUrl]`，`encrypted_api_key` 存为 `kid:base64`，`encryption_version=3`。**不改表结构**：本地冒烟测试会重放全部迁移 SQL，而 `ALTER TABLE ADD COLUMN` 不能重复执行，把 kid 放进现有字段可以避开这个问题。
@@ -121,7 +123,7 @@ upgrade-insecure-requests   （仅 HTTPS）
 1. **当前**：脚本已靠 nonce 收紧；样式保留 `'unsafe-inline'`，因为服务端渲染的 React `style` 属性是内联的，而 CSP 中出现 nonce 时 `'unsafe-inline'` 会失效，没法混用。
 2. 增加 `Content-Security-Policy-Report-Only`，试运行 `style-src 'self' 'nonce-…'` 和 `require-trusted-types-for 'script'`。`lib/reading-import.ts` 用 `template.innerHTML` 解析导入的 HTML：模板内容是惰性的，但启用 Trusted Types 前需要给它定义一个 policy。收集违规需要一个同源报告接口，受限流约束、只记录计数，本次没有添加。
 3. 核实 pdf.js 与 Tesseract 只在 Worker 中编译 WebAssembly 之后，可以从页面策略中去掉 `'wasm-unsafe-eval'`，改到 `/vendor/*/worker` 静态资源的策略上。
-4. **静态资源头部**：资源层不经过 Worker。建议由主会话新增 `public/_headers`。vinext 只在该文件不存在时才生成 `/assets/*` 的不可变缓存规则，所以新文件必须保留这一条：
+4. **静态资源头部（已实施：`public/_headers`）**：资源层不经过 Worker。vinext 只在该文件不存在时才生成 `/assets/*` 的不可变缓存规则，所以新文件必须保留这一条：
 
    ```
    /*
@@ -133,17 +135,16 @@ upgrade-insecure-requests   （仅 HTTPS）
      Cache-Control: public, max-age=31536000, immutable
    ```
 
-   HSTS 是否由托管层统一添加，需要到线上核实后再决定是否写进 `_headers`。
+   已在 `npm run build` 后核对 `dist/client/_headers`：文件原样复制，`/assets/*` 不可变缓存规则保留（不再由 vinext 生成，而由本文件提供）；`tests/service-worker.test.mjs` 断言这条规则存在。**没有写入 HSTS**：`_headers` 是静态文件，无法限定只在 HTTPS 下发送，而浏览器缓存 HSTS 后很难回滚；`worker/security.ts` 已在 HTTPS 的 Worker 响应上发送它，静态资源是否需要，等线上核实托管层行为后再定。
 
 ### D. Service Worker 缓存范围复核（`public/sw.js`、`lib/offline.ts`）
 
-结论：**不需要修改**。
+结论：缓存范围**不需要修改**。低优先级的 `message` 来源检查已于 2026-09-29 实施：`PREPARE_LEXICON` 仅在 `event.source.url` 与 SW 同源时处理，其余静默忽略；应用自身的调用（`navigator.serviceWorker.controller.postMessage`）不受影响。
 
 - 私有响应不会进入缓存：`/api/`、登录/登出/回调路径和 RSC 请求（`rsc: 1` 或 `_rsc`）都直接放行，不读也不写缓存。现在所有 `/api/*` 响应都带 `no-store`，而 `cacheable()` 会拒绝 `no-store`，这是第二层保护。
 - 只缓存两类请求：不带查询串的 `/` 导航，以及白名单前缀下的静态资源（`/assets/`、`/data/v1/`、`/readings/v1/`、`/vendor/`、`/icons/`、`/images/`、`/manifest.webmanifest`）。跨源、重定向和非 2xx 响应都不缓存。
 - 首页外壳没有个人数据（身份与数据都通过 `/api` 在客户端取得），可以离线缓存。缓存的响应带着自己的 CSP 头，nonce 与正文一致，离线启动不会触发 CSP 拦截（已在 Chromium 中验证）。
 - 缓存版本由构建哈希决定，激活时删除同前缀的旧缓存；词库分片的数量和文件名都有校验。
-- 可选改进（低优先级）：`message` 处理器可以检查 `event.source` 是否为受控客户端；目前只有同源页面能向 SW 发消息，风险很低。
 
 ### E. 依赖审计与版本锁定
 
@@ -151,9 +152,11 @@ upgrade-insecure-requests   （仅 HTTPS）
 
 `npm outdated` 显示的补丁或小版本更新（仅记录，是否升级由所有者决定）：`next` 16.3.5→16.3.6、`drizzle-orm` 0.45.2→0.45.3、`react`/`react-dom`/`react-server-dom-webpack` 19.2.8→19.3.0、`wrangler` 4.131.2→4.137.0、`@cloudflare/vite-plugin` 1.54.9→1.58.0、`@vitejs/plugin-rsc` 0.5.26→0.5.35。`vinext` 已有 1.0.0-beta，属于大版本，需单独评估 nonce 与缓存行为。
 
+**2026-09-29 复测**：`npm audit --omit=dev` 为 **0 个漏洞**（生产依赖 25 个）；`npm audit` 为 **4 个中危、0 个高危/严重**（总计 636 个依赖），全部是同一条链：`undici` 7.28.0–7.29.0（GHSA-3wwx-pv8p-q78v，WebSocket permessage-deflate 解压未处理错误导致拒绝服务）→ `miniflare` → `wrangler` 和 `@cloudflare/vite-plugin`。它们只在开发与构建工具链中，不进入运行时 Worker，也不在生产依赖里；`npm audit fix --force` 会把 `@cloudflare/vite-plugin` 降到 1.41.0，不采用。等上游发布使用已修复 `undici` 的 wrangler/miniflare 后再单独升级。
+
 锁版本策略建议：
 
-- 运行时依赖和构建链（`next`、`react*`、`vinext`、`vite`、`wrangler`、`@cloudflare/*`、`drizzle-*`）继续使用精确版本。目前 `lucide-react`、`ts-fsrs` 和 `@cloudflare/workers-types`、`fake-indexeddb` 还在用 `^`，建议改成精确版本；`package-lock.json` 已经锁定了实际安装的版本，这只是让意图更明确。
+- 运行时依赖和构建链（`next`、`react*`、`vinext`、`vite`、`wrangler`、`@cloudflare/*`、`drizzle-*`）继续使用精确版本。`lucide-react`、`ts-fsrs`、`@cloudflare/workers-types`、`fake-indexeddb` 原先使用 `^`，已于 2026-09-29 改为 `package-lock.json` 中的精确版本（0.468.0、5.2.3、5.20260914.1、6.2.5），所有包的 `version`/`resolved`/`integrity` 逐项比对无变化；同时让锁文件根项与 `package.json` 一致（此前根项还停在 2.2.1，且 `fflate` 与若干可选 sharp 包的 `dev` 标记过时，`npm install --package-lock-only` 顺带更正）。`npm ci` 已验证可用。
 - CI 与发布只用 `npm ci`。每次发布前运行 `npm audit --omit=dev`，出现 high 或 critical 时阻止发布。
 - 升级时单独提交：先升补丁版本，并跑完整验证（`typecheck`、`lint`、`test:unit`、`build`、`test:runtime`）。升级 vinext 或 React 后，还要复核 nonce 是否仍然覆盖所有内联脚本，以及首页的缓存头。
 
@@ -175,6 +178,6 @@ upgrade-insecure-requests   （仅 HTTPS）
    ```
 
    并加一项：`PUT /api/sync` 返回 405，响应带 `allow`。
-2. **`public/_headers`**：见 C.4。
-3. **`public/sw.js`、`lib/offline.ts`**：不需要修改，见 D。
+2. **`public/_headers`**：已实施，见 C.4。
+3. **`public/sw.js`、`lib/offline.ts`**：缓存范围不需要修改；`message` 来源检查已实施，见 D。
 4. **线上核实**：托管层是否已经添加 HSTS 等头部（避免重复或冲突）；网关转发的 `Host` 值（启用 `IDENTITY_TRUSTED_HOSTS` 之前必须确认）。

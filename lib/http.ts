@@ -111,3 +111,36 @@ export async function consumeRateLimit(db: RateLimitStore | undefined, bucketKey
   if (Number(row?.request_count || 0) > limit) return Math.max(1, Math.ceil((expiresAt - now) / 1000));
   return null;
 }
+
+/** Adds `amount` to a usage bucket in the same table and returns the new total. */
+export async function addToBucket(db: RateLimitStore | undefined, bucketKey: string, expiresAt: number, amount: number): Promise<number> {
+  if (!db) throw new RateLimitStoreError(false);
+  try {
+    const row = await db.prepare(
+      `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(bucket_key) DO UPDATE SET request_count = request_count + excluded.request_count
+       RETURNING request_count`,
+    ).bind(bucketKey, Math.max(0, Math.round(amount)), expiresAt).first<{ request_count: number }>();
+    return Number(row?.request_count || 0);
+  } catch (error) {
+    throw new RateLimitStoreError(error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message));
+  }
+}
+
+export async function readBucket(db: RateLimitStore | undefined, bucketKey: string): Promise<number> {
+  if (!db) throw new RateLimitStoreError(false);
+  try {
+    const row = await db.prepare("SELECT request_count FROM ai_rate_limits WHERE bucket_key = ?").bind(bucketKey).first<{ request_count: number }>();
+    return Number(row?.request_count || 0);
+  } catch (error) {
+    throw new RateLimitStoreError(error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message));
+  }
+}
+
+/** Calendar days for the token budget follow China Standard Time (UTC+8, no DST). */
+export function budgetDay(now = Date.now()) {
+  const offset = 8 * 3_600_000;
+  const start = Math.floor((now + offset) / 86_400_000) * 86_400_000 - offset;
+  return { start, expiresAt: start + 86_400_000, label: new Date(start + offset).toISOString().slice(0, 10) };
+}

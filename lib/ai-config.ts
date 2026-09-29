@@ -8,14 +8,29 @@ export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: 
 };
 
 const ENCRYPTION_CONTEXT = new TextEncoder().encode("pep-vocab-ai-config:v1");
+const LEGACY_KEY_ID = "k1";
+const KEY_ID_PATTERN = /^[a-z0-9]{1,16}$/;
+const STRICT_KEY_PATTERN = /^[A-Za-z0-9+/]{43}=$/;
+const VERSIONED_CIPHERTEXT_PATTERN = /^([a-z0-9]{1,16}):([A-Za-z0-9+/]+={0,2})$/;
+const ENCRYPTION_UNAVAILABLE = "AI configuration encryption is not available in this deployment";
 
 export type AiCredentialScope = { userKey: string; provider: AiProvider; baseUrl: string };
+export type StoredAiCredential = { encryptedApiKey: string; keyIv: string; encryptionVersion: number };
+/** The subset of D1Database used to refresh a stored credential. */
+export type AiConfigStatementRunner = {
+  prepare(query: string): { bind(...values: unknown[]): { run(): Promise<unknown> } };
+};
 
-function encryptionContext(version: number, scope?: AiCredentialScope) {
+function encryptionContext(version: number, scope?: AiCredentialScope, keyId?: string) {
   if (version === 1) return ENCRYPTION_CONTEXT;
-  if (version !== 2 || !scope) throw new Error("Unsupported AI credential encryption context");
+  if (!scope) throw new Error("Unsupported AI credential encryption context");
   // A ciphertext copied to another user or destination must fail authentication.
-  return new TextEncoder().encode(JSON.stringify(["pep-vocab-ai-config:v2", scope.userKey, scope.provider, scope.baseUrl]));
+  if (version === 2) return new TextEncoder().encode(JSON.stringify(["pep-vocab-ai-config:v2", scope.userKey, scope.provider, scope.baseUrl]));
+  if (version === 3 && keyId) {
+    // The key id is authenticated too, so a ciphertext cannot be relabelled to another key.
+    return new TextEncoder().encode(JSON.stringify(["pep-vocab-ai-config:v3", keyId, scope.userKey, scope.provider, scope.baseUrl]));
+  }
+  throw new Error("Unsupported AI credential encryption context");
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -29,38 +44,128 @@ function base64ToBytes(value: string) {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
-function masterKeyValue() {
-  const value = (env as unknown as Record<string, unknown>).AI_CONFIG_ENCRYPTION_KEY;
-  if (typeof value !== "string" || !value) {
-    throw new Error("AI configuration encryption is not available in this deployment");
-  }
+type MasterKeyring = { keys: Map<string, string>; activeKeyId: string; versioned: boolean };
+
+function configuredString(name: string) {
+  const value = (env as unknown as Record<string, unknown>)[name];
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string") throw new Error(ENCRYPTION_UNAVAILABLE);
   return value;
 }
 
-async function masterKey() {
-  const bytes = base64ToBytes(masterKeyValue());
+/**
+ * Without AI_CONFIG_ENCRYPTION_KEYS the single legacy key is `k1` and new
+ * credentials stay on format v2. With it, new credentials are written as v3
+ * under AI_CONFIG_ENCRYPTION_KEY_ACTIVE. Misconfiguration fails closed.
+ */
+function masterKeyring(): MasterKeyring {
+  const legacy = configuredString("AI_CONFIG_ENCRYPTION_KEY");
+  const keysJson = configuredString("AI_CONFIG_ENCRYPTION_KEYS");
+  const active = configuredString("AI_CONFIG_ENCRYPTION_KEY_ACTIVE");
+  const keys = new Map<string, string>();
+  if (keysJson === undefined) {
+    if (active !== undefined || legacy === undefined) throw new Error(ENCRYPTION_UNAVAILABLE);
+    keys.set(LEGACY_KEY_ID, legacy);
+    return { keys, activeKeyId: LEGACY_KEY_ID, versioned: false };
+  }
+  let parsed: unknown;
+  try { parsed = JSON.parse(keysJson); } catch { throw new Error(ENCRYPTION_UNAVAILABLE); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error(ENCRYPTION_UNAVAILABLE);
+  for (const [keyId, value] of Object.entries(parsed)) {
+    if (!KEY_ID_PATTERN.test(keyId) || typeof value !== "string" || !STRICT_KEY_PATTERN.test(value) || base64ToBytes(value).byteLength !== 32) {
+      throw new Error(ENCRYPTION_UNAVAILABLE);
+    }
+    keys.set(keyId, value);
+  }
+  // Formats v1 and v2 predate key ids and always belong to k1.
+  if (!keys.has(LEGACY_KEY_ID) && legacy !== undefined) keys.set(LEGACY_KEY_ID, legacy);
+  if (!keys.size || active === undefined || !KEY_ID_PATTERN.test(active) || !keys.has(active)) throw new Error(ENCRYPTION_UNAVAILABLE);
+  return { keys, activeKeyId: active, versioned: true };
+}
+
+async function importMasterKey(value: string) {
+  const bytes = base64ToBytes(value);
   if (bytes.byteLength !== 32) throw new Error("AI configuration encryption key has an invalid length");
   return crypto.subtle.importKey("raw", bytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
+async function keyById(ring: MasterKeyring, keyId: string) {
+  const value = ring.keys.get(keyId);
+  if (value === undefined) throw new Error("AI configuration encryption key is unavailable");
+  return importMasterKey(value);
+}
+
+function storedKeyId(encryptedApiKey: string) {
+  return VERSIONED_CIPHERTEXT_PATTERN.exec(encryptedApiKey)?.[1];
+}
+
 export async function encryptApiKey(value: string, scope?: AiCredentialScope) {
+  const ring = masterKeyring();
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encryptionVersion = scope ? 2 : 1;
+  const encryptionVersion = !scope ? 1 : ring.versioned ? 3 : 2;
+  const keyId = encryptionVersion === 3 ? ring.activeKeyId : LEGACY_KEY_ID;
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv, additionalData: encryptionContext(encryptionVersion, scope) },
-    await masterKey(),
+    { name: "AES-GCM", iv, additionalData: encryptionContext(encryptionVersion, scope, keyId) },
+    await keyById(ring, keyId),
     new TextEncoder().encode(value),
   );
-  return { encryptedApiKey: bytesToBase64(new Uint8Array(encrypted)), keyIv: bytesToBase64(iv), encryptionVersion };
+  const cipher = bytesToBase64(new Uint8Array(encrypted));
+  return { encryptedApiKey: encryptionVersion === 3 ? `${keyId}:${cipher}` : cipher, keyIv: bytesToBase64(iv), encryptionVersion };
 }
 
 export async function decryptApiKey(encryptedApiKey: string, keyIv: string, encryptionVersion = 1, scope?: AiCredentialScope) {
+  const ring = masterKeyring();
+  let keyId = LEGACY_KEY_ID;
+  let cipher = encryptedApiKey;
+  if (encryptionVersion === 3) {
+    const match = VERSIONED_CIPHERTEXT_PATTERN.exec(encryptedApiKey);
+    if (!match) throw new Error("Unsupported AI credential encryption context");
+    [, keyId, cipher] = match;
+  }
   const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64ToBytes(keyIv), additionalData: encryptionContext(encryptionVersion, scope) },
-    await masterKey(),
-    base64ToBytes(encryptedApiKey),
+    { name: "AES-GCM", iv: base64ToBytes(keyIv), additionalData: encryptionContext(encryptionVersion, scope, keyId) },
+    await keyById(ring, keyId),
+    base64ToBytes(cipher),
   );
   return new TextDecoder().decode(decrypted);
+}
+
+/** True when a stored credential is not in the current write format under the active key. */
+export function needsReencryption(row: { encryptedApiKey: string; encryptionVersion: number }) {
+  const ring = masterKeyring();
+  if (!ring.versioned) return row.encryptionVersion !== 2;
+  return row.encryptionVersion !== 3 || storedKeyId(row.encryptedApiKey) !== ring.activeKeyId;
+}
+
+/** Decrypts with the stored key and encrypts again with the active key and format. */
+export async function reencryptApiKey(row: StoredAiCredential, scope: AiCredentialScope, plaintext?: string): Promise<StoredAiCredential> {
+  const value = plaintext ?? await decryptApiKey(row.encryptedApiKey, row.keyIv, row.encryptionVersion, scope);
+  return encryptApiKey(value, scope);
+}
+
+/**
+ * Best-effort lazy migration for the runtime: call after a successful decrypt.
+ * Updates the row only if it still holds the ciphertext that was read, so a
+ * concurrent settings save is never overwritten. Never throws; resolves true
+ * only when this call changed the row.
+ */
+export async function refreshStoredCredential(
+  db: AiConfigStatementRunner,
+  row: StoredAiCredential,
+  scope: AiCredentialScope,
+  plaintext?: string,
+) {
+  try {
+    if (!needsReencryption(row)) return false;
+    const next = await reencryptApiKey(row, scope, plaintext);
+    const result = await db.prepare(
+      "UPDATE ai_configs SET encrypted_api_key = ?, key_iv = ?, encryption_version = ?, updated_at = CURRENT_TIMESTAMP WHERE user_key = ? AND encrypted_api_key = ?",
+    ).bind(next.encryptedApiKey, next.keyIv, next.encryptionVersion, scope.userKey, row.encryptedApiKey).run();
+    const changes = (result as { meta?: { changes?: unknown } } | undefined)?.meta?.changes;
+    return typeof changes === "number" ? changes > 0 : true;
+  } catch {
+    return false;
+  }
 }
 
 export function isAiProvider(value: unknown): value is AiProvider {
