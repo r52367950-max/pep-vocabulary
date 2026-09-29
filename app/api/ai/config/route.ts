@@ -4,12 +4,13 @@ import { getDb } from "@/db";
 import { aiConfigs } from "@/db/schema";
 import {
   AI_PROVIDER_DEFAULTS,
-  decryptApiKey,
   encryptApiKey,
   isAiProvider,
+  needsReencryption,
   normalizeConfiguredBaseUrl,
   normalizeConfiguredModel,
   normalizeApiKey,
+  reencryptApiKey,
   sameOriginMutation,
   securityHeaders,
 } from "@/lib/ai-config";
@@ -130,13 +131,11 @@ export async function POST(request: Request) {
     if (!encrypted) {
       return json({ error: current ? "更换服务商或 Base URL 时必须重新填写 API Key。" : "首次配置时需要填写 API Key。" }, 400);
     }
-    if (encrypted.encryptionVersion !== 2) {
-      // Retaining an old credential upgrades it without asking the browser for it.
-      try {
-        encrypted = await encryptApiKey(await decryptApiKey(encrypted.encryptedApiKey, encrypted.keyIv, encrypted.encryptionVersion), scope);
-      } catch {
-        return json({ error: "无法升级当前密钥存储，请重新填写 API Key。" }, 503);
-      }
+    try {
+      // Retaining a credential moves it to the current format and active key without asking the browser for it.
+      if (needsReencryption(encrypted)) encrypted = await reencryptApiKey(encrypted, scope);
+    } catch {
+      return json({ error: "无法升级当前密钥存储，请重新填写 API Key。" }, 503);
     }
 
     await db.insert(aiConfigs).values({

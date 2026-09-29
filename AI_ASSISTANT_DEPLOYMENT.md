@@ -33,6 +33,26 @@ POST /api/assistant/contrast-words
 
 新保存的 API key 使用独立 96-bit IV 和绑定账号、服务商、规范化目标 URL 的 AES-256-GCM v2 上下文加密后保存到 D1；旧 v1 密文兼容读取并在成功保存时升级。服务端接口从不回显明文、密文、IV 或 Key 尾号。Base URL 的规范化目标发生变化时必须重新提交 API key，防止已保存凭据被转发到新目标。
 
+### 主密钥轮换
+
+默认只需要 `AI_CONFIG_ENCRYPTION_KEY`，密文格式 v2，行为不变。需要轮换时改用带编号的密钥集，不改表结构：
+
+- `AI_CONFIG_ENCRYPTION_KEYS`：JSON 对象，键为 kid（`^[a-z0-9]{1,16}$`），值为 base64 编码的 32 字节密钥，例如 `{"k1":"<当前 AI_CONFIG_ENCRYPTION_KEY 的值>","k2":"<新值>"}`。
+- `AI_CONFIG_ENCRYPTION_KEY_ACTIVE`：新密文使用的 kid，必须存在于上面的对象中。
+
+配置了 `AI_CONFIG_ENCRYPTION_KEYS` 后新密文写成 v3：AES-GCM 的附加验证数据为 `["pep-vocab-ai-config:v3", kid, userKey, provider, baseUrl]`，`encrypted_api_key` 存为 `kid:base64`，`encryption_version=3`。v1、v2 密文始终视为 `k1`（对象里没有 `k1` 时使用旧的 `AI_CONFIG_ENCRYPTION_KEY`）。密钥集格式不合法、密钥不是 32 字节、kid 不合规或 `ACTIVE` 不存在时，加解密一律失败并返回统一的“无法使用密钥存储”错误，不会退回旧密钥。
+
+轮换步骤：
+
+1. 生成新的 32 字节随机值（`openssl rand -base64 32`）。先把当前 `AI_CONFIG_ENCRYPTION_KEY` 作为 `k1`、新值作为 `k2` 写入 `AI_CONFIG_ENCRYPTION_KEYS`，并设置 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE=k2`；保留旧的 `AI_CONFIG_ENCRYPTION_KEY`。
+2. 部署。已有 v1/v2 密文仍可解密；之后每次在设置页保存并保留已有密钥时，服务端会用 `k2` 重新加密（`needsReencryption` / `reencryptApiKey`，条件是保存路径上凭据的 kid 不是活动 kid）。助手运行时在解密成功后可调用 `refreshStoredCredential()` 逐步迁移，见下。
+3. 确认没有遗留旧密文：`SELECT COUNT(*) FROM ai_configs WHERE encrypted_api_key NOT LIKE 'k2:%'` 必须为 0。仍有旧行的用户重新保存一次设置（或重新填写 API key）即可迁移。
+4. 结果为 0 之后才从 `AI_CONFIG_ENCRYPTION_KEYS` 与 `AI_CONFIG_ENCRYPTION_KEY` 中移除 `k1`。
+
+回滚：移除 `k1` 之前，把 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE` 切回 `k1` 即可，`k2` 写下的 v3 密文继续可读。任何时候都不要在还有旧密文的情况下删除旧密钥；旧密钥丢失后对应密文无法恢复，用户需要重新填写 API key。
+
+运行时懒迁移：`lib/ai-config.ts` 导出 `refreshStoredCredential(db, row, scope, plaintext?)`。在 `lib/assistant/server.ts` 的 `loadUserRuntimeConfig` 成功解密后调用它，传入带 `prepare()` 的 D1 对象、刚读取的 `{ encryptedApiKey, keyIv, encryptionVersion }` 行、解密所用的 `{ userKey, provider, baseUrl }`，以及已解出的明文。它只在需要迁移时执行 `UPDATE ai_configs SET encrypted_api_key=?, key_iv=?, encryption_version=?, updated_at=CURRENT_TIMESTAMP WHERE user_key=? AND encrypted_api_key=?`，条件更新保证并发的设置保存不会被覆盖；永不抛出，返回本次是否更新了行。调用不应阻塞或影响本次请求（忽略返回值即可）。
+
 从早期 GitHub 版本升级时保留并先执行历史迁移 `0001_flawless_human_cannonball.sql`，再执行 `0002_swift_cerise.sql` 创建按站点身份隔离的 `ai_configs`。早期全局 `ai_provider_config` 不再被运行时代码读取；升级后应由各用户在设置页重新保存自己的 API key。不要删除或改写已经执行过的历史迁移。
 
 DeepSeek 默认配置为：
