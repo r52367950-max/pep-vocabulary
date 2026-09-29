@@ -1,0 +1,213 @@
+import { validWritingReview } from "./writing-review";
+
+export const USER_DATA_SCHEMA_VERSION = "1.2.0";
+export type SkillName = "meaning" | "listening" | "spelling" | "context" | "collocation" | "output";
+export type SkillVector = Record<SkillName, number>;
+
+export type StoredCard = {
+  id: string;
+  fsrs: Record<string, unknown>;
+  skills: SkillVector;
+  status: "unseen" | "learning" | "weak" | "mastered" | "paused";
+  due: string;
+  lastReviewed: string | null;
+  updatedAt: string;
+  note?: string;
+  tags?: string[];
+  favorite?: boolean;
+};
+
+export type ReviewEvent = {
+  eventType?: "review" | "undo";
+  eventId: string;
+  cardId: string;
+  timestampUtc: string;
+  localDate: string;
+  timezone: string;
+  questionType: string;
+  skill: SkillName;
+  rating: 1 | 2 | 3 | 4;
+  correct: boolean;
+  responseMs: number;
+  hints: number;
+  errorType: string | null;
+  prompt?: string;
+  answerGiven?: string | null;
+  expectedAnswer?: string | null;
+  sourceLine?: string | null;
+  intervalBeforeDays?: number | null;
+  intervalAfterDays?: number;
+  stabilityBefore?: number | null;
+  stabilityAfter?: number;
+  difficultyBefore?: number | null;
+  difficultyAfter?: number;
+  before: StoredCard | null;
+  after: StoredCard;
+  schedulerLog: Record<string, unknown>;
+  undoneBy?: string;
+  targetEventId?: string;
+};
+
+export type AppSettings = {
+  key: "app";
+  dailyMinutes: number;
+  desiredRetention: number;
+  selectedBooks: string[];
+  mode: "normal" | "unit" | "review-only" | "exam" | "browse";
+  theme: "light" | "dark" | "system";
+  aiEnabled: boolean;
+  diagnosisComplete: boolean;
+  examDate: string | null;
+  updatedAt: string;
+};
+
+export type WritingGenre = "practical" | "continuation" | "free";
+export type WritingVersion = {
+  id: string;
+  text: string;
+  savedAt: string;
+  /** The validated AI review of this version, when one was requested. */
+  review?: { reviewedAt: string; model: string; result: Record<string, unknown> } | null;
+};
+export type WritingRecord = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  genre: WritingGenre;
+  title: string;
+  prompt: string;
+  targetIds: string[];
+  wordRange: [number, number];
+  versions: WritingVersion[];
+};
+
+export const defaultSettings: AppSettings = {
+  key: "app",
+  dailyMinutes: 45,
+  desiredRetention: 0.9,
+  selectedBooks: ["HS-R1", "HS-R2", "HS-R3", "HS-S1", "HS-S2", "HS-S3", "HS-S4"],
+  mode: "normal",
+  theme: "system",
+  aiEnabled: false,
+  diagnosisComplete: false,
+  examDate: null,
+  updatedAt: new Date(0).toISOString(),
+};
+
+const backupStores = ["cards", "events", "lists", "settings", "writings"] as const;
+
+export type BackupPayload = {
+  schemaVersion: string;
+  exportedAt?: string;
+  cards: StoredCard[];
+  events: ReviewEvent[];
+  lists: Record<string, unknown>[];
+  settings: AppSettings[];
+  writings: WritingRecord[];
+};
+
+function migrateBackup(payload: BackupPayload): BackupPayload {
+  if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION) return payload;
+  // 1.1.0 → 1.2.0 only adds writings; older backups simply have none.
+  if (payload.schemaVersion === "1.1.0") return { ...payload, schemaVersion: USER_DATA_SCHEMA_VERSION, writings: [] };
+  if (payload.schemaVersion !== "1.0.0") throw new Error(`不支持的 schema 版本：${payload.schemaVersion || "缺失"}`);
+  return {
+    ...payload,
+    writings: [],
+    schemaVersion: USER_DATA_SCHEMA_VERSION,
+    events: payload.events.map((event) => ({ ...event, prompt: event.prompt || "", answerGiven: event.answerGiven ?? null, expectedAnswer: event.expectedAnswer ?? null, sourceLine: event.sourceLine ?? null })),
+    settings: payload.settings.map((settings) => ({ ...defaultSettings, ...settings, key: "app" })),
+  };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const validDate = (value: unknown) => typeof value === "string" && value.length <= 40 && Number.isFinite(Date.parse(value));
+const textId = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 200;
+const finiteRange = (value: unknown, low: number, high = Number.MAX_SAFE_INTEGER): value is number => typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
+const stringArray = (value: unknown) => Array.isArray(value) && value.length <= 200 && value.every((item) => typeof item === "string" && item.length <= 500);
+const skills = ["meaning", "listening", "spelling", "context", "collocation", "output"] as const;
+
+export function validUndoTarget(target: ReviewEvent | undefined, undo: ReviewEvent) {
+  return target && target.eventType !== "undo" && target.eventId === undo.targetEventId && target.cardId === undo.cardId &&
+    JSON.stringify(target.before) === JSON.stringify(undo.before) && JSON.stringify(target.after) === JSON.stringify(undo.after);
+}
+
+function validCalendarDate(value: unknown) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && validDate(value) && new Date(value).toISOString().slice(0, 10) === value;
+}
+
+function validCard(value: unknown): value is StoredCard {
+  if (!isRecord(value) || !textId(value.id) || !validDate(value.due) || !validDate(value.updatedAt) || (value.lastReviewed !== null && !validDate(value.lastReviewed))) return false;
+  if (!["unseen", "learning", "weak", "mastered", "paused"].includes(String(value.status)) || !isRecord(value.skills) || !isRecord(value.fsrs)) return false;
+  const vector = value.skills, fsrs = value.fsrs;
+  return Object.keys(vector).length === skills.length && skills.every((skill) => finiteRange(vector[skill], 0, 1)) && validDate(fsrs.due) &&
+    (!fsrs.last_review || validDate(fsrs.last_review)) &&
+    ["stability", "difficulty", "elapsed_days", "scheduled_days", "reps", "lapses", "state"].every((key) => finiteRange(fsrs[key], 0)) &&
+    finiteRange(fsrs.difficulty, 0, 10) && finiteRange(fsrs.state, 0, 3) && Number.isInteger(fsrs.state) &&
+    (fsrs.learning_steps === undefined || finiteRange(fsrs.learning_steps, 0)) &&
+    (value.note === undefined || (typeof value.note === "string" && value.note.length <= 50_000)) &&
+    (value.favorite === undefined || typeof value.favorite === "boolean") && (value.tags === undefined || stringArray(value.tags));
+}
+
+export function validWriting(value: unknown): value is WritingRecord {
+  if (!isRecord(value) || !textId(value.id) || !validDate(value.createdAt) || !validDate(value.updatedAt)) return false;
+  if (!["practical", "continuation", "free"].includes(String(value.genre)) || typeof value.title !== "string" || value.title.length > 200 ||
+    typeof value.prompt !== "string" || value.prompt.length > 4_000) return false;
+  if (!Array.isArray(value.targetIds) || value.targetIds.length > 20 || !value.targetIds.every(textId)) return false;
+  const range = value.wordRange;
+  if (!Array.isArray(range) || range.length !== 2 || !finiteRange(range[0], 0, 5_000) || !finiteRange(range[1], range[0] as number, 5_000)) return false;
+  if (!Array.isArray(value.versions) || value.versions.length < 1 || value.versions.length > 30) return false;
+  const ids = new Set<string>();
+  return value.versions.every((version) => {
+    if (!isRecord(version) || !textId(version.id) || ids.has(version.id) || typeof version.text !== "string" || version.text.length > 20_000 || !validDate(version.savedAt)) return false;
+    ids.add(version.id);
+    const review = version.review;
+    return review === undefined || review === null || (isRecord(review) && validDate(review.reviewedAt) && typeof review.model === "string" &&
+      review.model.length <= 200 && validWritingReview(review.result) && JSON.stringify(review.result).length <= 200_000);
+  });
+}
+
+export function validateBackup(payload: unknown): BackupPayload {
+  if (!isRecord(payload) || !["cards", "events", "lists", "settings"].every((key) => Array.isArray(payload[key]))) throw new Error("备份结构损坏或字段缺失");
+  if (payload.writings !== undefined && !Array.isArray(payload.writings)) throw new Error("备份结构损坏或字段缺失");
+  if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION && !Array.isArray(payload.writings)) throw new Error("备份结构损坏或字段缺失");
+  for (const name of backupStores) {
+    const rows = (payload[name] ?? []) as unknown[];
+    if (rows.length > (name === "events" ? 100_000 : name === "settings" ? 1 : name === "writings" ? 2_000 : 20_000)) throw new Error("备份记录数量超过限制");
+    const ids = new Set<string>();
+    for (const row of rows) {
+      const key = name === "events" ? "eventId" : name === "settings" ? "key" : "id";
+      if (!isRecord(row) || !textId(row[key]) || ids.has(row[key])) throw new Error("备份包含无效或重复的记录 ID");
+      ids.add(row[key]);
+    }
+  }
+  const data = migrateBackup(payload as unknown as BackupPayload);
+  if (!data.cards.every(validCard)) throw new Error("备份的词卡或调度数据无效");
+  if (!data.writings.every(validWriting)) throw new Error("备份的写作记录无效");
+  const eventById = new Map(data.events.map((event) => [event.eventId, event]));
+  const undoneTargets = new Set<string>();
+  for (const event of data.events) {
+    if (!textId(event.cardId) || !validDate(event.timestampUtc) || !validCalendarDate(event.localDate) ||
+      !textId(event.timezone) || !textId(event.questionType) || !skills.includes(event.skill) ||
+      ![1, 2, 3, 4].includes(event.rating) || typeof event.correct !== "boolean" ||
+      !finiteRange(event.responseMs, 0) || !finiteRange(event.hints, 0) || !Number.isInteger(event.hints) || !isRecord(event.schedulerLog) ||
+      !validCard(event.after) || event.after.id !== event.cardId || (event.before !== null && (!validCard(event.before) || event.before.id !== event.cardId)) ||
+      (event.eventType !== undefined && !["review", "undo"].includes(event.eventType)) || (event.eventType === "undo" && !textId(event.targetEventId)) ||
+      [event.prompt, event.answerGiven, event.expectedAnswer, event.sourceLine, event.errorType].some((value) => value != null && (typeof value !== "string" || value.length > 50_000)) ||
+      [event.intervalBeforeDays, event.intervalAfterDays, event.stabilityBefore, event.stabilityAfter].some((value) => value != null && !finiteRange(value, 0)) ||
+      [event.difficultyBefore, event.difficultyAfter].some((value) => value != null && !finiteRange(value, 0, 10))) throw new Error("备份的复习事件无效");
+    if (event.eventType === "undo") {
+      if (!validUndoTarget(eventById.get(event.targetEventId!), event) || undoneTargets.has(event.targetEventId!)) throw new Error("备份的撤销记录与原复习事件不一致");
+      undoneTargets.add(event.targetEventId!);
+    }
+  }
+  for (const settings of data.settings) {
+    if (settings.key !== "app" || !finiteRange(settings.dailyMinutes, 1, 1440) || !finiteRange(settings.desiredRetention, 0.7, 0.99) ||
+      !stringArray(settings.selectedBooks) || !["normal", "unit", "review-only", "exam", "browse"].includes(settings.mode) ||
+      !["light", "dark", "system"].includes(settings.theme) || typeof settings.aiEnabled !== "boolean" ||
+      typeof settings.diagnosisComplete !== "boolean" || !validDate(settings.updatedAt) ||
+      (settings.examDate !== null && !validDate(settings.examDate))) throw new Error("备份的学习设置无效");
+  }
+  return data;
+}
+

@@ -36,6 +36,7 @@ function openCache() {
       const store = request.result.createObjectStore(STORE, { keyPath: "key" });
       store.createIndex("createdAt", "createdAt");
     };
+    request.onblocked = () => reject(new Error("请关闭其他词迹页面后重试缓存操作。"));
     request.onsuccess = () => { request.result.onversionchange = () => request.result.close(); resolve(request.result); };
     request.onerror = () => reject(request.error || new Error("AI cache unavailable"));
   });
@@ -46,8 +47,10 @@ async function cacheRequest<T>(mode: IDBTransactionMode, work: (store: IDBObject
   return new Promise<T | undefined>((resolve, reject) => {
     const tx = db.transaction(STORE, mode);
     let value: T | undefined;
-    const request = work(tx.objectStore(STORE));
-    if (request) request.onsuccess = () => { value = request.result; };
+    try {
+      const request = work(tx.objectStore(STORE));
+      if (request) request.onsuccess = () => { value = request.result; };
+    } catch (error) { tx.abort(); db.close(); reject(error); }
     tx.oncomplete = () => { db.close(); resolve(value); };
     tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || new Error("AI cache failed")); };
   });
@@ -57,6 +60,7 @@ async function cacheRequest<T>(mode: IDBTransactionMode, work: (store: IDBObject
 export const cacheKey = (task: AssistantTask, input: Record<string, unknown>) => `${task}:${stableJson(input)}`;
 
 export async function readCached<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>): Promise<AssistantResult<T> | null> {
+  if (task === "diagnose") return null; // The same empty input describes changing learning history.
   try {
     const row = await cacheRequest<CachedRow>("readonly", (store) => store.get(cacheKey(task, input)));
     return row ? { result: row.result as T, model: row.model, cachedAt: row.createdAt, usage: null } : null;
@@ -67,20 +71,17 @@ export async function readCached<T = Record<string, unknown>>(task: AssistantTas
 
 async function writeCached(row: CachedRow) {
   try {
-    await cacheRequest("readwrite", (store) => { store.put(row); });
-    // Keep the newest entries only; checked occasionally, not on every write.
-    if (Math.random() < 0.1) {
-      const total = await cacheRequest<number>("readonly", (store) => store.count());
-      if ((total || 0) > MAX_ENTRIES) {
-        await cacheRequest("readwrite", (store) => {
-          let excess = (total || 0) - MAX_ENTRIES;
-          store.index("createdAt").openCursor().onsuccess = function () {
-            const cursor = this.result;
-            if (cursor && excess-- > 0) { cursor.delete(); cursor.continue(); }
-          };
-        });
-      }
-    }
+    await cacheRequest("readwrite", (store) => {
+      store.put(row);
+      store.count().onsuccess = function () {
+        let excess = this.result - MAX_ENTRIES;
+        if (excess <= 0) return;
+        store.index("createdAt").openCursor().onsuccess = function () {
+          const cursor = this.result;
+          if (cursor && excess-- > 0) { cursor.delete(); cursor.continue(); }
+        };
+      };
+    });
   } catch {
     /* A full or blocked cache only costs a repeat request later. */
   }
@@ -111,9 +112,14 @@ export const usageStore = {
 export async function runAssistant<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>, options: {
   profile?: LearnerProfile | null; refresh?: boolean; signal?: AbortSignal; cache?: boolean;
 } = {}): Promise<AssistantResult<T>> {
-  const useCache = options.cache !== false;
+  const checkAborted = () => {
+    if (options.signal?.aborted) throw new AssistantError("已取消。", "aborted", true);
+  };
+  checkAborted();
+  const useCache = options.cache !== false && task !== "diagnose";
   if (useCache && !options.refresh) {
     const cached = await readCached<T>(task, input);
+    checkAborted();
     if (cached) return cached;
   }
   const controller = new AbortController();

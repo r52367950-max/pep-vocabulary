@@ -1,6 +1,7 @@
+import { sqliteD1 } from "./sqlite-d1.mjs";
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
 import { DatabaseSync } from 'node:sqlite';
 import 'fake-indexeddb/auto';
@@ -84,18 +85,11 @@ test('version 2 credentials authenticate the account, provider and destination t
 });
 
 const database = new DatabaseSync(':memory:');
-for (const migration of ['0000_curvy_newton_destine', '0001_flawless_human_cannonball', '0002_swift_cerise']) {
-  database.exec(readFileSync(new URL(`../drizzle/${migration}.sql`, import.meta.url), 'utf8'));
+for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort()) {
+  database.exec(readFileSync(new URL(`../drizzle/${file}`, import.meta.url), 'utf8'));
 }
-class Statement {
-  constructor(sql, args = []) { this.sql = sql; this.args = args; }
-  bind(...args) { return new Statement(this.sql, args); }
-  async raw() { const stmt = database.prepare(this.sql); stmt.setReturnArrays(true); return stmt.all(...this.args); }
-  async all() { return { results: database.prepare(this.sql).all(...this.args) }; }
-  async run() { return database.prepare(this.sql).run(...this.args); }
-  async first() { return database.prepare(this.sql).get(...this.args) ?? null; }
-}
-env.DB = { prepare: sql => new Statement(sql) };
+
+env.DB = sqliteD1(database);
 const request = (path, body) => new Request(`https://app.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-vocab-action': 'settings' }, body: JSON.stringify(body) });
 const emptyBackup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
 

@@ -1,5 +1,6 @@
 import { readJsonObject, RequestBodyError } from "@/lib/http";
-import { eq, sql } from "drizzle-orm";
+import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { aiConfigs, aiPreferences } from "@/db/schema";
 import {
@@ -15,7 +16,7 @@ import {
   securityHeaders,
 } from "@/lib/ai-config";
 import { knownOutputLimit, OUTPUT_TOKEN_TARGET, resolveMaxOutputTokens, sameAiCredentialScope, type AiProvider } from "@/lib/assistant/core";
-import { DEFAULT_TOKEN_BUDGET, readTokenUsage } from "@/lib/assistant/server";
+import { DEFAULT_TOKEN_BUDGET, readTokenUsage } from "@/lib/assistant/usage";
 import { authenticatedUserKey } from "@/lib/server-user";
 
 const DEFAULT_LIMITS = { dailyLimit: 30, timeoutSeconds: 25 };
@@ -57,11 +58,10 @@ function publicConfig(row?: typeof aiConfigs.$inferSelect) {
 const TOKEN_BUDGET_RANGE = [10_000, 5_000_000] as const;
 const OUTPUT_CAP_RANGE = [256, OUTPUT_TOKEN_TARGET] as const;
 
-/** Budget, output cap and today's usage. Missing tables (before migration 0003) fall back to defaults. */
+/** Missing rows use defaults; failed preference reads never relax a saved budget. */
 async function usageConfig(userKey: string, model: string) {
   let preferences: typeof aiPreferences.$inferSelect | undefined;
-  try { [preferences] = await getDb().select().from(aiPreferences).where(eq(aiPreferences.userKey, userKey)).limit(1); }
-  catch { /* defaults */ }
+  [preferences] = await getDb().select().from(aiPreferences).where(eq(aiPreferences.userKey, userKey)).limit(1);
   const maxOutputTokens = preferences?.maxOutputTokens ?? null;
   let usageToday = null;
   try { usageToday = await readTokenUsage(userKey); } catch { /* usage unavailable */ }
@@ -168,39 +168,36 @@ export async function POST(request: Request) {
       return json({ error: "无法升级当前密钥存储，请重新填写 API Key。" }, 503);
     }
 
-    await db.insert(aiConfigs).values({
-      userKey,
-      provider: body.provider,
-      baseUrl,
-      model,
-      dailyLimit,
-      timeoutSeconds,
-      ...encrypted,
-    }).onConflictDoUpdate({
-      target: aiConfigs.userKey,
-      set: {
-        provider: body.provider,
-        baseUrl,
-        model,
-        dailyLimit,
-        timeoutSeconds,
-        ...encrypted,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      },
-    });
+    // Compare the exact configuration read above. A racing key replacement or
+    // deletion cannot be resurrected by a model-only save retaining an old key.
+    const binding = env.DB;
+    if (!binding) throw new Error("Configuration store unavailable");
+    const writeToken = crypto.randomUUID();
+    const values = [body.provider, baseUrl, model, dailyLimit, timeoutSeconds,
+      encrypted.encryptedApiKey, encrypted.keyIv, encrypted.encryptionVersion, writeToken];
+    const configWrite = current
+      ? binding.prepare(`UPDATE ai_configs SET provider=?, base_url=?, model=?, daily_limit=?, timeout_seconds=?,
+          encrypted_api_key=?, key_iv=?, encryption_version=?, write_token=?, updated_at=CURRENT_TIMESTAMP
+          WHERE user_key=? AND write_token=? AND encrypted_api_key=? AND key_iv=? RETURNING user_key`)
+        .bind(...values, userKey, current.writeToken, current.encryptedApiKey, current.keyIv)
+      : binding.prepare(`INSERT INTO ai_configs (provider, base_url, model, daily_limit, timeout_seconds,
+          encrypted_api_key, key_iv, encryption_version, write_token, user_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_key) DO NOTHING RETURNING user_key`).bind(...values, userKey);
+    const writes = [configWrite];
     if (dailyTokenBudget !== undefined || body.maxOutputTokens !== undefined) {
-      const budget = dailyTokenBudget ?? DEFAULT_TOKEN_BUDGET;
-      try {
-        await db.insert(aiPreferences).values({ userKey, dailyTokenBudget: budget, maxOutputTokens })
-          .onConflictDoUpdate({ target: aiPreferences.userKey, set: {
-            ...(dailyTokenBudget === undefined ? {} : { dailyTokenBudget }),
-            ...(body.maxOutputTokens === undefined ? {} : { maxOutputTokens }),
-            updatedAt: sql`CURRENT_TIMESTAMP`,
-          } });
-      } catch {
-        return json({ error: "接口配置已保存，但 token 预算需要先部署最新 D1 迁移（0003）。" }, 503);
-      }
+      // This write runs only if THIS batch won the config CAS. The unique token
+      // also prevents a losing batch from changing the winner's preferences.
+      writes.push(binding.prepare(`INSERT INTO ai_preferences (user_key, daily_token_budget, max_output_tokens)
+        SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM ai_configs WHERE user_key=? AND write_token=?)
+        ON CONFLICT(user_key) DO UPDATE SET
+          daily_token_budget=CASE WHEN ? THEN excluded.daily_token_budget ELSE ai_preferences.daily_token_budget END,
+          max_output_tokens=CASE WHEN ? THEN excluded.max_output_tokens ELSE ai_preferences.max_output_tokens END,
+          updated_at=CURRENT_TIMESTAMP`)
+        .bind(userKey, dailyTokenBudget ?? DEFAULT_TOKEN_BUDGET, maxOutputTokens, userKey, writeToken,
+          dailyTokenBudget !== undefined ? 1 : 0, body.maxOutputTokens !== undefined ? 1 : 0));
     }
+    const [written] = await binding.batch(writes);
+    if (!written.results.length) return json({ error: "API 配置已在其他页面修改或移除，请重新打开设置后再保存。", code: "configuration_conflict" }, 409);
     const [saved] = await db.select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
     const config = publicConfig(saved);
     return json({ ...config, ...(await usageConfig(userKey, config.model)) });

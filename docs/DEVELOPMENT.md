@@ -15,11 +15,12 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | 完整验收 | `npm test`：数据审计、类型检查、单元测试、构建、Worker 检查；ESLint 另用 `npm run lint` |
 | 词库数据审计 | `npm run data:audit`；会更新 `data/audit-summary.json`，留意生成差异 |
 | 阅读数据审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
+| 后端查词性能对照 | `npm run benchmark:backend -- <baseline-ref>`；默认对比本轮合并后的 2.4.0 基线，输出微基准中位数，不代表全站或模型延迟 |
 | 性能对照 | `npm run benchmark -- <baseline-ref>`；本地需有相应提交，省略时使用历史基线 `3b12529` |
 
 `test:runtime` 使用本地临时 D1 和测试凭据，不调用真实 AI 服务；不验证生产认证网关、真实服务商或物理设备行为。
 
-`npm run install:ci` 是早期受管环境安装工具：它检查特定 HOME 路径，而当前 `sites-env.sh` 不设置该路径，不能视为通用入口。日常用 `npm ci`；改造该工具时单独验证环境兼容性。
+`npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
 
 ## 按影响选择验证
 

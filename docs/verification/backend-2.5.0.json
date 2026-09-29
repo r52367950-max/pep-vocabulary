@@ -1,0 +1,89 @@
+{
+  "release": "2.5.0",
+  "baseline_git_sha": "e2e9e25",
+  "comparison_baseline": "b770478452e1b42ca5ee93cfb8e8fb7d77d25b94",
+  "date": "2026-09-29",
+  "tests": {
+    "baseline": {
+      "total": 174,
+      "pass": 173,
+      "fail": 1,
+      "note": "An absolute timing test under unrestricted concurrent execution took 207.8ms against its 150ms ceiling."
+    },
+    "final": {
+      "total": 192,
+      "pass": 192,
+      "fail": 0,
+      "file_concurrency": 2
+    },
+    "typecheck": "passed",
+    "data_audit": "passed with unchanged declared data gaps",
+    "production_build": "passed",
+    "worker_d1_smoke": "passed",
+    "installer": "passed (511 locked packages)",
+    "browser_qa": "not run; control-browser skill unavailable",
+    "live_paid_ai": "not run"
+  },
+  "baseline_metrics": {
+    "dist/client": {
+      "files": 360,
+      "bytes": 30487181,
+      "js_bytes": 12949260,
+      "js_gzip_bytes": 4765337
+    },
+    "dist/server": {
+      "files": 52,
+      "bytes": 2296355,
+      "js_bytes": 2158876,
+      "js_gzip_bytes": 523218
+    },
+    "source_lines": 16369,
+    "dist/client/assets": {
+      "files": 43,
+      "bytes": 615323,
+      "gzip_bytes": 217863
+    },
+    "dist/server/assets": {
+      "files": 0,
+      "bytes": 0,
+      "gzip_bytes": 0
+    }
+  },
+  "final_metrics": {
+    "dist/client": {
+      "files": 361,
+      "bytes": 30491039,
+      "js_bytes": 12952884,
+      "js_gzip_bytes": 4766844
+    },
+    "dist/server": {
+      "files": 53,
+      "bytes": 2308492,
+      "js_bytes": 2171013,
+      "js_gzip_bytes": 527300
+    },
+    "source_lines": 16474,
+    "dist/client/assets": {
+      "files": 44,
+      "bytes": 618947,
+      "gzip_bytes": 219370
+    },
+    "dist/server/assets": {
+      "files": 0,
+      "bytes": 0,
+      "gzip_bytes": 0
+    }
+  },
+  "evidence_benchmark": {
+    "baseline": "b770478452e1b42ca5ee93cfb8e8fb7d77d25b94",
+    "node": "v24.19.0",
+    "entries": 4681,
+    "requestedIds": 6,
+    "method": "50 warmups; median of 7 runs, 1000 valid evidence resolutions per run; no network or provider inference",
+    "resolver_1000_calls_ms": {
+      "before": 593.793,
+      "after": 3.815
+    },
+    "sameResult": true
+  }
+}

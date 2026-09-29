@@ -747,9 +747,10 @@ function AiUsageCard({ config }: { config: AIConfig }) {
       <div className="ai-usage">
         <progress value={Math.min(used, config.dailyTokenBudget)} max={config.dailyTokenBudget} aria-label="今日 token 用量" />
         <p className="ai-note">
-          今日已用 {used.toLocaleString()} / {config.dailyTokenBudget.toLocaleString()} token
+          今日预算占用 {used.toLocaleString()} / {config.dailyTokenBudget.toLocaleString()} token
           {usage ? `；其中缓存命中 ${usage.cacheHit.toLocaleString()}，输出 ${usage.output.toLocaleString()}` : ""}。
         </p>
+        <p className="ai-note">预算占用含正在生成及未能确认用量的请求预留；失败请求可能保留预留额度，次日重置。模型用量缺失时采用估算，实际费用以服务商账单为准。学习诊断按当前记录重新生成。</p>
         <p className="ai-note">
           本机保存了 {cached ?? "…"} 条 AI 回答。
           <button className="text-button" disabled={!cached} onClick={async () => {

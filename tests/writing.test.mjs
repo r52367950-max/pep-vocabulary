@@ -111,3 +111,15 @@ test('review marks are placed once each, in text order, case-insensitively', asy
   const marks = locateIssues('I go there. i go there too.', [{ quote: 'i go there' }, { quote: 'I go there' }, { quote: 'missing' }, { quote: 'too' }]);
   assert.deepEqual(marks.map((mark) => [mark.index, mark.start]), [[0, 0], [1, 12], [3, 23]]);
 });
+
+test('leaving an editor before a request starts never calls the AI provider', async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error('unexpected request'); };
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(runAssistant('review-essay', { essay: 'My saved draft.' }, { signal: controller.signal }),
+    (error) => error.code === 'aborted');
+  assert.equal(calls, 0);
+});
