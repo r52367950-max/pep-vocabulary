@@ -10,6 +10,9 @@
  *
  * Nothing request-specific may be added to SYSTEM_PROMPT, or the shared prefix breaks.
  */
+import { stableJson } from "../stable-json";
+
+export { stableJson };
 
 export const ASSISTANT_TASKS = [
   "explain",
@@ -103,17 +106,6 @@ export const SYSTEM_PROMPT = [
   "# 任务说明",
   ...ASSISTANT_TASKS.flatMap((task) => [`## ${task}`, TASK_GUIDES[task], `输出形状：${OUTPUT_SHAPES[task]}`, ""]),
 ].join("\n");
-
-/** Stable key order, so an identical profile always serializes to identical bytes. */
-export function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort()
-      .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
-      .map((key) => `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`).join(",")}}`;
-  }
-  return JSON.stringify(value ?? null);
-}
 
 export function buildUserMessage(profile: unknown, task: AssistantTask, input: unknown, evidence: unknown) {
   return [

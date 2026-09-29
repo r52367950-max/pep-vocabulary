@@ -97,14 +97,14 @@ class Statement {
 }
 env.DB = { prepare: sql => new Statement(sql) };
 const request = (path, body) => new Request(`https://app.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-vocab-action': 'settings' }, body: JSON.stringify(body) });
-const emptyBackup = { schemaVersion: '1.1.0', cards: [], events: [], lists: [], settings: [] };
+const emptyBackup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
 
 test('sync rejects an identity changed after the client read its revision', async () => {
   requestHeaders.set('oai-authenticated-user-email', 'sync-a@example.test');
   const initial = await (await syncGet()).json();
   assert.match(initial.identity, /^[a-f0-9]{64}$/);
   assert.equal(initial.state, null);
-  const body = { schemaVersion: '1.1.0', baseRevision: 0, clientUpdatedAt: '2026-09-15T00:00:00Z', payload: emptyBackup, expectedIdentity: initial.identity };
+  const body = { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: '2026-09-15T00:00:00Z', payload: emptyBackup, expectedIdentity: initial.identity };
   requestHeaders.set('oai-authenticated-user-email', 'sync-b@example.test');
   const conflict = await syncPost(request('/api/sync', body));
   assert.equal(conflict.status, 409);

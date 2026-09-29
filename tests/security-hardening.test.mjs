@@ -34,10 +34,10 @@ const modules = Object.fromEntries(await Promise.all(routeFiles.map(async file =
 
 const wordA = 'pep-1e3e7e41accdc5f7';
 const wordB = 'pep-07d418db40de3fe8';
-const backup = { schemaVersion: '1.1.0', cards: [], events: [], lists: [], settings: [] };
+const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
 // The smallest body each POST route accepts before it checks identity.
 const validBodies = {
-  '/api/sync': { schemaVersion: '1.1.0', baseRevision: 0, clientUpdatedAt: '2026-09-24T00:00:00Z', payload: backup },
+  '/api/sync': { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: '2026-09-24T00:00:00Z', payload: backup },
   '/api/ai/config': { provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-only-not-a-real-key-000000', dailyLimit: 30, timeoutSeconds: 25 },
   '/api/ai/test': {},
   '/api/assistant/explain': { wordId: wordA },
