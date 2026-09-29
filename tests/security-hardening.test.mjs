@@ -44,6 +44,10 @@ const validBodies = {
   '/api/assistant/check-sentence': { wordId: wordA, sentence: 'They abandoned the plan.' },
   '/api/assistant/generate-practice': { wordIds: [wordA, wordB], count: 3 },
   '/api/assistant/contrast-words': { wordIds: [wordA, wordB] },
+  '/api/assistant/review-essay': { wordIds: [wordA], genre: 'free', essay: 'I abandoned my old plan and started again.' },
+  '/api/assistant/mnemonic': { wordId: wordA },
+  '/api/assistant/story': { wordIds: [wordA, wordB, 'pep-0000000000000001'] },
+  '/api/assistant/diagnose': { wordIds: [wordA] },
   '/api/reading/classify': { title: 'A test article', text: 'This is an English reading sample. '.repeat(5) },
 };
 const actions = { '/api/ai/config': 'settings', '/api/ai/test': 'settings', '/api/reading/classify': 'reading-classify', '/api/sync': 'sync' };

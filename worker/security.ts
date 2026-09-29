@@ -27,6 +27,10 @@ export const PRIVATE_API_ROUTES: Readonly<Record<string, readonly string[]>> = {
   "/api/assistant/contrast-words": ["POST"],
   "/api/assistant/explain": ["POST"],
   "/api/assistant/generate-practice": ["POST"],
+  "/api/assistant/review-essay": ["POST"],
+  "/api/assistant/mnemonic": ["POST"],
+  "/api/assistant/story": ["POST"],
+  "/api/assistant/diagnose": ["POST"],
   "/api/reading/classify": ["POST"],
 };
 

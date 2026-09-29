@@ -1,0 +1,39 @@
+{
+  "profile": {
+    "date": "2026-09-29",
+    "totals": { "reviews": 412, "words": 186, "accuracy7d": 78, "activeDays30": 17 },
+    "errorCounts": { "near-miss": 14, "confusion": 9, "spelling": 11, "recall": 22, "listening": 5 },
+    "weakWords": [
+      { "id": "pep-8c941527d86372b2", "errors": 4, "lapses": 2, "lastKind": "confusion" },
+      { "id": "pep-1dcf30f11618b4b4", "errors": 3, "lapses": 1, "lastKind": "confusion" },
+      { "id": "pep-9ef69143e4249bb0", "errors": 3, "lapses": 2, "lastKind": "near-miss" }
+    ],
+    "recentMistakes": [
+      { "id": "pep-8c941527d86372b2", "question": "context-choice", "given": "adopt", "expected": "adapt", "kind": "confusion" },
+      { "id": "pep-9ef69143e4249bb0", "question": "spelling", "given": "accomodation", "expected": "accommodation", "kind": "near-miss" },
+      { "id": "pep-1dcf30f11618b4b4", "question": "context-choice", "given": "effect", "expected": "affect", "kind": "confusion" }
+    ],
+    "notes": [{ "id": "pep-9ef69143e4249bb0", "text": "两个 c 两个 m" }],
+    "confusions": [
+      { "id": "pep-8c941527d86372b2", "withId": "pep-06b846219f5b1892", "count": 3 },
+      { "id": "pep-1dcf30f11618b4b4", "withId": "pep-13037fe89eb63309", "count": 2 }
+    ],
+    "writing": { "count": 3, "averageScore": 17, "commonIssues": ["时态不一致", "句子衔接生硬"] }
+  },
+  "cases": [
+    { "name": "explain-general", "task": "explain", "input": { "wordId": "pep-a46c38628a99e102", "focus": "general" } },
+    { "name": "explain-mistakes", "task": "explain", "input": { "wordId": "pep-8c941527d86372b2", "focus": "mistakes" }, "expect": { "personalNote": true } },
+    { "name": "check-sentence", "task": "check-sentence", "input": { "wordId": "pep-765c737b059f5771", "sentence": "She achieved to finish the project on time." }, "expect": { "verdict": "needs-revision" } },
+    { "name": "practice-confusion", "task": "generate-practice", "input": { "wordIds": ["pep-8c941527d86372b2", "pep-06b846219f5b1892", "pep-1dcf30f11618b4b4", "pep-13037fe89eb63309"], "skill": "context", "difficulty": "standard", "count": 6 } },
+    { "name": "contrast", "task": "contrast-words", "input": { "wordIds": ["pep-1dcf30f11618b4b4", "pep-13037fe89eb63309"] } },
+    { "name": "essay-practical", "task": "review-essay", "input": {
+      "genre": "practical",
+      "prompt": "假定你是李华，给交换生 Tom 写一封邮件，推荐他参加学校的志愿者活动。",
+      "wordIds": ["pep-bd37fae5cfe03d0d", "pep-2815d193c02c77ba", "pep-173559469e6051ff", "pep-4aecaaf831dae86b"],
+      "essay": "Dear Tom,\n\nI am writing to recommend you to join our school volunteer activity next weekend. It is a great opportunity for you to know more about chinese culture. We will go to the community center and help the old people cleaning their rooms. Last year I join it and I learn a lot. I believe you will enjoy it and make many friends.\n\nLooking forward to your reply.\n\nYours,\nLi Hua"
+    }, "expect": { "minIssues": 3 } },
+    { "name": "mnemonic", "task": "mnemonic", "input": { "wordId": "pep-9ef69143e4249bb0" } },
+    { "name": "story", "task": "story", "input": { "wordIds": ["pep-8c941527d86372b2", "pep-943fe4c27edadbd0", "pep-21fb2c60107f0343", "pep-8a971a4157ef3c4e", "pep-d4fe73cbbd8780ba"], "level": "B1", "length": "short" } },
+    { "name": "diagnose", "task": "diagnose", "input": { "wordIds": ["pep-8c941527d86372b2", "pep-1dcf30f11618b4b4", "pep-9ef69143e4249bb0"] } }
+  ]
+}
