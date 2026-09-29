@@ -5,9 +5,14 @@ import { Check, Clock3, Leaf, Target } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { StudyStats } from "@/lib/progress";
 import { forecastDueLoad } from "@/lib/scheduler";
+import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { Empty } from "./shared";
+import StudyInsights from "./ai/study-insights";
 
-export default function Activity({ data, stats }: { data: Vocabulary; stats: StudyStats }) {
+export default function Activity({ data, stats, onPractice, onWord }: {
+  data: Vocabulary; stats: StudyStats;
+  onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void;
+}) {
   const { history } = data;
   const index = data.byId;
   const week = useMemo(() => Array.from({ length: 7 }, (_, i) => {
@@ -97,6 +102,7 @@ export default function Activity({ data, stats }: { data: Vocabulary; stats: Stu
           ))}
         </section>
       </div>
+      <StudyInsights data={data} onPractice={onPractice} onWord={onWord} />
       <section className="review-log">
         <div className="section-heading">
           <h2>最近的练习</h2>

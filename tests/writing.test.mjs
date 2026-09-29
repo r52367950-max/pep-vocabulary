@@ -105,3 +105,9 @@ test('assistant answers are cached locally and a repeat view sends no request', 
   assert.equal(profileSnapshot(10, 'w0', build), profileSnapshot(29, 'w0', build));
   assert.notEqual(profileSnapshot(30, 'w0', build), profileSnapshot(29, 'w0', build));
 });
+
+test('review marks are placed once each, in text order, case-insensitively', async () => {
+  const { locateIssues } = await import('../lib/writing.ts');
+  const marks = locateIssues('I go there. i go there too.', [{ quote: 'i go there' }, { quote: 'I go there' }, { quote: 'missing' }, { quote: 'too' }]);
+  assert.deepEqual(marks.map((mark) => [mark.index, mark.start]), [[0, 0], [1, 12], [3, 23]]);
+});

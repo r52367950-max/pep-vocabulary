@@ -134,3 +134,23 @@ export function writingTitle(record: WritingRecord) {
   const text = latestVersion(record)?.text.trim() || "";
   return text ? `${text.split(/\s+/).slice(0, 6).join(" ")}${countWords(text) > 6 ? "…" : ""}` : "未命名草稿";
 }
+
+/** Places each quoted issue in the essay (first unused match, case-insensitive), in text order. */
+export function locateIssues(essay: string, issues: readonly { quote: string }[]) {
+  const lower = essay.toLowerCase();
+  const taken: [number, number][] = [];
+  const placed = issues.map((issue, index) => {
+    const needle = issue.quote.toLowerCase();
+    let from = 0;
+    while (needle) {
+      const at = lower.indexOf(needle, from);
+      if (at < 0) break;
+      const end = at + needle.length;
+      if (!taken.some(([start, stop]) => at < stop && end > start)) { taken.push([at, end]); return { index, start: at, end }; }
+      from = at + 1;
+    }
+    return { index, start: -1, end: -1 };
+  });
+  return placed.filter((item) => item.start >= 0).sort((a, b) => a.start - b.start);
+}
+

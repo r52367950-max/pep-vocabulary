@@ -45,6 +45,7 @@ const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
 const StudySession = lazy(() => import("./studio/study-session"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
 const LearnActivity = lazy(() => import("./studio/learn/learn-activity"));
+const WritingWorkspace = lazy(() => import("./studio/writing/writing-workspace"));
 type View = "today" | "lexicon" | "reading" | "activity";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
@@ -120,6 +121,7 @@ export default function VocabApp() {
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
   const [learn, setLearn] = useState<LearnMode | null>(null);
+  const [writing, setWriting] = useState<{ targets?: string[]; openId?: string | null } | null>(null);
   const [resume, setResume] = useState<StudySessionState | null>(null);
   const [clock, setClock] = useState(() => Date.now());
   const initialized = useRef(false);
@@ -129,7 +131,7 @@ export default function VocabApp() {
   // answer rather than before the next card can paint. Elsewhere it stays in step with the data.
   const deferredCards = useDeferredValue(data.cards);
   const deferredHistory = useDeferredValue(data.history);
-  const offscreen = session !== null || learn !== null;
+  const offscreen = session !== null || learn !== null || writing !== null;
   const planCards = offscreen ? deferredCards : data.cards;
   const planHistory = offscreen ? deferredHistory : data.history;
   // One computation per data change and local date: Today and Activity read the same object.
@@ -248,6 +250,7 @@ export default function VocabApp() {
     if (
       !session &&
       !learn &&
+      !writing &&
       !selected &&
       !settingsOpen &&
       (((event.metaKey || event.ctrlKey) &&
@@ -328,6 +331,10 @@ export default function VocabApp() {
     setUnit(nextUnit);
     void updateSettings({ selectedBooks: [book] });
   }, [updateSettings]);
+  const practiseMistakes = useCallback(
+    (entries: LexiconIndexEntry[]) => startSession("mistakes", entries),
+    [startSession],
+  );
   const practiseReading = useCallback(
     (entries: LexiconIndexEntry[]) => startSession("context", entries),
     [startSession],
@@ -336,6 +343,10 @@ export default function VocabApp() {
   const onLearn = useCallback((mode: LearnMode) => {
     setSelected(null);
     setLearn(mode);
+  }, []);
+  const onWrite = useCallback((options: { targets?: string[]; openId?: string | null }) => {
+    setSelected(null);
+    setWriting(options);
   }, []);
   const showLexicon = useCallback(() => setView("lexicon"), []);
   const showReading = useCallback(() => setView("reading"), []);
@@ -368,12 +379,13 @@ export default function VocabApp() {
   };
   // The system back gesture closes the top layer instead of leaving the app.
   useBackGuard(
-    !!(selected || settingsOpen || session || learn || view !== "today"),
+    !!(selected || settingsOpen || session || learn || writing || view !== "today"),
     () => {
       if (selected) setSelected(null);
       else if (settingsOpen) setSettingsOpen(false);
       else if (session) closeSession();
       else if (learn) setLearn(null);
+      else if (writing) setWriting(null);
       else setView("today");
     },
   );
@@ -459,6 +471,36 @@ export default function VocabApp() {
             }}
           />
         </Suspense>
+        {toast}
+      </>
+    );
+  if (writing)
+    return (
+      <>
+        <Suspense fallback={<Pending />}>
+          <WritingWorkspace
+            data={data}
+            initialTargets={writing.targets}
+            openId={writing.openId}
+            onExit={() => setWriting(null)}
+            onWord={setSelected}
+            onPractice={(entries) => {
+              setWriting(null);
+              startSession("mistakes", entries);
+            }}
+          />
+        </Suspense>
+        {selected && (
+          <Suspense fallback={null}>
+            <WordDetail
+              key={selected.id}
+              entry={selected}
+              data={data}
+              onClose={() => setSelected(null)}
+              onPractice={(entry) => { setWriting(null); startSession("daily", [entry]); }}
+            />
+          </Suspense>
+        )}
         {toast}
       </>
     );
@@ -602,6 +644,7 @@ export default function VocabApp() {
                   : null
               }
               resume={resumeSession}
+              onWrite={onWrite}
             />
           </ViewPane>
           {visited.has("lexicon") && (
@@ -629,7 +672,7 @@ export default function VocabApp() {
           {visited.has("activity") && (
             <ViewPane active={view === "activity"}>
               {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
-              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} />
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} />
             </ViewPane>
           )}
         </main>
