@@ -6,6 +6,8 @@ import {
   type LexiconIndexEntry,
   type LexiconManifest,
 } from "@/lib/lexicon";
+import { requestPersistentStorage, takeBackupReminder } from "@/lib/persistence";
+import { ReviewHistory } from "@/lib/progress";
 import { newStoredCard } from "@/lib/scheduler";
 import {
   commitReview,
@@ -25,12 +27,13 @@ export function useVocabulary() {
   const [manifest, setManifest] = useState<LexiconManifest | null>(null);
   const [settings, setSettings] = useState(defaultSettings);
   const [cards, setCards] = useState<Map<string, StoredCard>>(new Map());
-  const [events, setEvents] = useState<ReviewEvent[]>([]);
+  const [history, setHistory] = useState(() => new ReviewHistory());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
   const writes = useRef(Promise.resolve());
   const channel = useRef<BroadcastChannel | null>(null);
+  const persistAsked = useRef(false);
 
   const reload = useCallback(async () => {
     const [storedCards, storedEvents, storedSettings] = await Promise.all([
@@ -39,7 +42,7 @@ export function useVocabulary() {
       loadSettings(),
     ]);
     setCards(new Map(storedCards.map((card) => [card.id, card])));
-    setEvents(storedEvents);
+    setHistory(ReviewHistory.from(storedEvents));
     setSettings(storedSettings);
   }, []);
 
@@ -56,7 +59,7 @@ export function useVocabulary() {
         setIndex(lexicon.index);
         setManifest(lexicon.manifest);
         setCards(new Map(storedCards.map((card) => [card.id, card])));
-        setEvents(storedEvents);
+        setHistory(ReviewHistory.from(storedEvents));
         setSettings(storedSettings);
       })
       .catch((cause) => {
@@ -87,6 +90,17 @@ export function useVocabulary() {
       window.removeEventListener("offline", connection);
     };
   }, [reload]);
+
+  // Never on first paint for a new user: ask once there is history, or after the first answer.
+  const hasHistory = !loading && history.size > 0;
+  useEffect(() => {
+    if (!hasHistory || persistAsked.current) return;
+    persistAsked.current = true;
+    void requestPersistentStorage().then((persisted) => {
+      if (!persisted && takeBackupReminder())
+        notify("浏览器可能在空间不足时清理本机数据，建议在“数据与备份”中导出 JSON 备份。");
+    });
+  }, [hasHistory]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -121,8 +135,13 @@ export function useVocabulary() {
       } else next.set(event.cardId, event.after);
       return next;
     });
-    setEvents((previous) => [...previous, event]);
+    // Appends in place and hands back a new handle, so answering never copies the event list.
+    setHistory((previous) => previous.append(event));
     channel.current?.postMessage("review");
+    if (!persistAsked.current) {
+      persistAsked.current = true;
+      void requestPersistentStorage();
+    }
   }, []);
 
   const metadata = useCallback(
@@ -155,7 +174,7 @@ export function useVocabulary() {
       manifest,
       settings,
       cards,
-      events,
+      history,
       loading,
       error,
       online,
@@ -171,7 +190,7 @@ export function useVocabulary() {
       manifest,
       settings,
       cards,
-      events,
+      history,
       loading,
       error,
       online,
