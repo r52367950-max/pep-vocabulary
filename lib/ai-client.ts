@@ -111,9 +111,14 @@ export const usageStore = {
 export async function runAssistant<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>, options: {
   profile?: LearnerProfile | null; refresh?: boolean; signal?: AbortSignal; cache?: boolean;
 } = {}): Promise<AssistantResult<T>> {
+  const checkAborted = () => {
+    if (options.signal?.aborted) throw new AssistantError("已取消。", "aborted", true);
+  };
+  checkAborted();
   const useCache = options.cache !== false;
   if (useCache && !options.refresh) {
     const cached = await readCached<T>(task, input);
+    checkAborted();
     if (cached) return cached;
   }
   const controller = new AbortController();
