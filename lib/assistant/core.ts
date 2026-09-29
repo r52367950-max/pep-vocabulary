@@ -242,8 +242,15 @@ export function parseAssistantRequest(task: AssistantTask, value: unknown): Pars
   };
 }
 
+const evidenceIndexes = new WeakMap<LexiconEvidenceRow[], Map<string, LexiconEvidenceRow>>();
+
+/** Release arrays are immutable for the lifetime of a published Worker. */
 export function resolveLexiconEvidence(rows: LexiconEvidenceRow[], ids: string[]): LexiconEvidence[] {
-  const byId = new Map(rows.map((row) => [row.id, row]));
+  let byId = evidenceIndexes.get(rows);
+  if (!byId) {
+    byId = new Map(rows.map((row) => [row.id, row]));
+    evidenceIndexes.set(rows, byId);
+  }
   return ids.map((id) => {
     const row = byId.get(id);
     if (!row || row.flags?.formalReleaseEligible !== true) {
@@ -751,12 +758,15 @@ const TEMPERATURE: Record<AssistantTask, number> = {
 
 export type UpstreamOptions = { maxTokens?: number; stream?: boolean; baseUrl?: string; cacheKey?: string };
 
+export function outputTokenParameters(model: string, baseUrl: string | undefined, maximum: number) {
+  const officialOpenAI = baseUrl && new URL(baseUrl).hostname === "api.openai.com";
+  return { [officialOpenAI && /^(?:o\d|gpt-5)/.test(model) ? "max_completion_tokens" : "max_tokens"]: maximum };
+}
+
 export function upstreamPayload(model: string, prompt: { system: string; user: string }, task: AssistantTask, provider?: AiProvider, options: UpstreamOptions = {}) {
   const maxTokens = options.maxTokens ?? resolveMaxOutputTokens(model);
   const host = options.baseUrl ? new URL(options.baseUrl).hostname : "";
   const officialOpenAI = host === "api.openai.com";
-  // Newer OpenAI reasoning models reject max_tokens.
-  const tokenField = officialOpenAI && /^(?:o\d|gpt-5)/.test(model) ? "max_completion_tokens" : "max_tokens";
   return {
     model,
     messages: [
@@ -764,7 +774,7 @@ export function upstreamPayload(model: string, prompt: { system: string; user: s
       { role: "user", content: prompt.user },
     ],
     temperature: TEMPERATURE[task],
-    [tokenField]: maxTokens,
+    ...outputTokenParameters(model, options.baseUrl, maxTokens),
     response_format: { type: "json_object" },
     stream: Boolean(options.stream),
     // Usage arrives in the final chunk only when asked; unknown compatible hosts may reject the field.
@@ -774,7 +784,7 @@ export function upstreamPayload(model: string, prompt: { system: string; user: s
   };
 }
 
-export function connectionTestPayload(provider: AiProvider, model: string, structured: boolean) {
+export function connectionTestPayload(provider: AiProvider, model: string, structured: boolean, baseUrl?: string) {
   if (structured) {
     return {
       model,
@@ -782,7 +792,7 @@ export function connectionTestPayload(provider: AiProvider, model: string, struc
         { role: "system", content: "Return a JSON object only. Do not include Markdown." },
         { role: "user", content: 'Return exactly {"ok":true}.' },
       ],
-      max_tokens: 64,
+      ...outputTokenParameters(model, baseUrl, 64),
       response_format: { type: "json_object" },
       stream: false,
       ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
@@ -794,7 +804,7 @@ export function connectionTestPayload(provider: AiProvider, model: string, struc
       { role: "system", content: "Reply with exactly OK." },
       { role: "user", content: "Connection test." },
     ],
-    max_tokens: 16,
+    ...outputTokenParameters(model, baseUrl, 16),
     stream: false,
     ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
   };
@@ -910,20 +920,7 @@ export async function fetchChatCompletionWithTimeout(
   init: RequestInit,
   timeoutMs: number,
 ): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetcher(url, { ...init, signal: controller.signal, redirect: "manual" });
-    return await readChatCompletion(response, controller.signal);
-  } catch (error) {
-    if (error instanceof AssistantUpstreamError) throw error;
-    if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
-      throw new AssistantUpstreamError("upstream_timeout", "模型服务响应超时，请稍后重试。", 504, true);
-    }
-    throw networkFailure(error);
-  } finally {
-    clearTimeout(timeout);
-  }
+  return (await fetchCompletion(fetcher, url, init, { idleMs: timeoutMs, totalMs: timeoutMs, stream: false })).content;
 }
 
 function mappedUpstreamFailure(status: number): AssistantUpstreamError {
@@ -940,7 +937,7 @@ function mappedUpstreamFailure(status: number): AssistantUpstreamError {
 export type CompletionUsage = { prompt: number; completion: number; cacheHit: number; total: number; estimated: boolean };
 export type Completion = { content: string; usage: CompletionUsage; finishReason: string | null };
 
-const tokenCount = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
+const tokenCount = (value: unknown) => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
 
 /** DeepSeek reports prompt_cache_hit_tokens; OpenAI reports prompt_tokens_details.cached_tokens. */
 export function parseUsage(value: unknown): CompletionUsage | null {
@@ -950,7 +947,7 @@ export function parseUsage(value: unknown): CompletionUsage | null {
   const details = usage.prompt_tokens_details as Record<string, unknown> | undefined;
   const cacheHit = tokenCount(usage.prompt_cache_hit_tokens) || tokenCount(details?.cached_tokens);
   if (!prompt && !completion) return null;
-  return { prompt, completion, cacheHit: Math.min(cacheHit, prompt), total: tokenCount(usage.total_tokens) || prompt + completion, estimated: false };
+  return { prompt, completion, cacheHit: Math.min(cacheHit, prompt), total: Math.max(tokenCount(usage.total_tokens), prompt + completion), estimated: false };
 }
 
 /** A rough fallback when a provider returns no usage: about three characters per token. */
@@ -1050,6 +1047,7 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     if (done) void reader.cancel("done").catch(() => undefined);
     try { reader.releaseLock(); } catch { /* The aborted stream still owns the lock. */ }
   }
+  if (!done && !finishReason) throw new AssistantUpstreamError("incomplete_stream", "模型回答传输中断，请重试。", 502, true);
   const text = cleanOutputText(content, "choices[0].message.content", 300_000);
   return { content: text, usage: usage || estimateUsage(promptChars, text), finishReason };
 }
@@ -1060,17 +1058,23 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
  */
 export async function fetchCompletion(fetcher: typeof fetch, url: string, init: RequestInit, options: { idleMs: number; totalMs: number; stream: boolean; promptChars?: number }): Promise<Completion> {
   const controller = new AbortController();
+  const caller = init.signal;
+  const cancel = () => controller.abort(caller?.reason);
+  caller?.addEventListener("abort", cancel, { once: true });
+  if (caller?.aborted) cancel();
   let idle: ReturnType<typeof setTimeout> | undefined;
   const arm = () => { clearTimeout(idle); idle = setTimeout(() => controller.abort(), options.idleMs); };
   const total = setTimeout(() => controller.abort(), options.totalMs);
   arm();
   try {
+    controller.signal.throwIfAborted();
     const response = await fetcher(url, { ...init, signal: controller.signal, redirect: "manual" });
     arm();
     return options.stream
       ? await readChatCompletionStream(response, controller.signal, arm, options.promptChars)
       : await readChatCompletionDetailed(response, controller.signal, options.promptChars);
   } catch (error) {
+    if (caller?.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
     if (error instanceof AssistantUpstreamError) throw error;
     if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
       throw new AssistantUpstreamError("upstream_timeout", "模型服务响应超时，请稍后重试。", 504, true);
@@ -1079,6 +1083,7 @@ export async function fetchCompletion(fetcher: typeof fetch, url: string, init: 
   } finally {
     clearTimeout(idle);
     clearTimeout(total);
+    caller?.removeEventListener("abort", cancel);
   }
 }
 

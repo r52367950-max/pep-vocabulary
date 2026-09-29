@@ -188,7 +188,11 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(true);
   const latest = useRef(record);
-  useEffect(() => { latest.current = record; }, [record]);
+  const committed = useRef(record);
+  const saveFailed = useRef(false);
+  const writes = useRef(Promise.resolve());
+  const reviewController = useRef<AbortController | null>(null);
+  useEffect(() => () => reviewController.current?.abort(), []);
   const profile = useLearnerProfile(data);
   const seconds = useElapsed(reviewing);
   const targets = useMemo(() => record.targetIds.flatMap((id) => (data.byId.get(id) ? [data.byId.get(id)!] : [])), [record.targetIds, data.byId]);
@@ -196,38 +200,57 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
   const checks = useMemo(() => localWritingChecks(text, uses, record.wordRange), [text, uses, record.wordRange]);
   const words = countWords(text);
 
-  const persist = useCallback(async (next: WritingRecord) => {
-    try { await saveWriting(next); onSave(next); latest.current = next; setSaved(true); }
-    catch { data.notify("草稿未能保存到本机，请复制文字后重试。"); }
+  const persist = useCallback((next: WritingRecord) => {
+    latest.current = next;
+    setSaved(false);
+    // Queue writes immediately, including the last keystroke before leaving the editor.
+    const pending = writes.current.then(async () => {
+      if (saveFailed.current) throw new Error("草稿尚未保存。请复制当前文字后重新打开，避免覆盖其他页面的修改。");
+      await saveWriting(next, committed.current);
+      committed.current = next;
+      onSave(next);
+      if (latest.current === next) setSaved(true);
+    });
+    writes.current = pending.catch((cause) => {
+      saveFailed.current = true;
+      const message = cause instanceof Error ? cause.message : "草稿未能保存到本机，请复制文字后重试。";
+      setError(message);
+      data.notify(message);
+    });
+    return pending;
   }, [onSave, data]);
 
-  // Drafts save themselves shortly after typing stops, and on leaving.
-  useEffect(() => {
-    if (text === latestVersion(latest.current).text) return;
-    setSaved(false);
-    const timer = setTimeout(() => {
-      const base = latest.current;
-      const versions = [...base.versions];
-      const last = versions[versions.length - 1];
-      // A reviewed version stays as it was; new edits start the next version.
-      if (last.review) versions.push({ id: createLocalId(), text, savedAt: new Date().toISOString(), review: null });
-      else versions[versions.length - 1] = { ...last, text, savedAt: new Date().toISOString() };
-      void persist({ ...base, versions, updatedAt: new Date().toISOString() });
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [text, persist]);
+  const edit = (value: string) => {
+    if (reviewController.current) return;
+    const base = latest.current;
+    const versions = [...base.versions];
+    const last = versions[versions.length - 1];
+    if (last.review && versions.length >= 30) {
+      data.notify("这篇作文已有 30 个版本，请新建一篇继续修改。");
+      return;
+    }
+    setText(value);
+    if (last.review) versions.push({ id: createLocalId(), text: value, savedAt: new Date().toISOString(), review: null });
+    else versions[versions.length - 1] = { ...last, text: value, savedAt: new Date().toISOString() };
+    void persist({ ...base, versions, updatedAt: new Date().toISOString() }).catch(() => undefined);
+  };
 
   const review = async () => {
+    if (reviewController.current) return;
+    const controller = new AbortController();
+    reviewController.current = controller;
     setError("");
     setReviewing(Date.now());
     try {
       const base = latest.current;
       const versions = [...base.versions];
       const last = versions[versions.length - 1];
-      if (last.review) versions.push({ id: createLocalId(), text, savedAt: new Date().toISOString(), review: null });
-      else versions[versions.length - 1] = { ...last, text, savedAt: new Date().toISOString() };
+      versions[versions.length - 1] = { ...last, text, savedAt: new Date().toISOString() };
+      await persist({ ...base, versions, updatedAt: new Date().toISOString() });
+      if (controller.signal.aborted) return;
       const input = { genre: base.genre, prompt: base.prompt, essay: text, wordIds: base.targetIds };
-      const answer = await runAssistant("review-essay", input, { profile: await profile() });
+      const answer = await runAssistant("review-essay", input, { profile: await profile(), signal: controller.signal });
+      if (controller.signal.aborted) return;
       const at = versions.length - 1;
       versions[at] = { ...versions[at], review: { reviewedAt: answer.cachedAt || new Date().toISOString(), model: answer.model, result: answer.result } };
       await persist({ ...base, versions, updatedAt: new Date().toISOString() });
@@ -235,6 +258,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
     } catch (cause) {
       setError(cause instanceof AssistantError || cause instanceof Error ? cause.message : "批改失败，可以稍后重试。");
     } finally {
+      reviewController.current = null;
       setReviewing(null);
     }
   };
@@ -263,7 +287,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
         <p className="writing-prompt-text">{record.prompt}</p>
         <label className="sr-only" htmlFor="essay">作文正文</label>
         <textarea id="essay" className="writing-textarea" lang="en" spellCheck={false} autoCapitalize="sentences"
-          value={text} onChange={(event) => setText(event.target.value)} placeholder="Start writing here…" maxLength={8000} />
+          value={text} readOnly={reviewing !== null} onChange={(event) => edit(event.target.value)} placeholder="Start writing here…" maxLength={8000} />
         <p className="writing-count" aria-live="polite">
           <span className="learn-tabular">{words}</span> 词 · 目标 {record.wordRange[0]}–{record.wordRange[1]}
           <span>{saved ? "已保存在本机" : "正在保存…"}</span>

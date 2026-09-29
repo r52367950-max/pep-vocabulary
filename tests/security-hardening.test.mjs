@@ -1,3 +1,4 @@
+import { sqliteD1 } from "./sqlite-d1.mjs";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -16,15 +17,8 @@ const database = new DatabaseSync(':memory:');
 for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter(name => name.endsWith('.sql')).sort()) {
   database.exec(readFileSync(new URL(`../drizzle/${file}`, import.meta.url), 'utf8'));
 }
-class Statement {
-  constructor(sql, args = []) { this.sql = sql; this.args = args; }
-  bind(...args) { return new Statement(this.sql, args); }
-  async raw() { const stmt = database.prepare(this.sql); stmt.setReturnArrays(true); return stmt.all(...this.args); }
-  async all() { return { results: database.prepare(this.sql).all(...this.args) }; }
-  async run() { return database.prepare(this.sql).run(...this.args); }
-  async first() { return database.prepare(this.sql).get(...this.args) ?? null; }
-}
-env.DB = { prepare: sql => new Statement(sql) };
+
+env.DB = sqliteD1(database);
 
 const apiRoot = new URL('../app/api/', import.meta.url);
 const routeFiles = readdirSync(apiRoot, { recursive: true }).filter(path => path.endsWith('route.ts')).sort();

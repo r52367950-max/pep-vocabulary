@@ -38,14 +38,7 @@ export function htmlText(input: string) {
   template.content.querySelectorAll("p,div,section,article,h1,h2,h3,h4,h5,h6,li,blockquote,br").forEach(node => node.append(document.createTextNode("\n\n")));
   return template.content.textContent ?? "";
 }
-export function parseClassification(input: string): { category: ReadingCategory; difficulty: Difficulty } {
-  const clean = input.trim().replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-  const value: unknown = JSON.parse(clean);
-  if (!value || typeof value !== "object") throw new Error("分类结果格式无效。");
-  const a = value as { category: ReadingCategory; difficulty: Difficulty };
-  if (!["essay", "fiction", "science"].includes(a.category) || !["A2", "B1", "B2", "C1"].includes(a.difficulty)) throw new Error("分类结果超出支持范围。");
-  return { category: a.category, difficulty: a.difficulty };
-}
+export { parseClassification } from "./reading-classification";
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(new DOMException("已取消", "AbortError"));
   return new Promise((resolve, reject) => {

@@ -107,8 +107,8 @@ export default function DataTools({
       await replaced();
       data.notify("备份已验证并恢复。");
     });
-  const readCloud = async (): Promise<CloudState> => {
-    const response = await fetch("/api/sync", {
+  const readCloud = async (metadataOnly = false): Promise<CloudState> => {
+    const response = await fetch(metadataOnly ? "/api/sync?metadata=1" : "/api/sync", {
       cache: "no-store",
       signal: AbortSignal.timeout(20000),
     });
@@ -130,7 +130,7 @@ export default function DataTools({
   };
   const sync = (direction: "push" | "pull") =>
     run(async () => {
-      const remote = await readCloud();
+      const remote = await readCloud(direction === "push");
       if (direction === "pull") {
         if (!remote.state)
           throw new Error("云端还没有备份。可以先从这台设备上传。");

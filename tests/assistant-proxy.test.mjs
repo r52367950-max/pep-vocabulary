@@ -259,7 +259,7 @@ test("routes, D1 limits, no-store responses and client secret boundaries stay wi
   assert.match(server, /ai_rate_limits/);
   assert.match(server, /connection-test:minute/);
   assert.match(server, /connection-test:day/);
-  assert.match(server, /fetchChatCompletionWithTimeout/);
+  assert.match(server, /fetchCompletion/);
   assert.match(server, /structured_output_unsupported/);
   assert.match(server, /providerStatus/);
   assert.match(server, /event: "ai_connection_test"/);
