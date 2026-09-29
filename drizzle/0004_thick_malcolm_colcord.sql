@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS `idx_ai_rate_limits_expires_at` ON `ai_rate_limits` (`expires_at`);

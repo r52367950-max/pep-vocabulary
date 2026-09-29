@@ -6,7 +6,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("review event schema preserves learning evidence and supports 1.0 migration", async () => {
   const [storage, scheduler, api, layout] = await Promise.all([
-    read("lib/storage.ts"),
+    read("lib/backup.ts"),
     read("lib/scheduler.ts"),
     read("app/api/sync/route.ts"),
     read("app/layout.tsx"),

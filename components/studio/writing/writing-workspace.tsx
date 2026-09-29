@@ -188,6 +188,8 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(true);
   const latest = useRef(record);
+  const committed = useRef(record);
+  const saveFailed = useRef(false);
   const writes = useRef(Promise.resolve());
   const reviewController = useRef<AbortController | null>(null);
   useEffect(() => () => reviewController.current?.abort(), []);
@@ -202,11 +204,19 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
     latest.current = next;
     setSaved(false);
     // Queue writes immediately, including the last keystroke before leaving the editor.
-    const pending = writes.current.then(() => saveWriting(next)).then(() => {
+    const pending = writes.current.then(async () => {
+      if (saveFailed.current) throw new Error("草稿尚未保存。请复制当前文字后重新打开，避免覆盖其他页面的修改。");
+      await saveWriting(next, committed.current);
+      committed.current = next;
       onSave(next);
       if (latest.current === next) setSaved(true);
     });
-    writes.current = pending.catch(() => { data.notify("草稿未能保存到本机，请复制文字后重试。"); });
+    writes.current = pending.catch((cause) => {
+      saveFailed.current = true;
+      const message = cause instanceof Error ? cause.message : "草稿未能保存到本机，请复制文字后重试。";
+      setError(message);
+      data.notify(message);
+    });
     return pending;
   }, [onSave, data]);
 

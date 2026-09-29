@@ -1,0 +1,1 @@
+ALTER TABLE `ai_configs` ADD `write_token` text DEFAULT '' NOT NULL;

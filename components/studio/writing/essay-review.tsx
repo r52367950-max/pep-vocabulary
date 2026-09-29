@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Check, CircleHelp, X } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
+import { validWritingReview } from "@/lib/writing-review";
 import { locateIssues } from "@/lib/writing";
 
 type Issue = { quote: string; type: string; suggestion: string; reason: string };
@@ -45,6 +46,7 @@ export default function EssayReview({ essay, result, previous, targets, words, r
   onWord: (entry: LexiconIndexEntry) => void;
 }) {
   const [showRevised, setShowRevised] = useState(false);
+  if (!validWritingReview(result)) return <p role="alert">这份旧批改记录不完整，作文原文仍然保留。请重新发起批改。</p>;
   const issues = list<Issue>(result.issues);
   const verdicts = list<TargetVerdict>(result.targetWords);
   const upgrades = list<Upgrade>(result.upgrades);
@@ -98,7 +100,7 @@ export default function EssayReview({ essay, result, previous, targets, words, r
           <ol>
             {issues.map((issue, i) => (
               <li key={i}>
-                <span className="essay-issue-head"><b className="learn-tabular">{i + 1}</b><span className="essay-issue-type">{ISSUE_TYPES[issue.type] || issue.type}</span></span>
+                <span className="essay-issue-head"><b className="learn-tabular">{i + 1}</b><span className="essay-issue-type">{Object.hasOwn(ISSUE_TYPES, issue.type) ? ISSUE_TYPES[issue.type] : issue.type}</span></span>
                 <p><del className="english">{issue.quote}</del> → <ins className="english">{issue.suggestion}</ins></p>
                 <small>{issue.reason}</small>
               </li>

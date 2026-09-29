@@ -54,10 +54,13 @@ try {
   results.push({ path: '/api/ai/config cross-origin', status: response.status });
   const db = await mf.getD1Database('DB');
   const bootstrap = async (target) => {
+    await target.exec('CREATE TABLE IF NOT EXISTS smoke_migrations (name TEXT PRIMARY KEY)');
     for (const file of readdirSync('drizzle').filter(file => file.endsWith('.sql')).sort()) {
+      if (await target.prepare('SELECT name FROM smoke_migrations WHERE name=?').bind(file).first()) continue;
       for (const statement of readFileSync(`drizzle/${file}`, 'utf8').split('--> statement-breakpoint')) {
         if (statement.trim()) await target.exec(statement.replace(/\n/g, ' '));
       }
+      await target.prepare('INSERT INTO smoke_migrations (name) VALUES (?)').bind(file).run();
     }
   };
   await bootstrap(db);
@@ -71,16 +74,23 @@ try {
   results.push({ path: 'database bootstrap with existing legacy rate limit table', status: 'passed', preservedRequests: 7 });
   // Test-only identity and credential. No requests are sent to any AI provider.
   const headers = { 'oai-authenticated-user-email': 'smoke@example.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' };
-  const config = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25 }) });
+  const config = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 }) });
   assert.equal(config.status, 200, await config.clone().text());
   const publicConfig = await config.text();
   assert.equal(JSON.parse(publicConfig).hasApiKey, true);
+  assert.equal(JSON.parse(publicConfig).dailyTokenBudget, 50000);
+  assert.equal(JSON.parse(publicConfig).maxOutputTokens, 2000);
   assert.doesNotMatch(publicConfig, /test-key|encryptedApiKey|keyIv/);
   results.push({ path: '/api/ai/config authenticated save', status: 200 });
   const body = JSON.stringify({ schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
   const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);
   assert.deepEqual(writes.map(r => r.status).sort(), [200, 409]);
   results.push({ path: '/api/sync concurrent first upload', statuses: [200, 409] });
+  const metadata = await request('/api/sync?metadata=1', { headers });
+  const metadataBody = await metadata.json();
+  assert.equal(metadataBody.state.revision, 1);
+  assert.equal('payload' in metadataBody.state, false);
+  results.push({ path: '/api/sync metadata-only read', status: metadata.status });
   // Replaying bootstrap SQL must not reset cloud snapshots or encrypted settings.
   const snapshotsBefore = (await db.prepare('SELECT * FROM sync_states').all()).results;
   assert.equal(snapshotsBefore.length, 1);

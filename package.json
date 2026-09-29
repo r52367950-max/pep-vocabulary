@@ -1,6 +1,6 @@
 {
   "name": "pep-vocab-studio",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -13,14 +13,15 @@
     "data:manifest": "node scripts/build-source-manifest.mjs",
     "data:build": "node scripts/build-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
-    "test:unit": "node --import ./tests/register.mjs --test tests/*.test.mjs",
+    "test:unit": "node --import ./tests/register.mjs --test --test-concurrency=2 tests/*.test.mjs",
     "test": "npm run data:audit && npm run typecheck && npm run test:unit && npm run build && npm run test:runtime",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "typecheck": "tsc --noEmit",
     "test:runtime": "node scripts/smoke-worker.mjs",
-    "benchmark": "node scripts/benchmark-core.mjs"
+    "benchmark": "node scripts/benchmark-core.mjs",
+    "benchmark:backend": "node --import ./tests/register.mjs scripts/benchmark-backend.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -52,7 +53,7 @@
     "wrangler": "4.131.2"
   },
   "type": "module",
-  "displayName": "\u8bcd\u8ff9 \u00b7 \u82f1\u8bed\u8bcd\u6c47\u5b66\u4e60",
+  "displayName": "词迹 · 英语词汇学习",
   "overrides": {
     "image-size": "2.0.4",
     "esbuild": "0.28.2"

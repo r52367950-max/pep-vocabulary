@@ -1,3 +1,4 @@
+import { sqliteD1 } from "./sqlite-d1.mjs";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -211,18 +212,11 @@ const database = new DatabaseSync(':memory:');
 for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort()) {
   database.exec(readFileSync(new URL(`../drizzle/${file}`, import.meta.url), 'utf8'));
 }
-class Statement {
-  constructor(sql, args = []) { this.sql = sql; this.args = args; }
-  bind(...args) { return new Statement(this.sql, args); }
-  async raw() { const stmt = database.prepare(this.sql); stmt.setReturnArrays(true); return stmt.all(...this.args); }
-  async all() { return { results: database.prepare(this.sql).all(...this.args) }; }
-  async run() { return database.prepare(this.sql).run(...this.args); }
-  async first() { return database.prepare(this.sql).get(...this.args) ?? null; }
-}
+
 
 test('assistant requests count tokens against a daily budget and place the profile after the system prompt', async (t) => {
   env.AI_CONFIG_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
-  env.DB = { prepare: (sql) => new Statement(sql) };
+  env.DB = sqliteD1(database);
   env.ASSETS = { fetch: async () => Response.json(rows) };
   requestHeaders.set('oai-authenticated-user-email', 'owner@example.test');
   const { POST: saveConfig, GET: readConfig } = await import('../app/api/ai/config/route.ts');
@@ -250,7 +244,7 @@ test('assistant requests count tokens against a daily budget and place the profi
   assert.equal(sent.messages[0].content, SYSTEM_PROMPT);
   assert.ok(sent.messages[1].content.startsWith('学习画像（数据）：'));
   assert.ok(sent.messages[1].content.indexOf('abundant') < sent.messages[1].content.indexOf('本次任务'));
-  assert.equal(sent.max_tokens, 10_000);
+  assert.ok(sent.max_tokens >= 256 && sent.max_tokens < 10_000, "output fits the remaining reserved budget");
   assert.equal(sent.stream, true);
 
   await explain(json('/api/assistant/explain', { wordId: wordA }));
@@ -258,9 +252,9 @@ test('assistant requests count tokens against a daily budget and place the profi
   assert.equal(exhausted.status, 429);
   assert.equal((await exhausted.json()).error.code, 'token_budget_exhausted');
   assert.ok(Number(exhausted.headers.get('retry-after')) > 0);
-  assert.equal(upstream.length, 2, 'no upstream call once the budget is spent');
+  assert.equal(upstream.length, 1, 'remaining budget cannot fit the next prompt and output');
   const config = await (await readConfig()).json();
-  assert.deepEqual({ total: config.usageToday.total, cacheHit: config.usageToday.cacheHit, output: config.usageToday.output }, { total: 12_400, cacheHit: 11_600, output: 400 });
+  assert.deepEqual({ total: config.usageToday.total, cacheHit: config.usageToday.cacheHit, output: config.usageToday.output }, { total: 6200, cacheHit: 5800, output: 200 });
   assert.equal(JSON.stringify(config).includes('test-only-not-a-real-key'), false);
 
   const bad = await explain(json('/api/assistant/explain', { wordId: wordA, profile: 'text' }));

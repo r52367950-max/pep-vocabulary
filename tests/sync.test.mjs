@@ -1,3 +1,4 @@
+import { sqliteD1 } from "./sqlite-d1.mjs";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -11,15 +12,8 @@ const database = new DatabaseSync(':memory:');
 for (const migration of ['0000_curvy_newton_destine', '0001_flawless_human_cannonball']) {
   database.exec(readFileSync(new URL(`../drizzle/${migration}.sql`, import.meta.url), 'utf8'));
 }
-class Statement {
-  constructor(sql, args = []) { this.sql = sql; this.args = args; }
-  bind(...args) { return new Statement(this.sql, args); }
-  async raw() { const stmt = database.prepare(this.sql); stmt.setReturnArrays(true); return stmt.all(...this.args); }
-  async all() { return { results: database.prepare(this.sql).all(...this.args) }; }
-  async run() { return database.prepare(this.sql).run(...this.args); }
-  async first() { return database.prepare(this.sql).get(...this.args) ?? null; }
-}
-const binding = { prepare: sql => new Statement(sql) };
+
+const binding = sqliteD1(database);
 env.DB = binding;
 requestHeaders.set('oai-authenticated-user-email', 'test@example.com');
 const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const syncStates = sqliteTable("sync_states", {
   userKey: text("user_key").primaryKey(),
@@ -17,6 +17,7 @@ export const aiConfigs = sqliteTable("ai_configs", {
   model: text("model").notNull().default("deepseek-v4-flash"),
   dailyLimit: integer("daily_limit").notNull().default(30),
   timeoutSeconds: integer("timeout_seconds").notNull().default(25),
+  writeToken: text("write_token").notNull().default(""),
   encryptedApiKey: text("encrypted_api_key").notNull(),
   keyIv: text("key_iv").notNull(),
   encryptionVersion: integer("encryption_version").notNull().default(1),
@@ -28,7 +29,7 @@ export const aiRateLimits = sqliteTable("ai_rate_limits", {
   bucketKey: text("bucket_key").primaryKey(),
   requestCount: integer("request_count").notNull().default(1),
   expiresAt: integer("expires_at").notNull(),
-});
+}, (table) => [index("idx_ai_rate_limits_expires_at").on(table.expiresAt)]);
 
 export const aiPreferences = sqliteTable("ai_preferences", {
   userKey: text("user_key").primaryKey(),

@@ -14,7 +14,8 @@ import {
   defaultSettings,
   getAll,
   loadSettings,
-  saveSettings,
+  patchSettings,
+  loadLearningState,
   updateCardMetadata,
   type AppSettings,
   type ReviewEvent,
@@ -36,11 +37,7 @@ export function useVocabulary() {
   const persistAsked = useRef(false);
 
   const reload = useCallback(async () => {
-    const [storedCards, storedEvents, storedSettings] = await Promise.all([
-      getAll<StoredCard>("cards"),
-      getAll<ReviewEvent>("events"),
-      loadSettings(),
-    ]);
+    const { cards: storedCards, events: storedEvents, settings: storedSettings } = await loadLearningState();
     setCards(new Map(storedCards.map((card) => [card.id, card])));
     setHistory(ReviewHistory.from(storedEvents));
     setSettings(storedSettings);
@@ -50,11 +47,9 @@ export function useVocabulary() {
     let active = true;
     Promise.all([
       loadLexicon(),
-      getAll<StoredCard>("cards"),
-      getAll<ReviewEvent>("events"),
-      loadSettings(),
+      loadLearningState(),
     ])
-      .then(([lexicon, storedCards, storedEvents, storedSettings]) => {
+      .then(([lexicon, { cards: storedCards, events: storedEvents, settings: storedSettings }]) => {
         if (!active) return;
         setIndex(lexicon.index);
         setManifest(lexicon.manifest);
@@ -78,8 +73,19 @@ export function useVocabulary() {
     if (typeof BroadcastChannel !== "undefined") {
       const listener = new BroadcastChannel("vocab-changes");
       channel.current = listener;
-      listener.onmessage = () => {
-        void reload().catch(() => notify("其他页面更新了数据，请重新加载。"));
+      // Serialize refreshes so an older snapshot cannot arrive after a newer one.
+      let refresh = Promise.resolve();
+      listener.onmessage = ({ data: change }) => {
+        refresh = refresh.then(async () => {
+          if (!active) return;
+          if (change === "settings") {
+            const next = await loadSettings();
+            if (active) setSettings(next);
+          } else if (change === "metadata") {
+            const next = await getAll<StoredCard>("cards");
+            if (active) setCards(new Map(next.map((card) => [card.id, card])));
+          } else await reload();
+        }).catch(() => notify("其他页面更新了数据，请重新加载。"));
       };
     }
     return () => {
@@ -114,10 +120,7 @@ export function useVocabulary() {
   const updateSettings = useCallback(async (patch: Partial<AppSettings>) => {
     writes.current = writes.current
       .then(async () => {
-        const next = await saveSettings({
-          ...(await loadSettings()),
-          ...patch,
-        });
+        const next = await patchSettings(patch);
         setSettings(next);
         channel.current?.postMessage("settings");
       })

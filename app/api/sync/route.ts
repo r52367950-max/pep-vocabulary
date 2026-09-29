@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { syncStates } from "@/db/schema";
-import { USER_DATA_SCHEMA_VERSION, validateBackup } from "@/lib/storage";
+import { USER_DATA_SCHEMA_VERSION, validateBackup } from "@/lib/backup";
 import { authenticatedUserKey } from "@/lib/server-user";
 import { consumeRateLimit, privateJson, RateLimitStoreError, rateLimitWindow, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 
@@ -55,11 +55,17 @@ function rateLimited(error: SyncRateLimited) {
   return failure(429, "rate_limited", `云端同步请求过于频繁，请在 ${error.retryAfter} 秒后重试。本地学习不受影响。`, { "retry-after": String(error.retryAfter) });
 }
 
-export async function GET() {
+export async function GET(request?: Request) {
   try {
     const key = await authenticatedUserKey();
     if (!key) return unauthenticated();
     await enforceSyncRateLimit(key, false);
+    const metadataOnly = request && new URL(request.url).searchParams.get("metadata") === "1";
+    if (metadataOnly) {
+      const [state] = await getDb().select({ schemaVersion: syncStates.schemaVersion, revision: syncStates.revision,
+        clientUpdatedAt: syncStates.clientUpdatedAt, serverUpdatedAt: syncStates.serverUpdatedAt }).from(syncStates).where(eq(syncStates.userKey, key)).limit(1);
+      return privateJson({ identity: key, state: state ?? null });
+    }
     const [row] = await getDb().select().from(syncStates).where(eq(syncStates.userKey, key)).limit(1);
     // Identity lets the client bind a revision to the account it actually read.
     const state = row ? { schemaVersion: row.schemaVersion, payload: row.payload, revision: row.revision,
