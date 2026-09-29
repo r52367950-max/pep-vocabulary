@@ -1,7 +1,9 @@
-export const USER_DATA_SCHEMA_VERSION = "1.1.0";
+export const USER_DATA_SCHEMA_VERSION = "1.2.0";
 const DB_NAME = "pep-vocab-studio";
-const DB_VERSION = 2;
-const stores = ["cards", "events", "lists", "settings", "meta"] as const;
+// Version 3 adds the `writings` store; upgrading keeps every existing store and record.
+const DB_VERSION = 3;
+const stores = ["cards", "events", "lists", "settings", "meta", "writings"] as const;
+const backupStores = ["cards", "events", "lists", "settings", "writings"] as const;
 type StoreName = (typeof stores)[number];
 
 export type SkillName = "meaning" | "listening" | "spelling" | "context" | "collocation" | "output";
@@ -75,6 +77,26 @@ export type AppSettings = {
   diagnosisComplete: boolean;
   examDate: string | null;
   updatedAt: string;
+};
+
+export type WritingGenre = "practical" | "continuation" | "free";
+export type WritingVersion = {
+  id: string;
+  text: string;
+  savedAt: string;
+  /** The validated AI review of this version, when one was requested. */
+  review?: { reviewedAt: string; model: string; result: Record<string, unknown> } | null;
+};
+export type WritingRecord = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  genre: WritingGenre;
+  title: string;
+  prompt: string;
+  targetIds: string[];
+  wordRange: [number, number];
+  versions: WritingVersion[];
 };
 
 export const defaultSettings: AppSettings = {
@@ -187,9 +209,9 @@ export async function saveSettings(settings: AppSettings) {
 }
 
 export async function exportBackup() {
-  return runTransaction<BackupPayload>(["cards", "events", "lists", "settings"], "readonly", (tx, result) => {
-    const payload: BackupPayload = { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards: [], events: [], lists: [], settings: [] };
-    for (const name of ["cards", "events", "lists", "settings"] as const) {
+  return runTransaction<BackupPayload>(backupStores, "readonly", (tx, result) => {
+    const payload: BackupPayload = { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards: [], events: [], lists: [], settings: [], writings: [] };
+    for (const name of backupStores) {
       const request = tx.objectStore(name).getAll();
       request.onsuccess = () => { payload[name] = request.result; };
     }
@@ -204,13 +226,17 @@ type BackupPayload = {
   events: ReviewEvent[];
   lists: Record<string, unknown>[];
   settings: AppSettings[];
+  writings: WritingRecord[];
 };
 
 function migrateBackup(payload: BackupPayload): BackupPayload {
   if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION) return payload;
+  // 1.1.0 → 1.2.0 only adds writings; older backups simply have none.
+  if (payload.schemaVersion === "1.1.0") return { ...payload, schemaVersion: USER_DATA_SCHEMA_VERSION, writings: [] };
   if (payload.schemaVersion !== "1.0.0") throw new Error(`不支持的 schema 版本：${payload.schemaVersion || "缺失"}`);
   return {
     ...payload,
+    writings: [],
     schemaVersion: USER_DATA_SCHEMA_VERSION,
     events: payload.events.map((event) => ({ ...event, prompt: event.prompt || "", answerGiven: event.answerGiven ?? null, expectedAnswer: event.expectedAnswer ?? null, sourceLine: event.sourceLine ?? null })),
     settings: payload.settings.map((settings) => ({ ...defaultSettings, ...settings, key: "app" })),
@@ -246,11 +272,31 @@ function validCard(value: unknown): value is StoredCard {
     (value.favorite === undefined || typeof value.favorite === "boolean") && (value.tags === undefined || stringArray(value.tags));
 }
 
+function validWriting(value: unknown): value is WritingRecord {
+  if (!isRecord(value) || !textId(value.id) || !validDate(value.createdAt) || !validDate(value.updatedAt)) return false;
+  if (!["practical", "continuation", "free"].includes(String(value.genre)) || typeof value.title !== "string" || value.title.length > 200 ||
+    typeof value.prompt !== "string" || value.prompt.length > 4_000) return false;
+  if (!Array.isArray(value.targetIds) || value.targetIds.length > 20 || !value.targetIds.every(textId)) return false;
+  const range = value.wordRange;
+  if (!Array.isArray(range) || range.length !== 2 || !finiteRange(range[0], 0, 5_000) || !finiteRange(range[1], range[0] as number, 5_000)) return false;
+  if (!Array.isArray(value.versions) || value.versions.length > 30) return false;
+  const ids = new Set<string>();
+  return value.versions.every((version) => {
+    if (!isRecord(version) || !textId(version.id) || ids.has(version.id) || typeof version.text !== "string" || version.text.length > 20_000 || !validDate(version.savedAt)) return false;
+    ids.add(version.id);
+    const review = version.review;
+    return review === undefined || review === null || (isRecord(review) && validDate(review.reviewedAt) && typeof review.model === "string" &&
+      review.model.length <= 200 && isRecord(review.result) && JSON.stringify(review.result).length <= 200_000);
+  });
+}
+
 export function validateBackup(payload: unknown): BackupPayload {
   if (!isRecord(payload) || !["cards", "events", "lists", "settings"].every((key) => Array.isArray(payload[key]))) throw new Error("备份结构损坏或字段缺失");
-  for (const name of ["cards", "events", "lists", "settings"] as const) {
-    const rows = payload[name] as unknown[];
-    if (rows.length > (name === "events" ? 100_000 : name === "settings" ? 1 : 20_000)) throw new Error("备份记录数量超过限制");
+  if (payload.writings !== undefined && !Array.isArray(payload.writings)) throw new Error("备份结构损坏或字段缺失");
+  if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION && !Array.isArray(payload.writings)) throw new Error("备份结构损坏或字段缺失");
+  for (const name of backupStores) {
+    const rows = (payload[name] ?? []) as unknown[];
+    if (rows.length > (name === "events" ? 100_000 : name === "settings" ? 1 : name === "writings" ? 2_000 : 20_000)) throw new Error("备份记录数量超过限制");
     const ids = new Set<string>();
     for (const row of rows) {
       const key = name === "events" ? "eventId" : name === "settings" ? "key" : "id";
@@ -260,6 +306,7 @@ export function validateBackup(payload: unknown): BackupPayload {
   }
   const data = migrateBackup(payload as unknown as BackupPayload);
   if (!data.cards.every(validCard)) throw new Error("备份的词卡或调度数据无效");
+  if (!data.writings.every(validWriting)) throw new Error("备份的写作记录无效");
   const eventById = new Map(data.events.map((event) => [event.eventId, event]));
   const undoneTargets = new Set<string>();
   for (const event of data.events) {
@@ -290,8 +337,8 @@ export function validateBackup(payload: unknown): BackupPayload {
 export async function restoreBackup(payload: unknown) {
   // Validate every row before opening the destructive transaction.
   const migrated = validateBackup(payload);
-  await runTransaction<void>(["cards", "events", "lists", "settings", "meta"], "readwrite", (tx) => {
-    for (const name of ["cards", "events", "lists", "settings"] as const) {
+  await runTransaction<void>([...backupStores, "meta"], "readwrite", (tx) => {
+    for (const name of backupStores) {
       const store = tx.objectStore(name);
       store.clear();
       for (const row of migrated[name]) store.put(row);
@@ -305,6 +352,16 @@ export async function clearUserData() {
     stores.forEach((name) => tx.objectStore(name).clear());
   });
 }
+
+export const listWritings = () => getAll<WritingRecord>("writings");
+
+export async function saveWriting(record: WritingRecord) {
+  if (!validWriting(record)) throw new Error("写作记录无效，未保存。");
+  await putOne("writings", record);
+  return record;
+}
+
+export const deleteWriting = (id: string) => transaction<undefined>("writings", "readwrite", (store) => store.delete(id));
 
 export function emptySkills(): SkillVector {
   return { meaning: 0, listening: 0, spelling: 0, context: 0, collocation: 0, output: 0 };

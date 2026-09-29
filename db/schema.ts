@@ -29,3 +29,10 @@ export const aiRateLimits = sqliteTable("ai_rate_limits", {
   requestCount: integer("request_count").notNull().default(1),
   expiresAt: integer("expires_at").notNull(),
 });
+
+export const aiPreferences = sqliteTable("ai_preferences", {
+  userKey: text("user_key").primaryKey(),
+  dailyTokenBudget: integer("daily_token_budget").notNull().default(200000),
+  maxOutputTokens: integer("max_output_tokens"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

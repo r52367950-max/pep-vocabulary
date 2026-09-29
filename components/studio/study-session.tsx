@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -37,6 +39,8 @@ import {
 } from "@/lib/session";
 import { sourceLabel } from "./shared";
 import { Artwork } from "./art";
+
+const SentenceOutput = lazy(() => import("./ai/sentence-output"));
 
 const labels = { 1: "忘记了", 2: "有些费力", 3: "记得", 4: "很熟悉" };
 export default function StudySession({
@@ -660,6 +664,11 @@ export default function StudySession({
               )}
               {detailError && (
                 <small>例句详情未能加载，基础练习仍可完成。</small>
+              )}
+              {correct !== false && !retrying && Number(card?.fsrs.reps || 0) >= 2 && question.skill !== "output" && (
+                <Suspense fallback={null}>
+                  <SentenceOutput key={stepId} entry={entry} data={data} eventPrefix={session.id} sourceLine={sourceLabel(entry)} />
+                </Suspense>
               )}
             </div>
           )}

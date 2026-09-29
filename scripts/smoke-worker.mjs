@@ -77,7 +77,7 @@ try {
   assert.equal(JSON.parse(publicConfig).hasApiKey, true);
   assert.doesNotMatch(publicConfig, /test-key|encryptedApiKey|keyIv/);
   results.push({ path: '/api/ai/config authenticated save', status: 200 });
-  const body = JSON.stringify({ schemaVersion: '1.1.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.1.0', cards: [], events: [], lists: [], settings: [] } });
+  const body = JSON.stringify({ schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
   const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);
   assert.deepEqual(writes.map(r => r.status).sort(), [200, 409]);
   results.push({ path: '/api/sync concurrent first upload', statuses: [200, 409] });

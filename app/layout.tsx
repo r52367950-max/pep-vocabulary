@@ -5,6 +5,7 @@ import "./reading-surfaces.css";
 import "./interface.css";
 import "./settings-dialog.css";
 import "./learn.css";
+import "./ai-writing.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",

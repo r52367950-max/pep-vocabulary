@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
 import { ChevronRight, Play } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { StudyMode } from "@/lib/study";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import type { LearnMode } from "@/lib/learn";
-import { studyStats } from "@/lib/progress";
+import type { StudyStats } from "@/lib/progress";
 import { timeOfDay } from "@/lib/art";
 import { CoursePicker } from "./shared";
 import { StudioSymbol, type SymbolName } from "./symbol";
 import { Artwork, useDarkAppearance } from "./art";
+import WritingCard from "./writing/writing-card";
 
 const ways: Array<{ id: LearnMode | "dictation"; symbol: SymbolName; title: string; detail: string }> = [
   { id: "cards", symbol: "cards", title: "词卡速记", detail: "滑动翻看，先熟悉新词" },
@@ -19,13 +19,13 @@ const ways: Array<{ id: LearnMode | "dictation"; symbol: SymbolName; title: stri
   { id: "dictation", symbol: "listen", title: "单词听写", detail: "听发音，写单词" },
 ];
 
-export default function Today({ data, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onLearn, onWords, onReading, onActivity, resume, resumeLabel }: {
-  data: Vocabulary; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
+export default function Today({ data, stats, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onLearn, onWords, onReading, onActivity, resume, resumeLabel, onWrite }: {
+  data: Vocabulary; stats: StudyStats; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
   due: number; newCount: number; weak: number; total: number; learned: number;
   queue: LexiconIndexEntry[]; onStart: (mode: StudyMode) => void; onLearn: (mode: LearnMode) => void; onWords: () => void;
   onReading: () => void; onActivity: () => void; resume: (() => void) | null; resumeLabel: string | null;
+  onWrite: (options: { targets?: string[]; openId?: string | null }) => void;
 }) {
-  const stats = useMemo(() => studyStats(data.events), [data.events]);
   const dark = useDarkAppearance(data.settings.theme);
   const minutes = queue.length ? Math.max(1, Math.ceil(queue.length * 0.7)) : 0;
   const date = new Date();
@@ -79,6 +79,7 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
           ))}
         </div>
       </section>
+      <WritingCard data={data} onWrite={onWrite} />
       <div className="today-footnotes">
         <button onClick={() => onStart("mistakes")}>
           <StudioSymbol name="review" size={24} />
