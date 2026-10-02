@@ -20,13 +20,14 @@ import {
 import {
   exportBackup,
   restoreBackup,
+  readCloudLink,
+  saveCloudLink,
   USER_DATA_SCHEMA_VERSION,
 } from "@/lib/storage";
 import { SESSION_KEY } from "@/lib/session";
 
 const megabytes = (bytes: number) => (bytes / 1_048_576).toLocaleString("zh-CN", { maximumFractionDigits: bytes < 10_485_760 ? 1 : 0 });
 const LINK_KEY = "pep-vocab-cloud-link-v2";
-type CloudLink = { identity: string; revision: number };
 type CloudState = {
   identity: string;
   state: { payload: string; revision: number } | null;
@@ -72,9 +73,10 @@ export default function DataTools({
     setStorage(await storageStatus());
   };
   const backup = async () => {
-    const payload = await exportBackup();
+    const payload = await exportBackup(data.generation);
     const url = URL.createObjectURL(
-      new Blob([JSON.stringify(payload, null, 2)], {
+      // Whitespace can push a recoverable backup past the file import limit.
+      new Blob([JSON.stringify(payload)], {
         type: "application/json",
       }),
     );
@@ -102,7 +104,7 @@ export default function DataTools({
         )
       )
         return;
-      await restoreBackup(payload);
+      await restoreBackup(payload, data.generation);
       localStorage.removeItem(LINK_KEY);
       await replaced();
       data.notify("备份已验证并恢复。");
@@ -140,24 +142,13 @@ export default function DataTools({
           )
         )
           return;
-        await restoreBackup(JSON.parse(remote.state.payload));
-        localStorage.setItem(
-          LINK_KEY,
-          JSON.stringify({
-            identity: remote.identity,
-            revision: remote.state.revision,
-          }),
-        );
+        const generation = await restoreBackup(JSON.parse(remote.state.payload), data.generation);
+        await saveCloudLink({ identity: remote.identity, revision: remote.state.revision }, generation);
         await replaced();
         data.notify("已恢复当前账号的云端备份。");
         return;
       }
-      let link: CloudLink | null = null;
-      try {
-        link = JSON.parse(localStorage.getItem(LINK_KEY) || "null");
-      } catch {
-        /* Invalid binding must be re-established. */
-      }
+      let link = await readCloudLink(data.generation);
       if (link?.identity !== remote.identity) {
         if (remote.state)
           throw new Error(
@@ -171,7 +162,7 @@ export default function DataTools({
           return;
         link = { identity: remote.identity, revision: 0 };
       }
-      const payload = await exportBackup();
+      const payload = await exportBackup(data.generation);
       const response = await fetch("/api/sync", {
         method: "POST",
         headers: {
@@ -203,13 +194,7 @@ export default function DataTools({
         result.identity !== remote.identity
       )
         throw new Error("云端响应无法确认，请重新检查备份状态。");
-      localStorage.setItem(
-        LINK_KEY,
-        JSON.stringify({
-          identity: result.identity,
-          revision: result.revision,
-        }),
-      );
+      await saveCloudLink({ identity: result.identity!, revision: result.revision! }, data.generation);
       data.notify("学习记录已备份到当前账号。");
     });
   return (

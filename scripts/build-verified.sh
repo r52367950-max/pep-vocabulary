@@ -18,6 +18,9 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
+# Fail before deleting any previous build when the public lexicon is inconsistent.
+node "${script_dir}/check-lexicon-release.mjs"
+
 # Do not package obsolete hashed assets from earlier builds.
 rm -rf -- "${SITES_PROJECT_ROOT}/dist"
 

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "basis": "Review baseline 3bf40c8f6c0ea37d7cb9397645b3eca8343b55b8: historical source_manifest hashes. These pins prevent later byte changes; they are not independent upstream authenticity or licensing evidence.",
+  "files": {
+    "textbooks/high-school/HS-R1.pdf": {
+      "sha256": "ffe985a370964820aa003008f48c7cf17b5e0dff8eb29fe54cd4743b0c4e8c79",
+      "bytes": 14704146,
+      "sourceId": "HS-R1"
+    },
+    "textbooks/high-school/HS-R2.pdf": {
+      "sha256": "33b74bf42b22b32fdbe3201e6f61cf8099be047ef0af8a1740f6013dee4a619d",
+      "bytes": 14270612,
+      "sourceId": "HS-R2"
+    },
+    "textbooks/high-school/HS-R3.pdf": {
+      "sha256": "fe9c8e15e62f4aec56efc60b8de43f4a55d40f3114d6505affaef78a8b7a1af2",
+      "bytes": 14202806,
+      "sourceId": "HS-R3"
+    },
+    "textbooks/high-school/HS-S1.pdf": {
+      "sha256": "94ec493439239c436326e228e3d3ad78c7053ac5abc005db5739119f6a98c33d",
+      "bytes": 12809514,
+      "sourceId": "HS-S1"
+    },
+    "textbooks/high-school/HS-S2.pdf": {
+      "sha256": "cafaee5fe508dfced31ba02877251ffeb01e98b1a48767fe30b2b7187edb0050",
+      "bytes": 9968316,
+      "sourceId": "HS-S2"
+    },
+    "textbooks/high-school/HS-S3.pdf": {
+      "sha256": "ed8eb9e5988b44a1ff4f8bc11ed3cfae406decefae7982477362720788e1998b",
+      "bytes": 12684455,
+      "sourceId": "HS-S3"
+    },
+    "textbooks/high-school/HS-S4.pdf": {
+      "sha256": "2ad7555a13eb420aa70497f9faa2541fdb502b7ffc4e063e87c60cce88f1b4a3",
+      "bytes": 12330614,
+      "sourceId": "HS-S4"
+    },
+    "textbooks/middle-school/JH-7A.pdf": {
+      "sha256": "4cdfd213e2c54164b6b97bcd6d15e93b71e6b243e8aea958f330e6bf8822f46e",
+      "bytes": 12005272,
+      "sourceId": "JH-7A"
+    },
+    "textbooks/middle-school/JH-7B.pdf": {
+      "sha256": "7041d787738bdf5f4f556765acdfe8033ac2f69d03e67ccc62516375f6a46f37",
+      "bytes": 17821241,
+      "sourceId": "JH-7B"
+    },
+    "textbooks/middle-school/JH-8A.pdf": {
+      "sha256": "b6aede721a90f5e18420e01a9030709ebf3d9231121db71f8474d0034a10e781",
+      "bytes": 9469090,
+      "sourceId": "JH-8A"
+    },
+    "textbooks/middle-school/JH-8B.pdf": {
+      "sha256": "1be886980dc0833b9c87ced7c9de0c8e3e7e19d990c1172f62504576d2554284",
+      "bytes": 18208880,
+      "sourceId": "JH-8B"
+    },
+    "textbooks/middle-school/JH-9.pdf": {
+      "sha256": "9c4118021048d901610b673f590ed28c39c04cb2d4f7fd940f83a2d8b2741af7",
+      "bytes": 11088578,
+      "sourceId": "JH-9"
+    },
+    "standards/high-school-english-2017-2020.pdf": {
+      "sha256": "8ebd6bb12e9eb1c58e422ee01b540a4a71d2e681a4c4a764a36ee3a34b21c1be",
+      "bytes": 7750611,
+      "sourceId": "STD-HS-EN-2017-2020"
+    },
+    "standards/compulsory-english-2022.pdf": {
+      "sha256": "59ec3971e0dbd6ca487c4e4972cbc80effaf2fd62418d07e5f62c6698fa222fb",
+      "bytes": 31502213,
+      "sourceId": "STD-COMPULSORY-EN-2022"
+    },
+    "open-data/oewn/english-wordnet-2025-plus-json.zip": {
+      "sha256": "8832b8fa26a14c0ba8c99bb1ef8db6f9e122a6d9193b65ca9e0ef572580fee7e",
+      "bytes": 11298794,
+      "sourceId": "OEWN-2025-PLUS"
+    },
+    "open-data/ipa-dict/en_UK.txt": {
+      "sha256": "221394caef0cf723b4f2df81a98ac33191293257b88aed5b1fb89466d3a0dc77",
+      "bytes": 1684124,
+      "sourceId": "IPA-DICT-EN-UK"
+    },
+    "open-data/ipa-dict/en_US.txt": {
+      "sha256": "2af6f154a5c363275f052d1f85acedef38ed185ca9745aa4314be77f6b70de67",
+      "bytes": 3180267,
+      "sourceId": "IPA-DICT-EN-US"
+    },
+    "open-data/ecdict/ecdict.csv": {
+      "sha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+      "bytes": 65933428,
+      "sourceId": "ECDICT-2025"
+    }
+  },
+  "pending": [
+    "open-data/mikigo-middle/files_complete.tsv and referenced Markdown files: no reviewed hashes in the baseline",
+    "open-data/oewn/2025-plus-json parsed JSON files: no reviewed hashes in the baseline"
+  ]
+}

@@ -424,21 +424,52 @@ function parseJsonObject(content: string): Record<string, unknown> {
 }
 
 function assertEvidenceClaims(value: unknown, evidence: LexiconEvidence[], studentText = "") {
-  const text = JSON.stringify(value);
-  const textbookAttribution = /(?:教材|课本|课文)[^。；\n]{0,40}(?:原句|原文|摘录|摘自|引用|引自|写道|出自)|(?:原句|原文|摘录|摘自|引用|引自|出自)[^。；\n]{0,40}(?:教材|课本|课文)/;
-  if (textbookAttribution.test(text)) {
-    throw new AssistantUpstreamError("evidence_violation", "模型把生成内容误称为教材原句。", 502, false);
-  }
+  // This is an auxiliary prose check, not verification of a quotation. Our
+  // lexicon contains entry locations, never the source spans of textbook prose.
+  const textbookAttribution = /(?:教材|课本|课文|教科书)[^。；\n]{0,80}(?:原句|原文|摘录|摘自|引用|引自|写道|出自|句子是|句子为)|(?:原句|原文|摘录|摘自|引用|引自|出自)[^。；\n]{0,80}(?:教材|课本|课文|教科书)|\baccording\s+to\s+(?:the\s+)?(?:textbook|coursebook)[^.!?;\n]{0,80}["“]|\b(?:textbook|coursebook|course\s+text)[^.!?;\n]{0,80}\b(?:(?:original|quoted)\s+(?:sentence|text|passage)|(?:sentence|passage)\s+(?:is|reads)\s*[:"“]|(?:says|states|reads|quotes)\s*[:"“])|\b(?:sentence|quotation|quoted\s+text|quote|passage)\s+(?:in|from|on)\s+(?:the\s+)?(?:textbook|coursebook|course\s+text)\b[^.!?;\n]{0,80}\b(?:is|reads|says)\s*[:"“]/i;
   const allowedPages = new Set(evidence.flatMap((item) => item.sources.map((source) => source.printedPage).filter((page): page is number => typeof page === "number")));
-  const pageClaims = [
-    ...[...text.matchAll(/(\d{1,3})\s*页/g)].map((match) => Number(match[1])),
-    ...[...text.matchAll(/\b(?:page\s+|p\.\s*)(\d{1,3})\b/gi)].map((match) => Number(match[1])),
-  ];
-  // A page number the student wrote may be quoted back in feedback or the revised essay.
-  const studentPages = new Set([...studentText.matchAll(/\d{1,3}/g)].map((match) => Number(match[0])));
-  if (pageClaims.some((page) => !allowedPages.has(page) && !studentPages.has(page))) {
-    throw new AssistantUpstreamError("evidence_violation", "模型返回了词库证据中不存在的教材页码。", 502, false);
-  }
+  const student = squash(studentText);
+  const inspect = (node: unknown, field = "") => {
+    if (typeof node === "string") {
+      if (textbookAttribution.test(node)) {
+        throw new AssistantUpstreamError("evidence_violation", "模型把生成内容误称为教材原句。", 502, false);
+      }
+      const claims = [...node.matchAll(/(\d+)\s*页|\b(?:page\s+|p\.\s*)(\d+)\b/gi)];
+      const studentQuotes = student ? [...node.matchAll(/"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’/g)]
+        .filter((match) => student.includes(squash(match[1] || match[2] || match[3]))) : [];
+      for (const claim of claims) {
+        if (allowedPages.has(Number(claim[1] || claim[2]))) continue;
+        // A located student quote only authorizes that quote. It never grants
+        // the page number to another feedback field or a new sentence.
+        if (student && student.includes(squash(node))) continue;
+        if (studentQuotes.some((quote) => claim.index! > quote.index! && claim.index! + claim[0].length < quote.index! + quote[0].length)) continue;
+        if (student && ["revision", "revised", "suggestion", "better"].includes(field)) {
+          const at = claim.index!;
+          // Keep an explicit reference to the student's own object when fixing
+          // its surrounding grammar, e.g. "page 45 of my diary". A bare page
+          // number or a changed object ("textbook") does not inherit permission.
+          const object = "(?:diary|journal|notebook|notes|logbook|book|textbook|coursebook|novel|letter|report|draft|essay|story|exercise|workbook|test|paper|document|manual|handbook)";
+          const objectEnd = "(?=$|[.,;!?\\\"“”’:\\n]|\\s+(?:I|we|you|he|she|they|it|there|is|are|was|were|will|can|had|has|have|and|but|to|that|which|where|when|because|now|then)\\b)";
+          const tail = node.slice(at + claim[0].length).match(new RegExp(`^\\s+(?:of|in|from)\\s+(?:(?:my|our|his|her|your|this|that|the|a|an)\\s+)?(?:[A-Za-z][A-Za-z'’-]*\\s+){0,3}?${object}\\b${objectEnd}`, "i"))?.[0];
+          const prefix = node.slice(0, at).match(new RegExp(`\\b(?:my|our|his|her|your|this|that|the)\\s+(?:[A-Za-z][A-Za-z'’-]*\\s+){0,3}${object}\\s+$`, "i"))?.[0];
+          const reference = tail ? claim[0] + tail : prefix ? prefix + claim[0] : "";
+          if (reference && student.includes(squash(reference))) continue;
+          const boundaries = [...node.matchAll(/[。！？!?;；\n]|\.(?=\s|$)/g)]
+            .filter((match) => !/\bp\.$/i.test(node.slice(0, match.index! + 1)));
+          const before = boundaries.filter((match) => match.index! < at).at(-1);
+          const after = boundaries.find((match) => match.index! >= at + claim[0].length);
+          const clause = squash(node.slice(before ? before.index! + 1 : 0, after?.index ?? node.length));
+          if (clause && student.includes(clause)) continue;
+        }
+        throw new AssistantUpstreamError("evidence_violation", "模型返回了词库证据中不存在的教材页码。", 502, false);
+      }
+    } else if (Array.isArray(node)) {
+      node.forEach((item) => inspect(item, field));
+    } else if (node && typeof node === "object") {
+      Object.entries(node).forEach(([key, item]) => inspect(item, key));
+    }
+  };
+  inspect(value);
 }
 
 const personalNote = (value: unknown) => nullableText(value, "personalNote", 1500);
@@ -723,6 +754,16 @@ export function sanitizeModelResult(task: AssistantTask, content: string, eviden
 
   result.origin = "model-generated";
   assertEvidenceClaims(result, evidence, studentText);
+  // Ignore every provider-supplied provenance/citation field. Only the server
+  // can describe the evidence it loaded, and locations do not verify quotations.
+  const usedEvidence = new Set(result.evidenceIds as string[]);
+  result.provenance = {
+    textbookQuotes: "unverified",
+    sourceKind: "lexicon-entry-locations",
+    evidence: evidence.filter((item) => usedEvidence.has(item.id)).map((item) => ({
+      wordId: item.id, headword: item.headword, sources: item.sources.map((source) => ({ ...source })),
+    })),
+  };
   return result;
 }
 
@@ -758,23 +799,35 @@ const TEMPERATURE: Record<AssistantTask, number> = {
 
 export type UpstreamOptions = { maxTokens?: number; stream?: boolean; baseUrl?: string; cacheKey?: string };
 
+function isOfficialOpenAI(baseUrl?: string) {
+  return Boolean(baseUrl && new URL(baseUrl).hostname.replace(/\.$/, "") === "api.openai.com");
+}
+
 export function outputTokenParameters(model: string, baseUrl: string | undefined, maximum: number) {
-  const officialOpenAI = baseUrl && new URL(baseUrl).hostname === "api.openai.com";
+  const officialOpenAI = isOfficialOpenAI(baseUrl);
   return { [officialOpenAI && /^(?:o\d|gpt-5)/.test(model) ? "max_completion_tokens" : "max_tokens"]: maximum };
+}
+
+/** Older official reasoning models reject temperature; compatible hosts define their own support. */
+export function generationParameters(model: string, baseUrl: string | undefined, maximum: number, temperature?: number) {
+  const officialOpenAI = isOfficialOpenAI(baseUrl);
+  const defaultTemperatureOnly = officialOpenAI && (
+    /^o[134](?:$|-)/.test(model) || /^gpt-5(?:$|-(?:mini|nano)(?:$|-)|-\d{4}-\d{2}-\d{2}$)/.test(model)
+  );
+  return { ...outputTokenParameters(model, baseUrl, maximum),
+    ...(temperature !== undefined && !defaultTemperatureOnly ? { temperature } : {}) };
 }
 
 export function upstreamPayload(model: string, prompt: { system: string; user: string }, task: AssistantTask, provider?: AiProvider, options: UpstreamOptions = {}) {
   const maxTokens = options.maxTokens ?? resolveMaxOutputTokens(model);
-  const host = options.baseUrl ? new URL(options.baseUrl).hostname : "";
-  const officialOpenAI = host === "api.openai.com";
+  const officialOpenAI = isOfficialOpenAI(options.baseUrl);
   return {
     model,
     messages: [
       { role: "system", content: prompt.system },
       { role: "user", content: prompt.user },
     ],
-    temperature: TEMPERATURE[task],
-    ...outputTokenParameters(model, options.baseUrl, maxTokens),
+    ...generationParameters(model, options.baseUrl, maxTokens, TEMPERATURE[task]),
     response_format: { type: "json_object" },
     stream: Boolean(options.stream),
     // Usage arrives in the final chunk only when asked; unknown compatible hosts may reject the field.
@@ -960,7 +1013,7 @@ export async function readChatCompletion(response: Response, signal?: AbortSigna
   return (await readChatCompletionDetailed(response, signal)).content;
 }
 
-export async function readChatCompletionDetailed(response: Response, signal?: AbortSignal, promptChars = 0): Promise<Completion> {
+export async function readChatCompletionDetailed(response: Response, signal?: AbortSignal, promptChars = 0, onChunk?: () => void): Promise<Completion> {
   if (!response.ok) {
     void response.body?.cancel().catch(() => undefined);
     throw mappedUpstreamFailure(response.status);
@@ -970,7 +1023,7 @@ export async function readChatCompletionDetailed(response: Response, signal?: Ab
     void response.body?.cancel().catch(() => undefined);
     throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
   }
-  const text = await readBoundedResponseText(response, 300_000, signal);
+  const text = await readBoundedResponseText(response, 300_000, signal, onChunk);
   let payload: unknown;
   try {
     payload = JSON.parse(text);
@@ -1001,7 +1054,7 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     throw mappedUpstreamFailure(response.status);
   }
   // Some compatible services ignore `stream: true` and answer with one JSON document.
-  if (!/text\/event-stream/i.test(response.headers.get("content-type") || "")) return readChatCompletionDetailed(response, signal, promptChars);
+  if (!/text\/event-stream/i.test(response.headers.get("content-type") || "")) return readChatCompletionDetailed(response, signal, promptChars, onChunk);
   if (!response.body) throw new AssistantUpstreamError("invalid_provider_response", "模型服务没有返回回答。", 502, true);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -1072,7 +1125,7 @@ export async function fetchCompletion(fetcher: typeof fetch, url: string, init: 
     arm();
     return options.stream
       ? await readChatCompletionStream(response, controller.signal, arm, options.promptChars)
-      : await readChatCompletionDetailed(response, controller.signal, options.promptChars);
+      : await readChatCompletionDetailed(response, controller.signal, options.promptChars, arm);
   } catch (error) {
     if (caller?.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
     if (error instanceof AssistantUpstreamError) throw error;
@@ -1087,7 +1140,7 @@ export async function fetchCompletion(fetcher: typeof fetch, url: string, init: 
   }
 }
 
-async function readBoundedResponseText(response: Response, maximumBytes: number, signal?: AbortSignal): Promise<string> {
+async function readBoundedResponseText(response: Response, maximumBytes: number, signal?: AbortSignal, onChunk?: () => void): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -1108,6 +1161,7 @@ async function readBoundedResponseText(response: Response, maximumBytes: number,
     while (true) {
       const chunk = await (abortPromise ? Promise.race([reader.read(), abortPromise]) : reader.read());
       if (chunk.done) break;
+      onChunk?.();
       total += chunk.value.byteLength;
       if (total > maximumBytes) {
         void reader.cancel("response-too-large").catch(() => undefined);

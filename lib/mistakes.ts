@@ -1,5 +1,6 @@
 import type { LexiconIndexEntry } from "./lexicon";
 import { normalizeAnswer } from "./questions";
+import { chronologicalReviews } from "./progress";
 import type { ReviewEvent } from "./storage";
 
 /**
@@ -68,8 +69,9 @@ export type MistakeSummary = {
   recent: { event: ReviewEvent; kind: MistakeKind; confusedWith?: string }[];
 };
 
-/** Summarises active (not undone) reviews, oldest first, optionally since a UTC timestamp. */
+/** Summarises active (not undone) reviews in any input order, optionally since a UTC timestamp. */
 export function summarizeMistakes(reviews: readonly ReviewEvent[], lookup: HeadwordLookup, since?: number): MistakeSummary {
+  reviews = chronologicalReviews(reviews);
   const kinds: MistakeKind[] = ["near-miss", "confusion", "spelling", "recall", "listening"];
   const counts = Object.fromEntries(kinds.map((kind) => [kind, 0])) as Record<MistakeKind, number>;
   const words = Object.fromEntries(kinds.map((kind) => [kind, [] as string[]])) as Record<MistakeKind, string[]>;
@@ -90,5 +92,5 @@ export function summarizeMistakes(reviews: readonly ReviewEvent[], lookup: Headw
       else pairs.set(key, { cardId: event.cardId, withId: mistake.confusedWith, count: 1, lastAt: event.timestampUtc });
     }
   }
-  return { counts, words, confusions: [...pairs.values()].sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt)), recent };
+  return { counts, words, confusions: [...pairs.values()].sort((a, b) => b.count - a.count || Date.parse(b.lastAt) - Date.parse(a.lastAt)), recent };
 }

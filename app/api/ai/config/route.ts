@@ -30,6 +30,7 @@ function safeProvider(value: string | undefined): AiProvider {
 }
 
 function publicConfig(row?: typeof aiConfigs.$inferSelect) {
+  const requiresKeyReentry = Boolean(row?.encryptedApiKey) && row?.encryptionVersion !== 2 && row?.encryptionVersion !== 3;
   const provider = safeProvider(row?.provider);
   let baseUrl = AI_PROVIDER_DEFAULTS[provider].baseUrl;
   try {
@@ -49,7 +50,8 @@ function publicConfig(row?: typeof aiConfigs.$inferSelect) {
     model,
     dailyLimit: row?.dailyLimit || DEFAULT_LIMITS.dailyLimit,
     timeoutSeconds: row?.timeoutSeconds || DEFAULT_LIMITS.timeoutSeconds,
-    hasApiKey: Boolean(row?.encryptedApiKey),
+    hasApiKey: Boolean(row?.encryptedApiKey) && !requiresKeyReentry,
+    requiresKeyReentry,
     updatedAt: row?.updatedAt || null,
     secretStorage: "server-encrypted" as const,
   };
@@ -60,8 +62,7 @@ const OUTPUT_CAP_RANGE = [256, OUTPUT_TOKEN_TARGET] as const;
 
 /** Missing rows use defaults; failed preference reads never relax a saved budget. */
 async function usageConfig(userKey: string, model: string) {
-  let preferences: typeof aiPreferences.$inferSelect | undefined;
-  [preferences] = await getDb().select().from(aiPreferences).where(eq(aiPreferences.userKey, userKey)).limit(1);
+  const [preferences] = await getDb().select().from(aiPreferences).where(eq(aiPreferences.userKey, userKey)).limit(1);
   const maxOutputTokens = preferences?.maxOutputTokens ?? null;
   let usageToday = null;
   try { usageToday = await readTokenUsage(userKey); } catch { /* usage unavailable */ }
@@ -128,6 +129,9 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const [current] = await db.select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
+    if (current && current.encryptionVersion !== 2 && current.encryptionVersion !== 3 && (body.apiKey === undefined || body.apiKey === "")) {
+      return json({ error: "原有密钥的加密格式缺少账号与目标绑定，请重新填写 API Key。原配置仍保留。", code: "credential_reentry_required" }, 400);
+    }
     const scope = { userKey, provider: body.provider, baseUrl };
     let encrypted: { encryptedApiKey: string; keyIv: string; encryptionVersion: number } | null = null;
     if (current) {

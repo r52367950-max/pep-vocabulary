@@ -39,16 +39,32 @@ export function gatewayEmail(value: string | null): string | null {
 }
 
 /**
- * Optional deployment guard, off unless the owner sets `IDENTITY_TRUSTED_HOSTS`
- * (comma-separated host names). When set, identity headers arriving on any
- * other host — for example the same Worker reached without the gateway — are
- * ignored, so forged headers cannot authenticate there.
+ * Required deployment guard: only exact, configured gateway host names may
+ * establish identity. The gateway must still replace client-supplied identity
+ * headers and prevent access that bypasses it; Host is not a signed assertion.
  */
 export function identityHostTrusted(host: string | null, setting: unknown): boolean {
-  if (typeof setting !== "string" || !setting.trim()) return true;
-  if (!host) return false;
-  const hostname = host.trim().toLowerCase().replace(/:\d+$/, "");
-  return setting.split(",").map((entry) => entry.trim().toLowerCase()).filter(Boolean).includes(hostname);
+  if (typeof setting !== "string" || !setting.trim() || setting.length > 8192) return false;
+  const entries = setting.split(",");
+  if (entries.length > 32) return false;
+  const allowed = entries.map((entry) => gatewayHostname(entry.trim(), false));
+  if (allowed.some((entry) => entry === null)) return false;
+  const hostname = gatewayHostname(host, true);
+  return hostname !== null && allowed.includes(hostname);
+}
+
+function gatewayHostname(host: string | null, allowPort: boolean): string | null {
+  if (!host || host !== host.trim()) return null;
+  let hostname = host.toLowerCase();
+  const port = hostname.match(/:(\d+)$/);
+  if (port) {
+    if (!allowPort || port[1].length > 5 || Number(port[1]) < 1 || Number(port[1]) > 65535) return null;
+    hostname = hostname.slice(0, -port[0].length);
+  }
+  hostname = hostname.replace(/\.$/, "");
+  if (!hostname || hostname.length > 253) return null;
+  if (!hostname.split(".").every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) return null;
+  return hostname;
 }
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {

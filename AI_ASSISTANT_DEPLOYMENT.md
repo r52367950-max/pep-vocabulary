@@ -62,11 +62,13 @@ HARNESS_API_KEY=... node --import ./tests/register.mjs scripts/ai-harness.mjs --
 
 首次通过设置界面保存配置前：
 
-1. 部署 `drizzle/` 中的最新 D1 迁移。
-2. 生成一个随机 32-byte 值并以 base64 保存为 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`。
-3. 由经过站点身份验证的用户在“设置 → AI 接口”保存自己的接口配置。
+1. 设置 `IDENTITY_TRUSTED_HOSTS` 为经过身份网关的精确域名（多个域名逗号分隔，不含协议、路径、端口或通配符）。缺失、空或非法配置会拒绝私有 API 身份；本地学习不受影响。本地测试需显式配置自己的测试域名，没有 localhost 自动绕过。
+2. 确认这些域名的网关移除用户伪造的身份头，并禁用或保护绕过网关的 Worker / preview 入口。域名列表不替代经过验证的身份会话或签名断言。
+3. 部署 `drizzle/` 中的最新 D1 迁移。
+4. 生成一个随机 32-byte 值并以 base64 保存为 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`。
+5. 由经过站点身份验证的用户在“设置 → AI 接口”保存自己的接口配置。
 
-新保存的 API key 使用独立 96-bit IV 和绑定账号、服务商、规范化目标 URL 的 AES-256-GCM v2 上下文加密后保存到 D1；旧 v1 密文兼容读取并在成功保存时升级。服务端接口从不回显明文、密文、IV 或 Key 尾号。Base URL 的规范化目标发生变化时必须重新提交 API key，防止已保存凭据被转发到新目标。
+新保存的 API key 使用独立 96-bit IV 和绑定账号、服务商、规范化目标 URL 的 AES-256-GCM v2 上下文加密后保存到 D1。旧 v1 密文缺少账号与目标绑定，运行时不再解密、发送或自动迁移；原配置行保留，GET 返回 `requiresKeyReentry=true` / `hasApiKey=false`，设置页提示用户重新填写服务商 API key。空密钥保存会明确拒绝，不覆盖原行；重新填写后正常保存为 v2 / v3。不能仅根据可被修改的数据库行推断旧密文的原归属或目的地。服务端接口从不回显明文、密文、IV 或 Key 尾号。Base URL 的规范化目标发生变化时必须重新提交 API key，防止已保存凭据被转发到新目标。
 
 ### 主密钥轮换
 
@@ -75,18 +77,18 @@ HARNESS_API_KEY=... node --import ./tests/register.mjs scripts/ai-harness.mjs --
 - `AI_CONFIG_ENCRYPTION_KEYS`：JSON 对象，键为 kid（`^[a-z0-9]{1,16}$`），值为 base64 编码的 32 字节密钥，例如 `{"k1":"<当前 AI_CONFIG_ENCRYPTION_KEY 的值>","k2":"<新值>"}`。
 - `AI_CONFIG_ENCRYPTION_KEY_ACTIVE`：新密文使用的 kid，必须存在于上面的对象中。
 
-配置了 `AI_CONFIG_ENCRYPTION_KEYS` 后新密文写成 v3：AES-GCM 的附加验证数据为 `["pep-vocab-ai-config:v3", kid, userKey, provider, baseUrl]`，`encrypted_api_key` 存为 `kid:base64`，`encryption_version=3`。v1、v2 密文始终视为 `k1`（对象里没有 `k1` 时使用旧的 `AI_CONFIG_ENCRYPTION_KEY`）。密钥集格式不合法、密钥不是 32 字节、kid 不合规或 `ACTIVE` 不存在时，加解密一律失败并返回统一的“无法使用密钥存储”错误，不会退回旧密钥。
+配置了 `AI_CONFIG_ENCRYPTION_KEYS` 后新密文写成 v3：AES-GCM 的附加验证数据为 `["pep-vocab-ai-config:v3", kid, userKey, provider, baseUrl]`，`encrypted_api_key` 存为 `kid:base64`，`encryption_version=3`。v2 密文始终视为 `k1`（对象里没有 `k1` 时使用旧的 `AI_CONFIG_ENCRYPTION_KEY`）；v1 始终拒绝。密钥集格式不合法、密钥不是 32 字节、kid 不合规或 `ACTIVE` 不存在时，加解密一律失败并返回统一的“无法使用密钥存储”错误，不会退回旧密钥。
 
 轮换步骤：
 
 1. 生成新的 32 字节随机值（`openssl rand -base64 32`）。先把当前 `AI_CONFIG_ENCRYPTION_KEY` 作为 `k1`、新值作为 `k2` 写入 `AI_CONFIG_ENCRYPTION_KEYS`，并设置 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE=k2`；保留旧的 `AI_CONFIG_ENCRYPTION_KEY`。
-2. 部署。已有 v1/v2 密文仍可解密；之后每次在设置页保存并保留已有密钥时，服务端会用 `k2` 重新加密（`needsReencryption` / `reencryptApiKey`，条件是保存路径上凭据的 kid 不是活动 kid）。助手运行时在解密成功后可调用 `refreshStoredCredential()` 逐步迁移，见下。
-3. 确认没有遗留旧密文：`SELECT COUNT(*) FROM ai_configs WHERE encrypted_api_key NOT LIKE 'k2:%'` 必须为 0。仍有旧行的用户重新保存一次设置（或重新填写 API key）即可迁移。
+2. 部署。已有 v2 密文仍可解密；之后每次在设置页保存并保留已有密钥时，服务端会用 `k2` 重新加密（`needsReencryption` / `reencryptApiKey`，条件是保存路径上凭据的 kid 不是活动 kid）。助手运行时在解密成功后可调用 `refreshStoredCredential()` 逐步迁移有作用域的 v2 / 旧活动密钥 v3。v1 用户必须重新填写 API key，不能懒迁移。
+3. 确认没有遗留旧密文：`SELECT COUNT(*) FROM ai_configs WHERE encrypted_api_key NOT LIKE 'k2:%'` 必须为 0。仍有 v2 / 旧密钥 v3 的用户重新保存一次设置即可迁移；v1 行必须重新填写 API key。
 4. 结果为 0 之后才从 `AI_CONFIG_ENCRYPTION_KEYS` 与 `AI_CONFIG_ENCRYPTION_KEY` 中移除 `k1`。
 
 回滚：移除 `k1` 之前，把 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE` 切回 `k1` 即可，`k2` 写下的 v3 密文继续可读。任何时候都不要在还有旧密文的情况下删除旧密钥；旧密钥丢失后对应密文无法恢复，用户需要重新填写 API key。
 
-运行时懒迁移：`lib/ai-config.ts` 导出 `refreshStoredCredential(db, row, scope, plaintext?)`。在 `lib/assistant/server.ts` 的 `loadUserRuntimeConfig` 成功解密后调用它，传入带 `prepare()` 的 D1 对象、刚读取的 `{ encryptedApiKey, keyIv, encryptionVersion }` 行、解密所用的 `{ userKey, provider, baseUrl }`，以及已解出的明文。它只在需要迁移时执行 `UPDATE ai_configs SET encrypted_api_key=?, key_iv=?, encryption_version=?, updated_at=CURRENT_TIMESTAMP WHERE user_key=? AND encrypted_api_key=?`，条件更新保证并发的设置保存不会被覆盖；永不抛出，返回本次是否更新了行。调用不应阻塞或影响本次请求（忽略返回值即可）。
+运行时懒迁移：`lib/ai-config.ts` 导出 `refreshStoredCredential(db, row, scope, plaintext?)`。在 `lib/assistant/server.ts` 的 `loadUserRuntimeConfig` 成功解密后调用它，传入带 `prepare()` 的 D1 对象、刚读取的 `{ encryptedApiKey, keyIv, encryptionVersion }` 行、解密所用的 `{ userKey, provider, baseUrl }`，以及已解出的明文。v1 在任何入口（包括传入明文时）均拒绝迁移。它只在有作用域凭据需要迁移时执行 `UPDATE ai_configs SET encrypted_api_key=?, key_iv=?, encryption_version=?, updated_at=CURRENT_TIMESTAMP WHERE user_key=? AND encrypted_api_key=?`，条件更新保证并发的设置保存不会被覆盖；永不抛出，返回本次是否更新了行。它不影响本次请求的成功判断，但当前实现仍等待 D1 更新完成。
 
 从早期 GitHub 版本升级时保留并先执行历史迁移 `0001_flawless_human_cannonball.sql`，再执行 `0002_swift_cerise.sql` 创建按站点身份隔离的 `ai_configs`。早期全局 `ai_provider_config` 不再被运行时代码读取；升级后应由各用户在设置页重新保存自己的 API key。不要删除或改写已经执行过的历史迁移。
 

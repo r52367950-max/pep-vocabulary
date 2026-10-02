@@ -87,7 +87,7 @@ export default function WordAi({ entry, data }: { entry: LexiconIndexEntry; data
             </div>
             {explain.state.status === "done" ? (
               <>
-                <ExplainView result={explain.state.value.result} />
+                <ExplainView result={explain.state.value.result} words={words} />
                 <AiStatus state={explain.state} onRefresh={() => explain.run(explainInput, { refresh: true })} />
               </>
             ) : (
@@ -110,7 +110,7 @@ export default function WordAi({ entry, data }: { entry: LexiconIndexEntry; data
                 onChange={(event) => setSentence(event.target.value)} placeholder="写完先看本机检查，需要时再让 AI 看语法和搭配。" />
             </label>
             {local && <p className="ai-note" data-tone={local.hasTarget && local.completeEnough ? "good" : "maybe"}>{local.message}</p>}
-            {check.state.status === "done" && <SentenceCheckView result={check.state.value.result} />}
+            {check.state.status === "done" && <SentenceCheckView result={check.state.value.result} words={words} />}
             <AiStatus state={check.state} onCancel={check.cancel} onRetry={() => check.run({ wordId: entry.id, sentence })}
               onRefresh={check.state.status === "done" ? () => check.run({ wordId: entry.id, sentence }, { refresh: true }) : undefined} />
             {check.state.status !== "loading" && (
@@ -123,7 +123,7 @@ export default function WordAi({ entry, data }: { entry: LexiconIndexEntry; data
         {tab === "mnemonic" && (
           mnemonic.state.status === "done" ? (
             <>
-              <MnemonicView result={mnemonic.state.value.result} />
+              <MnemonicView result={mnemonic.state.value.result} words={words} />
               <AiStatus state={mnemonic.state} onRefresh={() => mnemonic.run(mnemonicInput, { refresh: true })} />
             </>
           ) : (

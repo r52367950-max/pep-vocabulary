@@ -181,24 +181,28 @@ test('gateway identity values are validated without changing existing user keys'
   requestHeaders.delete('oai-authenticated-user-full-name-encoding');
 });
 
-test('the optional trusted-host guard is off by default and ignores identity on other hosts when set', async () => {
-  assert.equal(identityHostTrusted('anything.example', undefined), true);
-  assert.equal(identityHostTrusted(null, ''), true);
+test('the required trusted-host guard fails closed and rejects identities on other hosts', async () => {
+  assert.equal(identityHostTrusted('anything.example', undefined), false);
+  assert.equal(identityHostTrusted(null, ''), false);
   assert.equal(identityHostTrusted('App.Example.test:443', 'app.example.test'), true);
   assert.equal(identityHostTrusted('app.workers.dev', 'app.example.test, other.example.test'), false);
   assert.equal(identityHostTrusted(null, 'app.example.test'), false);
   asIdentity(OWNER);
-  requestHeaders.set('host', 'preview.workers.dev');
-  assert.ok(await getChatGPTUser());
-  env.IDENTITY_TRUSTED_HOSTS = 'app.example.test';
+  const originalSetting = env.IDENTITY_TRUSTED_HOSTS;
+  const originalHost = requestHeaders.get('host');
   try {
+    delete env.IDENTITY_TRUSTED_HOSTS;
+    requestHeaders.set('host', 'preview.workers.dev');
     assert.equal(await getChatGPTUser(), null);
-    await assertPrivateError(await modules['/api/sync'].GET(), 401);
+    for (const [path, method] of endpoints()) await assertPrivateError(await call(path, method), 401);
+    env.IDENTITY_TRUSTED_HOSTS = 'app.example.test';
+    assert.equal(await getChatGPTUser(), null);
+    for (const [path, method] of endpoints()) await assertPrivateError(await call(path, method), 401);
     requestHeaders.set('host', 'app.example.test');
     assert.ok(await getChatGPTUser());
   } finally {
-    delete env.IDENTITY_TRUSTED_HOSTS;
-    requestHeaders.delete('host');
+    env.IDENTITY_TRUSTED_HOSTS = originalSetting;
+    if (originalHost === null) requestHeaders.delete('host'); else requestHeaders.set('host', originalHost);
   }
 });
 

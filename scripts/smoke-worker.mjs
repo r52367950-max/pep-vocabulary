@@ -1,12 +1,42 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { request as httpRequest } from 'node:http';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+import { legacyAiCredential } from '../tests/legacy-ai-credential.mjs';
 const paths = readdirSync('dist/server', { recursive: true }).filter(p => p.endsWith('.js')).sort((a,b) => a === 'index.js' ? -1 : b === 'index.js' ? 1 : a.localeCompare(b));
-const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules: paths.map(p => ({ type: 'ESModule', path: resolve('dist/server', p) })), modulesRoot: 'dist/server', compatibilityDate: '2026-09-11', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB', 'LEGACY'], bindings: { AI_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') }, assets: { directory: 'dist/client', binding: 'ASSETS', routerConfig: { has_user_worker: true } } }));
+const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules: paths.map(p => ({ type: 'ESModule', path: resolve('dist/server', p) })), modulesRoot: 'dist/server', compatibilityDate: '2026-09-11', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB', 'LEGACY'], bindings: { IDENTITY_TRUSTED_HOSTS: 'localhost', AI_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') }, assets: { directory: 'dist/client', binding: 'ASSETS', routerConfig: { has_user_worker: true } } }));
 const results = [];
 try {
-  const request = async (path, init) => mf.dispatchFetch(`http://localhost${path}`, init);
+  const ready = await mf.ready;
+  // dispatchFetch's Undici transport replaces Host with its internal listener
+  // address, even when a Host was supplied. Exercise actual HTTP authority via
+  // Node's HTTP client while connecting only to the local workerd listener.
+  const dispatchHttp = (url, init = {}) => new Promise((resolveResponse, reject) => {
+    const authority = new URL(url);
+    const headers = new Headers(init.headers);
+    headers.set('host', authority.host);
+    const target = new URL(authority.pathname + authority.search, ready);
+    // Negative checks can reject before consuming a body; use an isolated
+    // socket so their closed keep-alive connection cannot affect the next case.
+    const outgoing = httpRequest(target, { agent: false, method: init.method || 'GET', headers: Object.fromEntries(headers) }, incoming => {
+      const chunks = [];
+      incoming.on('data', chunk => chunks.push(chunk));
+      incoming.on('error', reject);
+      incoming.on('end', () => {
+        const responseHeaders = new Headers();
+        for (const [name, value] of Object.entries(incoming.headers)) {
+          if (Array.isArray(value)) for (const item of value) responseHeaders.append(name, item);
+          else if (value !== undefined) responseHeaders.set(name, value);
+        }
+        resolveResponse(new Response(Buffer.concat(chunks), { status: incoming.statusCode, headers: responseHeaders }));
+      });
+    });
+    outgoing.on('error', reject);
+    outgoing.setTimeout(30_000, () => outgoing.destroy(new Error('Local Worker HTTP request timed out')));
+    outgoing.end(init.body);
+  });
+  const request = async (path, init) => dispatchHttp(`http://localhost${path}`, init);
   for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401]]) {
     const response = await request(path);
     const text = await response.text();
@@ -74,7 +104,16 @@ try {
   results.push({ path: 'database bootstrap with existing legacy rate limit table', status: 'passed', preservedRequests: 7 });
   // Test-only identity and credential. No requests are sent to any AI provider.
   const headers = { 'oai-authenticated-user-email': 'smoke@example.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' };
-  const config = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 }) });
+  const synthetic = await mf.dispatchFetch('http://localhost/api/ai/config', { headers });
+  assert.equal(synthetic.status, 401, await synthetic.clone().text());
+  results.push({ path: '/api/ai/config identity on synthetic internal transport hostname', status: synthetic.status });
+  for (const path of ['/api/sync', '/api/ai/config']) {
+    const denied = await dispatchHttp(`http://preview.workers.dev${path}`, { headers: { ...headers, host: 'preview.workers.dev' } });
+    assert.equal(denied.status, 401, await denied.clone().text());
+    results.push({ path: `${path} forged identity on untrusted hostname`, status: denied.status });
+  }
+  const testConfig = { provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 };
+  const config = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify(testConfig) });
   assert.equal(config.status, 200, await config.clone().text());
   const publicConfig = await config.text();
   assert.equal(JSON.parse(publicConfig).hasApiKey, true);
@@ -82,6 +121,24 @@ try {
   assert.equal(JSON.parse(publicConfig).maxOutputTokens, 2000);
   assert.doesNotMatch(publicConfig, /test-key|encryptedApiKey|keyIv/);
   results.push({ path: '/api/ai/config authenticated save', status: 200 });
+  const savedRow = await db.prepare('SELECT * FROM ai_configs').first();
+  const legacyKey = await legacyAiCredential(testConfig.apiKey, Buffer.alloc(32, 7).toString('base64'));
+  await db.prepare('UPDATE ai_configs SET encrypted_api_key=?, key_iv=?, encryption_version=1 WHERE user_key=?')
+    .bind(legacyKey.encryptedApiKey, legacyKey.keyIv, savedRow.user_key).run();
+  const legacyBefore = await db.prepare('SELECT * FROM ai_configs').first();
+  const legacyPublic = await (await request('/api/ai/config', { headers })).json();
+  assert.equal(legacyPublic.hasApiKey, false);
+  assert.equal(legacyPublic.requiresKeyReentry, true);
+  const refused = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ ...testConfig, apiKey: '' }) });
+  assert.equal(refused.status, 400, await refused.clone().text());
+  assert.equal((await refused.json()).code, 'credential_reentry_required');
+  assert.deepEqual(await db.prepare('SELECT * FROM ai_configs').first(), legacyBefore);
+  results.push({ path: '/api/ai/config legacy key refuses blank save and preserves original row', status: 'passed' });
+  const reentered = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify(testConfig) });
+  assert.equal(reentered.status, 200, await reentered.clone().text());
+  assert.equal((await reentered.json()).requiresKeyReentry, false);
+  assert.equal((await db.prepare('SELECT * FROM ai_configs').first()).encryption_version, 2);
+  results.push({ path: '/api/ai/config owner key reentry restores scoped credential', status: 'passed' });
   const body = JSON.stringify({ schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
   const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);
   assert.deepEqual(writes.map(r => r.status).sort(), [200, 409]);

@@ -1,5 +1,7 @@
 import { createEmptyCard, fsrs, generatorParameters, type Card } from "ts-fsrs";
 import { createLocalId, emptySkills, type ReviewEvent, type SkillName, type StoredCard } from "./storage";
+import { validCard } from "./backup";
+import { MAX_REVIEW_INTERVAL_DAYS, MAX_REVIEW_TIME_MS } from "./scheduler-limits";
 
 function hydrateCard(value: Record<string, unknown>): Card {
   return {
@@ -11,6 +13,14 @@ function hydrateCard(value: Record<string, unknown>): Card {
 
 function serializeCard(card: Card) {
   return { ...card, due: card.due.toISOString(), last_review: card.last_review?.toISOString() || null };
+}
+
+/** A device clock can move backwards; FSRS elapsed time must not become negative. */
+function effectiveReviewTime(card: StoredCard, now: Date) {
+  const previous = card.fsrs.last_review ? Date.parse(String(card.fsrs.last_review)) : NaN;
+  const time = Math.max(now.getTime(), Number.isFinite(previous) ? previous : -Infinity);
+  if (!Number.isFinite(time) || time > MAX_REVIEW_TIME_MS) throw new RangeError("设备日期超出可安排复习的范围，请校准日期后重试。");
+  return time === now.getTime() ? now : new Date(time);
 }
 
 export function newStoredCard(id: string, now = new Date()): StoredCard {
@@ -61,8 +71,9 @@ export function scheduleReview({
 }) {
   const before = stored ? structuredClone(stored) : null;
   const current = stored || newStoredCard(cardId || createLocalId(), now);
-  const scheduler = fsrs(generatorParameters({ request_retention: retention, enable_fuzz: true, enable_short_term: true }));
-  const result = scheduler.next(hydrateCard(current.fsrs), now, rating);
+  const effectiveNow = effectiveReviewTime(current, now);
+  const scheduler = fsrs(generatorParameters({ request_retention: retention, maximum_interval: MAX_REVIEW_INTERVAL_DAYS, enable_fuzz: true, enable_short_term: true }));
+  const result = scheduler.next(hydrateCard(current.fsrs), effectiveNow, rating);
   const nextSkill = Math.max(0, Math.min(1, current.skills[skill] * 0.78 + (correct ? 0.28 : -0.08)));
   const nextSkills = { ...current.skills, [skill]: Number(nextSkill.toFixed(3)) };
   const average = Object.values(nextSkills).reduce((sum, value) => sum + value, 0) / 6;
@@ -72,9 +83,12 @@ export function scheduleReview({
     skills: nextSkills,
     status: rating === 1 ? "weak" : average > 0.78 && result.card.stability > 20 ? "mastered" : "learning",
     due: result.card.due.toISOString(),
-    lastReviewed: now.toISOString(),
+    // Keep the card's two scheduler timestamps equal and monotonic. The event
+    // timestamp and updatedAt retain the actual answer time for audit/history.
+    lastReviewed: effectiveNow.toISOString(),
     updatedAt: now.toISOString(),
   };
+  if (!validCard(after)) throw new Error("词卡调度结果超出安全范围，未保存。请保留备份后检查此词的调度数据。");
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const event: ReviewEvent = {
     eventId: createLocalId(),
@@ -94,7 +108,7 @@ export function scheduleReview({
     expectedAnswer,
     sourceLine,
     intervalBeforeDays: current.lastReviewed ? Math.max(0, (new Date(current.due).getTime() - new Date(current.lastReviewed).getTime()) / 86400000) : null,
-    intervalAfterDays: Math.max(0, (result.card.due.getTime() - now.getTime()) / 86400000),
+    intervalAfterDays: Math.max(0, (result.card.due.getTime() - effectiveNow.getTime()) / 86400000),
     stabilityBefore: typeof current.fsrs.stability === "number" ? current.fsrs.stability : null,
     stabilityAfter: result.card.stability,
     difficultyBefore: typeof current.fsrs.difficulty === "number" ? current.fsrs.difficulty : null,
@@ -120,9 +134,10 @@ function intervalLabel(due: Date, now: Date) {
 
 export function previewReviewIntervals(stored: StoredCard | null | undefined, retention: number, now = new Date()): ReviewIntervalPreview[] {
   const current = stored || newStoredCard("preview", now);
-  const scheduler = fsrs(generatorParameters({ request_retention: retention, enable_fuzz: false, enable_short_term: true }));
+  const effectiveNow = effectiveReviewTime(current, now);
+  const scheduler = fsrs(generatorParameters({ request_retention: retention, maximum_interval: MAX_REVIEW_INTERVAL_DAYS, enable_fuzz: false, enable_short_term: true }));
   return ([1, 2, 3, 4] as const).map((rating) => {
-    const due = scheduler.next(hydrateCard(current.fsrs), now, rating).card.due;
+    const due = scheduler.next(hydrateCard(current.fsrs), effectiveNow, rating).card.due;
     return { rating, due: due.toISOString(), days: Math.max(0, (due.getTime() - now.getTime()) / 86400000), label: intervalLabel(due, now) };
   });
 }

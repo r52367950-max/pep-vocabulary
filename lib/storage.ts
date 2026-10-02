@@ -4,11 +4,20 @@ export type { AppSettings, StoredCard, ReviewEvent, WritingRecord, WritingVersio
 import { stableJson } from "./stable-json";
 
 const DB_NAME = "pep-vocab-studio";
-// Version 3 adds the `writings` store; upgrading keeps every existing store and record.
-const DB_VERSION = 3;
+// Version 3 added writings. Version 4 preserves all records and prevents older
+// clients without dataset guards from reopening the database after a replacement.
+const DB_VERSION = 4;
 const stores = ["cards", "events", "lists", "settings", "meta", "writings"] as const;
 const backupStores = ["cards", "events", "lists", "settings", "writings"] as const;
 type StoreName = (typeof stores)[number];
+export const INITIAL_DATA_GENERATION = "initial";
+const GENERATION_KEY = "data-generation";
+const CLOUD_LINK_KEY = "cloud-link";
+export type CloudLink = { identity: string; revision: number };
+
+export class DataReplacedError extends Error {
+  constructor() { super("本机数据已在其他页面替换或清空。请保留未保存的文字，再重新打开操作。"); }
+}
 
 export function createLocalId() {
   const webCrypto = globalThis.crypto;
@@ -66,12 +75,34 @@ function transaction<T>(storeName: StoreName, mode: IDBTransactionMode, work: (s
   });
 }
 
+/** Check the dataset under the same lock as the write, including currently absent records. */
+function generationTransaction<T>(names: readonly StoreName[], mode: IDBTransactionMode, expected: string | undefined,
+  work: (tx: IDBTransaction, result: (value: T) => void) => void) {
+  let replaced = false;
+  return runTransaction<T>([...new Set([...names, "meta" as const])], mode, (tx, result) => {
+    tx.objectStore("meta").get(GENERATION_KEY).onsuccess = function () {
+      const generation = this.result?.value ?? INITIAL_DATA_GENERATION;
+      if (expected !== undefined && expected !== generation) { replaced = true; tx.abort(); return; }
+      work(tx, result);
+    };
+  }).catch((error) => { throw replaced ? new DataReplacedError() : error; });
+}
+
+function announceReplacement() {
+  if (typeof BroadcastChannel === "undefined") return;
+  try {
+    const channel = new BroadcastChannel("vocab-changes");
+    channel.postMessage("replaced");
+    channel.close();
+  } catch { /* The transaction guard remains effective without cross-page notifications. */ }
+}
+
 export const getOne = <T>(store: StoreName, key: IDBValidKey) => transaction<T | undefined>(store, "readonly", (target) => target.get(key));
 export const getAll = <T>(store: StoreName) => transaction<T[]>(store, "readonly", (target) => target.getAll());
 export const putOne = <T>(store: StoreName, value: T) => transaction<IDBValidKey>(store, "readwrite", (target) => target.put(value));
 
-export function updateCardMetadata(fallback: StoredCard, patch: { note?: string; toggleFavorite?: boolean }) {
-  return runTransaction<StoredCard>(["cards"], "readwrite", (tx, result) => {
+export function updateCardMetadata(fallback: StoredCard, patch: { note?: string; toggleFavorite?: boolean }, generation?: string) {
+  return generationTransaction<StoredCard>(["cards"], "readwrite", generation, (tx, result) => {
     const store = tx.objectStore("cards");
     const request = store.get(fallback.id);
     request.onsuccess = () => {
@@ -84,14 +115,14 @@ export function updateCardMetadata(fallback: StoredCard, patch: { note?: string;
   });
 }
 
-export async function commitReview(event: ReviewEvent) {
-  await runTransaction<void>(["cards", "events"], "readwrite", (tx) => {
+export async function commitReview(event: ReviewEvent, generation?: string) {
+  await generationTransaction<void>(["cards", "events"], "readwrite", generation, (tx) => {
     const cards = tx.objectStore("cards");
     const request = cards.get(event.cardId);
     request.onsuccess = () => {
       const undo = event.eventType === "undo";
       const expected = undo ? event.after : event.before;
-      if (JSON.stringify(request.result || null) !== JSON.stringify(expected)) { tx.abort(); return; }
+      if (stableJson(request.result || null) !== stableJson(expected)) { tx.abort(); return; }
       // The card and its audit event either both commit or both roll back.
       const write = () => {
         if (undo && !event.before) cards.delete(event.cardId);
@@ -115,18 +146,19 @@ export async function loadSettings() {
 
 /** Consistent card/event/settings snapshot: one database open and one read transaction. */
 export function loadLearningState() {
-  return runTransaction<{ cards: StoredCard[]; events: ReviewEvent[]; settings: AppSettings }>(["cards", "events", "settings"], "readonly", (tx, result) => {
-    const state = { cards: [] as StoredCard[], events: [] as ReviewEvent[], settings: structuredClone(defaultSettings) };
+  return runTransaction<{ cards: StoredCard[]; events: ReviewEvent[]; settings: AppSettings; generation: string }>(["cards", "events", "settings", "meta"], "readonly", (tx, result) => {
+    const state = { cards: [] as StoredCard[], events: [] as ReviewEvent[], settings: structuredClone(defaultSettings), generation: INITIAL_DATA_GENERATION };
     tx.objectStore("cards").getAll().onsuccess = function () { state.cards = this.result; };
     tx.objectStore("events").getAll().onsuccess = function () { state.events = this.result; };
     tx.objectStore("settings").get("app").onsuccess = function () { state.settings = this.result || state.settings; };
+    tx.objectStore("meta").get(GENERATION_KEY).onsuccess = function () { state.generation = this.result?.value ?? INITIAL_DATA_GENERATION; };
     result(state);
   });
 }
 
 /** Patches from independent tabs merge against the latest settings inside the write lock. */
-export function patchSettings(patch: Partial<AppSettings>) {
-  return runTransaction<AppSettings>(["settings"], "readwrite", (tx, result) => {
+export function patchSettings(patch: Partial<AppSettings>, generation?: string) {
+  return generationTransaction<AppSettings>(["settings"], "readwrite", generation, (tx, result) => {
     const store = tx.objectStore("settings");
     store.get("app").onsuccess = function () {
       const next = { ...defaultSettings, ...this.result, ...patch, key: "app" as const, updatedAt: new Date().toISOString() };
@@ -142,8 +174,8 @@ export async function saveSettings(settings: AppSettings) {
   return next;
 }
 
-export async function exportBackup() {
-  return runTransaction<BackupPayload>(backupStores, "readonly", (tx, result) => {
+export async function exportBackup(generation?: string) {
+  return generationTransaction<BackupPayload>(backupStores, "readonly", generation, (tx, result) => {
     const payload: BackupPayload = { schemaVersion: USER_DATA_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards: [], events: [], lists: [], settings: [], writings: [] };
     for (const name of backupStores) {
       const request = tx.objectStore(name).getAll();
@@ -153,22 +185,49 @@ export async function exportBackup() {
   });
 }
 
-export async function restoreBackup(payload: unknown) {
+export async function restoreBackup(payload: unknown, expectedGeneration?: string) {
   // Validate every row before opening the destructive transaction.
   const migrated = validateBackup(payload);
-  await runTransaction<void>([...backupStores, "meta"], "readwrite", (tx) => {
+  const generation = createLocalId();
+  await generationTransaction<void>(backupStores, "readwrite", expectedGeneration, (tx) => {
     for (const name of backupStores) {
       const store = tx.objectStore(name);
       store.clear();
       for (const row of migrated[name]) store.put(row);
     }
     tx.objectStore("meta").clear();
+    tx.objectStore("meta").put({ key: GENERATION_KEY, value: generation });
+  });
+  announceReplacement();
+  return generation;
+}
+
+export async function clearUserData(expectedGeneration?: string) {
+  await generationTransaction<void>(stores, "readwrite", expectedGeneration, (tx) => {
+    stores.forEach((name) => tx.objectStore(name).clear());
+    tx.objectStore("meta").put({ key: GENERATION_KEY, value: createLocalId() });
+  });
+  announceReplacement();
+}
+
+export function readCloudLink(generation: string) {
+  return generationTransaction<CloudLink | null>(["meta"], "readonly", generation, (tx, result) => {
+    tx.objectStore("meta").get(CLOUD_LINK_KEY).onsuccess = function () {
+      let link: unknown = this.result?.value;
+      // Preserve pre-generation installations; after a replacement the old binding is never reused.
+      if (!link && generation === INITIAL_DATA_GENERATION) {
+        try { link = JSON.parse(localStorage.getItem("pep-vocab-cloud-link-v2") || "null"); } catch { /* No valid legacy binding. */ }
+      }
+      const value = link as Partial<CloudLink> | null;
+      result(value && typeof value.identity === "string" && Number.isSafeInteger(value.revision) && value.revision! >= 0
+        ? { identity: value.identity, revision: value.revision! } : null);
+    };
   });
 }
 
-export async function clearUserData() {
-  await runTransaction<void>(stores, "readwrite", (tx) => {
-    stores.forEach((name) => tx.objectStore(name).clear());
+export async function saveCloudLink(link: CloudLink, generation: string) {
+  await generationTransaction<void>(["meta"], "readwrite", generation, (tx) => {
+    tx.objectStore("meta").put({ key: CLOUD_LINK_KEY, value: link });
   });
 }
 
@@ -179,10 +238,10 @@ export class WritingConflictError extends Error {
 }
 
 /** expected=null creates only; an update compares the full prior snapshot in the same transaction. */
-export async function saveWriting(record: WritingRecord, expected: WritingRecord | null = null) {
+export async function saveWriting(record: WritingRecord, expected: WritingRecord | null = null, generation?: string) {
   if (!validWriting(record)) throw new Error("写作记录无效，未保存。");
   let conflict = false;
-  await runTransaction<void>(["writings"], "readwrite", (tx) => {
+  await generationTransaction<void>(["writings"], "readwrite", generation, (tx) => {
     const store = tx.objectStore("writings");
     const request = store.get(record.id);
     request.onsuccess = () => {
@@ -193,7 +252,9 @@ export async function saveWriting(record: WritingRecord, expected: WritingRecord
   return record;
 }
 
-export const deleteWriting = (id: string) => transaction<undefined>("writings", "readwrite", (store) => store.delete(id));
+export const deleteWriting = (id: string, generation?: string) => generationTransaction<undefined>(["writings"], "readwrite", generation, (tx, result) => {
+  tx.objectStore("writings").delete(id).onsuccess = function () { result(this.result); };
+});
 
 export function emptySkills(): SkillVector {
   return { meaning: 0, listening: 0, spelling: 0, context: 0, collocation: 0, output: 0 };

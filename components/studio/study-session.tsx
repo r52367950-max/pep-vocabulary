@@ -23,12 +23,15 @@ import {
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import { loadDetails, speakSystem, type LexiconDetail } from "@/lib/lexicon";
 import {
-  buildQuestion,
   getEntryExample,
   gradeQuestion,
   localSentenceCheck,
-  type QuestionType,
 } from "@/lib/questions";
+import {
+  prepareStudyQuestion,
+  type StudyQuestionSnapshot,
+} from "@/lib/study-question";
+import { studyShortcut } from "@/lib/study-controls";
 import { previewReviewIntervals, scheduleReview } from "@/lib/scheduler";
 import { createLocalId, type ReviewEvent } from "@/lib/storage";
 import { effectiveRating } from "@/lib/study";
@@ -70,10 +73,13 @@ export default function StudySession({
   } | null>(null);
   const [audioFailed, setAudioFailed] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [questionSnapshot, setQuestionSnapshot] =
+    useState<StudyQuestionSnapshot | null>(null);
   const busy = useRef(false);
   const start = useRef(0);
   const answerTime = useRef(0);
   const submission = useRef<string | null>(null);
+  const [generation] = useState(() => session.dataGeneration ?? data.generation);
   const input = useRef<HTMLInputElement>(null);
   const index = data.byId;
   const { cards, notify, saveReview, reload } = data;
@@ -82,38 +88,25 @@ export default function StudySession({
   const card = entry ? cards.get(entry.id) : undefined;
   const detail = entry ? details.get(entry.id) : undefined;
   const done = session.position >= session.queue.length;
-  const type: QuestionType =
-    session.mode === "dictation"
-      ? "dictation"
-      : session.mode === "context"
-        ? "context-choice"
-        : session.mode === "mistakes" ||
-            Boolean(
-              entry &&
-                session.results.some((result) => result.wordId === entry.id),
-            )
-          ? "spelling"
-          : !card?.lastReviewed
-            ? "meaning-recall"
-            : (
-                [
-                  "meaning-recall",
-                  "spelling",
-                  "context-choice",
-                ] as QuestionType[]
-              )[Number(card.fsrs.reps || 0) % 3];
-  const question = useMemo(
-    () => (entry ? buildQuestion(entry, detail, type, data.index) : null),
-    [entry, detail, type, data.index],
-  );
-  const intervals = useMemo(
-    () => previewReviewIntervals(card, retention),
-    [card, retention],
-  );
   const stepId = sessionEventId(session);
   // Details for the next five words are prefetched, so a cached card is ready at once
   // and the question stays on screen between cards instead of flashing the loader.
   const ready = readyStep === stepId || detailError || (entry ? details.has(entry.id) : false);
+  // A ready question is a checkpoint: optional output and cross-tab reviews may
+  // change its card, while the displayed prompt and grading remain the same.
+  const nextQuestionSnapshot = useMemo(
+    () => prepareStudyQuestion(questionSnapshot, {
+      stepId, session, entry, detail, card, pool: data.index, ready,
+    }),
+    [questionSnapshot, stepId, session, entry, detail, card, data.index, ready],
+  );
+  if (nextQuestionSnapshot !== questionSnapshot)
+    setQuestionSnapshot(nextQuestionSnapshot);
+  const question = nextQuestionSnapshot?.question ?? null;
+  const intervals = useMemo(
+    () => previewReviewIntervals(card, retention),
+    [card, retention],
+  );
   const reset = useCallback(() => {
     setAnswer("");
     setRevealed(false);
@@ -159,7 +152,7 @@ export default function StudySession({
     if (entry && !revealed) input.current?.focus();
     // The answer field unmounts on reveal; hand focus to the next action instead of the page body.
     if (revealed) controls.current?.querySelector<HTMLButtonElement>(".recommended, .wrong-next .primary")?.focus({ preventScroll: true });
-  }, [entry, revealed]);
+  }, [entry, question, revealed]);
   useEffect(
     () => () => {
       if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
@@ -225,40 +218,41 @@ export default function StudySession({
         return;
       busy.current = true;
       setSaving(true);
-      const rating = effectiveRating({ rating: requested, correct, hints });
-      const result = correct ?? rating > 1;
-      const scheduled = scheduleReview({
-        stored: cards.get(entry.id) || null,
-        cardId: entry.id,
-        rating,
-        retention,
-        skill: question.skill,
-        questionType: question.type,
-        correct: result,
-        responseMs: answerTime.current,
-        hints,
-        errorType: result
-          ? null
-          : question.audio
-            ? "listening"
-            : question.skill === "spelling"
-              ? "spelling"
-              : "recall",
-        prompt: question.prompt,
-        answerGiven: answer.trim() || null,
-        expectedAnswer: question.answer,
-        sourceLine: sourceLabel(entry),
-      });
-      const event = {
-        ...scheduled.event,
-        eventType: "review" as const,
-        eventId: stepId,
-      };
       try {
-        await saveReview(event);
+        const rating = effectiveRating({ rating: requested, correct, hints });
+        const result = correct ?? rating > 1;
+        const scheduled = scheduleReview({
+          stored: cards.get(entry.id) || null,
+          cardId: entry.id,
+          rating,
+          retention,
+          skill: question.skill,
+          questionType: question.type,
+          correct: result,
+          responseMs: answerTime.current,
+          hints,
+          errorType: result
+            ? null
+            : question.audio
+              ? "listening"
+              : question.skill === "spelling"
+                ? "spelling"
+                : "recall",
+          prompt: question.prompt,
+          answerGiven: answer.trim() || null,
+          expectedAnswer: question.answer,
+          sourceLine: sourceLabel(entry),
+        });
+        const event = {
+          ...scheduled.event,
+          eventType: "review" as const,
+          eventId: stepId,
+        };
+        const nextSession = advanceSession(session, event);
+        await saveReview(event, generation);
         submission.current = stepId;
         setUndo({ event, previous: session });
-        onChange(advanceSession(session, event));
+        onChange(nextSession);
         reset();
       } catch {
         notify(
@@ -281,6 +275,7 @@ export default function StudySession({
       cards,
       retention,
       saveReview,
+      generation,
       notify,
       reload,
       answer,
@@ -303,7 +298,7 @@ export default function StudySession({
         targetEventId: undo.event.eventId,
         timestampUtc: now.toISOString(),
         localDate: now.toLocaleDateString("sv-SE"),
-      });
+      }, generation);
       onChange({ ...undo.previous, revision: (session.revision || 0) + 1 });
       submission.current = null;
       setUndo(null);
@@ -314,35 +309,23 @@ export default function StudySession({
       busy.current = false;
       setSaving(false);
     }
-  }, [undo, session.revision, saveReview, notify, onChange, reset]);
+  }, [undo, session.revision, saveReview, generation, notify, onChange, reset]);
 
   // Reads the latest answer state when a key arrives, so the listener is bound once per session
   // instead of after every keypress.
   const onKey = useEffectEvent((event: KeyboardEvent) => {
-    if (
-      event.repeat ||
-      event.isComposing ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey ||
-      busy.current
-    )
-      return;
-    const target = event.target as HTMLElement;
-    if (
-      ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
-      target.isContentEditable
-    )
-      return;
-    if (event.code === "Space") {
-      event.preventDefault();
-      if (revealed) void rate(correct === false ? 1 : 3);
-      else check();
-    }
-    if (revealed && /^[1-4]$/.test(event.key))
-      void rate(Number(event.key) as 1 | 2 | 3 | 4);
-    if (event.key.toLowerCase() === "r") play();
-    if (event.key.toLowerCase() === "z") void undoLast();
+    const target = event.target as HTMLElement | null;
+    const shortcut = studyShortcut(event, {
+      revealed, correct, busy: busy.current,
+      editing: Boolean(target?.closest?.("input, textarea, select, [contenteditable]")),
+      button: Boolean(target?.closest?.("button")),
+    });
+    if (!shortcut) return;
+    event.preventDefault();
+    if (shortcut.action === "check") check();
+    else if (shortcut.action === "rate") void rate(shortcut.rating);
+    else if (shortcut.action === "play") play();
+    else void undoLast();
   });
   useEffect(() => {
     const key = (event: KeyboardEvent) => onKey(event);
@@ -424,7 +407,7 @@ export default function StudySession({
       </main>
     );
   }
-  if (!entry || !question)
+  if (!entry)
     return (
       <main className="boot-screen">
         <h1>这一轮的词条已更新</h1>
@@ -433,7 +416,7 @@ export default function StudySession({
         </button>
       </main>
     );
-  if (!ready)
+  if (!ready || !question)
     return (
       <main className="boot-screen">
         <p role="status">正在准备词条…</p>
@@ -667,7 +650,7 @@ export default function StudySession({
               )}
               {correct !== false && !retrying && Number(card?.fsrs.reps || 0) >= 2 && question.skill !== "output" && (
                 <Suspense fallback={null}>
-                  <SentenceOutput key={stepId} entry={entry} data={data} eventPrefix={session.id} sourceLine={sourceLabel(entry)} />
+                  <SentenceOutput key={stepId} entry={entry} data={data} generation={generation} eventPrefix={session.id} sourceLine={sourceLabel(entry)} />
                 </Suspense>
               )}
             </div>

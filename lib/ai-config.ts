@@ -7,7 +7,6 @@ export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: 
   "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
 };
 
-const ENCRYPTION_CONTEXT = new TextEncoder().encode("pep-vocab-ai-config:v1");
 const LEGACY_KEY_ID = "k1";
 const KEY_ID_PATTERN = /^[a-z0-9]{1,16}$/;
 const STRICT_KEY_PATTERN = /^[A-Za-z0-9+/]{43}=$/;
@@ -21,9 +20,15 @@ export type AiConfigStatementRunner = {
   prepare(query: string): { bind(...values: unknown[]): { run(): Promise<unknown> } };
 };
 
-function encryptionContext(version: number, scope?: AiCredentialScope, keyId?: string) {
-  if (version === 1) return ENCRYPTION_CONTEXT;
-  if (!scope) throw new Error("Unsupported AI credential encryption context");
+function assertScopedEncryptionVersion(version: number) {
+  if (version !== 2 && version !== 3) throw new Error("AI credential must be reentered with an authenticated scope");
+}
+
+function encryptionContext(version: number, scope: AiCredentialScope, keyId?: string) {
+  assertScopedEncryptionVersion(version);
+  if (!scope || typeof scope.userKey !== "string" || !scope.userKey || !isAiProvider(scope.provider) || typeof scope.baseUrl !== "string" || !scope.baseUrl) {
+    throw new Error("Unsupported AI credential encryption context");
+  }
   // A ciphertext copied to another user or destination must fail authentication.
   if (version === 2) return new TextEncoder().encode(JSON.stringify(["pep-vocab-ai-config:v2", scope.userKey, scope.provider, scope.baseUrl]));
   if (version === 3 && keyId) {
@@ -77,7 +82,7 @@ function masterKeyring(): MasterKeyring {
     }
     keys.set(keyId, value);
   }
-  // Formats v1 and v2 predate key ids and always belong to k1.
+  // Format v2 predates key ids and belongs to k1. Unscoped v1 is never read.
   if (!keys.has(LEGACY_KEY_ID) && legacy !== undefined) keys.set(LEGACY_KEY_ID, legacy);
   if (!keys.size || active === undefined || !KEY_ID_PATTERN.test(active) || !keys.has(active)) throw new Error(ENCRYPTION_UNAVAILABLE);
   return { keys, activeKeyId: active, versioned: true };
@@ -99,10 +104,11 @@ function storedKeyId(encryptedApiKey: string) {
   return VERSIONED_CIPHERTEXT_PATTERN.exec(encryptedApiKey)?.[1];
 }
 
-export async function encryptApiKey(value: string, scope?: AiCredentialScope) {
+export async function encryptApiKey(value: string, scope: AiCredentialScope) {
+  if (!scope) throw new Error("AI credential must be reentered with an authenticated scope");
   const ring = masterKeyring();
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encryptionVersion = !scope ? 1 : ring.versioned ? 3 : 2;
+  const encryptionVersion = ring.versioned ? 3 : 2;
   const keyId = encryptionVersion === 3 ? ring.activeKeyId : LEGACY_KEY_ID;
   const encrypted = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv, additionalData: encryptionContext(encryptionVersion, scope, keyId) },
@@ -113,7 +119,8 @@ export async function encryptApiKey(value: string, scope?: AiCredentialScope) {
   return { encryptedApiKey: encryptionVersion === 3 ? `${keyId}:${cipher}` : cipher, keyIv: bytesToBase64(iv), encryptionVersion };
 }
 
-export async function decryptApiKey(encryptedApiKey: string, keyIv: string, encryptionVersion = 1, scope?: AiCredentialScope) {
+export async function decryptApiKey(encryptedApiKey: string, keyIv: string, encryptionVersion: number, scope: AiCredentialScope) {
+  assertScopedEncryptionVersion(encryptionVersion);
   const ring = masterKeyring();
   let keyId = LEGACY_KEY_ID;
   let cipher = encryptedApiKey;
@@ -132,6 +139,7 @@ export async function decryptApiKey(encryptedApiKey: string, keyIv: string, encr
 
 /** True when a stored credential is not in the current write format under the active key. */
 export function needsReencryption(row: { encryptedApiKey: string; encryptionVersion: number }) {
+  assertScopedEncryptionVersion(row.encryptionVersion);
   const ring = masterKeyring();
   if (!ring.versioned) return row.encryptionVersion !== 2;
   return row.encryptionVersion !== 3 || storedKeyId(row.encryptedApiKey) !== ring.activeKeyId;
@@ -139,6 +147,9 @@ export function needsReencryption(row: { encryptedApiKey: string; encryptionVers
 
 /** Decrypts with the stored key and encrypts again with the active key and format. */
 export async function reencryptApiKey(row: StoredAiCredential, scope: AiCredentialScope, plaintext?: string): Promise<StoredAiCredential> {
+  // Even a caller with plaintext cannot launder an unbound legacy row into a
+  // mutable row's ownership/destination. The owner must submit a fresh key.
+  assertScopedEncryptionVersion(row.encryptionVersion);
   const value = plaintext ?? await decryptApiKey(row.encryptedApiKey, row.keyIv, row.encryptionVersion, scope);
   return encryptApiKey(value, scope);
 }
