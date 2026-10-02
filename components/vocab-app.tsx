@@ -232,12 +232,28 @@ export default function VocabApp() {
           sessionStorage.getItem(SESSION_KEY),
           new Set(data.index.map((e) => e.id)),
           data.history,
+          Date.now(),
+          data.generation,
         ),
       );
     } catch {
       /* Learning works when tab checkpoint storage is unavailable. */
     }
-  }, [data.loading, data.index, data.history]);
+  }, [data.loading, data.index, data.history, data.generation]);
+  const observedGeneration = useRef<string | null>(null);
+  const discardReplacedSession = useEffectEvent(() => {
+    setResume(null);
+    setSession(null);
+    setLearn(null);
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* Storage guards still reject old writes. */ }
+    notify("本机学习数据已替换，旧练习已结束。未保存的作文或笔记请复制保留后重新打开。");
+  });
+  useEffect(() => {
+    if (data.loading) return;
+    const previous = observedGeneration.current;
+    observedGeneration.current = data.generation;
+    if (previous !== null && previous !== data.generation) discardReplacedSession();
+  }, [data.loading, data.generation]);
   useEffect(() => {
     window.scrollTo(0, 0);
     heading.current?.focus({ preventScroll: true });
@@ -276,6 +292,8 @@ export default function VocabApp() {
 
   const checkpoint = useCallback(
     (next: StudySessionState) => {
+      if (next.dataGeneration !== undefined && next.dataGeneration !== data.generation) return;
+      next = { ...next, dataGeneration: data.generation };
       setSession(next);
       try {
         if (next.position >= next.queue.length)
@@ -285,7 +303,7 @@ export default function VocabApp() {
         notify("本机作答已保存，但此浏览器未允许保存临时学习位置。");
       }
     },
-    [],
+    [data.generation],
   );
   // Stable between data changes, so views kept mounted in the background are not re-rendered
   // by every shell render.
@@ -397,7 +415,7 @@ export default function VocabApp() {
     )
       return;
     try {
-      await clearUserData();
+      await clearUserData(data.generation);
       const { clearPersonalReadings } = await import("@/lib/personal-readings");
       await clearPersonalReadings();
       sessionStorage.removeItem(SESSION_KEY);

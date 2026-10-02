@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Bookmark, Check, ChevronRight, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import {
@@ -29,12 +29,14 @@ export default function WordDetail({
   const [failure, setFailure] = useState("");
   const savedNote = data.cards.get(entry.id)?.note || "";
   const [note, setNote] = useState(savedNote);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const generation = useRef(data.generation).current;
   const { metadata } = data;
   // Closing keeps an unsaved note rather than discarding it.
-  const close = useCallback(() => {
-    if (note !== savedNote) void metadata(entry.id, { note });
+  const close = useCallback(async () => {
+    if (note !== savedNote && !await metadata(entry.id, { note }, generation)) { setSaveFailed(true); return false; }
     onClose();
-  }, [note, savedNote, metadata, entry.id, onClose]);
+  }, [note, savedNote, metadata, entry.id, generation, onClose]);
   const { dialog, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(close);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function WordDetail({
             aria-label={
               data.cards.get(entry.id)?.favorite ? "取消收藏" : "收藏单词"
             }
-            onClick={() => data.metadata(entry.id, { toggleFavorite: true })}
+            onClick={() => data.metadata(entry.id, { toggleFavorite: true }, generation)}
           >
             <Bookmark size={19} aria-hidden="true" />
           </button>
@@ -130,8 +132,9 @@ export default function WordDetail({
           <button
             className="text-button"
             onClick={async () => {
-              const ok = await data.metadata(entry.id, { note });
+              const ok = await data.metadata(entry.id, { note }, generation);
               setSaved(ok);
+              setSaveFailed(!ok);
             }}
           >
             {saved ? (
@@ -143,6 +146,12 @@ export default function WordDetail({
               "保存笔记"
             )}
           </button>
+          {saveFailed && <>
+            <small role="status">笔记未保存，文字仍保留在这里。关闭前请先复制保留。</small>
+            <button className="text-button" onClick={() => {
+              if (window.confirm("笔记尚未保存。请先复制保留；仍要放弃未保存的修改并关闭？")) onClose();
+            }}>放弃未保存修改并关闭</button>
+          </>}
         </label>
         {data.settings.aiEnabled && (
           <Suspense fallback={null}>

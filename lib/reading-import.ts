@@ -1,4 +1,6 @@
-import { countReadingWords, type Difficulty, type ReadingCategory } from "./reading-library";
+import { countReadingWords } from "./reading-library";
+import { extractDocxXml } from "./docx-import";
+import { PDF_DECODE_LIMITS, PdfTextBudget, readBoundedPdfText, type PdfTextItem, type PdfTextPage } from "./pdf-import";
 
 export type ImportProgress = (message: string) => void;
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -77,9 +79,8 @@ export function imageDimensions(bytes: Uint8Array): [number, number] | null {
   return null;
 }
 type OcrWorker = { recognize: (image: HTMLCanvasElement) => Promise<{ data: { text: string } }>; terminate: () => Promise<void> };
-type PdfTextItem = { str?: string; hasEOL?: boolean; transform?: number[]; width?: number; height?: number };
-type PdfPage = { getTextContent: () => Promise<{ items: PdfTextItem[] }>; getViewport: (a: { scale: number }) => { width: number; height: number }; render: (a: unknown) => { promise: Promise<void>; cancel: () => void }; cleanup: () => void };
-type PdfTask = { promise: Promise<{ numPages: number; getPage: (n: number) => Promise<PdfPage> }>; destroy: () => Promise<void> };
+type PdfPage = PdfTextPage & { getViewport: (a: { scale: number }) => { width: number; height: number }; render: (a: unknown) => { promise: Promise<void>; cancel: () => void }; cleanup: () => void };
+type PdfTask = { promise: Promise<{ numPages: number; getPage: (n: number) => Promise<PdfPage>; checkResourceBudget: () => Promise<void> }>; destroy: () => Promise<void> };
 let ocrInitialization: Promise<unknown> = Promise.resolve();
 
 /** Retain paragraph gaps and first-line indents in ordinary single-column PDFs. */
@@ -124,18 +125,27 @@ export async function extractReadingFile(file: File, signal: AbortSignal, progre
   }
   if (extension === "docx") {
     progress("正在读取 Word 文档…");
-    const { unzipSync, strFromU8 } = await import("fflate");
-    const entries = unzipSync(new Uint8Array(await file.arrayBuffer()), { filter: entry => entry.name === "word/document.xml" && entry.originalSize <= 2_000_000 });
-    const bytes = entries["word/document.xml"];
-    if (!bytes || bytes.length > 2_000_000) throw new Error("无法读取这份 DOCX，或文档文字过多。");
-    const doc = new DOMParser().parseFromString(strFromU8(bytes), "application/xml");
+    const bytes = await extractDocxXml(file, signal);
+    const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), "application/xml");
     if (doc.querySelector("parsererror")) throw new Error("Word 文档格式损坏。");
     return normalizeReadingText([...doc.getElementsByTagNameNS("*", "p")].map(p => [...p.getElementsByTagNameNS("*", "t")].map(t => t.textContent ?? "").join("")).filter(Boolean).join("\n\n"));
   }
   let worker: OcrWorker | undefined;
   let task: PdfTask | undefined;
   let cancelRender: (() => void) | undefined;
-  const release = () => { void worker?.terminate(); void task?.destroy(); cancelRender?.(); };
+  let parserWorker: Worker | undefined;
+  let pdfWorker: { destroy: () => void } | undefined;
+  let taskDisposal: Promise<void> | undefined;
+  const destroyTask = () => taskDisposal ??= task?.destroy().catch(() => {}) ?? Promise.resolve();
+  const release = () => {
+    cancelRender?.();
+    void worker?.terminate();
+    void destroyTask();
+    // A synchronous decoder cannot handle PDF.js's cooperative Terminate message.
+    // Stop the actual worker immediately and reject outstanding reads via signal.
+    parserWorker?.terminate();
+    pdfWorker?.destroy();
+  };
   signal.addEventListener("abort", release, { once: true });
   const recognize = async (canvas: HTMLCanvasElement) => {
     if (signal.aborted) throw new DOMException("已取消", "AbortError");
@@ -181,35 +191,64 @@ export async function extractReadingFile(file: File, signal: AbortSignal, progre
       const base = `${location.origin}/vendor/pdfjs-5.6.205`;
       pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.mjs`;
       signal.throwIfAborted();
-      task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), cMapUrl: `${base}/cmaps/`, cMapPacked: true, standardFontDataUrl: `${base}/standard_fonts/`, wasmUrl: `${base}/wasm/`, iccUrl: `${base}/iccs/`, isEvalSupported: false, enableXfa: false, maxImageSize: 40_000_000, canvasMaxAreaInBytes: 32_000_000, stopAtErrors: true }) as PdfTask;
-      const pdf = await task.promise;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      signal.throwIfAborted();
+      parserWorker = new Worker(`${base}/pdf.worker.mjs`, { type: "module" });
+      pdfWorker = new pdfjs.PDFWorker({ port: parserWorker });
+      const workerFailure = new Promise<never>((_, reject) => parserWorker!.addEventListener("error", () => reject(new Error("PDF 处理进程无法运行，请重试或粘贴正文。")), { once: true }));
+      // Startup can fail before the first pending parser request has been attached.
+      void workerFailure.catch(() => {});
+      const waitForPdf = <T>(operation: Promise<T>) => abortable(Promise.race([operation, workerFailure]), signal);
+      task = pdfjs.getDocument({ data: bytes, worker: pdfWorker, ...PDF_DECODE_LIMITS, cMapUrl: `${base}/cmaps/`, cMapPacked: true, standardFontDataUrl: `${base}/standard_fonts/`, wasmUrl: `${base}/wasm/`, iccUrl: `${base}/iccs/`, isEvalSupported: false, enableXfa: false, maxImageSize: 40_000_000, canvasMaxAreaInBytes: 32_000_000, stopAtErrors: true }) as PdfTask;
+      const pdf = await waitForPdf(task.promise);
       if (pdf.numPages > 30) throw new Error("一次最多导入 30 页 PDF，请先选取需要的页面。");
       const paragraphs: string[] = [];
+      const textBudget = new PdfTextBudget();
       for (let n = 1; n <= pdf.numPages; n++) {
         if (signal.aborted) throw new DOMException("已取消", "AbortError");
         progress(`正在读取第 ${n} / ${pdf.numPages} 页…`);
-        const page = await pdf.getPage(n);
+        const page = await waitForPdf(pdf.getPage(n));
         const canvas = document.createElement("canvas");
         try {
-          const content = await page.getTextContent();
-          let text = pdfReadingText(content.items);
+          const items = await waitForPdf(readBoundedPdfText(page, textBudget, signal));
+          let text = pdfReadingText(items);
           if (countReadingWords(text) < 12) {
             const original = page.getViewport({ scale: 1 });
+            if (![original.width, original.height].every(value => Number.isFinite(value) && value > 0)) throw new Error("PDF 页面尺寸无法读取。");
             const viewport = page.getViewport({ scale: Math.min(2.5, 2200 / Math.max(original.width, original.height)) });
             canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
             const render = page.render({ canvas, canvasContext: canvas.getContext("2d"), viewport });
-            cancelRender = () => render.cancel(); await render.promise; cancelRender = undefined;
+            cancelRender = () => render.cancel(); await waitForPdf(render.promise); cancelRender = undefined;
+            // PDF.js can resolve rendering after a failed image became null.
+            // Await all decoder tasks and verify the worker latch before OCR.
+            await waitForPdf(pdf.checkResourceBudget());
             text = await recognize(canvas);
           }
+          if (text.length > 120_000) throw new Error("PDF 识别文字过多，请减少页数后重试。");
           const normalized = normalizeReadingText(text);
           const previous = paragraphs.at(-1);
           if (previous && /[a-z,-]$/.test(previous) && /^[a-z]/.test(normalized)) paragraphs[paragraphs.length - 1] += ` ${normalized}`;
           else paragraphs.push(normalized);
+          if (paragraphs.reduce((total, paragraph) => total + paragraph.length, 0) > 60_000) throw new Error("文字超过单篇上限，请先选取需要的文章。");
           if (countReadingWords(paragraphs.join(" ")) > MAX_IMPORT_WORDS) throw new Error("这份文档超过 6,000 词，请先选取完整的一篇文章。");
         } finally { page.cleanup(); canvas.width = 0; canvas.height = 0; }
       }
+      await waitForPdf(pdf.checkResourceBudget());
       return paragraphs.filter(Boolean).join("\n\n");
     }
     throw new Error("支持 TXT、Markdown、HTML、DOCX、PDF，以及 JPG、PNG、WebP 扫描图。旧版 DOC 请另存为 DOCX。");
-  } finally { signal.removeEventListener("abort", release); await worker?.terminate(); await task?.destroy(); }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("PDF resource limit")) throw new Error("这份 PDF 的解码内容过多，请减少页数或选取正文后重试。");
+    throw error;
+  } finally {
+    signal.removeEventListener("abort", release);
+    try {
+      await worker?.terminate();
+      if (task && !signal.aborted) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try { await Promise.race([destroyTask(), new Promise<void>(resolve => { timer = setTimeout(resolve, 1000); })]); }
+        finally { clearTimeout(timer); }
+      }
+    } finally { parserWorker?.terminate(); pdfWorker?.destroy(); }
+  }
 }

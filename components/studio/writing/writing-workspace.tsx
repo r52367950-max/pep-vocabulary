@@ -32,6 +32,8 @@ export default function WritingWorkspace({ data, initialTargets, openId, onExit,
   onWord: (entry: LexiconIndexEntry) => void;
 }) {
   const [records, setRecords] = useState<WritingRecord[] | null>(null);
+  // An open editor belongs to the dataset it read; preserve its text when another page restores data.
+  const [generation] = useState(() => data.generation);
   const [view, setView] = useState<View>(openId ? { kind: "edit", id: openId } : initialTargets ? { kind: "setup" } : { kind: "list" });
   const reload = useCallback(() => listWritings().catch(() => []).then((rows) => {
     setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
@@ -72,9 +74,9 @@ export default function WritingWorkspace({ data, initialTargets, openId, onExit,
         {view.kind === "list" && <button className="secondary writing-new" onClick={() => setView({ kind: "setup" })}><Plus size={16} aria-hidden="true" />新写一篇</button>}
       </header>
       {records === null ? <div className="learn-pending" role="status">正在读取写作记录…</div>
-        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (id) => { await deleteWriting(id); await reload(); }} />
-          : view.kind === "setup" ? <WritingSetup data={data} initialTargets={initialTargets} onCreate={async (created) => { await saveWriting(created); upsert(created); setView({ kind: "edit", id: created.id }); }} />
-            : record ? <WritingEditor key={record.id} record={record} data={data} onSave={upsert} onPractice={onPractice} onWord={onWord} />
+        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (id) => { try { await deleteWriting(id, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); } }} />
+          : view.kind === "setup" ? <WritingSetup data={data} initialTargets={initialTargets} onCreate={async (created) => { try { await saveWriting(created, null, generation); upsert(created); setView({ kind: "edit", id: created.id }); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "作文未能保存，请重试。"); } }} />
+            : record ? <WritingEditor key={record.id} record={record} data={data} generation={generation} onSave={upsert} onPractice={onPractice} onWord={onWord} />
               : <div className="learn-pending">这篇写作已不存在。</div>}
     </div>
   );
@@ -177,8 +179,8 @@ function WritingSetup({ data, initialTargets, onCreate }: { data: Vocabulary; in
   );
 }
 
-function WritingEditor({ record, data, onSave, onPractice, onWord }: {
-  record: WritingRecord; data: Vocabulary; onSave: (record: WritingRecord) => void;
+function WritingEditor({ record, data, generation, onSave, onPractice, onWord }: {
+  record: WritingRecord; data: Vocabulary; generation: string; onSave: (record: WritingRecord) => void;
   onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void;
 }) {
   const current = latestVersion(record);
@@ -206,7 +208,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
     // Queue writes immediately, including the last keystroke before leaving the editor.
     const pending = writes.current.then(async () => {
       if (saveFailed.current) throw new Error("草稿尚未保存。请复制当前文字后重新打开，避免覆盖其他页面的修改。");
-      await saveWriting(next, committed.current);
+      await saveWriting(next, committed.current, generation);
       committed.current = next;
       onSave(next);
       if (latest.current === next) setSaved(true);
@@ -218,7 +220,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
       data.notify(message);
     });
     return pending;
-  }, [onSave, data]);
+  }, [onSave, data, generation]);
 
   const edit = (value: string) => {
     if (reviewController.current) return;

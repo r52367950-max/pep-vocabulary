@@ -21467,6 +21467,9 @@ function getDocument(src = {}) {
     enableXfa,
     evaluatorOptions: {
       maxImageSize,
+      // Local import resource limits; validated and enforced in the worker.
+      maxDecodedStreamBytes: src.maxDecodedStreamBytes,
+      maxDecodedDocumentBytes: src.maxDecodedDocumentBytes,
       disableFontFace,
       ignoreErrors,
       isEvalSupported,
@@ -21737,6 +21740,10 @@ class PDFDocumentProxy {
   }
   get loadingTask() {
     return this._transport.loadingTask;
+  }
+  // Local import barrier: image decoding may finish after the operator list.
+  checkResourceBudget() {
+    return this._transport.messageHandler.sendWithPromise("CheckResourceBudget", null);
   }
   getFieldObjects() {
     return this._transport.getFieldObjects();

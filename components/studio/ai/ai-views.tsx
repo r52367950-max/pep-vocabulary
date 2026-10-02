@@ -5,6 +5,7 @@ import { Check, CircleAlert, CircleHelp, RotateCcw, X } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { targetMatcher } from "@/lib/writing";
 import { useElapsed, type AssistantState } from "./use-assistant";
+import { AiProvenance } from "./ai-provenance";
 
 type Words = ReadonlyMap<string, LexiconIndexEntry>;
 const texts = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
@@ -64,9 +65,10 @@ function Limitations({ value }: { value: unknown }) {
 
 const english = (text: string) => <span className="english" lang="en">{text}</span>;
 
-export function ExplainView({ result }: { result: Record<string, unknown> }) {
+export function ExplainView({ result, words }: { result: Record<string, unknown>; words: Words }) {
   return (
     <div className="ai-result">
+      <AiProvenance result={result} words={words} />
       {typeof result.summary === "string" && <p className="ai-lead">{result.summary}</p>}
       <PersonalNote value={result.personalNote} />
       {texts(result.meaning).length > 0 && <Section title="词义"><Bullets items={texts(result.meaning)} /></Section>}
@@ -90,10 +92,11 @@ const STATUS = {
   uncertain: { Icon: CircleHelp, label: "不确定", tone: "maybe" },
 } as const;
 
-export function SentenceCheckView({ result }: { result: Record<string, unknown> }) {
+export function SentenceCheckView({ result, words }: { result: Record<string, unknown>; words: Words }) {
   const verdict = result.verdict === "correct" ? "句子正确" : result.verdict === "needs-revision" ? "需要修改" : "无法确定";
   return (
     <div className="ai-result">
+      <AiProvenance result={result} words={words} />
       <p className="ai-verdict" data-verdict={String(result.verdict)}>{verdict}</p>
       <dl className="ai-checks">
         {([["grammar", "语法"], ["collocation", "用词与搭配"], ["style", "表达"]] as const).map(([key, label]) => {
@@ -117,6 +120,7 @@ export function SentenceCheckView({ result }: { result: Record<string, unknown> 
 export function ContrastView({ result, words }: { result: Record<string, unknown>; words: Words }) {
   return (
     <div className="ai-result">
+      <AiProvenance result={result} words={words} />
       {typeof result.summary === "string" && <p className="ai-lead">{result.summary}</p>}
       <PersonalNote value={result.personalNote} />
       <div className="ai-contrast">
@@ -144,11 +148,12 @@ export function ContrastView({ result, words }: { result: Record<string, unknown
   );
 }
 
-export function MnemonicView({ result }: { result: Record<string, unknown> }) {
+export function MnemonicView({ result, words }: { result: Record<string, unknown>; words: Words }) {
   const parts = list<{ part: string; meaning: string }>(result.breakdown);
   const confidence = { high: "较有把握", medium: "部分有把握", low: "把握不大，仅作联想" }[String(result.confidence)] || "";
   return (
     <div className="ai-result">
+      <AiProvenance result={result} words={words} />
       {parts.length > 0 && (
         <div className="ai-parts" aria-label="词根词缀拆分">
           {parts.map((part, i) => <span key={i}><strong className="english">{part.part}</strong><small>{part.meaning}</small></span>)}
@@ -167,7 +172,7 @@ type PracticeItem = { type: string; prompt: string; options: string[]; answer: s
 const same = (a: string, b: string) => a.trim().toLowerCase().replace(/[.!?。]$/, "") === b.trim().toLowerCase().replace(/[.!?。]$/, "");
 
 /** Generated practice. Answers here are not written to the review schedule. */
-export function PracticeView({ result, onFinish }: { result: Record<string, unknown>; onFinish?: (wrongWordIds: string[]) => void }) {
+export function PracticeView({ result, words, onFinish }: { result: Record<string, unknown>; words: Words; onFinish?: (wrongWordIds: string[]) => void }) {
   const items = list<PracticeItem>(result.items);
   const [answers, setAnswers] = useState<Record<number, { given: string; correct: boolean | null }>>({});
   const [drafts, setDrafts] = useState<Record<number, string>>({});
@@ -176,6 +181,7 @@ export function PracticeView({ result, onFinish }: { result: Record<string, unkn
   const answer = (index: number, given: string, correct: boolean | null) => setAnswers((current) => ({ ...current, [index]: { given, correct } }));
   return (
     <div className="ai-result ai-practice">
+      <AiProvenance result={result} words={words} />
       {typeof result.title === "string" && <p className="ai-lead">{result.title}</p>}
       {typeof result.focusReason === "string" && <p className="ai-note">{result.focusReason}</p>}
       <ol>
@@ -259,6 +265,7 @@ export function StoryView({ result, words }: { result: Record<string, unknown>; 
   const [picked, setPicked] = useState<Record<number, number>>({});
   return (
     <div className="ai-result ai-story">
+      <AiProvenance result={result} words={words} />
       {typeof result.title === "string" && <h4 className="english ai-story-title">{result.title}</h4>}
       <div className="ai-story-body english" lang="en">
         {texts(result.paragraphs).map((paragraph, i) => <p key={i}><Marked text={paragraph} words={used} /></p>)}
@@ -300,6 +307,7 @@ export function DiagnoseView({ result, words, onWord }: { result: Record<string,
   const focus = texts(result.wordsToFocus).flatMap((id) => (words.get(id) ? [words.get(id)!] : []));
   return (
     <div className="ai-result">
+      <AiProvenance result={result} words={words} />
       {typeof result.summary === "string" && <p className="ai-lead">{result.summary}</p>}
       {texts(result.strengths).length > 0 && <Section title="做得好的地方"><Bullets items={texts(result.strengths)} /></Section>}
       {list<{ pattern: string; evidence: string; advice: string }>(result.problems).length > 0 && (

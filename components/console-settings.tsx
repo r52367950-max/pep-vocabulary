@@ -36,6 +36,7 @@ type AIConfig = {
   dailyLimit: number;
   timeoutSeconds: number;
   hasApiKey: boolean;
+  requiresKeyReentry: boolean;
   updatedAt: string | null;
   secretStorage: "server-encrypted";
   dailyTokenBudget: number;
@@ -63,6 +64,7 @@ const defaultAIConfig: AIConfig = {
   dailyLimit: 30,
   timeoutSeconds: 25,
   hasApiKey: false,
+  requiresKeyReentry: false,
   updatedAt: null,
   secretStorage: "server-encrypted",
   dailyTokenBudget: 200_000,
@@ -280,9 +282,11 @@ export default function ConsoleSettings({
                   <div>
                     <strong>启用 AI 增强</strong>
                     <small>
-                      {aiConfig.hasApiKey
-                        ? "接口已就绪；关闭后不会发起模型请求"
-                        : "可在“AI 接口”中查看或保存配置"}
+                      {aiConfig.requiresKeyReentry
+                        ? "原有密钥需要在“AI 接口”中重新填写"
+                        : aiConfig.hasApiKey
+                          ? "接口已就绪；关闭后不会发起模型请求"
+                          : "可在“AI 接口”中查看或保存配置"}
                     </small>
                   </div>
                   <input
@@ -394,9 +398,11 @@ export default function ConsoleSettings({
                   >
                     {loadingConfig
                       ? "读取中"
-                      : aiConfig.hasApiKey
-                        ? "已部署"
-                        : "待配置"}
+                      : aiConfig.requiresKeyReentry
+                        ? "需重新填写密钥"
+                        : aiConfig.hasApiKey
+                          ? "已部署"
+                          : "待配置"}
                   </span>
                 </header>
                 <div className="security-callout">
@@ -410,6 +416,11 @@ export default function ConsoleSettings({
                 </div>
               </section>
               <section className="settings-card api-form">
+                {aiConfig.requiresKeyReentry && (
+                  <p className="settings-message error" role="status">
+                    原有密钥的加密格式缺少账号与接口地址绑定，已暂停使用。接口配置仍保留，请重新填写 API Key 并保存。
+                  </p>
+                )}
                 <header>
                   <Link2 size={20} aria-hidden="true" />
                   <div>
@@ -491,9 +502,11 @@ export default function ConsoleSettings({
                         value={apiKey}
                         onChange={(event) => setApiKey(event.target.value)}
                         placeholder={
-                          aiConfig.hasApiKey
-                            ? "已保存；留空表示不更换"
-                            : "输入服务端 API Key"
+                          aiConfig.requiresKeyReentry
+                            ? "重新输入服务商 API Key"
+                            : aiConfig.hasApiKey
+                              ? "已保存；留空表示不更换"
+                              : "输入服务端 API Key"
                         }
                         autoComplete="off"
                         spellCheck={false}
@@ -502,9 +515,11 @@ export default function ConsoleSettings({
                       />
                     </div>
                     <small>
-                      {aiConfig.hasApiKey
-                        ? "密钥已存在，服务器不会把它回传到此处。"
-                        : "首次保存时必填。"}
+                      {aiConfig.requiresKeyReentry
+                        ? "需要重新填写；服务器不会迁移或使用原有密钥。"
+                        : aiConfig.hasApiKey
+                          ? "密钥已存在，服务器不会把它回传到此处。"
+                          : "首次保存时必填。"}
                     </small>
                   </label>
                   <label>
@@ -589,9 +604,11 @@ export default function ConsoleSettings({
                     <Save size={16} aria-hidden="true" />
                     {saving
                       ? "保存中…"
-                      : aiConfig.hasApiKey
-                        ? "保存更改"
-                        : "安全保存"}
+                      : aiConfig.requiresKeyReentry
+                        ? "重新保存密钥"
+                        : aiConfig.hasApiKey
+                          ? "保存更改"
+                          : "安全保存"}
                   </button>
                   <button
                     className="console-secondary"
@@ -601,7 +618,7 @@ export default function ConsoleSettings({
                     <PlugZap size={16} aria-hidden="true" />
                     {testing ? "正在执行真实测试…" : "测试连接与服务"}
                   </button>
-                  {aiConfig.hasApiKey && (
+                  {(aiConfig.hasApiKey || aiConfig.requiresKeyReentry) && (
                     <button
                       className="api-remove"
                       onClick={removeAIConfig}

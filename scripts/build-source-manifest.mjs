@@ -2,11 +2,22 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { snapshotSourceInputs } from "./source-inputs.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const cache = process.env.PEP_VOCAB_SOURCE_CACHE || "/workspace/source-cache/pep-vocab";
+const cacheRoot = process.env.PEP_VOCAB_SOURCE_CACHE || "/workspace/source-cache/pep-vocab";
 const uploads = process.env.PEP_VOCAB_UPLOADS || "/workspace/scratch/242015b76399/project_sources";
 const books = JSON.parse(readFileSync(join(root, "config/books.json"), "utf8"));
+const sourceLock = JSON.parse(readFileSync(join(root, "config/source-input-lock.json"), "utf8"));
+const sourceSnapshot = snapshotSourceInputs(cacheRoot, sourceLock, { requiredFiles: [
+  ...books.map((book) => book.path), "standards/high-school-english-2017-2020.pdf",
+  "standards/compulsory-english-2022.pdf", "open-data/ipa-dict/en_UK.txt",
+  "open-data/ipa-dict/en_US.txt", "open-data/ecdict/ecdict.csv",
+  "open-data/oewn/english-wordnet-2025-plus-json.zip",
+] });
+const cache = sourceSnapshot.root;
+process.on("exit", () => sourceSnapshot.cleanup());
+const observedPath = (path) => path.startsWith(`${cache}/`) ? `${cacheRoot}${path.slice(cache.length)}` : path;
 const acquiredAt = "2026-08-03";
 
 function sha256(path) {
@@ -25,14 +36,14 @@ function pdfInfo(path) {
 
 function recordFile({ id, title, path, kind, sourceUrl, parsingMethod, versionStatus, rights, notes, metadata = {} }) {
   if (!existsSync(path)) {
-    return { id, title, fileName: basename(path), path, kind, status: "missing", ...metadata };
+    return { id, title, fileName: basename(path), path: observedPath(path), kind, status: "missing", ...metadata };
   }
   const info = path.toLowerCase().endsWith(".pdf") ? pdfInfo(path) : {};
   return {
     id,
     title,
     fileName: basename(path),
-    path,
+    path: observedPath(path),
     bytes: statSync(path).size,
     sha256: sha256(path),
     pages: info.pages ?? null,
@@ -154,7 +165,7 @@ entries.push(
     id: "MIKIGO-MIDDLE-CROSSCHECK",
     title: "english-chinese-words 人教版初中词表",
     fileName: "32 scoped Markdown/meta files",
-    path: join(cache, "open-data/mikigo-middle"),
+    path: join(cacheRoot, "open-data/mikigo-middle"),
     bytes: null,
     sha256: null,
     pages: null,
@@ -192,10 +203,16 @@ if (existsSync(uploads)) {
   });
 }
 
+// Preserve prior out-of-scope user inventory when that private upload directory is unavailable.
+if (!existsSync(uploads) && existsSync(join(root, "source_manifest.json"))) {
+  const previous = JSON.parse(readFileSync(join(root, "source_manifest.json"), "utf8"));
+  entries.push(...previous.entries.filter((entry) => entry.kind === "user-upload-out-of-scope"));
+}
+
 const manifest = {
   schemaVersion: "1.0.0",
   generatedAt: new Date().toISOString(),
-  sourceRoot: cache,
+  sourceRoot: cacheRoot,
   policy: {
     rawTextbooksCommitted: false,
     formalReleaseUnknownRightsAllowed: false,

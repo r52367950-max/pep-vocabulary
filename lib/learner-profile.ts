@@ -1,4 +1,5 @@
 import { classifyMistake, type HeadwordLookup, type MistakeKind } from "./mistakes";
+import { chronologicalReviews } from "./progress";
 import type { ReviewEvent, StoredCard } from "./storage";
 import { clip, PROFILE_LIMITS, type LearnerProfile } from "./assistant/profile";
 
@@ -11,6 +12,7 @@ export function buildLearnerProfile({ reviews, cards, lookup, now = new Date(), 
   now?: Date;
   writing?: LearnerProfile["writing"];
 }): LearnerProfile {
+  reviews = chronologicalReviews(reviews);
   const errorCounts = Object.fromEntries(KINDS.map((kind) => [kind, 0])) as Record<MistakeKind, number>;
   const perWord = new Map<string, { errors: number; lastKind: MistakeKind | null }>();
   const recentMistakes: LearnerProfile["recentMistakes"] = [];
@@ -68,4 +70,3 @@ export function buildLearnerProfile({ reviews, cards, lookup, now = new Date(), 
     writing,
   };
 }
-

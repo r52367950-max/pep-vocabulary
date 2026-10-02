@@ -10,6 +10,8 @@ fi
 worker="${SITES_PROJECT_ROOT}/dist/server/index.js"
 hosting="${SITES_PROJECT_ROOT}/dist/.openai/hosting.json"
 
+node "${script_dir}/check-lexicon-release.mjs" "${SITES_PROJECT_ROOT}/dist/client/data/v1"
+
 [[ -f "${worker}" ]] || {
   echo "Missing Sites Worker entry: dist/server/index.js" >&2
   exit 66

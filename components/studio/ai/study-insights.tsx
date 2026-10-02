@@ -123,7 +123,7 @@ export default function StudyInsights({ data, onPractice, onWord }: {
               {active.state.status === "done" && (tool === "diagnose"
                 ? <DiagnoseView result={active.state.value.result} words={data.byId} onWord={onWord} />
                 : tool === "practice"
-                  ? <PracticeView result={active.state.value.result} onFinish={(ids) => onPractice(entries(ids))} />
+                  ? <PracticeView result={active.state.value.result} words={data.byId} onFinish={(ids) => onPractice(entries(ids))} />
                   : <StoryView result={active.state.value.result} words={data.byId} />)}
               <AiStatus state={active.state} onCancel={active.cancel} onRetry={() => runTool(tool)} onRefresh={active.state.status === "done" ? () => runTool(tool, true) : undefined} />
             </div>

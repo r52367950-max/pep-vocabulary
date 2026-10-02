@@ -15,8 +15,8 @@ import { useAssistant } from "./use-assistant";
  * check it locally (and with AI when enabled), then record it as one "output" review.
  * It commits through the same card + event transaction as every other answer.
  */
-export default function SentenceOutput({ entry, data, eventPrefix, sourceLine }: {
-  entry: LexiconIndexEntry; data: Vocabulary; eventPrefix: string; sourceLine: string;
+export default function SentenceOutput({ entry, data, generation, eventPrefix, sourceLine }: {
+  entry: LexiconIndexEntry; data: Vocabulary; generation: string; eventPrefix: string; sourceLine: string;
 }) {
   const [open, setOpen] = useState(false);
   const [sentence, setSentence] = useState("");
@@ -32,13 +32,13 @@ export default function SentenceOutput({ entry, data, eventPrefix, sourceLine }:
     setSaving(true);
     // A sentence the AI marked for revision counts as effortful; otherwise as recalled.
     const rating = verdict === "needs-revision" ? 2 : 3;
-    const { event } = scheduleReview({
-      stored: data.cards.get(entry.id) || null, cardId: entry.id, rating, retention: data.settings.desiredRetention,
-      skill: "output", questionType: "sentence-output", correct: true, responseMs: 0, hints: 0, errorType: null,
-      prompt: `用 ${entry.headword} 造句`, answerGiven: sentence.trim(), expectedAnswer: null, sourceLine,
-    });
     try {
-      await data.saveReview({ ...event, eventType: "review", eventId: `${eventPrefix}:output:${createLocalId()}` });
+      const { event } = scheduleReview({
+        stored: data.cards.get(entry.id) || null, cardId: entry.id, rating, retention: data.settings.desiredRetention,
+        skill: "output", questionType: "sentence-output", correct: true, responseMs: 0, hints: 0, errorType: null,
+        prompt: `用 ${entry.headword} 造句`, answerGiven: sentence.trim(), expectedAnswer: null, sourceLine,
+      });
+      await data.saveReview({ ...event, eventType: "review", eventId: `${eventPrefix}:output:${createLocalId()}` }, generation);
       setSaved(true);
     } catch {
       data.notify("造句没有保存，可能另一页面刚更新了这个词。可以重试。");
@@ -61,7 +61,7 @@ export default function SentenceOutput({ entry, data, eventPrefix, sourceLine }:
           onChange={(event) => { setSentence(event.target.value); if (check.state.status !== "idle") check.cancel(); }} />
       </label>
       {local && <p className="ai-note" data-tone={ready ? "good" : "maybe"}>{local.message}</p>}
-      {check.state.status === "done" && <SentenceCheckView result={check.state.value.result} />}
+      {check.state.status === "done" && <SentenceCheckView result={check.state.value.result} words={data.byId} />}
       <AiStatus state={check.state} onCancel={check.cancel} onRetry={() => check.run({ wordId: entry.id, sentence })} />
       <div className="sentence-actions">
         {data.settings.aiEnabled && check.state.status !== "loading" && check.state.status !== "done" && (

@@ -9,6 +9,7 @@ import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { readJsonObject } from '../lib/http.ts';
 import { encryptApiKey, decryptApiKey } from '../lib/ai-config.ts';
+import { legacyAiCredential } from './legacy-ai-credential.mjs';
 import { fetchChatCompletionWithTimeout, readChatCompletion } from '../lib/assistant/core.ts';
 import { POST as syncPost, GET as syncGet } from '../app/api/sync/route.ts';
 import { POST as configPost, GET as configGet } from '../app/api/ai/config/route.ts';
@@ -80,8 +81,8 @@ test('version 2 credentials authenticate the account, provider and destination t
   }
   await assert.rejects(decryptApiKey(encrypted.encryptedApiKey, encrypted.keyIv, 1));
   await assert.rejects(decryptApiKey(encrypted.encryptedApiKey, encrypted.keyIv, 3, scope));
-  const legacy = await encryptApiKey(secret);
-  assert.equal(await decryptApiKey(legacy.encryptedApiKey, legacy.keyIv), secret);
+  const legacy = await legacyAiCredential(secret, env.AI_CONFIG_ENCRYPTION_KEY);
+  await assert.rejects(decryptApiKey(legacy.encryptedApiKey, legacy.keyIv, 1, scope));
 });
 
 const database = new DatabaseSync(':memory:');
@@ -112,13 +113,16 @@ test('sync rejects an identity changed after the client read its revision', asyn
   assert.equal('userKey' in restored.state, false);
 });
 
-test('saving legacy AI settings upgrades encryption and public responses never include the secret', async () => {
+test('legacy AI settings retain their row until owner key reentry and public responses never include the secret', async () => {
   requestHeaders.set('oai-authenticated-user-email', 'config@example.test');
   const userKey = await authenticatedUserKey();
-  const legacy = await encryptApiKey(secret);
+  const legacy = await legacyAiCredential(secret, env.AI_CONFIG_ENCRYPTION_KEY);
   database.prepare('INSERT INTO ai_configs (user_key, provider, base_url, model, encrypted_api_key, key_iv) VALUES (?, ?, ?, ?, ?, ?)')
     .run(userKey, scope.provider, scope.baseUrl, 'test-model', legacy.encryptedApiKey, legacy.keyIv);
-  const response = await configPost(request('/api/ai/config', { provider: scope.provider, baseUrl: scope.baseUrl, model: 'test-model', dailyLimit: 30, timeoutSeconds: 25 }));
+  const retained = await configPost(request('/api/ai/config', { provider: scope.provider, baseUrl: scope.baseUrl, model: 'test-model', dailyLimit: 30, timeoutSeconds: 25 }));
+  assert.equal(retained.status, 400);
+  assert.equal(database.prepare('SELECT encryption_version FROM ai_configs WHERE user_key = ?').get(userKey).encryption_version, 1);
+  const response = await configPost(request('/api/ai/config', { provider: scope.provider, baseUrl: scope.baseUrl, model: 'test-model', dailyLimit: 30, timeoutSeconds: 25, apiKey: secret }));
   assert.equal(response.status, 200);
   const row = database.prepare('SELECT * FROM ai_configs WHERE user_key = ?').get(userKey);
   assert.equal(row.encryption_version, 2);
