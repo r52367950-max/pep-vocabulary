@@ -4,6 +4,7 @@ import 'fake-indexeddb/auto';
 import { newStoredCard, previewReviewIntervals, scheduleReview } from '../lib/scheduler.ts';
 import { clearUserData, commitReview, exportBackup, restoreBackup, validateBackup } from '../lib/storage.ts';
 import { defaultSettings, validUndoTarget } from '../lib/backup.ts';
+import { newWriting } from '../lib/writing.ts';
 
 const now = new Date('2026-10-02T10:00:00.000Z');
 const review = (stored = null, rating = 4, at = now) => scheduleReview({
@@ -137,5 +138,54 @@ test('counter exhaustion is explicitly rejected before corrupt scheduler output 
     card.fsrs[key] = Number.MAX_SAFE_INTEGER - 1;
     assert.doesNotThrow(() => validateBackup(payload([card])));
     assert.throws(() => review(card, rating), /超出安全范围/);
+  }
+});
+
+test('unknown card, FSRS and scheduler log fields are rejected instead of retained', () => {
+  for (const location of ['card', 'fsrs', 'schedulerLog']) {
+    const backup = payload([structuredClone(first.after)], [structuredClone(first)]);
+    const target = location === 'card' ? backup.cards[0] : location === 'fsrs' ? backup.cards[0].fsrs : backup.events[0].schedulerLog;
+    target.extra = { nested: ['unrecognized'] };
+    assert.throws(() => validateBackup(backup), /词卡|复习事件/);
+  }
+});
+
+test('deep and oversized legacy extensions fail before replacing local data', async () => {
+  await clearUserData();
+  await commitReview(structuredClone(first));
+  const saved = await exportBackup();
+  let deep = null;
+  for (let i = 0; i < 4000; i++) deep = { child: deep };
+  for (const extra of [deep, 'x'.repeat(200_001), Array(2_000_001).fill(null)]) {
+    const backup = { ...payload(), lists: [{ id: 'legacy-list', extra }] };
+    await assert.rejects(restoreBackup(backup), /备份结构过于复杂/);
+    const remaining = await exportBackup();
+    for (const table of ['cards', 'events', 'lists', 'settings', 'writings']) assert.deepEqual(remaining[table], saved[table]);
+  }
+  const writing = newWriting('free', [], 'Legacy prompt.');
+  writing.versions[0].review = { reviewedAt: now.toISOString(), model: 'legacy', result: { overall: '好', extension: deep } };
+  assert.throws(() => validateBackup({ ...payload(), writings: [writing] }), /备份结构过于复杂/);
+});
+
+test('bounded legacy extensions preserve restore, scheduling and export in supported schemas', async () => {
+  for (const schemaVersion of ['1.0.0', '1.1.0', '1.2.0']) {
+    const card = { ...structuredClone(first.after), note: 'keep my note', tags: ['exam'], favorite: true };
+    delete card.fsrs.learning_steps;
+    const writing = newWriting('free', [], 'A prompt.');
+    writing.versions[0].review = { reviewedAt: now.toISOString(), model: 'legacy', result: { overall: '好', extension: { comment: 'retained' } } };
+    const backup = { ...payload([card], [first]), schemaVersion, settings: [structuredClone(defaultSettings)],
+      lists: [{ id: 'legacy-list', name: 'Exam words', wordIds: ['apple'], extension: { color: 'blue' } }], writings: [writing] };
+    if (schemaVersion !== '1.2.0') delete backup.writings;
+    if (schemaVersion === '1.0.0') { delete backup.settings[0].theme; delete backup.settings[0].aiEnabled; }
+    await restoreBackup(backup);
+    const restored = await exportBackup();
+    assert.deepEqual(restored.cards, backup.cards);
+    assert.deepEqual(restored.lists, backup.lists);
+    assert.deepEqual(restored.writings, schemaVersion === '1.2.0' ? [writing] : []);
+    const next = review(restored.cards[0], 3, new Date('2026-10-09T10:00:00Z'));
+    await commitReview(next);
+    const exported = await exportBackup();
+    assert.doesNotThrow(() => validateBackup(exported));
+    assert.deepEqual(exported.cards, [next.after]);
   }
 });

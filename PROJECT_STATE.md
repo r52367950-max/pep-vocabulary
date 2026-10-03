@@ -1,10 +1,10 @@
 # 项目状态入口
 
-核对日期：2026-09-29；基于分支 `optimize/backend-2.5`（2.5.0 后端与数据可靠性升级）。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
+核对日期：2026-10-03；基于 `5838abe` 后的 2.5.2 安全修复工作区。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.5.0 | `package.json` |
+| 应用版本 | 2.5.2 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0 | `public/data/v1/manifest.json` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
@@ -25,3 +25,5 @@
 旧 A–G 关卡、固定下一步任务和 8 月份通过数量已从状态入口移除；原文可由 Git 历史追溯。
 
 2.5.0 的核心变更见 `docs/BACKEND_ARCHITECTURE.md`。预算原子预留、配置 CAS、作文 CAS、备份深层校验、同步元数据预检已实现；仍是本地优先与手动快照备份。
+
+2.5.2 收紧 AI 目标来源、用量结算及配置修改频率，并限制备份和 HTML 导入的资源消耗。第三方 AI 服务须由管理员配置 `AI_ALLOWED_PROVIDER_ORIGINS`；此工作区不代表线上已升级。

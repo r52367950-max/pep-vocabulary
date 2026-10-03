@@ -7,6 +7,8 @@ import { getDb } from "@/db";
 import { aiConfigs, aiPreferences } from "@/db/schema";
 import {
   decryptApiKey,
+  AiProviderOriginError,
+  fetchAiProvider,
   isAiProvider,
   refreshStoredCredential,
   normalizeApiKey,
@@ -51,13 +53,14 @@ async function complete(config: UserRuntimeConfig, request: Request, payload: Re
   delete body.max_tokens;
   delete body.max_completion_tokens;
   delete body.temperature;
-  const completion = await fetchCompletion(fetch, options.url || chatCompletionsUrl(config.baseUrl, config.provider), {
+  const completion = await fetchCompletion(fetchAiProvider, options.url || chatCompletionsUrl(config.baseUrl, config.provider), {
     method: "POST", redirect: "manual", signal: request.signal,
     headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json", accept: "text/event-stream, application/json" },
     body: JSON.stringify({ ...body, ...generationParameters(config.model, config.baseUrl, reservation.maxOutputTokens,
       typeof payload.temperature === "number" ? payload.temperature : undefined) }),
   }, { idleMs: options.idleMs ?? config.timeoutMs, totalMs: options.totalMs ?? MAX_GENERATION_MS, stream: Boolean(payload.stream), promptChars: prompt.length });
-  const today = await settleTokens(reservation, completion.usage);
+  const { today, usage } = await settleTokens(reservation, completion.usage, completion.content);
+  completion.usage = usage;
   return { completion, today };
 }
 
@@ -212,8 +215,8 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
   let baseUrl: string;
   try {
     baseUrl = normalizeConfiguredBaseUrl(row.baseUrl, row.provider);
-  } catch {
-    throw new AiRuntimeConfigError("configuration_invalid", "服务端 AI Base URL 无效。");
+  } catch (error) {
+    throw new AiRuntimeConfigError("configuration_invalid", error instanceof AiProviderOriginError ? error.message : "服务端 AI Base URL 无效。");
   }
   let apiKey: string;
   try {
@@ -483,7 +486,7 @@ export async function testAssistantConnection(request: Request): Promise<Respons
     await enforceConnectionTestRateLimit(authenticated.userKey);
 
     const endpoint = await probeConnectionEndpoint(
-      fetch,
+      fetchAiProvider,
       connectionEndpointCandidates(config.provider, config.baseUrl),
       Math.min(config.timeoutMs, 8_000),
     );

@@ -5,7 +5,7 @@ import { request as httpRequest } from 'node:http';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { legacyAiCredential } from '../tests/legacy-ai-credential.mjs';
 const paths = readdirSync('dist/server', { recursive: true }).filter(p => p.endsWith('.js')).sort((a,b) => a === 'index.js' ? -1 : b === 'index.js' ? 1 : a.localeCompare(b));
-const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules: paths.map(p => ({ type: 'ESModule', path: resolve('dist/server', p) })), modulesRoot: 'dist/server', compatibilityDate: '2026-09-11', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB', 'LEGACY'], bindings: { IDENTITY_TRUSTED_HOSTS: 'localhost', AI_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') }, assets: { directory: 'dist/client', binding: 'ASSETS', routerConfig: { has_user_worker: true } } }));
+const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules: paths.map(p => ({ type: 'ESModule', path: resolve('dist/server', p) })), modulesRoot: 'dist/server', compatibilityDate: '2026-09-11', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB', 'LEGACY'], bindings: { IDENTITY_TRUSTED_HOSTS: 'localhost', AI_ALLOWED_PROVIDER_ORIGINS: 'https://api.example.com', AI_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') }, assets: { directory: 'dist/client', binding: 'ASSETS', routerConfig: { has_user_worker: true } } }));
 const results = [];
 try {
   const ready = await mf.ready;

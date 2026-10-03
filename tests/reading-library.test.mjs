@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { countReadingWords, lengthBand, validLibraryArticle, validReadingMeta, safeSourceUrl, loadLibraryArticle, matchReadingWords } from '../lib/reading-library.ts';
-import { normalizeReadingText, validateImportedText, markdownText, parseClassification, pdfReadingText, imageDimensions } from '../lib/reading-import.ts';
+import { normalizeReadingText, validateImportedText, markdownText, htmlText, extractReadingFile, parseClassification, pdfReadingText, imageDimensions } from '../lib/reading-import.ts';
 
 const article = JSON.parse(await readFile(new URL('../public/readings/v1/articles/a-place-to-begin.json', import.meta.url), 'utf8'));
 test('reading metadata, independent length bands and word counts remain consistent', () => {
@@ -36,6 +36,19 @@ test('import normalization preserves paragraphs while reflowing hard line breaks
   assert.equal(markdownText('# Title\n\nRead **well** and [learn](https://example.com).'),'Title\n\nRead well and learn.');
   assert.throws(()=>validateImportedText('Too short.'));
   assert.throws(()=>validateImportedText('word '.repeat(6001)));
+});
+test('dense and nested HTML fail before DOM allocation and oversized files before reading', async (t) => {
+  const original = globalThis.document;
+  t.after(() => { globalThis.document = original; });
+  let allocations = 0, reads = 0;
+  globalThis.document = { createElement() { allocations++; throw new Error('unexpected DOM allocation'); } };
+  for (const input of ['<br>'.repeat(4097), '<div>'.repeat(2049) + '</div>'.repeat(2049), 'x'.repeat(1024 * 1024 + 1)]) {
+    assert.throws(() => htmlText(input), /HTML 内容过多/);
+  }
+  await assert.rejects(extractReadingFile({ name: 'article.htm', size: 1024 * 1024 + 1,
+    async arrayBuffer() { reads++; return new ArrayBuffer(0); } }, new AbortController().signal, () => {}), /HTML 内容过多/);
+  assert.equal(allocations, 0);
+  assert.equal(reads, 0);
 });
 test('AI classification accepts only the closed enum and never changes text', () => {
   assert.deepEqual(parseClassification('```json\n{"category":"essay","difficulty":"B2","html":"<script>bad</script>"}\n```'),{category:'essay',difficulty:'B2'});

@@ -138,6 +138,40 @@ const textId = (value: unknown): value is string => typeof value === "string" &&
 const finiteRange = (value: unknown, low: number, high = Number.MAX_SAFE_INTEGER): value is number => typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
 const stringArray = (value: unknown) => Array.isArray(value) && value.length <= 200 && value.every((item) => typeof item === "string" && item.length <= 500);
 const skills = ["meaning", "listening", "spelling", "context", "collocation", "output"] as const;
+const onlyKeys = (value: Record<string, unknown>, keys: readonly string[]) => Object.keys(value).every((key) => keys.includes(key));
+const cardKeys = ["id", "fsrs", "skills", "status", "due", "lastReviewed", "updatedAt", "note", "tags", "favorite"];
+const fsrsKeys = ["due", "stability", "difficulty", "elapsed_days", "scheduled_days", "learning_steps", "reps", "lapses", "state", "last_review"];
+const eventKeys = ["eventType", "eventId", "cardId", "timestampUtc", "localDate", "timezone", "questionType", "skill", "rating", "correct", "responseMs", "hints", "errorType", "prompt", "answerGiven", "expectedAnswer", "sourceLine", "intervalBeforeDays", "intervalAfterDays", "stabilityBefore", "stabilityAfter", "difficultyBefore", "difficultyAfter", "before", "after", "schedulerLog", "undoneBy", "targetEventId"];
+const logKeys = ["rating", "state", "due", "stability", "difficulty", "elapsed_days", "last_elapsed_days", "scheduled_days", "learning_steps", "review"];
+
+/** Bound legacy list/review extensions before any recursive comparison or serialization. */
+function checkBackupComplexity(payload: Record<string, unknown>) {
+  let nodes = 1, characters = 0;
+  const invalid = () => { throw new Error("备份结构过于复杂或文字超过限制"); };
+  const checkText = (value: string) => {
+    characters += value.length;
+    if (value.length > 200_000 || characters > 25_000_000) invalid();
+  };
+  const container = (value: object) => {
+    const keys = Array.isArray(value) ? null : Object.keys(value);
+    const length = keys ? keys.length : (value as unknown[]).length;
+    nodes += length;
+    if (nodes > 2_000_000) invalid();
+    return { value: value as Record<string, unknown>, keys, length, index: 0 };
+  };
+  // One cursor per ancestor: wide arrays never allocate a frame per member.
+  const pending = [container(payload)];
+  while (pending.length) {
+    const current = pending[pending.length - 1];
+    if (current.index === current.length) { pending.pop(); continue; }
+    if (pending.length > 16) invalid();
+    const key = current.keys ? current.keys[current.index++] : current.index++;
+    if (typeof key === "string") checkText(key);
+    const value = current.value[key];
+    if (typeof value === "string") checkText(value);
+    else if (value && typeof value === "object") pending.push(container(value));
+  }
+}
 
 export function validUndoTarget(target: ReviewEvent | undefined, undo: ReviewEvent) {
   return target && target.eventType !== "undo" && target.eventId === undo.targetEventId && target.cardId === undo.cardId &&
@@ -149,9 +183,10 @@ function validCalendarDate(value: unknown) {
 }
 
 export function validCard(value: unknown): value is StoredCard {
-  if (!isRecord(value) || !textId(value.id) || !validDate(value.due) || !validDate(value.updatedAt) || (value.lastReviewed !== null && !validDate(value.lastReviewed))) return false;
+  if (!isRecord(value) || !onlyKeys(value, cardKeys) || !textId(value.id) || !validDate(value.due) || !validDate(value.updatedAt) || (value.lastReviewed !== null && !validDate(value.lastReviewed))) return false;
   if (!["unseen", "learning", "weak", "mastered", "paused"].includes(String(value.status)) || !isRecord(value.skills) || !isRecord(value.fsrs)) return false;
   const vector = value.skills, fsrs = value.fsrs;
+  if (!onlyKeys(fsrs, fsrsKeys)) return false;
   // These are discrete FSRS counters; fractional values corrupt future state, and
   // reps needs room for the scheduler's next increment. Zero memory is valid only
   // for New cards: other states divide by stability and require prior review time.
@@ -163,15 +198,15 @@ export function validCard(value: unknown): value is StoredCard {
   if (!validDate(fsrs.due) || Date.parse(fsrs.due) !== Date.parse(value.due as string)) return false;
   if (fsrs.state !== 0 && (!finiteRange(fsrs.stability, Number.MIN_VALUE) || !validDate(fsrs.last_review) ||
     !validDate(value.lastReviewed) || Date.parse(fsrs.last_review) !== Date.parse(value.lastReviewed))) return false;
-  return Object.keys(vector).length === skills.length && skills.every((skill) => finiteRange(vector[skill], 0, 1)) && validDate(fsrs.due) &&
-    ["stability", "difficulty", "elapsed_days", "scheduled_days", "reps", "lapses", "state"].every((key) => finiteRange(fsrs[key], 0)) &&
+  return Object.keys(vector).length === skills.length && skills.every((skill) => finiteRange(vector[skill], 0, 1)) &&
+    finiteRange(fsrs.stability, 0) &&
     finiteRange(fsrs.difficulty, 0, 10) && finiteRange(fsrs.state, 0, 3) && Number.isInteger(fsrs.state) &&
     (value.note === undefined || (typeof value.note === "string" && value.note.length <= 50_000)) &&
     (value.favorite === undefined || typeof value.favorite === "boolean") && (value.tags === undefined || stringArray(value.tags));
 }
 
 export function validWriting(value: unknown): value is WritingRecord {
-  if (!isRecord(value) || !textId(value.id) || !validDate(value.createdAt) || !validDate(value.updatedAt)) return false;
+  if (!isRecord(value) || !onlyKeys(value, ["id", "createdAt", "updatedAt", "genre", "title", "prompt", "targetIds", "wordRange", "versions"]) || !textId(value.id) || !validDate(value.createdAt) || !validDate(value.updatedAt)) return false;
   if (!["practical", "continuation", "free"].includes(String(value.genre)) || typeof value.title !== "string" || value.title.length > 200 ||
     typeof value.prompt !== "string" || value.prompt.length > 4_000) return false;
   if (!Array.isArray(value.targetIds) || value.targetIds.length > 20 || !value.targetIds.every(textId)) return false;
@@ -180,10 +215,10 @@ export function validWriting(value: unknown): value is WritingRecord {
   if (!Array.isArray(value.versions) || value.versions.length < 1 || value.versions.length > 30) return false;
   const ids = new Set<string>();
   return value.versions.every((version) => {
-    if (!isRecord(version) || !textId(version.id) || ids.has(version.id) || typeof version.text !== "string" || version.text.length > 20_000 || !validDate(version.savedAt)) return false;
+    if (!isRecord(version) || !onlyKeys(version, ["id", "text", "savedAt", "review"]) || !textId(version.id) || ids.has(version.id) || typeof version.text !== "string" || version.text.length > 20_000 || !validDate(version.savedAt)) return false;
     ids.add(version.id);
     const review = version.review;
-    return review === undefined || review === null || (isRecord(review) && validDate(review.reviewedAt) && typeof review.model === "string" &&
+    return review === undefined || review === null || (isRecord(review) && onlyKeys(review, ["reviewedAt", "model", "result"]) && validDate(review.reviewedAt) && typeof review.model === "string" &&
       review.model.length <= 200 && validWritingReview(review.result) && JSON.stringify(review.result).length <= 200_000);
   });
 }
@@ -263,7 +298,7 @@ function validateReviewChains(data: BackupPayload, undoneTargets: ReadonlySet<st
 }
 
 export function validateBackup(payload: unknown): BackupPayload {
-  if (!isRecord(payload) || !["cards", "events", "lists", "settings"].every((key) => Array.isArray(payload[key]))) throw new Error("备份结构损坏或字段缺失");
+  if (!isRecord(payload) || !onlyKeys(payload, ["schemaVersion", "exportedAt", ...backupStores]) || !["cards", "events", "lists", "settings"].every((key) => Array.isArray(payload[key]))) throw new Error("备份结构损坏或字段缺失");
   if (payload.writings !== undefined && !Array.isArray(payload.writings)) throw new Error("备份结构损坏或字段缺失");
   if (payload.schemaVersion === USER_DATA_SCHEMA_VERSION && !Array.isArray(payload.writings)) throw new Error("备份结构损坏或字段缺失");
   for (const name of backupStores) {
@@ -276,21 +311,25 @@ export function validateBackup(payload: unknown): BackupPayload {
       ids.add(row[key]);
     }
   }
+  checkBackupComplexity(payload);
   const data = migrateBackup(payload as unknown as BackupPayload);
   if (!data.cards.every(validCard)) throw new Error("备份的词卡或调度数据无效");
   if (!data.writings.every(validWriting)) throw new Error("备份的写作记录无效");
   const eventById = new Map(data.events.map((event) => [event.eventId, event]));
   const undoneTargets = new Set<string>();
   for (const event of data.events) {
-    if (!textId(event.cardId) || !validDate(event.timestampUtc) || !validCalendarDate(event.localDate) ||
+    if (!onlyKeys(event, eventKeys) || !textId(event.cardId) || !validDate(event.timestampUtc) || !validCalendarDate(event.localDate) ||
       !textId(event.timezone) || !textId(event.questionType) || !skills.includes(event.skill) ||
       ![1, 2, 3, 4].includes(event.rating) || typeof event.correct !== "boolean" ||
       !finiteRange(event.responseMs, 0) || !finiteRange(event.hints, 0) || !Number.isInteger(event.hints) || !isRecord(event.schedulerLog) ||
       !validCard(event.after) || event.after.id !== event.cardId || (event.before !== null && (!validCard(event.before) || event.before.id !== event.cardId)) ||
       (event.eventType !== undefined && !["review", "undo"].includes(event.eventType)) || (event.eventType === "undo" && !textId(event.targetEventId)) ||
+      [event.undoneBy, event.targetEventId].some((value) => value !== undefined && !textId(value)) ||
       [event.prompt, event.answerGiven, event.expectedAnswer, event.sourceLine, event.errorType].some((value) => value != null && (typeof value !== "string" || value.length > 50_000)) ||
       [event.intervalBeforeDays, event.intervalAfterDays, event.stabilityBefore, event.stabilityAfter].some((value) => value != null && !finiteRange(value, 0)) ||
       [event.difficultyBefore, event.difficultyAfter].some((value) => value != null && !finiteRange(value, 0, 10))) throw new Error("备份的复习事件无效");
+    if (!onlyKeys(event.schedulerLog, logKeys) || !Object.entries(event.schedulerLog).every(([key, value]) =>
+      key === "due" || key === "review" ? validDate(value) : typeof value === "number" && Number.isFinite(value))) throw new Error("备份的复习事件无效");
     if (event.eventType === "undo") {
       if (!validUndoTarget(eventById.get(event.targetEventId!), event) || undoneTargets.has(event.targetEventId!)) throw new Error("备份的撤销记录与原复习事件不一致");
       undoneTargets.add(event.targetEventId!);
@@ -298,7 +337,7 @@ export function validateBackup(payload: unknown): BackupPayload {
   }
   validateReviewChains(data, undoneTargets);
   for (const settings of data.settings) {
-    if (settings.key !== "app" || !finiteRange(settings.dailyMinutes, 1, 1440) || !finiteRange(settings.desiredRetention, 0.7, 0.99) ||
+    if (!onlyKeys(settings, ["key", "dailyMinutes", "desiredRetention", "selectedBooks", "mode", "theme", "aiEnabled", "diagnosisComplete", "examDate", "updatedAt"]) || settings.key !== "app" || !finiteRange(settings.dailyMinutes, 1, 1440) || !finiteRange(settings.desiredRetention, 0.7, 0.99) ||
       !stringArray(settings.selectedBooks) || !["normal", "unit", "review-only", "exam", "browse"].includes(settings.mode) ||
       !["light", "dark", "system"].includes(settings.theme) || typeof settings.aiEnabled !== "boolean" ||
       typeof settings.diagnosisComplete !== "boolean" || !validDate(settings.updatedAt) ||

@@ -1,8 +1,10 @@
-# 词迹 2.5.1
+# 词迹 2.5.2
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
 [打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+
+2.5.2 将 AI 出站目标限制到站点管理员批准的 HTTPS origin；官方 DeepSeek 与 OpenAI 默认可用，自定义兼容服务需配置 `AI_ALLOWED_PROVIDER_ORIGINS`。成功请求结算保留独立的提示词与实际回答用量下限，配置保存与删除共用限流；备份恢复在替换数据前拒绝过深或过大的扩展数据，HTML 导入在创建 DOM 前限制大小与标记数量。详见 [AI 部署说明](AI_ASSISTANT_DEPLOYMENT.md)、[数据格式](DATA_SCHEMA.md)和[阅读说明](docs/READING_2.1.md)。
 
 2.5.1 修正跨页恢复后的迟到写入、近期作答顺序、造句影响当前题目、时钟回拨及 AI 响应兼容问题，并补齐备份事件链、身份域名和密钥作用域检查、PDF/DOCX 导入资源限制、AI 来源展示及依赖补丁。数据库升级保留已有记录；上线前须配置真实身份网关域名，旧 v1 密钥需重新填写。本站尚未因此次仓库修改自动发布。详见[后端与数据架构](docs/BACKEND_ARCHITECTURE.md)。
 

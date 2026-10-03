@@ -4,6 +4,11 @@ import { PDF_DECODE_LIMITS, PdfTextBudget, readBoundedPdfText, type PdfTextItem,
 
 export type ImportProgress = (message: string) => void;
 const MAX_BYTES = 12 * 1024 * 1024;
+const MAX_HTML_BYTES = 1024 * 1024;
+const MAX_HTML_MARKUP = 4096;
+const excludedHtml = new Set(["script", "style", "noscript", "iframe", "object", "embed", "svg", "canvas", "nav", "footer", "header", "form", "button", "input", "select", "textarea", "template"]);
+const blockHtml = new Set(["p", "div", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "br"]);
+const htmlLimit = () => new Error("HTML 内容过多，请只保留文章正文，或粘贴文字后导入。");
 export const MAX_IMPORT_WORDS = 6000;
 export function normalizeReadingText(input: string): string {
   return input.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
@@ -33,12 +38,35 @@ export function markdownText(input: string) {
   return input.replace(/```[\s\S]*?```/g, "").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/^\s{0,3}(?:#{1,6}\s+|>\s*|[-*+]\s+)/gm, "").replace(/[*_`]/g, "");
 }
 export function htmlText(input: string) {
+  if (input.length > MAX_HTML_BYTES) throw htmlLimit();
+  // Count conservatively before DOM allocation, including comments and malformed markup.
+  let markup = 0;
+  for (let i = input.indexOf("<"); i !== -1; i = input.indexOf("<", i + 1)) {
+    if (++markup > MAX_HTML_MARKUP) throw htmlLimit();
+  }
   // Template contents are inert: never attach the fragment, execute scripts, or render its HTML.
   const template = document.createElement("template");
   template.innerHTML = input;
-  template.content.querySelectorAll("script,style,noscript,iframe,object,embed,svg,canvas,nav,footer,header,form,button,input,select,textarea").forEach(node => node.remove());
-  template.content.querySelectorAll("p,div,section,article,h1,h2,h3,h4,h5,h6,li,blockquote,br").forEach(node => node.append(document.createTextNode("\n\n")));
-  return template.content.textContent ?? "";
+  const pending = [{ node: template.content as Node, end: false }], text: string[] = [];
+  let nodes = 0, characters = 0;
+  const append = (value: string) => {
+    characters += value.length;
+    if (characters > 120_000) throw htmlLimit();
+    text.push(value);
+  };
+  while (pending.length) {
+    const { node, end } = pending.pop()!;
+    if (end) { append("\n\n"); continue; }
+    if (++nodes > 20_000) throw htmlLimit();
+    if (node.nodeType === Node.TEXT_NODE) { append(node.nodeValue ?? ""); continue; }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.nodeName.toLowerCase();
+      if (excludedHtml.has(tag)) continue;
+      if (blockHtml.has(tag)) pending.push({ node, end: true });
+    }
+    for (let child = node.lastChild; child; child = child.previousSibling) pending.push({ node: child, end: false });
+  }
+  return text.join("");
 }
 export { parseClassification } from "./reading-classification";
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -112,6 +140,7 @@ export function pdfReadingText(items: PdfTextItem[]): string {
 export async function extractReadingFile(file: File, signal: AbortSignal, progress: ImportProgress): Promise<string> {
   if (!file.size || file.size > MAX_BYTES) throw new Error("请选择 12 MB 以内的非空文件。");
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (["html", "htm"].includes(extension) && file.size > MAX_HTML_BYTES) throw htmlLimit();
   if (signal.aborted) throw new DOMException("已取消", "AbortError");
   if (["txt", "md", "markdown", "html", "htm"].includes(extension)) {
     progress("正在提取文字…");
