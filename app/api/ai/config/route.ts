@@ -1,10 +1,11 @@
-import { readJsonObject, RequestBodyError } from "@/lib/http";
+import { consumeRateLimit, rateLimitWindow, readJsonObject, RequestBodyError } from "@/lib/http";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { aiConfigs, aiPreferences } from "@/db/schema";
 import {
   AI_PROVIDER_DEFAULTS,
+  AiProviderOriginError,
   encryptApiKey,
   isAiProvider,
   needsReencryption,
@@ -21,8 +22,10 @@ import { authenticatedUserKey } from "@/lib/server-user";
 
 const DEFAULT_LIMITS = { dailyLimit: 30, timeoutSeconds: 25 };
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: securityHeaders() });
+function json(body: unknown, status = 200, extra?: HeadersInit) {
+  const headers = new Headers(securityHeaders());
+  new Headers(extra).forEach((value, name) => headers.set(name, value));
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 function safeProvider(value: string | undefined): AiProvider {
@@ -32,12 +35,7 @@ function safeProvider(value: string | undefined): AiProvider {
 function publicConfig(row?: typeof aiConfigs.$inferSelect) {
   const requiresKeyReentry = Boolean(row?.encryptedApiKey) && row?.encryptionVersion !== 2 && row?.encryptionVersion !== 3;
   const provider = safeProvider(row?.provider);
-  let baseUrl = AI_PROVIDER_DEFAULTS[provider].baseUrl;
-  try {
-    baseUrl = normalizeConfiguredBaseUrl(row?.baseUrl || baseUrl, provider);
-  } catch {
-    // Invalid legacy values are never reflected into editable settings.
-  }
+  const baseUrl = row ? normalizeConfiguredBaseUrl(row.baseUrl, provider) : AI_PROVIDER_DEFAULTS[provider].baseUrl;
   let model = AI_PROVIDER_DEFAULTS[provider].model;
   try {
     model = normalizeConfiguredModel(provider, row?.model || model);
@@ -82,8 +80,8 @@ export async function GET() {
     const [row] = await getDb().select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
     const config = publicConfig(row);
     return json({ ...config, ...(await usageConfig(userKey, config.model)) });
-  } catch {
-    return json({ error: "暂时无法读取 API 配置。" }, 503);
+  } catch (error) {
+    return json({ error: error instanceof AiProviderOriginError ? error.message : "暂时无法读取 API 配置。" }, 503);
   }
 }
 
@@ -91,6 +89,8 @@ export async function POST(request: Request) {
   if (!sameOriginMutation(request)) return json({ error: "请求来源验证失败。" }, 403);
   const userKey = await authenticatedUserKey();
   if (!userKey) return json({ error: "需要通过站点身份验证后管理 API 配置。" }, 401);
+  const limited = await mutationRateLimit(userKey);
+  if (limited) return limited;
   let body: Record<string, unknown>;
   try { body = await readJsonObject(request, 4096); }
   catch (error) { return json({ error: error instanceof RequestBodyError ? error.message : "配置格式无效。" }, error instanceof RequestBodyError ? error.status : 400); }
@@ -212,8 +212,24 @@ export async function DELETE(request: Request) {
   if (!sameOriginMutation(request)) return json({ error: "请求来源验证失败。" }, 403);
   const userKey = await authenticatedUserKey();
   if (!userKey) return json({ error: "需要通过站点身份验证后管理 API 配置。" }, 401);
+  const limited = await mutationRateLimit(userKey);
+  if (limited) return limited;
   try {
     await getDb().delete(aiConfigs).where(eq(aiConfigs.userKey, userKey));
     return json({ ok: true, ...publicConfig() });
   } catch { return json({ error: "暂时无法移除 API 配置。" }, 503); }
+}
+
+async function mutationRateLimit(userKey: string): Promise<Response | null> {
+  const now = Date.now();
+  try {
+    for (const [period, duration, limit] of [["minute", 60_000, 12], ["day", 86_400_000, 100]] as const) {
+      const window = rateLimitWindow(now, duration);
+      const retryAfter = await consumeRateLimit(env.DB, `ai-config:mutation:${period}:${userKey}:${window.start}`, window.expiresAt, limit, now);
+      if (retryAfter !== null) return json({ error: "AI 配置修改过于频繁，请稍后重试。", code: "rate_limited" }, 429, { "retry-after": String(retryAfter) });
+    }
+    return null;
+  } catch {
+    return json({ error: "暂时无法验证 AI 配置修改频率，请稍后重试。", code: "rate_limit_unavailable" }, 503);
+  }
 }

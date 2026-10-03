@@ -144,15 +144,16 @@ test('an all-undone originally absent card remains unseen when recreated only fo
   assert.doesNotThrow(() => validateBackup(payload([{ ...fresh, status: 'paused' }], [first, undo(first)])));
 });
 
-test('a shape-valid terminal scheduler mismatch and unknown FSRS value changes are rejected', () => {
+test('terminal scheduler mismatches and unknown FSRS fields are rejected', () => {
   for (const mutate of [
     (card) => { card.fsrs.stability += 1; },
     (card) => { card.fsrs.due = card.due = new Date(Date.parse(card.due) + 1000).toISOString(); },
-    (card) => { card.fsrs.futureSchedulerField = 1; },
   ]) {
     const card = structuredClone(second.after); mutate(card);
     reject(payload([card], [first, second]));
   }
+  const card = structuredClone(second.after); card.fsrs.futureSchedulerField = 1;
+  assert.throws(() => validateBackup(payload([card], [first, second])), /词卡或调度数据/);
 });
 
 test('an active terminal review cannot reference a missing current card', () => {

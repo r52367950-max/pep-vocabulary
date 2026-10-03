@@ -7,6 +7,8 @@ export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: 
   "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
 };
 
+export class AiProviderOriginError extends Error {}
+
 const LEGACY_KEY_ID = "k1";
 const KEY_ID_PATTERN = /^[a-z0-9]{1,16}$/;
 const STRICT_KEY_PATTERN = /^[A-Za-z0-9+/]{43}=$/;
@@ -208,8 +210,8 @@ export function normalizeApiKey(value: unknown) {
 
 export function normalizeConfiguredBaseUrl(value: unknown, provider?: AiProvider) {
   if (typeof value !== "string") throw new Error("Base URL 格式无效。");
-  const allowLocal = (env as unknown as Record<string, unknown>).AI_ALLOW_INSECURE_LOCAL_BASE_URL === "true";
-  const normalized = normalizeBaseUrl(value, allowLocal);
+  const normalized = normalizeBaseUrl(value);
+  assertApprovedProviderOrigin(new URL(normalized));
   if (provider === "deepseek") {
     const url = new URL(normalized);
     if (url.hostname === "api.deepseek.com" && (url.pathname === "/" || url.pathname === "")) {
@@ -219,6 +221,38 @@ export function normalizeConfiguredBaseUrl(value: unknown, provider?: AiProvider
   }
   return normalized;
 }
+
+/** Compare DNS-equivalent origins without changing the URL bound to stored credentials. */
+function providerOrigin(url: URL) {
+  const origin = new URL(url.origin);
+  origin.hostname = origin.hostname.replace(/\.$/, "");
+  return origin.origin;
+}
+
+function assertApprovedProviderOrigin(url: URL) {
+  const approved = new Set(Object.values(AI_PROVIDER_DEFAULTS).map(({ baseUrl }) => providerOrigin(new URL(baseUrl))));
+  const configured = env.AI_ALLOWED_PROVIDER_ORIGINS;
+  if (configured !== undefined && configured !== "") {
+    try {
+      for (const entry of configured.split(",")) {
+        const origin = new URL(normalizeBaseUrl(entry.trim()));
+        if (origin.pathname !== "/" || origin.hostname.includes("*")) throw new Error();
+        approved.add(providerOrigin(origin));
+      }
+    } catch {
+      throw new AiProviderOriginError("服务端 AI_ALLOWED_PROVIDER_ORIGINS 配置无效，请联系站点管理员。");
+    }
+  }
+  if (!approved.has(providerOrigin(url))) {
+    throw new AiProviderOriginError("该 AI 服务地址尚未获站点管理员批准；请先配置 AI_ALLOWED_PROVIDER_ORIGINS。");
+  }
+}
+
+/** Every probe and credentialed request checks operator policy immediately before fetch. */
+export const fetchAiProvider: typeof fetch = (input, init) => {
+  assertApprovedProviderOrigin(new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url));
+  return fetch(input, init);
+};
 
 export function securityHeaders() {
   return {
