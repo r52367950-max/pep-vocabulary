@@ -101,6 +101,15 @@ try {
   assert.equal(compatibilityVoiceBody.configured, true);
   assert.equal(compatibilityVoiceBody.ready, false, 'voice must not send OpenAI audio to arbitrary compatible providers');
   results.push({ path: '/api/voice/status compatible provider remains unavailable', status: compatibilityVoice.status });
+  const officialConfig = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 }) });
+  assert.equal(officialConfig.status, 200, await officialConfig.clone().text());
+  const configuredVoice = await request('/api/voice/status', { headers });
+  assert.equal(configuredVoice.status, 200, await configuredVoice.clone().text());
+  const configuredVoiceBody = await configuredVoice.json();
+  assert.equal(configuredVoiceBody.ready, true);
+  assert.equal(configuredVoiceBody.activeSession, null);
+  assert.equal(configuredVoiceBody.models.voice, 'gpt-live-1');
+  results.push({ path: '/api/voice/status official configuration ready without paid calls', status: 200 });
   results.push({ path: '/api/ai/config authenticated save', status: 200 });
   const body = JSON.stringify({ schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
   const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);

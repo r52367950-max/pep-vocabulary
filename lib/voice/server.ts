@@ -86,8 +86,11 @@ export async function voiceStatus(request: Request) {
     const day = budgetDay();
     const usedSeconds = await readBucket(database(), secondsKey(userKey, day.start));
     stage = "active-session-read";
-    const active = await database().prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key LIKE ? AND request_count > 0 ORDER BY expires_at DESC LIMIT 1")
-      .bind(`voice-session:${userKey}:%`).first<{ bucket_key: string; request_count: number }>();
+    // Production D1 limits LIKE/GLOB patterns; a hashed account prefix exceeds it.
+    // All permitted session-ID characters sort below '~'; ownership stays exact.
+    const prefix = `voice-session:${userKey}:`;
+    const active = await database().prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key >= ? AND bucket_key < ? AND request_count > 0 ORDER BY expires_at DESC LIMIT 1")
+      .bind(prefix, `${prefix}~`).first<{ bucket_key: string; request_count: number }>();
     const activeSession = active ? { sessionId: active.bucket_key.slice(`voice-session:${userKey}:`.length), expiresAt: new Date(active.request_count - 60_000).toISOString() } : null;
     const common = { models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: "gpt-6.1-terra" }, readiness: "configuration-only", activeSession, dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。到时由浏览器停止并请求关闭，不能作为服务商账单的绝对硬上限。" };
     try {
@@ -99,7 +102,7 @@ export async function voiceStatus(request: Request) {
       throw error;
     }
   } catch (error) {
-    console.error("voice-status-failure", { stage, name: error instanceof Error ? error.name : "unknown", message: error instanceof Error ? error.message.slice(0, 180) : "unknown" });
+    if (!(error instanceof AssistantInputError)) console.error("voice-status-failure", { stage, name: error instanceof Error ? error.name : "unknown", message: error instanceof Error ? error.message.slice(0, 180) : "unknown" });
     return assistantErrorResponse(error);
   }
 }

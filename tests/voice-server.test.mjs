@@ -52,6 +52,34 @@ test('persistent seconds admission prevents parallel over-budget requests', asyn
   assert.equal(outcomes.find((value) => value.status === 'rejected').reason.code, 'voice_budget_exhausted');
 });
 
+test('status works with production D1 pattern limits and isolates account session prefixes', async () => {
+  const db = setup(); await configure();
+  const userKey = await authenticatedUserKey();
+  const until = Date.now() + 300000;
+  for (const [key, time] of [[`voice-session:${userKey}:live_own`, until], [`voice-session:${userKey}extra:live_other`, until + 1000], ['voice-session:someone-else:live_other', until + 2000]]) {
+    db.prepare('INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, ?, ?)').run(key, time, time + 86400000);
+  }
+  const original = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = (sql) => {
+    const statement = original(sql);
+    const bind = statement.bind.bind(statement);
+    statement.bind = (...args) => {
+      if (/\b(?:LIKE|GLOB)\s+\?/i.test(sql) && args.some(value => typeof value === 'string' && value.length > 50)) {
+        throw new Error('D1_ERROR: LIKE or GLOB pattern too complex: SQLITE_ERROR');
+      }
+      return bind(...args);
+    };
+    return statement;
+  };
+  const response = await voiceStatus(new Request('https://app.test/api/voice/status'));
+  assert.equal(response.status, 200, await response.clone().text());
+  const status = await response.json();
+  assert.equal(status.ready, true);
+  assert.equal(status.activeSession.sessionId, 'live_own');
+  db.prepare('UPDATE ai_rate_limits SET request_count=0 WHERE bucket_key=?').run(`voice-session:${userKey}:live_own`);
+  assert.equal((await (await voiceStatus(new Request('https://app.test/api/voice/status'))).json()).activeSession, null);
+});
+
 test('Live uses BYOK fixed host, single active session, durable ownership and idempotent close', async (t) => {
   const db = setup(); await configure();
   const calls = [], originalFetch = globalThis.fetch;
