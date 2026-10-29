@@ -77,24 +77,31 @@ async function releaseActive(userKey: string, until: number) {
 }
 
 export async function voiceStatus(request: Request) {
+  let stage = "identity";
   try {
     assertSameOrigin(request);
     const userKey = await authenticatedUserKey();
     if (!userKey) throw new AssistantInputError("authentication_required", "请先登录站点。", 401);
+    stage = "usage-read";
     const day = budgetDay();
     const usedSeconds = await readBucket(database(), secondsKey(userKey, day.start));
+    stage = "active-session-read";
     const active = await database().prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key LIKE ? AND request_count > 0 ORDER BY expires_at DESC LIMIT 1")
       .bind(`voice-session:${userKey}:%`).first<{ bucket_key: string; request_count: number }>();
     const activeSession = active ? { sessionId: active.bucket_key.slice(`voice-session:${userKey}:`.length), expiresAt: new Date(active.request_count - 60_000).toISOString() } : null;
     const common = { models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: "gpt-6.1-terra" }, readiness: "configuration-only", activeSession, dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。到时由浏览器停止并请求关闭，不能作为服务商账单的绝对硬上限。" };
     try {
+      stage = "configuration-read";
       const config = await officialConfig(request);
       return privateJson({ configured: true, ready: usedSeconds < VOICE_DAILY_SECONDS, ...common, models: { ...common.models, text: config.model }, ...(usedSeconds >= VOICE_DAILY_SECONDS ? { reason: "今天的语音时长预算已用完，次日北京时间 0 点重置。", reasonCode: "voice_budget_exhausted" } : {}) });
     } catch (error) {
       if (error instanceof Error && "code" in error) return privateJson({ configured: error.code !== "assistant_not_configured", ready: false, ...common, reason: error.message, reasonCode: error.code });
       throw error;
     }
-  } catch (error) { return assistantErrorResponse(error); }
+  } catch (error) {
+    console.error("voice-status-failure", { stage, name: error instanceof Error ? error.name : "unknown", message: error instanceof Error ? error.message.slice(0, 180) : "unknown" });
+    return assistantErrorResponse(error);
+  }
 }
 
 export async function createVoiceSession(request: Request) {
