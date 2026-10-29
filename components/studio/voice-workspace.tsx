@@ -67,11 +67,11 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings }: { e
   }, [snapshot.phase, snapshot.seconds, transcript, saved, feedback]);
   const end = () => client.current?.end();
   const exit = () => { client.current?.dispose(); onClose(); };
-  const start = async () => {
+  const start = async (diagnostic = false) => {
     feedbackAbort.current?.abort(); setFeedbackBusy(false); setFeedbackError("");
     setTranscript([]); setFeedback(null); setSaved(false); setReview([]); setStorageError("");
-    const meta = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), topicId, level }; recordMeta.current = meta; setRecordId(meta.id);
-    await client.current?.start({ topicId, level, minutes, targetWords: targets });
+    const meta = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), topicId, level }; recordMeta.current = diagnostic ? null : meta; setRecordId(diagnostic ? null : meta.id);
+    await client.current?.start({ topicId, level, minutes, targetWords: targets, ...(diagnostic ? { diagnostic: true } : {}) });
   };
   const requestFeedback = async () => {
     if (active || !transcript.some((turn) => turn.role === "user" && turn.text.trim()) || feedbackBusy) return;
@@ -109,6 +109,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings }: { e
               <div className="voice-meter"><span><Clock3 size={15} /> {time(snapshot.seconds)} <small>/ {time(active ? snapshot.maxSeconds : minutes * 60)}</small></span><span>语音约 ${(Math.max(snapshot.seconds, snapshot.usageSeconds || 0) / 60 * .05).toFixed(3)}</span></div>
               {snapshot.playbackBlocked && <button className="secondary voice-resume-audio" onClick={() => void client.current?.resumePlayback()}><Play size={16} />点此开启声音</button>}
               <div className="voice-controls">{active ? <><button className="secondary" disabled={!connected} aria-pressed={snapshot.muted} onClick={() => client.current?.mute(!snapshot.muted)}>{snapshot.muted ? <MicOff size={18} /> : <Mic size={18} />}{snapshot.muted ? "开启麦克风" : "麦克风静音"}</button><button className="secondary" disabled={!connected} aria-pressed={snapshot.paused} onClick={() => client.current?.pause(!snapshot.paused)}>{snapshot.paused ? <Play size={18} /> : <Pause size={18} />}{snapshot.paused ? "继续对话" : "让我想想"}</button><button className="voice-end" disabled={snapshot.phase === "closing"} onClick={() => void end()}><Square size={15} fill="currentColor" />{snapshot.phase === "connecting" ? "取消连接" : "结束"}</button></> : <button className="primary voice-start" disabled={!canStart} onClick={() => void start()}><Mic size={18} />{snapshot.phase === "idle" ? "开始对话" : "开始新的对话"}</button>}</div>
+              {!active && <div className="voice-diagnostic"><button className="text-button" disabled={!canStart} onClick={() => void start(true)}>测试 Live 连接（无需麦克风）</button><p className="voice-muted">约 20 秒自动结束，返回一段测试语音，会产生少量 API 用量。</p></div>}
               <p className="voice-cost-note">GPT-Live 语音约 $0.05/分钟，另计对话所用文字模型及课后反馈费用。静音和思考暂停仍计费；页面计时和关闭用于限制时长，并非绝对账单上限。</p>
               {status?.ready && <p className="voice-budget">设置已就绪，模型访问权限将在实际连接时确认。{typeof status.remainingSeconds === "number" && <> 今日还可预留约 {Math.floor(status.remainingSeconds / 60)} 分钟 / {Math.floor((status.dailySecondsLimit || 3600) / 60)} 分钟。整段时长在开始时预留，提前结束不退还额度；这是应用用量控制，不是实际账单。</>}</p>}{status?.activeSession && !active && <div className="voice-notice"><p>服务器还有上次未结束的语音。先关闭，再开始新的练习。</p><button className="secondary" onClick={async () => { try { await voiceRequest("/api/voice/close", { sessionId: status.activeSession!.sessionId }); await refreshStatus(); } catch (error) { setStatusError(error instanceof Error ? error.message : "关闭未确认，请稍后重试。"); } }}>关闭上次语音</button></div>}{!status && !statusError && <p className="voice-notice">正在检查语音设置…</p>}{statusError && <p className="voice-notice">{statusError} <button onClick={() => void refreshStatus()}>重新检查</button></p>}
               {status && !status.ready && <div className="voice-notice"><p>{!status.configured ? "先在 AI 设置中保存 OpenAI API key，就可以开始语音练习。" : unavailableReason}</p><button className="secondary" onClick={onOpenSettings}>打开 AI 设置</button><button className="text-button" onClick={() => void refreshStatus()}>重新检查</button></div>}

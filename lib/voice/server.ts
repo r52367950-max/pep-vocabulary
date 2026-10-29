@@ -118,12 +118,13 @@ export async function createVoiceSession(request: Request) {
     const sdp = text(body.sdp, "sdp", 50_000, 10);
     if (!sdp.startsWith("v=0") || !sdp.includes("m=audio")) return invalid("WebRTC SDP 无效。");
     if (![5, 10, 15, 20].includes(Number(body.minutes)) || typeof body.minutes !== "number") return invalid("请选择 5、10、15 或 20 分钟。");
-    const maxSeconds = Number(body.minutes) * 60;
+    if (body.diagnostic !== undefined && typeof body.diagnostic !== "boolean") return invalid("连接测试参数无效。");
+    const maxSeconds = body.diagnostic === true ? 20 : Number(body.minutes) * 60;
     config = await officialConfig(request, true);
     await voiceLimit(config.userKey, "session", 3);
     lock = { userKey: config.userKey, until: await claimActive(config.userKey, maxSeconds) };
     await reserveVoiceSeconds(config.userKey, maxSeconds);
-    const instructions = buildTutorInstructions(input);
+    const instructions = body.diagnostic === true ? "This is a brief voice connection test. Say one short English greeting when prompted, then remain silent. Do not ask questions or continue talking." : buildTutorInstructions(input);
     // Text delegation is metered independently from audio. Unknown final usage retains this estimate.
     await reserveTokens(config.userKey, config.dailyTokenBudget, instructions, Math.min(30_000, maxSeconds * 24));
     const payload = await voiceOpenAI(request, config.apiKey, "/v1/live/sessions", {

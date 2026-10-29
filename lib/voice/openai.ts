@@ -19,7 +19,17 @@ export async function voiceOpenAI(request: Request, apiKey: string, path: string
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    if (!response.ok) { void response.body?.cancel().catch(() => undefined); throw mappedUpstreamFailure(response.status); }
+    if (!response.ok) {
+      let code: string | undefined, param: string | undefined;
+      try {
+        const failure = JSON.parse(await readBoundedResponseText(response, 4096, controller.signal));
+        const safe = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_.\[\]-]{1,100}$/.test(value) ? value : undefined;
+        code = safe(failure?.error?.code); param = safe(failure?.error?.param);
+      } catch { /* Preserve the status mapping without exposing arbitrary provider text. */ }
+      console.error("voice-provider-failure", { status: response.status, code, param });
+      if (code === "model_not_found" || code === "permission_denied") throw new AssistantUpstreamError("voice_model_unavailable", "当前 API 项目无权使用这个语音模型，或模型尚未向该项目开放。", 503, false, response.status);
+      throw mappedUpstreamFailure(response.status);
+    }
     const text = await readBoundedResponseText(response, maximumBytes, controller.signal);
     if (!text && path.endsWith("/hangup")) return {};
     try {

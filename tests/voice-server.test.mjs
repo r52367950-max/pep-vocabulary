@@ -52,6 +52,18 @@ test('persistent seconds admission prevents parallel over-budget requests', asyn
   assert.equal(outcomes.find((value) => value.status === 'rejected').reason.code, 'voice_budget_exhausted');
 });
 
+test('microphone-free connection diagnostic reserves only twenty seconds', async (t) => {
+  setup(); await configure();
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => Response.json({ session: { id: 'live_probe' }, transport: { type: 'webrtc', sdp: 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111' } });
+  const response = await createVoiceSession(json({ ...voiceInput(), diagnostic: true }));
+  assert.equal(response.status, 200, await response.clone().text());
+  assert.equal((await response.json()).maxSeconds, 20);
+  const status = await (await voiceStatus(new Request('https://app.test/api/voice/status'))).json();
+  assert.equal(status.usedSeconds, 20);
+});
+
 test('status works with production D1 pattern limits and isolates account session prefixes', async () => {
   const db = setup(); await configure();
   const userKey = await authenticatedUserKey();

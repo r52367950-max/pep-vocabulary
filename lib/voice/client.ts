@@ -2,11 +2,11 @@ export type VoicePhase = "idle" | "connecting" | "connected" | "closing" | "ende
 export type VoiceStatus = { configured: boolean; ready: boolean; reason?: string; models: { voice: string; text: string }; dailySecondsLimit?: number; usedSeconds?: number; remainingSeconds?: number; resetsAt?: string; timeLimitNotice?: string; activeSession?: { sessionId: string; expiresAt: string } | null };
 export type TranscriptTurn = { role: "user" | "assistant"; text: string; startMs?: number; endMs?: number };
 export type VoiceFeedback = { strength: string; improvements: { original: string; suggestion: string; reason: string }[]; retryPrompt: string; expressions: { text: string; meaning: string }[] };
-export type VoiceOptions = { topicId: string; level: string; minutes: number; targetWords?: string[] };
+export type VoiceOptions = { topicId: string; level: string; minutes: number; diagnostic?: boolean; targetWords?: string[] };
 export type VoiceSnapshot = { phase: VoicePhase; message: string; muted: boolean; paused: boolean; playbackBlocked: boolean; seconds: number; usageSeconds: number | null; maxSeconds: number; closeConfirmed: boolean };
 type VoiceEvent = { type?: string; delta?: string; start_ms?: number; end_ms?: number; event_id?: string; usage?: { seconds?: number }; error?: { message?: string }; session?: { id?: string } };
 type SessionReply = { sessionId: string; sdp: string; model: string; maxSeconds: number };
-type Dependencies = { fetch: typeof fetch; getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>; createPeer: () => RTCPeerConnection; createAudio: () => HTMLAudioElement; now: () => number };
+type Dependencies = { fetch: typeof fetch; getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>; createPeer: () => RTCPeerConnection; createAudio: () => HTMLAudioElement; createAudioContext: () => AudioContext; now: () => number };
 
 export async function voiceRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, { method: body === undefined ? "GET" : "POST", credentials: "same-origin", headers: body === undefined ? undefined : { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal });
@@ -22,6 +22,8 @@ export class NativeLiveSession {
   private channel?: RTCDataChannel;
   private stream?: MediaStream;
   private audio?: HTMLAudioElement;
+  private diagnosticContext?: AudioContext;
+  private diagnostic = false;
   private abort?: AbortController;
   private sessionId?: string;
   private startupTimer?: ReturnType<typeof setTimeout>;
@@ -33,7 +35,7 @@ export class NativeLiveSession {
   private snapshot: VoiceSnapshot = { phase: "idle", message: "准备好就开始", muted: false, paused: false, playbackBlocked: false, seconds: 0, usageSeconds: null, maxSeconds: 600, closeConfirmed: false };
   private deps: Dependencies;
   constructor(private callbacks: { onState: (state: VoiceSnapshot) => void; onTranscript: (turn: TranscriptTurn) => void }, dependencies?: Partial<Dependencies>) {
-    this.deps = { fetch: (...args) => fetch(...args), getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints), createPeer: () => new RTCPeerConnection(), createAudio: () => new Audio(), now: () => Date.now(), ...dependencies };
+    this.deps = { fetch: (...args) => fetch(...args), getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints), createPeer: () => new RTCPeerConnection(), createAudio: () => new Audio(), createAudioContext: () => new AudioContext(), now: () => Date.now(), ...dependencies };
   }
   get state() { return { ...this.snapshot }; }
   private update(patch: Partial<VoiceSnapshot>) { this.snapshot = { ...this.snapshot, ...patch }; this.callbacks.onState(this.state); }
@@ -42,6 +44,7 @@ export class NativeLiveSession {
   private cleanup() {
     clearTimeout(this.startupTimer); clearTimeout(this.closeTimer); clearInterval(this.clock);
     this.stopCapture();
+    if (this.diagnosticContext) { void this.diagnosticContext.close().catch(() => undefined); this.diagnosticContext = undefined; }
     if (this.channel) { this.channel.onmessage = null; this.channel.onclose = null; this.channel.close(); this.channel = undefined; }
     if (this.peer) { this.peer.ontrack = null; this.peer.onconnectionstatechange = null; this.peer.close(); this.peer = undefined; }
     if (this.audio) { this.audio.pause(); this.audio.srcObject = null; this.audio = undefined; }
@@ -56,11 +59,20 @@ export class NativeLiveSession {
     const generation = ++this.generation;
     const current = () => generation === this.generation;
     this.endPromise = undefined;
-    this.update({ phase: "connecting", message: "正在请求麦克风…", seconds: 0, usageSeconds: null, muted: false, paused: false, playbackBlocked: false, closeConfirmed: false, maxSeconds: options.minutes * 60 });
+    this.diagnostic = options.diagnostic === true;
+    this.update({ phase: "connecting", message: this.diagnostic ? "正在准备无麦克风连接测试…" : "正在请求麦克风…", seconds: 0, usageSeconds: null, muted: false, paused: false, playbackBlocked: false, closeConfirmed: false, maxSeconds: this.diagnostic ? 20 : options.minutes * 60 });
     this.abort = new AbortController();
     this.startupTimer = setTimeout(() => { if (current() && this.snapshot.phase === "connecting") void this.end("连接超时，请检查网络后重新开始。", true); }, 35_000);
     try {
-      const stream = await this.deps.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+      let stream: MediaStream;
+      if (this.diagnostic) {
+        const context = this.deps.createAudioContext(); this.diagnosticContext = context;
+        await context.resume();
+        if (!current()) { if (context.state !== "closed") void context.close().catch(() => undefined); return; }
+        stream = context.createMediaStreamDestination().stream;
+      } else {
+        stream = await this.deps.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+      }
       if (!current()) { stream.getTracks().forEach((track) => track.stop()); return; }
       this.stream = stream;
       const peer = this.deps.createPeer(); this.peer = peer;
@@ -84,7 +96,7 @@ export class NativeLiveSession {
       if (!result.sessionId || !result.sdp) throw new Error("语音服务返回了不完整的连接信息。");
       if (!current()) { void this.closeRemote(result.sessionId); return; }
       this.sessionId = result.sessionId;
-      this.update({ maxSeconds: Math.min(options.minutes * 60, Number.isFinite(result.maxSeconds) && result.maxSeconds > 0 ? result.maxSeconds : options.minutes * 60) });
+      this.update({ maxSeconds: Math.min(this.diagnostic ? 20 : options.minutes * 60, Number.isFinite(result.maxSeconds) && result.maxSeconds > 0 ? result.maxSeconds : options.minutes * 60) });
       await peer.setRemoteDescription({ type: "answer", sdp: result.sdp });
     } catch (error) {
       if (!current()) return;
@@ -107,9 +119,9 @@ export class NativeLiveSession {
   private handleEvent(event: VoiceEvent) {
     if (event.type === "session.started" && this.snapshot.phase === "connecting") {
       clearTimeout(this.startupTimer); this.startedAt = this.deps.now();
-      this.update({ phase: "connected", message: "已连接，慢慢说，我在听。" });
-      this.clock = setInterval(() => { const seconds = Math.max(0, Math.floor((this.deps.now() - this.startedAt) / 1000)); this.update({ seconds }); if (seconds >= this.snapshot.maxSeconds) void this.end("本次练习时间到了，语音已结束。"); }, 500);
-      this.send({ type: "session.commentary.append", delegation_id: null, content: "Greet the learner briefly in English, ask one opening question about the selected topic, then pause and listen. Give them time to think." });
+      this.update({ phase: "connected", message: this.diagnostic ? "Live 已连接，正在等待测试语音；20 秒后自动结束。" : "已连接，慢慢说，我在听。" });
+      this.clock = setInterval(() => { const seconds = Math.max(0, Math.floor((this.deps.now() - this.startedAt) / 1000)); this.update({ seconds }); if (seconds >= this.snapshot.maxSeconds) void this.end(this.diagnostic ? "连接测试已结束。" : "本次练习时间到了，语音已结束。"); }, 500);
+      this.send({ type: "session.commentary.append", delegation_id: null, content: this.diagnostic ? "Say this short test sentence aloud: Hello! Your English speaking practice is ready. Then remain silent." : "Greet the learner briefly in English, ask one opening question about the selected topic, then pause and listen. Give them time to think." });
     } else if ((event.type === "session.input_transcript.delta" || event.type === "session.output_transcript.delta") && typeof event.delta === "string") {
       this.callbacks.onTranscript({ role: event.type === "session.input_transcript.delta" ? "user" : "assistant", text: event.delta, startMs: event.start_ms, endMs: event.end_ms });
     } else if (event.type === "session.usage.updated") {

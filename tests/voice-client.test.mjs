@@ -53,6 +53,24 @@ test("cancelling a pending permission request stops a late microphone and create
   f.client.dispose();
 });
 
+test("connection diagnostic uses silent audio without microphone access and releases the audio context", async () => {
+  let microphoneCalls = 0, closed = 0;
+  let f;
+  const context = { state: 'running', resume: async () => {}, close: async () => { closed++; context.state = 'closed'; }, createMediaStreamDestination: () => ({ stream: f.stream }) };
+  f = fixture({ getUserMedia: async () => { microphoneCalls++; throw new Error('No microphone'); }, createAudioContext: () => context });
+  try {
+    await f.client.start({ ...options, diagnostic: true });
+    f.emit({ type: 'session.started' });
+    assert.equal(microphoneCalls, 0);
+    assert.equal(f.client.state.phase, 'connected');
+    assert.equal(f.client.state.maxSeconds, 20);
+    assert.equal(JSON.parse(f.calls[0].init.body).diagnostic, true);
+    await f.client.end();
+    assert.equal(closed, 1);
+    assert.equal(f.client.state.closeConfirmed, true);
+  } finally { f.client.dispose(); }
+});
+
 test("a late session answer after disposal is closed remotely and never attached", async () => {
   let resolveSession;
   let remoteClosed = 0;
