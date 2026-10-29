@@ -19,7 +19,9 @@ import {
   AssistantInputError,
   AssistantUpstreamError,
   buildAssistantPrompt,
-  chatCompletionsUrl,
+  completionEndpoint,
+  usesOpenAIResponses,
+  responsesPayload,
   connectionEndpointCandidates,
   connectionTestPayload,
   fetchCompletion,
@@ -42,16 +44,16 @@ const MAX_GENERATION_MS = 300_000;
 import { DEFAULT_TOKEN_BUDGET, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
 
 /** Shared paid-generation boundary for learning, classification and connection tests. */
-async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string } = {}) {
+export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string } = {}) {
   if (request.signal.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
   const outputCap = Number(payload.max_tokens ?? payload.max_completion_tokens);
   const prompt = JSON.stringify(payload.messages);
   const reservation = await reserveTokens(config.userKey, config.dailyTokenBudget, prompt, outputCap);
   const { max_tokens: _oldTokens, max_completion_tokens: _oldCompletionTokens, ...body } = payload;
-  const completion = await fetchCompletion(fetch, options.url || chatCompletionsUrl(config.baseUrl, config.provider), {
+  const completion = await fetchCompletion(fetch, options.url || completionEndpoint(config.baseUrl, config.provider), {
     method: "POST", redirect: "manual", signal: request.signal,
     headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json", accept: "text/event-stream, application/json" },
-    body: JSON.stringify({ ...body, ...outputTokenParameters(config.model, config.baseUrl, reservation.maxOutputTokens) }),
+    body: JSON.stringify(usesOpenAIResponses(config.baseUrl) ? responsesPayload(payload, reservation.maxOutputTokens) : { ...body, ...outputTokenParameters(config.model, config.baseUrl, reservation.maxOutputTokens) }),
   }, { idleMs: options.idleMs ?? config.timeoutMs, totalMs: options.totalMs ?? MAX_GENERATION_MS, stream: Boolean(payload.stream), promptChars: prompt.length });
   const today = await settleTokens(reservation, completion.usage);
   return { completion, today };
@@ -85,7 +87,7 @@ type RuntimeBindings = {
   DB?: D1Database;
 };
 
-type UserRuntimeConfig = {
+export type UserRuntimeConfig = {
   userKey: string;
   provider: AiProvider;
   baseUrl: string;
@@ -293,7 +295,7 @@ async function enforceConnectionTestRateLimit(userKey: string) {
   await incrementBucket(`connection-test:day:${userKey}:${dayStart}`, dayStart + 86_400_000, 30);
 }
 
-async function authenticatedConfig(request: Request) {
+export async function authenticatedConfig(request: Request) {
   assertSameOrigin(request);
   const userKey = await authenticatedUserKey();
   if (!userKey) throw new AssistantInputError("authentication_required", "AI 助手需要经过站点身份验证。", 401);
@@ -301,7 +303,7 @@ async function authenticatedConfig(request: Request) {
   return { config, userKey };
 }
 
-async function authenticatedRuntime(request: Request) {
+export async function authenticatedRuntime(request: Request) {
   const { config, userKey } = await authenticatedConfig(request);
   await enforceRateLimit(userKey, config.dailyLimit);
   return config;

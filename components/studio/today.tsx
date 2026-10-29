@@ -19,12 +19,13 @@ const ways: Array<{ id: LearnMode | "dictation"; symbol: SymbolName; title: stri
   { id: "dictation", symbol: "listen", title: "单词听写", detail: "听发音，写单词" },
 ];
 
-export default function Today({ data, stats, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onLearn, onWords, onReading, onActivity, resume, resumeLabel, onWrite }: {
+export default function Today({ data, stats, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onLearn, onWords, onReading, onActivity, resume, resumeLabel, onWrite, onVoice }: {
   data: Vocabulary; stats: StudyStats; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
   due: number; newCount: number; weak: number; total: number; learned: number;
   queue: LexiconIndexEntry[]; onStart: (mode: StudyMode) => void; onLearn: (mode: LearnMode) => void; onWords: () => void;
   onReading: () => void; onActivity: () => void; resume: (() => void) | null; resumeLabel: string | null;
   onWrite: (options: { targets?: string[]; openId?: string | null }) => void;
+  onVoice: () => void;
 }) {
   const dark = useDarkAppearance(data.settings.theme);
   const minutes = queue.length ? Math.max(1, Math.ceil(queue.length * 0.7)) : 0;
@@ -80,6 +81,11 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
         </div>
       </section>
       <WritingCard data={data} onWrite={onWrite} />
+      <section className="voice-entry-card" aria-labelledby="voice-entry-title">
+        <div className="voice-entry-symbol"><StudioSymbol name="listen" size={32} /></div>
+        <div><h2 id="voice-entry-title">把学过的英语说出来</h2><p>聊一个生活话题，或听写几个词和句子。</p></div>
+        <button className="primary" onClick={onVoice}>口语与听写 <ChevronRight size={16} aria-hidden="true" /></button>
+      </section>
       <div className="today-footnotes">
         <button onClick={() => onStart("mistakes")}>
           <StudioSymbol name="review" size={24} />

@@ -26,7 +26,7 @@ function json(body: unknown, status = 200) {
 }
 
 function safeProvider(value: string | undefined): AiProvider {
-  return isAiProvider(value) ? value : "deepseek";
+  return isAiProvider(value) ? value : "openai-compatible";
 }
 
 function publicConfig(row?: typeof aiConfigs.$inferSelect) {

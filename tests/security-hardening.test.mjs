@@ -43,6 +43,10 @@ const validBodies = {
   '/api/assistant/story': { wordIds: [wordA, wordB, 'pep-0000000000000001'] },
   '/api/assistant/diagnose': { wordIds: [wordA] },
   '/api/reading/classify': { title: 'A test article', text: 'This is an English reading sample. '.repeat(5) },
+  '/api/voice/session': { sdp: 'v=0\r\n', topicId: 'daily', level: 'B2', minutes: 10 },
+  '/api/voice/close': { sessionId: 'test-session' },
+  '/api/voice/speech': { text: 'A short listening exercise.' },
+  '/api/voice/feedback': { topicId: 'daily', transcript: [{ role: 'user', text: 'I prefer the train because it is comfortable.' }] },
 };
 const actions = { '/api/ai/config': 'settings', '/api/ai/test': 'settings', '/api/reading/classify': 'reading-classify', '/api/sync': 'sync' };
 const call = (path, method, { headers = {}, body } = {}) => {
@@ -224,7 +228,8 @@ test('HTML documents carry a per-request nonce CSP that matches the one handed t
   assert.equal(first.headers.get('x-frame-options'), 'DENY');
   assert.equal(first.headers.get('x-content-type-options'), 'nosniff');
   assert.equal(first.headers.get('referrer-policy'), 'same-origin');
-  assert.match(first.headers.get('permissions-policy'), /microphone=\(\).*|camera=\(\)/);
+  assert.match(first.headers.get('permissions-policy'), /microphone=\(self\)/);
+  assert.match(first.headers.get('permissions-policy'), /camera=\(\)/);
   assert.equal(first.headers.get('strict-transport-security'), 'max-age=31536000');
   // The offline shell stays storable by the service worker but never by shared caches.
   assert.equal(first.headers.get('cache-control'), 'private, no-cache');

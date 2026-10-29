@@ -32,6 +32,11 @@ export const PRIVATE_API_ROUTES: Readonly<Record<string, readonly string[]>> = {
   "/api/assistant/story": ["POST"],
   "/api/assistant/diagnose": ["POST"],
   "/api/reading/classify": ["POST"],
+  "/api/voice/status": ["GET"],
+  "/api/voice/session": ["POST"],
+  "/api/voice/close": ["POST"],
+  "/api/voice/speech": ["POST"],
+  "/api/voice/feedback": ["POST"],
 };
 
 const PERMISSIONS_POLICY = [
@@ -43,7 +48,7 @@ const PERMISSIONS_POLICY = [
   "gyroscope=()",
   "hid=()",
   "magnetometer=()",
-  "microphone=()",
+  "microphone=(self)",
   "midi=()",
   "payment=()",
   "serial=()",

@@ -7,7 +7,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules:
 const results = [];
 try {
   const request = async (path, init) => mf.dispatchFetch(`http://localhost${path}`, init);
-  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401]]) {
+  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401], ['/api/voice/status', 401]]) {
     const response = await request(path);
     const text = await response.text();
     assert.equal(response.status, expected, `${path}: ${text.slice(0, 120)}`);
@@ -25,6 +25,7 @@ try {
       assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
       assert.ok(response.headers.get('referrer-policy'));
       assert.ok(response.headers.get('permissions-policy'));
+      assert.match(response.headers.get('permissions-policy'), /microphone=\(self\)/);
     }
     if (path.startsWith('/api/')) assert.match(response.headers.get('cache-control') || '', /no-store/);
     if (path === '/sw.js') assert.match(text, /vocab-shell-v2-[a-f0-9]{16}/);
@@ -32,6 +33,14 @@ try {
       const assets = JSON.parse(text);
       assert.ok(assets.length > 0);
       for (const asset of assets) assert.equal((await request(asset)).status, 200, asset);
+    }
+  }
+  for (const path of ['/api/voice/session', '/api/voice/close', '/api/voice/speech', '/api/voice/feedback']) {
+    for (const [name, extraHeaders, status] of [['unauthenticated', {}, 401], ['cross-origin', { origin: 'https://evil.test' }, 403]]) {
+      const response = await request(path, { method: 'POST', headers: { 'content-type': 'application/json', ...extraHeaders }, body: '{}' });
+      assert.equal(response.status, status, await response.clone().text());
+      assert.match(response.headers.get('cache-control') || '', /no-store/);
+      results.push({ path: `${path} ${name}`, status });
     }
   }
   for (const [name, headers, body, status] of [
@@ -74,6 +83,12 @@ try {
   results.push({ path: 'database bootstrap with existing legacy rate limit table', status: 'passed', preservedRequests: 7 });
   // Test-only identity and credential. No requests are sent to any AI provider.
   const headers = { 'oai-authenticated-user-email': 'smoke@example.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' };
+  const unconfiguredVoice = await request('/api/voice/status', { headers });
+  assert.equal(unconfiguredVoice.status, 200, await unconfiguredVoice.clone().text());
+  const unconfiguredBody = await unconfiguredVoice.json();
+  assert.equal(unconfiguredBody.configured, false);
+  assert.equal(unconfiguredBody.ready, false);
+  results.push({ path: '/api/voice/status authenticated without key', status: 200 });
   const config = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 }) });
   assert.equal(config.status, 200, await config.clone().text());
   const publicConfig = await config.text();
@@ -81,6 +96,11 @@ try {
   assert.equal(JSON.parse(publicConfig).dailyTokenBudget, 50000);
   assert.equal(JSON.parse(publicConfig).maxOutputTokens, 2000);
   assert.doesNotMatch(publicConfig, /test-key|encryptedApiKey|keyIv/);
+  const compatibilityVoice = await request('/api/voice/status', { headers });
+  const compatibilityVoiceBody = await compatibilityVoice.json();
+  assert.equal(compatibilityVoiceBody.configured, true);
+  assert.equal(compatibilityVoiceBody.ready, false, 'voice must not send OpenAI audio to arbitrary compatible providers');
+  results.push({ path: '/api/voice/status compatible provider remains unavailable', status: compatibilityVoice.status });
   results.push({ path: '/api/ai/config authenticated save', status: 200 });
   const body = JSON.stringify({ schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
   const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);
