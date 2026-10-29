@@ -115,8 +115,10 @@ export async function createVoiceSession(request: Request) {
     await voiceIdentity(request);
     const body = await readJsonRequest(request) as Record<string, unknown>;
     const input = topicInput(body);
-    const sdp = text(body.sdp, "sdp", 50_000, 10);
-    if (!sdp.startsWith("v=0") || !sdp.includes("m=audio")) return invalid("WebRTC SDP 无效。");
+    // SDP is a wire protocol, not prose: preserve its final CRLF and all bytes.
+    // trim()/Unicode normalization can turn a browser offer into invalid_offer.
+    const sdp = body.sdp;
+    if (typeof sdp !== "string" || sdp.length < 10 || sdp.length > 50_000 || sdp.includes("\0") || !sdp.startsWith("v=0") || !sdp.includes("m=audio")) return invalid("WebRTC SDP 无效。");
     if (![5, 10, 15, 20].includes(Number(body.minutes)) || typeof body.minutes !== "number") return invalid("请选择 5、10、15 或 20 分钟。");
     if (body.diagnostic !== undefined && typeof body.diagnostic !== "boolean") return invalid("连接测试参数无效。");
     const maxSeconds = body.diagnostic === true ? 20 : Number(body.minutes) * 60;

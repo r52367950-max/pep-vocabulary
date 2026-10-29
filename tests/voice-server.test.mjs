@@ -118,6 +118,7 @@ test('Live uses BYOK fixed host, single active session, durable ownership and id
   assert.equal(calls[0].init.redirect, 'manual');
   assert.equal(new Headers(calls[0].init.headers).get('authorization'), `Bearer ${fakeKey}`);
   assert.equal(calls[0].body.session.store, false);
+  assert.equal(calls[0].body.transport.sdp, voiceInput().sdp, 'browser SDP, including its final CRLF, must reach OpenAI unchanged');
   assert.equal(calls[0].body.session.delegation.responses.model, 'gpt-6.1-terra');
   assert.equal(JSON.stringify(session).includes(fakeKey), false);
   assert.equal((await createVoiceSession(json(voiceInput()))).status, 409);
