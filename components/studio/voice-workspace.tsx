@@ -199,7 +199,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   const shortStatus = snapshot.phase === "closing" ? "正在结束…"
     : snapshot.phase === "connecting" ? "正在连接…"
     : connected ? isDiagnostic ? "Live 已连接" : snapshot.muted ? "麦克风已静音" : "对话进行中"
-    : hasPractice ? "练习已结束"
+    : hasPractice ? "练习回顾"
     : !status && !statusError ? "正在检查语音设置…" : "";
   const sessionNotice = snapshot.phase === "error" || /未能|尚未/.test(snapshot.message)
     ? snapshot.message

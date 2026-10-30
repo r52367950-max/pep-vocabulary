@@ -161,7 +161,7 @@ export class NativeLiveSession {
     try { await audio.play(); if (this.audio === audio) this.update({ playbackBlocked: false }); }
     catch { if (this.audio === audio) this.update({ playbackBlocked: true }); }
   }
-  end(message = "语音已结束。可以检查转写，再获取文字反馈。", failed = false) {
+  end(message = "本机语音已停止。可以检查转写，再获取文字反馈。", failed = false) {
     if (this.endPromise) return this.endPromise;
     if (!["connecting", "connected"].includes(this.snapshot.phase)) return Promise.resolve();
     this.stopCapture(); clearTimeout(this.startupTimer); clearInterval(this.clock); this.abort?.abort();

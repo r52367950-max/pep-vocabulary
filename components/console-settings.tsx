@@ -717,7 +717,7 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.7.2</dd>
+                  <dd>2.7.3</dd>
                 </div>
                 <div>
                   <dt>数据格式</dt>

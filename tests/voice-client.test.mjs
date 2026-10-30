@@ -53,6 +53,24 @@ test("cancelling a pending permission request stops a late microphone and create
   f.client.dispose();
 });
 
+test("unconfirmed remote close stops local capture without claiming the remote session ended", async () => {
+  const f = fixture({ fetch: async (url) => new Response(JSON.stringify(url.endsWith("session") ? reply : { error: "Close unavailable" }), { status: url.endsWith("session") ? 200 : 503 }) });
+  try {
+    await f.client.start(options);
+    f.emit({ type: "session.started" });
+    f.channel.readyState = "closed"; // Lost transport: neither provider nor server acknowledges closure.
+    await f.client.end();
+    assert.equal(f.client.state.phase, "ended");
+    assert.equal(f.client.state.closeConfirmed, false);
+    assert.ok(f.track.stopped > 0);
+    assert.equal(f.audio.srcObject, null);
+    assert.match(f.client.state.message, /本机语音已停止/);
+    assert.match(f.client.state.message, /服务器尚未确认结束/);
+    assert.match(f.client.state.message, /重试关闭上次语音/);
+    assert.doesNotMatch(f.client.state.message, /语音已结束/);
+  } finally { f.client.dispose(); }
+});
+
 test("custom lesson settings reach the server and provider-ended sessions release the lease", async () => {
   const f = fixture();
   try {
