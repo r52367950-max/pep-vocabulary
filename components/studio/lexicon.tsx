@@ -132,6 +132,7 @@ export default function Lexicon({
             autoComplete="off"
             spellCheck={false}
             aria-label="搜索单词或中文释义"
+            aria-keyshortcuts="Meta+K Control+K"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -302,8 +303,9 @@ export default function Lexicon({
                     </span>
                   </button>
                   <button
-                    className={`icon-button ${card?.favorite ? "is-favorite" : ""}`}
+                    className={`icon-button favorite-button ${card?.favorite ? "is-favorite" : ""}`}
                     aria-label={`${card?.favorite ? "取消收藏" : "收藏"} ${entry.headword}`}
+                    aria-pressed={!!card?.favorite}
                     onClick={() =>
                       data.metadata(entry.id, { toggleFavorite: true })
                     }

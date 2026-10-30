@@ -67,6 +67,11 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
           {resume && queue.length > 0 && <button className="fresh-plan" onClick={() => onStart("daily")}>开始今日计划<ChevronRight size={14} aria-hidden="true" /></button>}
         </div>
       </section>
+      <section className="voice-entry-card" aria-labelledby="voice-entry-title">
+        <div className="voice-entry-symbol"><StudioSymbol name="listen" size={32} /></div>
+        <div><h2 id="voice-entry-title">口语与听写</h2><p>聊一个话题，或听写一组词句。</p></div>
+        <div className="voice-entry-actions"><button className="primary" onClick={() => onVoice("speaking")}>开始口语 <ChevronRight size={16} aria-hidden="true" /></button><button className="text-button" onClick={() => onVoice("dictation")}>词句听写</button></div>
+      </section>
       <section className="practice-section" aria-labelledby="practice-title">
         <div className="section-heading"><h2 id="practice-title">记单词</h2></div>
         <div className="practice-grid">
@@ -78,11 +83,6 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
             </button>
           ))}
         </div>
-      </section>
-      <section className="voice-entry-card" aria-labelledby="voice-entry-title">
-        <div className="voice-entry-symbol"><StudioSymbol name="listen" size={32} /></div>
-        <div><h2 id="voice-entry-title">开口练一会儿</h2><p>让 AI 推荐今天的话题，也可以自己决定。</p></div>
-        <div className="voice-entry-actions"><button className="primary" onClick={() => onVoice("speaking")}>开始口语 <ChevronRight size={16} aria-hidden="true" /></button><button className="text-button" onClick={() => onVoice("dictation")}>词句听写</button></div>
       </section>
       <WritingCard data={data} onWrite={onWrite} />
       <div className="today-footnotes">

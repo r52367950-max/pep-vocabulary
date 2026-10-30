@@ -29,7 +29,7 @@
   width: 44px;
   height: 44px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control, 20px);
   background: transparent;
   color: var(--ink);
   cursor: pointer;
@@ -90,7 +90,7 @@
   overflow-wrap: anywhere;
   margin: 0;
 }
-.voice-caption-line.user { width: fit-content; margin-left: auto; padding: 12px 18px; background: var(--grouped); border-radius: 14px; }
+.voice-caption-line.user { width: fit-content; margin-left: auto; padding: 12px 18px; background: var(--grouped); border-radius: var(--radius-card, 28px); }
 .voice-caption-line.user .voice-speaker-label { text-align: right; }
 .voice-caption-empty { color: var(--muted-strong); text-align: center; font-size: 15px; padding-top: 15dvh; }
 .voice-footer {
@@ -148,9 +148,9 @@
   font-size: 14px;
   line-height: 1.5;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-control, 20px);
 }
-.voice-screen .secondary { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.voice-screen .secondary { background: transparent; border: 0; color: var(--ink); }
 .voice-screen .text-button { border: 0; background: transparent; color: var(--muted-strong); padding: 8px 0; }
 .voice-screen .voice-start { min-height: 50px; border: 0; border-radius: 999px; background: var(--ink); color: var(--bg); padding: 12px 24px; }
 .voice-inline-error, .voice-notice {
@@ -177,8 +177,8 @@
   max-height: min(820px, calc(100dvh - 64px));
   padding: 0;
   margin: auto;
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 0;
+  border-radius: var(--radius-sheet, 32px);
   background: var(--bg);
   color: var(--ink);
   overflow: hidden;
@@ -194,9 +194,9 @@
 .voice-dialog input:not([type=checkbox]), .voice-dialog select, .voice-dialog textarea {
   max-width: 100%;
   color: var(--ink);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: var(--grouped);
+  border: 0;
+  border-radius: var(--radius-control, 20px);
   font: inherit;
   font-size: 15px;
 }
@@ -205,36 +205,36 @@
 .voice-setting-row > span { font-size: 15px; }
 .voice-setting-row small { display: block; font-size: 12px; line-height: 1.7; color: var(--muted-strong); margin-top: 5px; }
 .voice-setting-row input, .voice-memory-switch input { width: 24px; height: 24px; accent-color: var(--green); flex-shrink: 0; }
-.voice-settings-section { border-top: 1px solid var(--line); padding: 16px 0; }
+.voice-settings-section { border-top: 0; padding: 24px 0; }
 .voice-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .voice-manual-content { display: grid; gap: 16px; min-width: 0; margin: 10px 0 0; padding: 0; border: 0; }
 .voice-manual-content label { font-size: 13px; line-height: 1.7; }
 .voice-manual-content select, .voice-manual-content textarea, .voice-manual-content input { display: block; width: 100%; min-height: 44px; padding: 10px 12px; margin-top: 6px; }
 .voice-select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .voice-plan-list { display: grid; margin: 10px 0 24px; }
-.voice-plan-list > button { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 60px; width: 100%; padding: 16px 0; background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--line); text-align: left; }
+.voice-plan-list > button { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 60px; width: 100%; padding: 16px 0; background: transparent; color: var(--ink); border: 0; border-bottom: 0; text-align: left; }
 .voice-plan-list > button > svg { flex-shrink: 0; }
 .voice-plan-list strong { display: block; font-size: 15px; font-weight: 600; line-height: 1.7; }
 .voice-plan-list small { display: block; font-size: 12px; line-height: 1.7; color: var(--muted-strong); }
 .voice-plan-list p { font-size: 14px; line-height: 1.7; margin: 8px 0; }
 .voice-settings-link { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px 0; background: transparent; color: var(--ink); border: 0; font-size: 14px; text-align: left; }
 .voice-settings-link > span { flex: 1; }
-.voice-disclosure { margin: 0; border-top: 1px solid var(--line); }
+.voice-disclosure { margin: 0; border-top: 0; }
 .voice-disclosure > summary { display: flex; align-items: center; gap: 14px; list-style: none; cursor: pointer; min-height: 56px; font-size: 14px; }
 .voice-disclosure > summary::-webkit-details-marker { display: none; }
 .voice-disclosure > summary > span:first-child { margin-right: auto; }
 .voice-disclosure > summary > span:last-child { color: var(--muted-strong); font-size: 12px; text-align: right; }
-.voice-disclosure > summary::after { content: '+'; font-size: 18px; color: var(--muted-strong); }
-.voice-disclosure[open] > summary::after { content: '−'; }
+.voice-disclosure > summary::after { content: ''; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin: -4px 4px 0; color: var(--muted-strong); transition: transform .25s ease; }
+.voice-disclosure[open] > summary::after { transform: rotate(225deg); margin-top: 4px; }
 .voice-disclosure > div { padding-bottom: 16px; }
 .voice-targets > div { display: flex; gap: 8px; flex-wrap: wrap; }
-.voice-targets button { min-height: 44px; padding: 8px 10px; background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.voice-targets button { min-height: 44px; padding: 8px 10px; background: transparent; color: var(--ink); border: 0; border-bottom: 0; font-size: 14px; }
 .voice-targets button[aria-pressed=true] { background: var(--green-pale); border-color: var(--green); }
 .voice-memory-switch { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 60px; margin: 14px 0; }
 .voice-memory-switch > span { font-size: 14px; }
 .voice-memory-switch small { display: block; color: var(--muted-strong); font-size: 12px; line-height: 1.7; margin-top: 4px; }
 .voice-memory-list { list-style: none; padding: 0; margin: 0; }
-.voice-memory-list li { border-bottom: 1px solid var(--line); padding: 12px 0; }
+.voice-memory-list li { border-bottom: 0; padding: 12px 0; }
 .voice-memory-list textarea { width: 100%; min-height: 70px; padding: 10px 12px; }
 .voice-memory-list li > div { display: flex; justify-content: flex-end; gap: 16px; padding-top: 3px; }
 .voice-memory-add { display: grid; gap: 8px; margin-top: 20px; }
@@ -243,12 +243,12 @@
 .voice-memory-add button { justify-self: start; }
 .voice-memory-undo { font-size: 13px; }
 .voice-recent-topics { margin-top: 12px; }
-.voice-menu-list { display: grid; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.voice-menu-list { display: grid; border-bottom: 0; padding-bottom: 14px; }
 .voice-menu-list button { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 50px; padding: 10px 0; border: 0; background: transparent; color: var(--ink); font-size: 15px; text-align: left; }
 .voice-menu-list button[aria-current=page] { font-weight: 600; }
 .voice-history { padding-top: 22px; }
 .voice-history ul { list-style: none; margin: 12px 0; padding: 0; }
-.voice-history li { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.voice-history li { display: flex; align-items: center; border-bottom: 0; }
 .voice-history li > button:first-child { display: flex; align-items: center; justify-content: space-between; flex: 1; min-width: 0; gap: 14px; min-height: 64px; padding: 14px 0; background: transparent; color: var(--ink); border: 0; font-size: 14px; text-align: left; line-height: 1.7; }
 .voice-history li > button:first-child > span { overflow-wrap: anywhere; }
 .voice-history small { display: block; font-size: 12px; color: var(--muted-strong); margin-top: 4px; }
@@ -266,15 +266,15 @@
 .voice-discussion-message { max-width: 94%; margin-bottom: 28px; }
 .voice-discussion-message > span { display: block; font-size: 12px; color: var(--muted-strong); margin-bottom: 8px; }
 .voice-discussion-message > p { font-size: 16px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
-.voice-discussion-message.user { width: fit-content; margin-left: auto; background: var(--grouped); padding: 12px 16px; border-radius: 14px; }
+.voice-discussion-message.user { width: fit-content; margin-left: auto; background: var(--grouped); padding: 12px 16px; border-radius: var(--radius-card, 28px); }
 .voice-discussion-form { display: grid; gap: 8px; }
 .voice-discussion-form > label { font-size: 13px; color: var(--muted-strong); }
-.voice-discussion-form > div { display: flex; align-items: flex-end; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.voice-discussion-form > div { display: flex; align-items: flex-end; gap: 12px; padding: 10px 12px; border: 0; border-radius: var(--radius-card, 28px); background: var(--bg); }
 .voice-discussion-form textarea { width: 100%; min-height: 50px; max-height: 240px; font: inherit; font-size: 16px; line-height: 1.7; padding: 4px 0; border: 0; color: var(--ink); background: transparent; resize: vertical; }
 .voice-discussion-form .primary { flex-shrink: 0; width: 44px; height: 44px; padding: 0; border-radius: 50%; background: var(--ink); color: var(--bg); }
-.voice-memory-suggestions { margin: 26px 0; border-top: 1px solid var(--line); padding-top: 14px; }
+.voice-memory-suggestions { margin: 26px 0; border-top: 0; padding-top: 14px; }
 .voice-memory-suggestions > p { font-size: 13px; color: var(--muted-strong); }
-.voice-memory-suggestions > .secondary { display: flex; justify-content: flex-start; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 12px 0; text-align: left; }
+.voice-memory-suggestions > .secondary { display: flex; justify-content: flex-start; gap: 10px; width: 100%; border: 0; border-bottom: 0; border-radius: 0; padding: 12px 0; text-align: left; }
 .voice-memory-suggestions > .secondary > span { flex: 1; line-height: 1.7; }
 .voice-memory-suggestions > .secondary > svg { flex-shrink: 0; }
 .voice-memory-suggestions small { font-size: 12px; line-height: 1.7; color: var(--muted-strong); }
@@ -288,7 +288,7 @@
 .voice-retry { margin: 24px 0; }
 .voice-retry p { font-size: 17px; line-height: 1.7; }
 .voice-expressions { display: grid; margin-top: 20px; }
-.voice-expressions button { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 60px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; }
+.voice-expressions button { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 60px; padding: 14px 0; border: 0; border-bottom: 0; background: transparent; color: var(--ink); text-align: left; }
 .voice-expressions strong { display: block; font-size: 15px; font-weight: 500; line-height: 1.7; }
 .voice-expressions small { display: block; font-size: 12px; color: var(--muted-strong); line-height: 1.7; margin-top: 4px; }
 .voice-transcript-list { padding-top: 10px; }
@@ -301,7 +301,7 @@
 .voice-screen button:focus-visible, .voice-screen summary:focus-visible, .voice-screen input:focus-visible, .voice-screen textarea:focus-visible, .voice-screen select:focus-visible { outline: 2px solid var(--blue-ink); outline-offset: 3px; }
 
 /* Shared entry and API setup surfaces outside the voice workspace. */
-.voice-entry-card { display: flex; align-items: center; gap: 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 24px 0; margin: 25px 0; }
+.voice-entry-card { display: flex; align-items: center; gap: 22px; border-top: 0; border-bottom: 0; padding: 24px 0; margin: 25px 0; }
 .voice-entry-card > div:nth-child(2) { flex: 1; }
 .voice-entry-card h2 { font-size: 19px; font-weight: 550; margin: 0 0 6px; }
 .voice-entry-card p { font-size: 13px; color: var(--muted-strong); line-height: 1.7; margin: 0; }
@@ -309,7 +309,7 @@
 .voice-entry-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .voice-entry-card .voice-entry-actions { flex: none; }
 .voice-entry-actions button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; white-space: nowrap; }
-.openai-setup-card { padding: 20px 0; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.openai-setup-card { padding: 20px 0; border-bottom: 0; margin-bottom: 24px; }
 .openai-setup-card strong { font-size: 15px; font-weight: 600; }
 .openai-setup-card p, .openai-setup-card > small { font-size: 13px; line-height: 1.8; color: var(--muted-strong); }
 .openai-setup-card > small { display: block; margin-top: 10px; }
@@ -325,7 +325,7 @@
   .voice-caption-line.user { max-width: 92%; }
 }
 @media (max-width: 580px) {
-  .voice-dialog { width: 100%; max-height: 100dvh; height: 100dvh; border: 0; border-radius: 0; }
+  .voice-dialog { width: calc(100% - 16px); max-height: calc(100dvh - 20px); height: auto; border: 0; border-radius: var(--radius-sheet, 32px); }
   .voice-dialog-header { padding: max(12px, env(safe-area-inset-top)) 16px 10px; }
   .voice-dialog-content { padding: 0 22px max(24px, env(safe-area-inset-bottom)); }
   .voice-entry-card { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 14px; }
@@ -344,5 +344,45 @@
   .voice-orb-small { width: 30px; margin-bottom: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .voice-screen * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .voice-screen *, .voice-screen *::before, .voice-screen *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* State reflects connection lifecycle, rather than simulated microphone amplitude. */
+.voice-mode-switch { display: flex; align-items: center; gap: 4px; padding: 4px; background: var(--grouped); border-radius: var(--radius-control, 20px); }
+.voice-mode-switch button { min-height: 44px; min-width: 76px; padding: 8px 18px; border: 0; border-radius: calc(var(--radius-control, 20px) - 4px); background: transparent; color: var(--muted-strong); font: inherit; font-size: 14px; transition: background .25s, color .25s, box-shadow .25s; }
+.voice-mode-switch button[aria-pressed=true] { color: var(--ink); background: var(--surface); box-shadow: 0 3px 12px #00000006; }
+.voice-icon-button { transition: background .2s, transform .2s; }
+.voice-icon-button:hover { background: var(--grouped); }
+.voice-orb { position: relative; isolation: isolate; overflow: hidden; animation: voice-float 8s ease-in-out infinite; }
+.voice-orb::before { content: ""; position: absolute; inset: -18%; background: url("/art/voice-mist.png") center / cover; opacity: .92; animation: voice-mist-flow 24s ease-in-out infinite alternate; }
+.voice-orb i { position: absolute; inset: -24%; border-radius: 44% 56% 62% 38%; filter: blur(13px); opacity: .52; background: radial-gradient(ellipse at 42% 32%, var(--surface) 0%, transparent 60%); animation: voice-flow 16s linear infinite; }
+.voice-orb i:nth-child(2) { background: radial-gradient(ellipse at 70% 50%, color-mix(in srgb, var(--blue-ink) 42%, transparent), transparent 62%); animation-duration: 22s; animation-direction: reverse; }
+.voice-orb i:nth-child(3) { background: radial-gradient(ellipse at 35% 80%, color-mix(in srgb, var(--green) 44%, transparent), transparent 58%); animation-duration: 19s; }
+.voice-screen[data-phase=connecting] .voice-orb { animation: voice-connect 2s ease-in-out infinite; }
+.voice-screen[data-phase=connected] .voice-orb::before { animation-duration: 14s; }
+.voice-screen[data-phase=connected] .voice-orb i { animation-duration: 9s; }
+.voice-screen[data-phase=closing] .voice-orb, .voice-screen[data-muted=true] .voice-orb { opacity: .6; }
+.voice-stage-speaking .voice-speaking-stage, .voice-stage-dictation .voice-dictation-stage { animation: voice-stage-enter .55s cubic-bezier(.2,.7,.2,1) both; }
+.voice-stage-dictation .voice-dictation-stage { transform-origin: 50% 15%; }
+.voice-dialog[open] { animation: voice-sheet-enter .3s cubic-bezier(.2,.7,.2,1); }
+.voice-dialog::backdrop { backdrop-filter: blur(5px); }
+.voice-discussion-welcome h2 { margin: 0 0 8px; font-size: 24px; font-weight: 500; line-height: 1.6; }
+.voice-discussion-messages:has(> div:only-child) { margin: 0; }
+.voice-discussion-form > div { background: var(--grouped); padding: 14px 16px; }
+.voice-memory-suggestions > .secondary { background: var(--grouped); border-radius: var(--radius-control, 20px); padding: 14px 16px; margin: 8px 0; }
+.voice-history li { gap: 12px; }
+.voice-history li > button:first-child { padding: 14px 12px; border-radius: var(--radius-control, 20px); }
+.voice-history li > button:first-child:hover, .voice-plan-list > button:hover { background: var(--grouped); }
+.voice-plan-list > button { padding: 16px; border-radius: var(--radius-card, 28px); }
+.voice-disclosure { padding-top: 10px; }
+.voice-targets button { border-radius: var(--radius-control, 20px); background: var(--grouped); padding: 8px 14px; }
+.voice-correction { border-left: 0; padding: 18px 20px; background: var(--grouped); border-radius: var(--radius-card, 28px); }
+@keyframes voice-mist-flow { from { transform: translate(-3%, 2%) rotate(-14deg) scale(1.04); } to { transform: translate(3%, -2%) rotate(16deg) scale(1.12); } }
+@keyframes voice-flow { to { transform: rotate(360deg); } }
+@keyframes voice-float { 50% { transform: translateY(-7px) scale(1.025); } }
+@keyframes voice-connect { 50% { opacity: .55; transform: scale(.96); } }
+@keyframes voice-stage-enter { from { opacity: 0; transform: translateY(18px) scale(.985); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes voice-sheet-enter { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .voice-screen *, .voice-screen *::before, .voice-screen *::after, .voice-dialog[open] { animation: none !important; transition: none !important; } .voice-dialog::backdrop { backdrop-filter: none; } }
+
+@supports (corner-shape: squircle) { .voice-dialog, .voice-mode-switch, .voice-mode-switch button, .voice-dialog input:not([type=checkbox]), .voice-dialog select, .voice-dialog textarea, .voice-discussion-form > div, .voice-correction, .voice-caption-line.user, .voice-discussion-message.user { corner-shape: squircle; } }

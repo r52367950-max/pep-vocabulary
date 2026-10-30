@@ -28,6 +28,8 @@ export function DictationPanel({ entries, active = true }: { entries: LexiconInd
   const requestId = useRef(0);
   const cache = useRef(new Map<string, Blob>());
   const input = useRef<HTMLTextAreaElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const [slow, setSlow] = useState(false);
   const words = useMemo(() => wordDictationItems(entries), [entries]);
   const item = queue[position];
   const result = submitted && item ? compareDictation(item.text, answer) : null;
@@ -64,11 +66,20 @@ export function DictationPanel({ entries, active = true }: { entries: LexiconInd
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [stop]);
 
+  useEffect(() => {
+    if (!active || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const transition = stage.current?.animate?.(
+      [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }],
+      { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" },
+    );
+    return () => transition?.cancel();
+  }, [active, position, queue, historyOpen]);
+
   const resetAnswer = () => { setAnswer(""); setSubmitted(false); setRevealed(false); setHeard(false); setNotice(""); setSource(""); };
   const start = (items: DictationItem[]) => {
     stop(); setQueue(items); setPosition(0); resetAnswer(); setHistoryOpen(false);
   };
-  const changeMode = (next: DictationMode) => { stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
+  const changeMode = (next: DictationMode) => { setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
   const deviceSpeak = (text: string, rate: number, id: number) => {
     if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
       setNotice("此浏览器没有可用的设备朗读。可切换 AI 语音，或在 Safari 中重试。"); return;
@@ -135,13 +146,14 @@ export function DictationPanel({ entries, active = true }: { entries: LexiconInd
 
   return <section className="dictation-panel" aria-label="听写练习" hidden={!active}>
     <div className="dictation-toolbar">
-      <div className="segmented" aria-label="听写类型">
-        <button type="button" aria-pressed={mode === "words"} onClick={() => changeMode("words")}>词与短语</button>
-        <button type="button" aria-pressed={mode === "sentences"} onClick={() => changeMode("sentences")}>句子精听</button>
+      <div className="segmented" aria-label="听写内容">
+        <button type="button" aria-pressed={!historyOpen && mode === "words"} onClick={() => changeMode("words")}>词与短语</button>
+        <button type="button" aria-pressed={!historyOpen && mode === "sentences"} onClick={() => changeMode("sentences")}>句子精听</button>
+        <button type="button" aria-pressed={historyOpen} onClick={() => { stop(); setHistoryOpen(!historyOpen); }}>错题{mistakes.length ? ` · ${mistakes.length}` : ""}</button>
       </div>
-      <button type="button" className="secondary" onClick={() => { stop(); setHistoryOpen(!historyOpen); }}>错题记录{mistakes.length ? ` · ${mistakes.length}` : ""}</button>
     </div>
     {storageError && <p className="dictation-notice" role="status">浏览器未能保存记录；本次仍可练习，离开页面后可能丢失。</p>}
+    <div ref={stage} className="dictation-stage">
     {historyOpen ? <div className="dictation-history">
       <h2>听写错题</h2><p className="dictation-note">保留在此浏览器，最多300条练习记录；不影响单词复习进度。</p>
       {mistakes.length ? <><button type="button" className="primary" onClick={() => start(mistakes.filter((row) => !row.resolved).map((row) => row.item).slice(0, 12))} disabled={!mistakes.some((row) => !row.resolved)}>再练尚未掌握的错题</button>
@@ -149,20 +161,26 @@ export function DictationPanel({ entries, active = true }: { entries: LexiconInd
     </div> : !queue.length ? <div className="dictation-intro">
       <span className="dictation-emblem"><Headphones size={28} aria-hidden="true" /></span>
       <h2>{mode === "words" ? "从耳朵，到笔尖。" : "听清一句话。"}</h2>
-      <p>{mode === "words" ? "从当前词库选取12个词或短语。先听，再写；提交后看差异。" : "12句原创练习，涉及日常、城市、文化、校园、环境与科技。每组6句。"}</p>
+      <p>{mode === "words" ? "听一遍，写下来，再看看哪里需要练习。本组12项。" : "日常与校园主题的原创短句，每组6句。"}</p>
       <button type="button" className="primary" disabled={mode === "words" && !words.length} onClick={() => start(mode === "words" ? selectDictationRound(words, 12) : selectDictationRound(DICTATION_SENTENCES, 6))}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
       {mode === "words" && !words.length && <p role="status">当前范围没有可听写的词，请换一个教材范围。</p>}
-      <p className="dictation-note">不需要麦克风。设备朗读不使用 API，已安装本地英语声音时可离线；AI 语音需网络与已配置的密钥，播放时才请求。</p>
+      <p className="dictation-note">无需麦克风 · 默认使用设备英语声音</p>
     </div> : !item ? <div className="dictation-intro">
       <span className="dictation-emblem"><Check size={28} aria-hidden="true" /></span><h2>这一组，听完了。</h2>
       <p>{queue.length}项练习 · {roundErrors.length ? `${roundErrors.length}项还可以再练` : "本组最近一次均已答对"}</p>
       <div className="dictation-actions">{roundErrors.length > 0 && <button type="button" className="primary" onClick={() => start(roundErrors)}>再练本轮错题</button>}<button type="button" className="secondary" onClick={() => { setQueue([]); resetAnswer(); }}>返回选题</button></div>
     </div> : <div className="dictation-exercise">
       <div className="dictation-meta"><span>{item.mode === "words" ? "词与短语" : "句子精听"} · {position + 1} / {queue.length}</span><button type="button" onClick={() => { stop(); setQueue([]); resetAnswer(); }}>结束本组</button></div>
-      <div className="dictation-audio">
+      <div className={`dictation-audio is-${playback}`}>
         <label className="dictation-voice-label">朗读方式 <select value={voiceChoice} onChange={(event) => { stop(); setVoiceChoice(event.target.value as "device" | "ai"); setSource(""); }}><option value="device">设备朗读 · 不用 API</option><option value="ai">AI 语音 · 联网使用 API</option></select></label>
-        <div className="dictation-actions"><button type="button" className="dictation-play" onClick={() => play(1)} disabled={playback === "loading"}><Volume2 size={24} aria-hidden="true" />{playback === "loading" ? "正在获取音频…" : heard ? "再听一次" : "播放音频"}</button><button type="button" className="secondary" onClick={() => play(0.8)} disabled={playback === "loading"}>慢速 0.8×</button>{playback !== "idle" && <button type="button" className="secondary" onClick={() => { stop(); if (voiceChoice === "ai") setNotice("已停止播放或请求。服务已经处理的请求仍可能计费。"); }}><Square size={14} aria-hidden="true" />停止</button>}</div>
-        <p className="dictation-note" role="status">{source || "答案已隐藏 · 点击播放后开始"}{voiceChoice === "ai" ? " · 本页重复播放使用缓存" : ""}</p>
+        <div className="dictation-actions">
+          <button type="button" className="dictation-play" aria-busy={playback === "loading"} onClick={() => {
+            if (playback !== "idle") { stop(); if (voiceChoice === "ai") setNotice("已停止播放或请求。服务已经处理的请求仍可能计费。"); }
+            else void play(slow ? 0.8 : 1);
+          }}>{playback !== "idle" ? <Square size={22} aria-hidden="true" /> : <Volume2 size={24} aria-hidden="true" />}{playback === "loading" ? "停止获取" : playback === "playing" ? "停止播放" : heard ? "再听一次" : "播放音频"}</button>
+          <button type="button" className="dictation-speed" aria-pressed={slow} disabled={playback === "loading"} onClick={() => { const next = !slow; setSlow(next); if (playback === "playing") void play(next ? 0.8 : 1); }}>0.8× 慢速</button>
+        </div>
+        <p className="dictation-note" role="status">{playback === "loading" ? "正在获取音频…" : source || (voiceChoice === "ai" ? "AI 语音需已配置密钥，播放时请求。" : "播放后写下你听到的内容")}{voiceChoice === "ai" ? " · 本页重复播放使用缓存" : ""}</p>
       </div>
       {notice && <p className="dictation-notice" role="alert">{notice}</p>}
       <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
@@ -176,9 +194,10 @@ export function DictationPanel({ entries, active = true }: { entries: LexiconInd
         {!submitted && <p className="dictation-note">本次已看答案，不记入掌握记录。隐藏答案后可重新听写。</p>}
         {result && !result.correct && <><p className="dictation-note">逐词对照：划线为多写或写错，下方为应写内容。</p><div className="dictation-diff" lang="en">{result.differences.map((part, index) => <span key={index} className={`dictation-token is-${part.kind}`}>{part.kind === "equal" ? part.expected : <>{part.actual && <del>{part.actual}</del>}{part.expected && <ins>{part.expected}</ins>}<small>{part.kind === "missing" ? "漏写" : part.kind === "extra" ? "多写" : "替换"}</small></>}</span>)}</div></>}
         <p className="dictation-note">忽略大小写和标点；接受已列明的常见缩写、英美拼写变体。含歧义的缩写按原文核对。此结果仅比较听写文字。</p>
-        <div className="dictation-actions">{submitted && <button type="button" className="primary" onClick={() => { stop(); setPosition(position + 1); resetAnswer(); input.current?.focus(); }}>下一项 <ArrowRight size={16} aria-hidden="true" /></button>}<button type="button" className="secondary" onClick={() => { stop(); resetAnswer(); input.current?.focus(); }}><RotateCcw size={15} aria-hidden="true" />隐藏答案，再听一次</button></div>
+        <div className="dictation-actions">{submitted && <button type="button" className="primary" onClick={() => { stop(); setPosition(position + 1); resetAnswer(); input.current?.focus(); }}>下一项 <ArrowRight size={16} aria-hidden="true" /></button>}<button type="button" className="secondary" onClick={() => { stop(); resetAnswer(); input.current?.focus(); }}><RotateCcw size={15} aria-hidden="true" />重新听写</button></div>
       </div>}
     </div>}
+    </div>
   </section>;
 }
 export default DictationPanel;

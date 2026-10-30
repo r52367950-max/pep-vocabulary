@@ -24,3 +24,34 @@ CEFR 强调[可理解度与声音、韵律](https://www.coe.int/en/web/common-eu
 话题、难度、时长、AI 推荐与记忆管理进入设置面板；历史与完整转写按需打开。面板关闭不重建语音连接、不丢弃记忆编辑草稿；通话期间禁止加载历史记录或切换练习类型。连接失败、需要补充配置、播放解锁等恢复操作仍在需要时直接呈现。
 
 设计依据为 Apple HIG 的 [Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)、[Toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars) 与 [Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets)，2026-10-30 核对：限制显著操作数量、避免工具栏拥挤、每次只打开一层面板。具体的两按钮语音操作与平面化内容布局是本产品结合使用者截图作出的取舍，并非 Apple 对所有语音界面的规定。
+
+
+## 2.7.2：统一界面与动效（2026-10-30）
+
+主导航移除重复搜索和口语听写入口，首页学习卡下方集中提供口语与听写。品牌图案直接绘制，取消白色图标底板。收藏用统一文字色的空心/实心书签，hover、active 保持透明；键盘 focus-visible 仍保留。
+
+采用 20px 控件、28px 内容、32px 面板与从父半径减去内距的嵌套圆角。支持 `corner-shape: squircle` 的浏览器使用连续圆角，不支持时保留同一半径体系。这里是网页近似，不声称复原苹果私有渲染实现。删除侧栏、词条、设置与语音区域多数装饰分隔线，保留进度、焦点等有意义的状态。
+
+口语/听写在练习页顶部直接切换；通话期间不允许切换。设置、记忆、记录、转写仍在原有生命周期内。语音圆球新增雾状纹理与相位驱动动画，不假装实时麦克风音量。听写进入与题目转换使用位移/淡入，不重新挂载练习状态；慢速切换在播放时立即重新以新速度播放，加载音频期间不可切速。减少动态效果时停用这些动画。
+
+### 设计参考与 Rea 试用
+
+- Apple 设计系统与嵌套圆角：https://developer.apple.com/videos/play/wwdc2025/356/
+- Apple Liquid Glass 内容/控制层：https://developer.apple.com/videos/play/wwdc2025/219/
+- OpenAI UI guidelines：https://developers.openai.com/plugins/concepts/ui-guidelines
+- Rea：https://github.com/morluto/rea
+
+实际下载运行官方 `rea-agents@6.8.0`，禁用安装生命周期脚本，对 Apple 官网公开 `homepage.built.js` 执行静态 JavaScript 分析。文件清单与哈希成功；环境 `ps` 报 `fatal library error, lookup self`，Rea 返回 `capability_unavailable / unsupported_provider`，AST 解析跳过。未绕过进程归属检查，未使用 Chrome CDP。不能将这次尝试描述为成功逆向 Apple 或 OpenAI 的设计实现。
+
+### 语音纹理
+
+路径：`public/art/voice-mist.png`。使用内置 image_gen 生成并复制入项目，CSS 圆形遮罩与漂移动画使用同一素材；没有引用或复制品牌徽标。
+
+生成提示词：Use case: stylized-concept. Asset type: square flowing texture for a minimalist voice companion orb inside a web app. Primary request: OpenAI-inspired calm abstract fluid, pale mint, sea-glass teal and soft azure blue, ethereal translucent cloud-like folds and light diffusing through water. Full-bleed square texture, no spherical boundary, no exterior background, suitable for masking to a circle in CSS and slow drifting animation. Organic soft detail, subtle depth, mostly light, balanced blue/green, refined smooth gradients with a few wispy streaks. No text, no logos, no symbols, no UI, no border, no frame, no starfield, no hard outlines. Generate a texture image not a screenshot.
+
+### 本轮验证
+
+- 类型检查通过；语音客户端、教练与听写相关 24 项测试通过。慢速调整后的 7 项听写回归再次通过。
+- 浏览器预览检查首页、词库收藏/取消、设置、口语/听写切换、草稿保留、听写显示答案；收藏按钮实际计算色值一致、背景透明。
+- 没有调用真实付费语音服务；未用真实 iPad Safari 或系统减少动态设置进行设备验收。CSS 包含相应降级规则。
+- 本轮局部 lint 检查在旧有 voice-workspace 渲染读取 ref 规则处仍有报错，不作为全量 lint 已通过报告。

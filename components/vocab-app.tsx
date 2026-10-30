@@ -12,7 +12,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import {
   CloudOff,
@@ -107,12 +106,8 @@ const Toaster = memo(function Toaster() {
   );
 });
 
-const subscribeNothing = () => () => {};
-const shortcutLabel = () => (/Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "⌘ K" : "Ctrl K");
-
 export default function VocabApp() {
   const data = useVocabulary();
-  const shortcut = useSyncExternalStore(subscribeNothing, shortcutLabel, () => "⌘ K");
   const [view, setView] = useState<View>("today");
   // Views stay mounted once visited (hidden with <Activity>), keeping search, page and open article.
   const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set(["today"]));
@@ -535,26 +530,7 @@ export default function VocabApp() {
         >
           <Brand />
         </button>
-        <button
-          className="sidebar-search"
-          aria-label="搜索词库"
-          onClick={() => {
-            setView("lexicon");
-            setTimeout(
-              () =>
-                document
-                  .querySelector<HTMLInputElement>("#lexicon-search")
-                  ?.focus(),
-              150,
-            );
-          }}
-        >
-          <Search size={17} aria-hidden="true" />
-          <span>搜索</span>
-          <kbd>{shortcut}</kbd>
-        </button>
         <nav className="desktop-nav" aria-label="主要导航">
-          <button onClick={() => showVoice()} aria-label="口语与听写"><StudioSymbol name="listen" size={21} />口语与听写</button>
           {navigation.slice(0, 3).map(({ id, label, symbol }) => (
             <button
               key={id}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Headphones, Menu, Mic, MicOff, Play, Settings2, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Menu, Mic, MicOff, Play, Settings2, Sparkles, Trash2, X } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { NativeLiveSession, appendTranscript, feedbackTranscript, readVoiceHistory, saveVoiceRecord, voiceRequest, VOICE_HISTORY_KEY, type TranscriptTurn, type VoiceFeedback, type VoiceRecord, type VoiceSnapshot, type VoiceStatus } from "@/lib/voice/client";
 import { VOICE_LEVELS, VOICE_TOPICS, getVoiceTopic, type VoiceLevel } from "@/lib/voice/curriculum";
@@ -206,18 +206,23 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     : !active && isDiagnostic && snapshot.phase === "ended" ? snapshot.message : "";
 
   return (
-    <div className={`learn-screen voice-screen ${active ? "voice-screen-active" : ""}`}>
+    <div className={`learn-screen voice-screen ${active ? "voice-screen-active" : ""}`} data-phase={snapshot.phase} data-muted={snapshot.muted}>
       <header className="voice-header">
-        <button className="voice-icon-button" onClick={() => setPanel("menu")} aria-label="打开练习菜单" title="练习菜单">
+        <button className="voice-icon-button" onClick={() => setPanel("menu")} aria-label="打开记录与返回" title="记录与返回">
           <Menu size={24} />
         </button>
-        <span className="voice-header-title">{tab === "speaking" ? "口语练习" : "词句听写"}</span>
+        {active ? <span className="voice-header-title">口语练习</span> : (
+          <nav className="voice-mode-switch" aria-label="练习方式">
+            <button aria-pressed={tab === "speaking"} onClick={() => switchTab("speaking")}>口语</button>
+            <button aria-pressed={tab === "dictation"} onClick={() => switchTab("dictation")}>听写</button>
+          </nav>
+        )}
         <button className="voice-icon-button" onClick={() => setPanel("settings")} aria-label="打开练习设置" title="练习设置">
           <Settings2 size={23} />
         </button>
       </header>
 
-      <main ref={stageRef} onScroll={(event) => { const stage = event.currentTarget; followCaptions.current = stage.scrollHeight - stage.clientHeight - stage.scrollTop < 100; }} className={`voice-stage ${active && captions ? "has-captions" : ""} ${hasPractice && tab === "speaking" ? "has-review" : ""}`}>
+      <main ref={stageRef} onScroll={(event) => { const stage = event.currentTarget; followCaptions.current = stage.scrollHeight - stage.clientHeight - stage.scrollTop < 100; }} className={`voice-stage voice-stage-${tab} ${active && captions ? "has-captions" : ""} ${hasPractice && tab === "speaking" ? "has-review" : ""}`}>
         <section className="voice-speaking-stage" hidden={tab !== "speaking"} aria-label="口语练习">
           {active && captions ? (
             <div className="voice-conversation-feed" aria-label="实时对话文字">
@@ -230,7 +235,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
             </div>
           ) : !hasPractice ? (
             <div className="voice-centered-scene">
-              <div className="voice-orb" aria-hidden="true" />
+              <div className="voice-orb" aria-hidden="true"><i /><i /><i /></div>
               <h1>{sessionTitle}</h1>
               <p>{level} · {minutes} 分钟</p>
             </div>
@@ -266,7 +271,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
 
       {tab === "speaking" && (
         <footer className="voice-footer">
-          {active && captions && <div className="voice-orb voice-orb-small" aria-hidden="true" />}
+          {active && captions && <div className="voice-orb voice-orb-small" aria-hidden="true"><i /><i /><i /></div>}
           <div className="voice-status-line">
             {shortStatus && <span role="status" aria-live="polite">{shortStatus}</span>}
             {active && <span aria-live="off">{time(snapshot.seconds)} / {time(snapshot.maxSeconds)}</span>}
@@ -330,13 +335,11 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
         </footer>
       )}
 
-      <VoiceDialog open={panel !== null} title={panel === "menu" ? "练习菜单" : panel === "review" ? "本次转写与反馈" : "练习设置"} onClose={closePanel}>
+      <VoiceDialog open={panel !== null} title={panel === "menu" ? "练习记录" : panel === "review" ? "转写与反馈" : "练习设置"} onClose={closePanel}>
         <section hidden={panel !== "menu"}>
           <nav className="voice-menu-list" aria-label="练习导航">
             <button onClick={exit}><ArrowLeft size={19} /><span>{active ? "结束并返回词迹" : "返回词迹"}</span></button>
-            <button disabled={active} onClick={() => switchTab("speaking")} aria-current={tab === "speaking" ? "page" : undefined}><Mic size={19} /><span>口语练习</span></button>
-            <button disabled={active} onClick={() => switchTab("dictation")} aria-current={tab === "dictation" ? "page" : undefined}><Headphones size={19} /><span>词句听写</span></button>
-            {hasPractice && <button disabled={active} onClick={() => setPanel("review")}><ArrowRight size={19} /><span>本次转写与反馈</span></button>}
+            {hasPractice && <button disabled={active} onClick={() => setPanel("review")}><ArrowRight size={19} /><span>转写与反馈</span></button>}
           </nav>
           <section className="voice-history" aria-label="最近练习">
             <h3>最近练习</h3>
