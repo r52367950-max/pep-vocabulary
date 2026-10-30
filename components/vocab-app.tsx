@@ -120,6 +120,7 @@ export default function VocabApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<"general" | "ai">("general");
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceInitialTab, setVoiceInitialTab] = useState<"speaking" | "dictation">("speaking");
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
@@ -355,7 +356,7 @@ export default function VocabApp() {
   const showLexicon = useCallback(() => setView("lexicon"), []);
   const showReading = useCallback(() => setView("reading"), []);
   const showActivity = useCallback(() => setView("activity"), []);
-  const showVoice = useCallback(() => setVoiceOpen(true), []);
+  const showVoice = useCallback((tab: "speaking" | "dictation" = "speaking") => { setVoiceInitialTab(tab); setVoiceOpen(true); }, []);
   const resumeSession = useMemo(
     () =>
       resume
@@ -410,6 +411,7 @@ export default function VocabApp() {
       localStorage.removeItem("pep-vocab-cloud-link-v2");
       localStorage.removeItem("pep-vocab-sync-revision");
       localStorage.removeItem("pep-vocab-voice-history-v1");
+      localStorage.removeItem("pep-vocab-voice-captions-v1");
       localStorage.removeItem("vocab-studio:voice-dictation:v1");
       onReplaced();
       await data.reload();
@@ -515,7 +517,7 @@ export default function VocabApp() {
   if (voiceOpen)
     return <>
       <Suspense fallback={<Pending />}>
-        <VoiceWorkspace entries={scope} onClose={() => setVoiceOpen(false)} onOpenSettings={() => { setSettingsSection("ai"); setSettingsOpen(true); }} />
+        <VoiceWorkspace initialTab={voiceInitialTab} entries={scope} onClose={() => setVoiceOpen(false)} onOpenSettings={() => { setSettingsSection("ai"); setSettingsOpen(true); }} />
       </Suspense>
       {settingsOpen && <Suspense fallback={null}><SettingsDialog initialSection={settingsSection} data={data} onClose={() => { setSettingsOpen(false); setSettingsSection("general"); }} onClear={clear} onReplaced={onReplaced} /></Suspense>}
       {toast}
@@ -552,7 +554,7 @@ export default function VocabApp() {
           <kbd>{shortcut}</kbd>
         </button>
         <nav className="desktop-nav" aria-label="主要导航">
-          <button onClick={showVoice} aria-label="口语与听写"><StudioSymbol name="listen" size={21} />口语与听写</button>
+          <button onClick={() => showVoice()} aria-label="口语与听写"><StudioSymbol name="listen" size={21} />口语与听写</button>
           {navigation.slice(0, 3).map(({ id, label, symbol }) => (
             <button
               key={id}

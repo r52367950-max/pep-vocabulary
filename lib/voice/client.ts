@@ -2,7 +2,7 @@ export type VoicePhase = "idle" | "connecting" | "connected" | "closing" | "ende
 export type VoiceStatus = { configured: boolean; ready: boolean; reason?: string; models: { voice: string; text: string }; dailySecondsLimit?: number; usedSeconds?: number; remainingSeconds?: number; resetsAt?: string; timeLimitNotice?: string; activeSession?: { sessionId: string; expiresAt: string } | null };
 export type TranscriptTurn = { role: "user" | "assistant"; text: string; startMs?: number; endMs?: number };
 export type VoiceFeedback = { strength: string; improvements: { original: string; suggestion: string; reason: string }[]; retryPrompt: string; expressions: { text: string; meaning: string }[] };
-export type VoiceOptions = { topicId: string; level: string; minutes: number; diagnostic?: boolean; targetWords?: string[] };
+export type VoiceOptions = { topicId: string; level: string; minutes: number; diagnostic?: boolean; targetWords?: string[]; customTopic?: string; goal?: string; openingPrompt?: string };
 export type VoiceSnapshot = { phase: VoicePhase; message: string; muted: boolean; paused: boolean; playbackBlocked: boolean; seconds: number; usageSeconds: number | null; maxSeconds: number; closeConfirmed: boolean };
 type VoiceEvent = { type?: string; delta?: string; start_ms?: number; end_ms?: number; event_id?: string; usage?: { seconds?: number }; error?: { message?: string }; session?: { id?: string } };
 type SessionReply = { sessionId: string; sdp: string; model: string; maxSeconds: number };
@@ -129,7 +129,18 @@ export class NativeLiveSession {
     } else if (event.type === "session.closed") {
       this.update({ usageSeconds: event.usage?.seconds ?? this.snapshot.usageSeconds, closeConfirmed: true });
       if (this.closedResolve) this.closedResolve();
-      else { this.generation++; this.cleanup(); this.sessionId = undefined; this.update({ phase: "ended", message: "语音练习已结束。" }); }
+      else {
+        const sessionId = this.sessionId;
+        const generation = ++this.generation; this.cleanup(); this.sessionId = undefined;
+        // The provider can end a session independently. Release the application's
+        // ownership lease too, so a completed call does not block the next one.
+        if (sessionId) {
+          this.update({ phase: "closing", message: "语音已结束，正在整理会话状态…" });
+          this.endPromise = this.closeRemote(sessionId).then((released) => {
+            if (this.generation === generation) this.update({ phase: "ended", message: released ? "语音练习已结束。" : "语音已结束，会话状态尚未同步；请重试关闭上次语音。" });
+          });
+        } else this.update({ phase: "ended", message: "语音练习已结束。" });
+      }
     } else if (event.type === "error") this.update({ message: "语音服务未能处理操作。可以结束后重试。" });
   }
   mute(muted: boolean) {
@@ -198,7 +209,8 @@ export function appendTranscript(turns: TranscriptTurn[], fragment: TranscriptTu
   return copy.slice(-150);
 }
 
-export type VoiceRecord = { id: string; createdAt: string; topicId: string; level: string; seconds: number; transcript: TranscriptTurn[]; feedback?: VoiceFeedback };
+export type VoiceDiscussionTurn = { role: "user" | "assistant"; text: string };
+export type VoiceRecord = { id: string; createdAt: string; topicId: string; level: string; seconds: number; transcript: TranscriptTurn[]; feedback?: VoiceFeedback; discussion?: VoiceDiscussionTurn[]; customTopic?: string; goal?: string; openingPrompt?: string };
 /** Bound the feedback request, leaving the complete local transcript available to the learner. */
 export function feedbackTranscript(turns: TranscriptTurn[], maximum = 18000): TranscriptTurn[] {
   let remaining = maximum;
@@ -213,7 +225,17 @@ export function feedbackTranscript(turns: TranscriptTurn[], maximum = 18000): Tr
 }
 export const VOICE_HISTORY_KEY = "pep-vocab-voice-history-v1";
 export function readVoiceHistory(storage: Pick<Storage, "getItem">): VoiceRecord[] {
-  try { const rows: unknown = JSON.parse(storage.getItem(VOICE_HISTORY_KEY) || "[]"); return Array.isArray(rows) ? rows.filter((row): row is VoiceRecord => row && typeof row.id === "string" && typeof row.topicId === "string" && Array.isArray(row.transcript) && row.transcript.every((turn: TranscriptTurn) => turn && ["user", "assistant"].includes(turn.role) && typeof turn.text === "string")).slice(0, 12) : []; } catch { return []; }
+  try {
+    const rows: unknown = JSON.parse(storage.getItem(VOICE_HISTORY_KEY) || "[]");
+    if (!Array.isArray(rows)) return [];
+    return rows.filter((row): row is VoiceRecord => row && typeof row.id === "string" && typeof row.topicId === "string" && Array.isArray(row.transcript) && row.transcript.every((turn: TranscriptTurn) => turn && ["user", "assistant"].includes(turn.role) && typeof turn.text === "string")).slice(0, 12).map((row) => ({
+      ...row,
+      customTopic: typeof row.customTopic === "string" ? row.customTopic.slice(0, 500) : undefined,
+      goal: typeof row.goal === "string" ? row.goal.slice(0, 500) : undefined,
+      openingPrompt: typeof row.openingPrompt === "string" ? row.openingPrompt.slice(0, 500) : undefined,
+      discussion: Array.isArray(row.discussion) ? row.discussion.filter((turn) => turn && ["user", "assistant"].includes(turn.role) && typeof turn.text === "string").slice(-20).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 4000) })) : [],
+    }));
+  } catch { return []; }
 }
 export function saveVoiceRecord(storage: Pick<Storage, "getItem" | "setItem">, record: VoiceRecord) {
   const rows = [record, ...readVoiceHistory(storage).filter((item) => item.id !== record.id)].slice(0, 12);

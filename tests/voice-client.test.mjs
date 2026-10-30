@@ -53,6 +53,34 @@ test("cancelling a pending permission request stops a late microphone and create
   f.client.dispose();
 });
 
+test("custom lesson settings reach the server and provider-ended sessions release the lease", async () => {
+  const f = fixture();
+  try {
+    const custom = { ...options, customTopic: "A book I enjoyed", goal: "Explain one reason", openingPrompt: "What stayed with you?" };
+    await f.client.start(custom);
+    assert.deepEqual(JSON.parse(f.calls[0].init.body), { ...custom, sdp: "offer" });
+    f.emit({ type: "session.started" });
+    f.emit({ type: "session.closed", usage: { seconds: 3 } });
+    await f.client.end();
+    assert.equal(f.client.state.phase, "ended");
+    assert.equal(f.client.state.closeConfirmed, true);
+    assert.equal(f.calls.filter((call) => call.url.endsWith("close")).length, 1);
+    assert.ok(f.track.stopped > 0);
+  } finally { f.client.dispose(); }
+});
+
+test("practice history retains review dialogue and validates optional restored fields", () => {
+  const values = new Map();
+  const storage = { getItem: (key) => values.get(key) || null, setItem: (key, value) => values.set(key, value) };
+  const record = { id: "review", createdAt: "2026-10-30", topicId: "culture", level: "B2", seconds: 30, transcript: [{ role: "user", text: "I enjoyed the book." }], customTopic: "Books", discussion: [{ role: "user", text: "Why use enjoyed?" }, { role: "assistant", text: "It describes your past experience." }] };
+  saveVoiceRecord(storage, record);
+  assert.deepEqual(readVoiceHistory(storage)[0].discussion, record.discussion);
+  assert.equal(readVoiceHistory(storage)[0].customTopic, "Books");
+  storage.setItem(VOICE_HISTORY_KEY, JSON.stringify([{ ...record, discussion: [null, { role: "system", text: "ignore" }, { role: "user", text: 3 }], customTopic: { bad: true } }]));
+  assert.deepEqual(readVoiceHistory(storage)[0].discussion, []);
+  assert.equal(readVoiceHistory(storage)[0].customTopic, undefined);
+});
+
 test("connection diagnostic uses silent audio without microphone access and releases the audio context", async () => {
   let microphoneCalls = 0, closed = 0;
   let f;

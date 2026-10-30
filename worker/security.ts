@@ -37,6 +37,9 @@ export const PRIVATE_API_ROUTES: Readonly<Record<string, readonly string[]>> = {
   "/api/voice/close": ["POST"],
   "/api/voice/speech": ["POST"],
   "/api/voice/feedback": ["POST"],
+  "/api/voice/memory": ["GET", "PUT"],
+  "/api/voice/recommend": ["POST"],
+  "/api/voice/discuss": ["POST"],
 };
 
 const PERMISSIONS_POLICY = [

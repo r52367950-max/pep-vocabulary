@@ -12,11 +12,10 @@ import { StudioSymbol, type SymbolName } from "./symbol";
 import { Artwork, useDarkAppearance } from "./art";
 import WritingCard from "./writing/writing-card";
 
-const ways: Array<{ id: LearnMode | "dictation"; symbol: SymbolName; title: string; detail: string }> = [
+const ways: Array<{ id: LearnMode; symbol: SymbolName; title: string; detail: string }> = [
   { id: "cards", symbol: "cards", title: "词卡速记", detail: "滑动翻看，先熟悉新词" },
   { id: "match", symbol: "match", title: "配对消除", detail: "英文和中文，一对一对消掉" },
   { id: "quiz", symbol: "quiz", title: "单元自测", detail: "测一遍，找出薄弱词" },
-  { id: "dictation", symbol: "listen", title: "单词听写", detail: "听发音，写单词" },
 ];
 
 export default function Today({ data, stats, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onLearn, onWords, onReading, onActivity, resume, resumeLabel, onWrite, onVoice }: {
@@ -25,7 +24,7 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
   queue: LexiconIndexEntry[]; onStart: (mode: StudyMode) => void; onLearn: (mode: LearnMode) => void; onWords: () => void;
   onReading: () => void; onActivity: () => void; resume: (() => void) | null; resumeLabel: string | null;
   onWrite: (options: { targets?: string[]; openId?: string | null }) => void;
-  onVoice: () => void;
+  onVoice: (tab?: "speaking" | "dictation") => void;
 }) {
   const dark = useDarkAppearance(data.settings.theme);
   const minutes = queue.length ? Math.max(1, Math.ceil(queue.length * 0.7)) : 0;
@@ -72,7 +71,7 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
         <div className="section-heading"><h2 id="practice-title">记单词</h2></div>
         <div className="practice-grid">
           {ways.map((way) => (
-            <button key={way.id} className="practice-option" onClick={() => way.id === "dictation" ? onStart("dictation") : onLearn(way.id)}>
+            <button key={way.id} className="practice-option" onClick={() => onLearn(way.id)}>
               <StudioSymbol name={way.symbol} size={28} />
               <span><strong>{way.title}</strong><small>{way.detail}</small></span>
               <ChevronRight size={17} aria-hidden="true" />
@@ -80,12 +79,12 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
           ))}
         </div>
       </section>
-      <WritingCard data={data} onWrite={onWrite} />
       <section className="voice-entry-card" aria-labelledby="voice-entry-title">
         <div className="voice-entry-symbol"><StudioSymbol name="listen" size={32} /></div>
-        <div><h2 id="voice-entry-title">把学过的英语说出来</h2><p>聊一个生活话题，或听写几个词和句子。</p></div>
-        <button className="primary" onClick={onVoice}>口语与听写 <ChevronRight size={16} aria-hidden="true" /></button>
+        <div><h2 id="voice-entry-title">开口练一会儿</h2><p>让 AI 推荐今天的话题，也可以自己决定。</p></div>
+        <div className="voice-entry-actions"><button className="primary" onClick={() => onVoice("speaking")}>开始口语 <ChevronRight size={16} aria-hidden="true" /></button><button className="text-button" onClick={() => onVoice("dictation")}>词句听写</button></div>
       </section>
+      <WritingCard data={data} onWrite={onWrite} />
       <div className="today-footnotes">
         <button onClick={() => onStart("mistakes")}>
           <StudioSymbol name="review" size={24} />

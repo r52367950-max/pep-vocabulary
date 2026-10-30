@@ -37,3 +37,12 @@ export const aiPreferences = sqliteTable("ai_preferences", {
   maxOutputTokens: integer("max_output_tokens"),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const voiceLearningMemories = sqliteTable("voice_learning_memories", {
+  userKey: text("user_key").primaryKey(),
+  revision: integer("revision").notNull().default(1),
+  enabled: integer("enabled").notNull().default(1),
+  notes: text("notes").notNull().default("[]"),
+  recentTopics: text("recent_topics").notNull().default("[]"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

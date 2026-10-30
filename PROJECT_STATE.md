@@ -1,16 +1,16 @@
 # 项目状态入口
 
-核对日期：2026-09-29；基于分支 `optimize/backend-2.5`（2.5.0 后端与数据可靠性升级）。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
+核对日期：2026-10-30；包含 2.7.0 听说界面、学习记忆与复盘对话升级。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.5.0 | `package.json` |
+| 应用版本 | 2.7.0 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0 | `public/data/v1/manifest.json` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
 | 本机个人文章 | 独立 IndexedDB；不包含在学习 JSON 备份中 | `lib/personal-readings.ts`、`lib/storage.ts` |
 | 云端备份 | 带 revision 冲突保护的手动快照，尚无自动事件合并 | `app/api/sync/route.ts` |
-| 数据库迁移 | 0000–0005（0004 增加限流过期索引；0005 增加配置并发写入标记） | `drizzle/` 与迁移 journal |
+| 数据库迁移 | 0000–0006（0006 新增账号学习记忆，保留 revision 冲突保护） | `drizzle/` 与迁移 journal |
 
 当前仓库功能见 [README](README.md)，开发约定见 [AGENTS.md](AGENTS.md)。版本、测试数量和数据缺口以后以对应代码、生成数据与本次执行结果为准，不把这里的快照作为永久常量。
 

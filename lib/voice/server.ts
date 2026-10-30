@@ -6,6 +6,7 @@ import { AssistantInputError, AssistantUpstreamError, parseUsage, usesOpenAIResp
 import { reserveTokens, settleTokens } from "@/lib/assistant/usage";
 import { buildTutorInstructions, VOICE_TOPICS, type VoiceLevel } from "./curriculum";
 import { SPEECH_MODEL, VOICE_MODEL, closeOpenAISession, speechAudio, voiceOpenAI } from "./openai";
+import { liveLearningContext, readVoiceMemory, voiceCustomContext } from "./coach-server";
 
 export const VOICE_DAILY_SECONDS = 3600;
 const SESSION_ID = /^[A-Za-z0-9_-]{4,200}$/;
@@ -115,6 +116,7 @@ export async function createVoiceSession(request: Request) {
     await voiceIdentity(request);
     const body = await readJsonRequest(request) as Record<string, unknown>;
     const input = topicInput(body);
+    const custom = voiceCustomContext(body);
     // SDP is a wire protocol, not prose: preserve its final CRLF and all bytes.
     // trim()/Unicode normalization can turn a browser offer into invalid_offer.
     const sdp = body.sdp;
@@ -126,7 +128,7 @@ export async function createVoiceSession(request: Request) {
     await voiceLimit(config.userKey, "session", 3);
     lock = { userKey: config.userKey, until: await claimActive(config.userKey, maxSeconds) };
     await reserveVoiceSeconds(config.userKey, maxSeconds);
-    const instructions = body.diagnostic === true ? "This is a brief voice connection test. Say one short English greeting when prompted, then remain silent. Do not ask questions or continue talking." : buildTutorInstructions(input);
+    const instructions = body.diagnostic === true ? "This is a brief voice connection test. Say one short English greeting when prompted, then remain silent. Do not ask questions or continue talking." : `${buildTutorInstructions(input)}\n${liveLearningContext(await readVoiceMemory(config.userKey), custom)}`;
     // Text delegation is metered independently from audio. Unknown final usage retains this estimate.
     await reserveTokens(config.userKey, config.dailyTokenBudget, instructions, Math.min(30_000, maxSeconds * 24));
     const payload = await voiceOpenAI(request, config.apiKey, "/v1/live/sessions", {

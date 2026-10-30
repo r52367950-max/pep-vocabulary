@@ -7,7 +7,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules:
 const results = [];
 try {
   const request = async (path, init) => mf.dispatchFetch(`http://localhost${path}`, init);
-  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401], ['/api/voice/status', 401]]) {
+  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401], ['/api/voice/status', 401], ['/api/voice/memory', 401]]) {
     const response = await request(path);
     const text = await response.text();
     assert.equal(response.status, expected, `${path}: ${text.slice(0, 120)}`);
@@ -35,9 +35,9 @@ try {
       for (const asset of assets) assert.equal((await request(asset)).status, 200, asset);
     }
   }
-  for (const path of ['/api/voice/session', '/api/voice/close', '/api/voice/speech', '/api/voice/feedback']) {
+  for (const path of ['/api/voice/session', '/api/voice/close', '/api/voice/speech', '/api/voice/feedback', '/api/voice/recommend', '/api/voice/discuss', '/api/voice/memory']) {
     for (const [name, extraHeaders, status] of [['unauthenticated', {}, 401], ['cross-origin', { origin: 'https://evil.test' }, 403]]) {
-      const response = await request(path, { method: 'POST', headers: { 'content-type': 'application/json', ...extraHeaders }, body: '{}' });
+      const response = await request(path, { method: path.endsWith('/memory') ? 'PUT' : 'POST', headers: { 'content-type': 'application/json', ...extraHeaders }, body: '{}' });
       assert.equal(response.status, status, await response.clone().text());
       assert.match(response.headers.get('cache-control') || '', /no-store/);
       results.push({ path: `${path} ${name}`, status });
@@ -83,6 +83,41 @@ try {
   results.push({ path: 'database bootstrap with existing legacy rate limit table', status: 'passed', preservedRequests: 7 });
   // Test-only identity and credential. No requests are sent to any AI provider.
   const headers = { 'oai-authenticated-user-email': 'smoke@example.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' };
+  // Learning memory is an account record; it must work without an API key and
+  // survive route invocations without trusting a browser-supplied account ID.
+  const initialMemoryResponse = await request('/api/voice/memory', { headers });
+  assert.equal(initialMemoryResponse.status, 200, await initialMemoryResponse.clone().text());
+  const initialMemory = await initialMemoryResponse.json();
+  assert.equal(initialMemory.revision, 0);
+  assert.deepEqual(initialMemory.notes, []);
+  const memoryDraft = { revision: 0, enabled: true, notes: [{ id: 'note_smoke_1', text: 'Practice discussing books and explaining an opinion.' }], recentTopics: ['culture'] };
+  const memoryWrites = await Promise.all([1, 2].map(() => request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify(memoryDraft) })));
+  assert.deepEqual(memoryWrites.map(r => r.status).sort(), [200, 409], 'concurrent memory edits must not silently overwrite');
+  const memoryResponse = await request('/api/voice/memory', { headers });
+  assert.match(memoryResponse.headers.get('cache-control') || '', /no-store/);
+  const savedMemory = await memoryResponse.json();
+  assert.equal(savedMemory.revision, 1);
+  assert.equal(savedMemory.enabled, true);
+  assert.deepEqual(savedMemory.notes, memoryDraft.notes);
+  assert.deepEqual(savedMemory.recentTopics, memoryDraft.recentTopics);
+  const otherHeaders = { ...headers, 'oai-authenticated-user-email': 'another-smoke@example.test' };
+  const otherMemory = await (await request('/api/voice/memory', { headers: otherHeaders })).json();
+  assert.equal(otherMemory.revision, 0);
+  assert.deepEqual(otherMemory.notes, [], 'a second account must not see the first account learning memory');
+  const otherWrite = await request('/api/voice/memory', { method: 'PUT', headers: otherHeaders, body: JSON.stringify({ revision: 0, enabled: false, notes: [{ id: 'note_other_1', text: 'Practice travel conversations.' }], recentTopics: [] }) });
+  assert.equal(otherWrite.status, 200, await otherWrite.clone().text());
+  assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, memoryDraft.notes);
+  await bootstrap(db);
+  assert.deepEqual(await (await request('/api/voice/memory', { headers })).json(), savedMemory, 'bootstrap replay preserves saved memory');
+  const clearMemory = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ revision: savedMemory.revision, enabled: false, notes: [], recentTopics: [] }) });
+  assert.equal(clearMemory.status, 200, await clearMemory.clone().text());
+  const clearedMemory = await (await request('/api/voice/memory', { headers })).json();
+  assert.equal(clearedMemory.revision, 2);
+  assert.equal(clearedMemory.enabled, false);
+  assert.deepEqual(clearedMemory.notes, []);
+  assert.deepEqual(clearedMemory.recentTopics, []);
+  assert.equal((await (await request('/api/voice/memory', { headers: otherHeaders })).json()).notes.length, 1);
+  results.push({ path: '/api/voice/memory persists, isolates accounts, rejects stale edits, and clears without paid calls', status: 'passed' });
   const unconfiguredVoice = await request('/api/voice/status', { headers });
   assert.equal(unconfiguredVoice.status, 200, await unconfiguredVoice.clone().text());
   const unconfiguredBody = await unconfiguredVoice.json();
