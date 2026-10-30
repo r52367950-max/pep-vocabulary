@@ -1,10 +1,10 @@
 # 项目状态入口
 
-核对日期：2026-10-30；包含 2.7.0 听说界面、学习记忆与复盘对话升级。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
+核对日期：2026-10-30；包含 2.7.1 语音界面简化；保留长期学习记忆与复盘对话。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.7.0 | `package.json` |
+| 应用版本 | 2.7.1 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0 | `public/data/v1/manifest.json` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
