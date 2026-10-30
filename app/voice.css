@@ -232,6 +232,7 @@
 .voice-targets button[aria-pressed=true] { background: var(--green-pale); border-color: var(--green); }
 .voice-memory-switch { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 60px; margin: 14px 0; }
 .voice-memory-switch > span { font-size: 14px; }
+.voice-memory-switch select { flex: 0 0 88px; min-width: 88px; }
 .voice-memory-switch small { display: block; color: var(--muted-strong); font-size: 12px; line-height: 1.7; margin-top: 4px; }
 .voice-memory-list { list-style: none; padding: 0; margin: 0; }
 .voice-memory-list li { border-bottom: 0; padding: 12px 0; }

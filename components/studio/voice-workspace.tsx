@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeft, ArrowRight, Check, Menu, Mic, MicOff, Play, Settings2, Sparkles, Trash2, X } from "lucide-react";
+import { learningContextStore, refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { NativeLiveSession, appendTranscript, feedbackTranscript, readVoiceHistory, saveVoiceRecord, voiceRequest, VOICE_HISTORY_KEY, type TranscriptTurn, type VoiceFeedback, type VoiceRecord, type VoiceSnapshot, type VoiceStatus } from "@/lib/voice/client";
 import { VOICE_LEVELS, VOICE_TOPICS, getVoiceTopic, type VoiceLevel } from "@/lib/voice/curriculum";
@@ -17,6 +18,15 @@ type Plan = { topicId: string; level: VoiceLevel; minutes: number; title: string
 type RecordMeta = Pick<VoiceRecord, "id" | "createdAt" | "topicId" | "level" | "customTopic" | "goal" | "openingPrompt">;
 
 export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initialTab = "speaking" }: { entries: LexiconIndexEntry[]; onClose: () => void; onOpenSettings: () => void; initialTab?: "speaking" | "dictation" }) {
+  const privacy = useSyncExternalStore(learningContextStore.subscribe, learningContextStore.get, learningContextStore.getServerSnapshot);
+  const [dictationLive, setDictationLive] = useState(false);
+  const [dictationUnconfirmed, setDictationUnconfirmed] = useState(false);
+  const [closeBusy, setCloseBusy] = useState(false);
+  const closePending = useRef(false);
+  const startPending = useRef(false);
+  const sessionPolicy = useRef<{ scope: string; temporary: boolean; revision: number } | null>(null);
+  const previousPolicy = useRef<{ scope: string; temporary: boolean; epoch: number } | null>(null);
+  const historyStorage = (scope: string) => ({ getItem: (key: string) => localStorage.getItem(`${key}:${scope}`), setItem: (key: string, value: string) => localStorage.setItem(`${key}:${scope}`, value) });
   const [tab, setTab] = useState<"speaking" | "dictation">(initialTab);
   const [status, setStatus] = useState<VoiceStatus | null>(null);
   const [statusError, setStatusError] = useState("");
@@ -65,13 +75,13 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   const refreshStatus = useCallback(async () => {
     statusAbort.current?.abort(); const abort = new AbortController(); statusAbort.current = abort;
     try { const value = await voiceRequest<VoiceStatus>("/api/voice/status", undefined, abort.signal); if (mounted.current && !abort.signal.aborted) { setStatus(value); setStatusError(""); } }
-    catch (error) { if (mounted.current && !abort.signal.aborted) setStatusError(error instanceof Error ? error.message : "暂时无法检查语音设置。"); }
+    catch (error) { if (mounted.current && !abort.signal.aborted) { setStatus(null); setStatusError(error instanceof Error ? error.message : "暂时无法检查语音设置。"); } }
   }, []);
   useEffect(() => {
     mounted.current = true;
     const transport = new NativeLiveSession({ onState: (state) => { if (mounted.current) setSnapshot(state); }, onTranscript: (turn) => { if (mounted.current) setTranscript((current) => appendTranscript(current, turn)); } });
     client.current = transport;
-    queueMicrotask(() => { if (mounted.current) { try { setHistory(readVoiceHistory(localStorage)); setCaptions(localStorage.getItem(CAPTIONS_KEY) !== "hidden"); } catch { setStorageError("当前浏览器不允许保存本机记录。"); } void refreshStatus(); } });
+    queueMicrotask(() => { if (mounted.current) { try { setCaptions(localStorage.getItem(CAPTIONS_KEY) !== "hidden"); } catch { setStorageError("当前浏览器不允许保存本机记录。"); } void refreshStatus(); } });
     let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
     let hiddenAt = 0;
     const stopHidden = () => { void transport.end("离开页面超过 30 秒，语音已停止。可手动开始下一次练习。"); };
@@ -82,25 +92,57 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   }, [refreshStatus]);
   useEffect(() => { if (["ended", "error"].includes(snapshot.phase)) queueMicrotask(() => { if (mounted.current) void refreshStatus(); }); }, [snapshot.phase, snapshot.closeConfirmed, refreshStatus]);
   useEffect(() => {
-    if (!["ended", "error"].includes(snapshot.phase) || !recordMeta.current || !transcript.length || saved) return;
-    const record: VoiceRecord = { ...recordMeta.current, seconds: snapshot.seconds, transcript, discussion, ...(feedback ? { feedback } : {}) };
-    try { setHistory(saveVoiceRecord(localStorage, record)); setSaved(true); setStorageError(""); }
+    const policy = sessionPolicy.current;
+    if (!policy || policy.temporary || privacy.temporary || !privacy.memory || policy.scope !== privacy.memory.accountScope || !["ended", "error"].includes(snapshot.phase) || !recordMeta.current || !transcript.length || saved) return;
+    const record: VoiceRecord = { ...recordMeta.current, contextRevision: policy.revision, seconds: snapshot.seconds, transcript, discussion, ...(feedback ? { feedback } : {}) };
+    try { setHistory(saveVoiceRecord(historyStorage(policy.scope), record)); setSaved(true); setStorageError(""); }
     catch { setStorageError("此浏览器暂时无法保存记录，请在离开前复制需要的文字。"); }
-  }, [snapshot.phase, snapshot.seconds, transcript, saved, feedback, discussion]);
+  }, [snapshot.phase, snapshot.seconds, transcript, saved, feedback, discussion, privacy.temporary, privacy.memory]);
   useEffect(() => {
     const meta = recordMeta.current;
-    if (!hasPractice || !meta || !memory.memory?.enabled || memory.busy || rememberedTopics.current.has(meta.id)) return;
+    if (privacy.temporary || !hasPractice || !meta || !memory.memory?.enabled || memory.busy || rememberedTopics.current.has(meta.id)) return;
     rememberedTopics.current.add(meta.id);
     void memory.rememberTopic((meta.customTopic || getVoiceTopic(meta.topicId).title).slice(0, 160));
-  }, [hasPractice, memory.memory, memory.busy, memory.rememberTopic]);
+  }, [hasPractice, memory.memory, memory.busy, memory.rememberTopic, privacy.temporary]);
   useEffect(() => {
     if (!active || !captions || !followCaptions.current) return;
     const stage = stageRef.current;
     if (stage) stage.scrollTop = stage.scrollHeight;
   }, [active, captions, transcript]);
+  useEffect(() => {
+    const current = { scope: privacy.memory?.accountScope || "", temporary: privacy.temporary, epoch: privacy.epoch };
+    const previous = previousPolicy.current;
+    previousPolicy.current = current;
+    if (previous && previous.epoch !== current.epoch) {
+      void client.current?.end("学习记忆或隐私设置已改变，本机语音已停止。请确认关闭后重新开始。");
+      feedbackAbort.current?.abort(); planAbort.current?.abort(); planPending.current = false;
+      setFeedbackBusy(false); setPlanBusy(false); setPlans([]); setFeedback(null); setDiscussion([]); setSaved(true);
+      if (previous.scope !== current.scope || previous.temporary !== current.temporary) {
+        recordMeta.current = null; sessionPolicy.current = null;
+        setTranscript([]); setRecordId(null); setHistory([]); setDeletedRecord(null);
+        setCustomTopic(""); setGoal(""); setOpeningPrompt(""); setTargets([]);
+      }
+    }
+    if (current.scope && !current.temporary) {
+      try { setHistory(readVoiceHistory(historyStorage(current.scope))); } catch { setStorageError("无法读取本机练习记录。"); }
+    } else setHistory([]);
+  }, [privacy.epoch, privacy.temporary, privacy.memory?.accountScope]);
+  useEffect(() => {
+    if (!active && !dictationLive) return;
+    const check = () => { void refreshLearningContext().catch(() => undefined); };
+    const timer = setInterval(check, 10_000);
+    const visible = () => { if (!document.hidden) check(); };
+    window.addEventListener("focus", check); document.addEventListener("visibilitychange", visible);
+    return () => { clearInterval(timer); window.removeEventListener("focus", check); document.removeEventListener("visibilitychange", visible); };
+  }, [active, dictationLive]);
   const end = () => client.current?.end();
   const closePanel = () => setPanel(null);
-  const exit = () => { client.current?.dispose(); onClose(); };
+  const exit = async () => {
+    if (dictationLive || dictationUnconfirmed) { setPanel(null); setStatusError("请先在听写中结束 Live，并确认关闭后返回。"); return; }
+    await client.current?.end();
+    if (client.current?.hasPendingClose) { setPanel(null); await refreshStatus(); return; }
+    onClose();
+  };
   const changeCaptions = (show: boolean) => {
     if (show) followCaptions.current = true;
     setCaptions(show);
@@ -108,7 +150,14 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     catch { /* The preference remains usable for this session. */ }
   };
   const start = async (diagnostic = false, retry?: { customTopic: string; goal: string; openingPrompt: string }) => {
-    if (active) return;
+    if (startPending.current || active || dictationLive || dictationUnconfirmed || closePending.current || client.current?.hasPendingClose || statusError) return;
+    startPending.current = true;
+    try {
+    let context;
+    const temporary = learningContextStore.get().temporary;
+    try { context = await refreshLearningContext(); } catch { return; }
+    if (!contextStillCurrent(context, temporary)) return;
+    sessionPolicy.current = { scope: context.accountScope, temporary, revision: context.revision };
     setTab("speaking");
     setPanel(null);
     followCaptions.current = true;
@@ -118,14 +167,17 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     const task = retry ?? { customTopic, goal, openingPrompt };
     if (retry) { setCustomTopic(retry.customTopic); setGoal(retry.goal); setOpeningPrompt(retry.openingPrompt); }
     const meta: RecordMeta = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), topicId, level, ...task }; recordMeta.current = diagnostic ? null : meta; setRecordId(diagnostic ? null : meta.id);
-    await client.current?.start({ topicId, level, minutes, targetWords: targets, ...task, ...(diagnostic ? { diagnostic: true } : {}) });
+    await client.current?.start({ topicId, level, minutes, targetWords: targets, temporary, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion, ...task, ...(diagnostic ? { diagnostic: true } : {}) });
+    } finally { startPending.current = false; }
   };
   const recommend = async () => {
     if (planPending.current || active) return;
     planAbort.current?.abort(); const abort = new AbortController(); planAbort.current = abort; planPending.current = true; setPlanBusy(true); setPlanError(""); setPlanNotice("");
     try {
-      const result = await voiceRequest<{ recommendations: Plan[] }>("/api/voice/recommend", { topicId, level, minutes, customTopic }, abort.signal);
-      if (mounted.current && !abort.signal.aborted) setPlans(result.recommendations);
+      const context = await refreshLearningContext(abort.signal); const temporary = learningContextStore.get().temporary;
+      const result = await voiceRequest<{ recommendations: Plan[] }>("/api/voice/recommend", { topicId, level, minutes, customTopic, temporary, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion }, abort.signal);
+      await refreshLearningContext(abort.signal);
+      if (mounted.current && !abort.signal.aborted && contextStillCurrent(context, temporary)) setPlans(result.recommendations);
     } catch (cause) { if (mounted.current && !abort.signal.aborted) setPlanError(cause instanceof Error ? cause.message : "推荐暂时未完成。仍可自己设置并开始。"); }
     finally { if (planAbort.current === abort) planPending.current = false; if (mounted.current && !abort.signal.aborted) setPlanBusy(false); }
   };
@@ -135,36 +187,41 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     feedbackAbort.current?.abort(); const abort = new AbortController(); feedbackAbort.current = abort;
     setFeedbackBusy(true); setFeedbackError("");
     try {
-      const result = await voiceRequest<VoiceFeedback>("/api/voice/feedback", { topicId: recordMeta.current?.topicId || topicId, level: recordMeta.current?.level || level, transcript: feedbackTranscript(transcript) }, abort.signal);
-      if (!mounted.current || abort.signal.aborted) return;
+      const context = await refreshLearningContext(abort.signal); const temporary = learningContextStore.get().temporary;
+      const result = await voiceRequest<VoiceFeedback>("/api/voice/feedback", { topicId: recordMeta.current?.topicId || topicId, level: recordMeta.current?.level || level, transcript: feedbackTranscript(transcript), temporary, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion }, abort.signal);
+      await refreshLearningContext(abort.signal);
+      if (!mounted.current || abort.signal.aborted || !contextStillCurrent(context, temporary)) return;
       setFeedback(result); setSaved(false);
     } catch (error) { if (mounted.current && !abort.signal.aborted) setFeedbackError(error instanceof Error ? error.message : "反馈暂时未完成。"); }
     finally { if (mounted.current && !abort.signal.aborted) setFeedbackBusy(false); }
   };
   const openRecord = (record: VoiceRecord) => {
-    if (active) return;
+    if (active || dictationLive || privacy.temporary || !privacy.memory) return;
+    sessionPolicy.current = { scope: privacy.memory.accountScope, temporary: false, revision: privacy.memory.revision };
     diagnosticRun.current = false;
     setTab("speaking"); setPanel(null);
     feedbackAbort.current?.abort(); planAbort.current?.abort(); planPending.current = false; setPlanBusy(false); setFeedbackBusy(false); setFeedbackError(""); setRecordId(record.id); recordMeta.current = { id: record.id, createdAt: record.createdAt, topicId: record.topicId, level: record.level, customTopic: record.customTopic, goal: record.goal, openingPrompt: record.openingPrompt };
     rememberedTopics.current.add(record.id);
-    setTopicId(record.topicId); setLevel(VOICE_LEVELS.some((item) => item.id === record.level) ? record.level as VoiceLevel : "B1"); setCustomTopic(record.customTopic || ""); setGoal(record.goal || ""); setOpeningPrompt(record.openingPrompt || ""); setTranscript(record.transcript); setTranscriptRevision((value) => value + 1); setDiscussion(record.discussion || []); setFeedback(record.feedback || null); setSaved(true); setSnapshot({ ...INITIAL, phase: "ended", seconds: record.seconds, message: "已打开本机练习记录。" });
+    setTopicId(record.topicId); setLevel(VOICE_LEVELS.some((item) => item.id === record.level) ? record.level as VoiceLevel : "B1"); setCustomTopic(record.customTopic || ""); setGoal(record.goal || ""); setOpeningPrompt(record.openingPrompt || ""); setTranscript(record.transcript); setTranscriptRevision((value) => value + 1); setDiscussion(record.contextRevision === privacy.memory.revision ? record.discussion || [] : []); setFeedback(record.contextRevision === privacy.memory.revision ? record.feedback || null : null); setSaved(true); setSnapshot({ ...INITIAL, phase: "ended", seconds: record.seconds, message: "已打开本机练习记录。" });
   };
   const availableTargets = entries.filter((entry) => !entry.flags.properName && entry.headword.length < 25).slice(0, 18);
-  const browserSupported = typeof window !== "undefined" && window.isSecureContext && !!window.RTCPeerConnection && !!navigator.mediaDevices?.getUserMedia;
-  const canStart = Boolean(status?.ready && !status.activeSession && !active && browserSupported);
+  const transportSupported = typeof window !== "undefined" && window.isSecureContext && !!window.RTCPeerConnection;
+  const browserSupported = transportSupported && !!navigator.mediaDevices?.getUserMedia;
+  const canConnect = Boolean(privacy.memory && !privacy.error && status?.ready && !status.activeSession && !active && !dictationLive && !dictationUnconfirmed && !statusError && !closeBusy && !client.current?.hasPendingClose && transportSupported);
+  const canStart = canConnect && browserSupported;
   const isDiagnostic = diagnosticRun.current;
   const remembered = memory.memory?.notes.map((note) => note.text) || [];
 
   const switchTab = (next: "speaking" | "dictation") => {
-    if (active) return;
+    if (active || dictationLive || dictationUnconfirmed) return;
     setTab(next);
     setPanel(null);
   };
   const deleteRecord = (record: VoiceRecord) => {
-    if (active) return;
+    if (active || privacy.temporary || !privacy.memory) return;
     const next = history.filter((row) => row.id !== record.id);
     try {
-      localStorage.setItem(VOICE_HISTORY_KEY, JSON.stringify(next));
+      historyStorage(privacy.memory.accountScope).setItem(VOICE_HISTORY_KEY, JSON.stringify(next));
       setHistory(next);
       setDeletedRecord(record);
       if (recordId === record.id) {
@@ -178,8 +235,8 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     } catch { setStorageError("删除未完成，请重试。"); }
   };
   const restoreRecord = () => {
-    if (active || !deletedRecord) return;
-    try { setHistory(saveVoiceRecord(localStorage, deletedRecord)); setDeletedRecord(null); }
+    if (active || !deletedRecord || privacy.temporary || !privacy.memory) return;
+    try { setHistory(saveVoiceRecord(historyStorage(privacy.memory.accountScope), deletedRecord)); setDeletedRecord(null); }
     catch { setStorageError("恢复未完成，请重试。"); }
   };
   const openAISettings = () => {
@@ -248,14 +305,15 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
                 <button className="text-button" onClick={() => setPanel("review")}>转写与反馈 <ArrowRight size={15} /></button>
               </div>
               <PracticeDiscussion
-                key={`${recordId}-${transcriptRevision}`}
+                key={`${recordId}-${transcriptRevision}-${privacy.epoch}`}
                 sessionKey={recordId || "practice"}
                 topicId={recordMeta.current?.topicId || topicId}
                 level={recordMeta.current?.level || level}
                 transcript={transcript}
                 messages={discussion}
                 onChange={(messages) => { setDiscussion(messages); setSaved(false); }}
-                configured={Boolean(status?.configured)}
+                configured={Boolean(status?.configured && privacy.memory && !privacy.error)}
+                temporary={privacy.temporary}
                 onRemember={memory.remember}
                 remembered={remembered}
                 memoryBusy={memory.busy}
@@ -265,7 +323,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
           )}
         </section>
         <section className="voice-dictation-stage" hidden={tab !== "dictation"} aria-label="词句听写">
-          <DictationPanel entries={entries} active={tab === "dictation"} />
+          <DictationPanel entries={entries} active={tab === "dictation"} temporary={privacy.temporary} accountScope={privacy.memory?.accountScope} contextEpoch={privacy.epoch} learningPreferences={{ preferredSpeed: privacy.memory?.enabled && !privacy.temporary ? (privacy.memory.notes.find((note) => note.id === "dictation-speed")?.text === "听写默认使用慢速朗读。" ? "slow" : "normal") : undefined }} onLiveActiveChange={setDictationLive} onLiveUnconfirmedChange={setDictationUnconfirmed} />
         </section>
       </main>
 
@@ -277,6 +335,8 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
             {active && <span aria-live="off">{time(snapshot.seconds)} / {time(snapshot.maxSeconds)}</span>}
           </div>
           <div className="voice-session-notices">
+            {privacy.temporary && <p className="voice-muted">临时练习 · 不使用历史记忆，不保存本次记录</p>}
+            {privacy.error && <p className="voice-inline-error" role="alert">{privacy.error} <button className="text-button" onClick={() => void memory.load()}>重新读取记忆设置</button></p>}
             {snapshot.playbackBlocked && (
               <button className="text-button voice-recovery" onClick={() => void client.current?.resumePlayback()}>
                 <Play size={16} />点此开启声音
@@ -286,13 +346,15 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
             {!active && statusError && (
               <p className="voice-inline-error">{statusError} <button className="text-button" onClick={() => void refreshStatus()}>重新检查</button></p>
             )}
-            {!active && status?.activeSession && (
+            {!active && (status?.activeSession || client.current?.hasPendingClose) && (
               <div className="voice-recovery">
                 <p>上次语音还未确认结束。</p>
-                <button className="text-button" onClick={async () => {
-                  try { await voiceRequest("/api/voice/close", { sessionId: status.activeSession!.sessionId }); await refreshStatus(); }
+                <button className="text-button" disabled={closeBusy} onClick={async () => {
+                  if (closePending.current) return; closePending.current = true; setCloseBusy(true);
+                  try { if (client.current?.hasPendingClose) await client.current.retryClose(); else if (status?.activeSession) await voiceRequest("/api/voice/close", { sessionId: status.activeSession.sessionId }); await refreshStatus(); }
                   catch (error) { setStatusError(error instanceof Error ? error.message : "关闭未确认，请稍后重试。"); }
-                }}>关闭上次语音</button>
+                  finally { closePending.current = false; if (mounted.current) setCloseBusy(false); }
+                }}>{closeBusy ? "正在确认关闭…" : "关闭上次语音"}</button>
               </div>
             )}
             {!active && !statusError && status && !status.ready && (
@@ -338,7 +400,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
       <VoiceDialog open={panel !== null} title={panel === "menu" ? "练习记录" : panel === "review" ? "转写与反馈" : "练习设置"} onClose={closePanel}>
         <section hidden={panel !== "menu"}>
           <nav className="voice-menu-list" aria-label="练习导航">
-            <button onClick={exit}><ArrowLeft size={19} /><span>{active ? "结束并返回词迹" : "返回词迹"}</span></button>
+            <button onClick={() => void exit()}><ArrowLeft size={19} /><span>{active ? "结束并返回词迹" : "返回词迹"}</span></button>
             {hasPractice && <button disabled={active} onClick={() => setPanel("review")}><ArrowRight size={19} /><span>转写与反馈</span></button>}
           </nav>
           <section className="voice-history" aria-label="最近练习">
@@ -357,7 +419,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
             ) : <p className="voice-muted">还没有练习记录。</p>}
             {deletedRecord && <p className="voice-muted" role="status">记录已删除。<button className="text-button" disabled={active} onClick={restoreRecord}>撤销</button></p>}
             {storageError && <p className="voice-inline-error" role="alert">{storageError}</p>}
-            <p className="voice-muted">转写与复盘保存在此浏览器，最近 12 次；不含录音，不进入学习备份。</p>
+            <p className="voice-muted">{privacy.temporary ? "临时练习不读取或保存练习记录。" : "当前账户的最近 12 次转写与复盘仅保存在此浏览器，不含录音、不自动上传。旧版未分账户记录保留在本机，不自动归入当前账户。"}</p>
           </section>
         </section>
 
@@ -369,7 +431,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
           <section className="voice-settings-section" aria-label="练习安排">
             <div className="voice-section-heading">
               <h3>练习安排</h3>
-              <button className="text-button" disabled={active || planBusy || !status?.configured} onClick={() => void recommend()}><Sparkles size={16} />{planBusy ? "正在推荐…" : "AI 推荐"}</button>
+              <button className="text-button" disabled={active || dictationLive || planBusy || !status?.configured || !privacy.memory || !!privacy.error} onClick={() => void recommend()}><Sparkles size={16} />{planBusy ? "正在推荐…" : "AI 推荐"}</button>
             </div>
             {active && <p className="voice-muted">当前通话的安排保持不变，结束后可调整。</p>}
             {planError && <p className="voice-inline-error" role="alert">{planError}</p>}
@@ -417,12 +479,12 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
               </details>
             </fieldset>
           </section>
-          <LearningMemoryPanel controls={memory} disabled={active} />
+          <LearningMemoryPanel controls={memory} disabled={active || dictationLive} />
           <details className="voice-connection-details voice-disclosure">
             <summary><span>用量与连接</span><span>{typeof status?.remainingSeconds === "number" ? `今日可预留 ${Math.floor(status.remainingSeconds / 60)} 分钟` : "查看详情"}</span></summary>
             <div>
               <p className="voice-muted">本次语音估计 ${(Math.max(snapshot.seconds, snapshot.usageSeconds || 0) / 60 * .05).toFixed(3)}。GPT-Live 语音约 $0.05/分钟，文字模型和复盘另计。静音仍计费；应用预留整段时长，提前结束不退还应用额度，它不是实际账单或绝对费用上限。</p>
-              <button className="text-button" disabled={!canStart} onClick={() => void start(true)}>测试 Live 连接（无需麦克风）</button>
+              <button className="text-button" disabled={!canConnect} onClick={() => void start(true)}>测试 Live 连接（无需麦克风）</button>
               <p className="voice-muted">约 20 秒自动结束，会使用少量 API 额度。实际收音仍需麦克风。</p>
             </div>
           </details>
@@ -433,7 +495,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
           <section className="voice-feedback" aria-label="表达反馈">
             <div className="voice-section-heading">
               <h3>表达反馈</h3>
-              <button className="text-button" disabled={active || !hasPractice || feedbackBusy || !status?.configured} onClick={() => void requestFeedback()}><Sparkles size={16} />{feedbackBusy ? "正在整理…" : feedback ? "重新整理" : "整理反馈"}</button>
+              <button className="text-button" disabled={active || !hasPractice || feedbackBusy || !status?.configured || !privacy.memory || !!privacy.error} onClick={() => void requestFeedback()}><Sparkles size={16} />{feedbackBusy ? "正在整理…" : feedback ? "重新整理" : "整理反馈"}</button>
             </div>
             <p className="voice-muted">先检查转写。文字反馈不能评定发音或口音。</p>
             {feedbackError && <p role="alert" className="voice-inline-error">{feedbackError}</p>}

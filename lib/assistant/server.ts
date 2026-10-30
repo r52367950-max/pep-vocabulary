@@ -1,3 +1,4 @@
+import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
 import { consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-classification";
 import type { D1Database } from "@cloudflare/workers-types";
@@ -425,13 +426,14 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     const config = await authenticatedRuntime(request);
     const rows = await releaseIndex(request);
     const evidence = resolveLexiconEvidence(rows, parsed.wordIds);
+    const context = await resolveLearningContext(config.userKey, body);
     let profile;
-    try { profile = parseLearnerProfile(body.profile, releaseWords(rows)); }
+    try { profile = context.enabled ? parseLearnerProfile(body.profile, releaseWords(rows)) : null; }
     catch (error) {
       if (error instanceof ProfileInputError) throw new AssistantInputError("invalid_request", "学习画像格式不正确。");
       throw error;
     }
-    const prompt = buildAssistantPrompt(parsed, evidence, profile);
+    const prompt = buildAssistantPrompt(parsed, evidence, profile, learningContextData(context.memory));
     const { completion, today: usedToday } = await complete(config, request,
       upstreamPayload(config.model, prompt, task, config.provider, {
         maxTokens: resolveMaxOutputTokens(config.model, config.maxOutputTokens), stream: true,
@@ -444,7 +446,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     const result = sanitizeModelResult(task, completion.content, evidence, maximumItems, parsed);
     return Response.json(
       {
-        ok: true, task, provider: config.provider, model: config.model, evidence, result,
+        ok: true, task, provider: config.provider, model: config.model, evidence, result, ...contextMetadata(context),
         usage: { ...completion.usage, today: usedToday, budget: config.dailyTokenBudget },
       },
       { status: 200, headers: responseHeaders() },

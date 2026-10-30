@@ -2,7 +2,7 @@ export type VoicePhase = "idle" | "connecting" | "connected" | "closing" | "ende
 export type VoiceStatus = { configured: boolean; ready: boolean; reason?: string; models: { voice: string; text: string }; dailySecondsLimit?: number; usedSeconds?: number; remainingSeconds?: number; resetsAt?: string; timeLimitNotice?: string; activeSession?: { sessionId: string; expiresAt: string } | null };
 export type TranscriptTurn = { role: "user" | "assistant"; text: string; startMs?: number; endMs?: number };
 export type VoiceFeedback = { strength: string; improvements: { original: string; suggestion: string; reason: string }[]; retryPrompt: string; expressions: { text: string; meaning: string }[] };
-export type VoiceOptions = { topicId: string; level: string; minutes: number; diagnostic?: boolean; targetWords?: string[]; customTopic?: string; goal?: string; openingPrompt?: string };
+export type VoiceOptions = { topicId: string; level: string; minutes: number; diagnostic?: boolean; purpose?: "conversation" | "dictation"; silentOutput?: boolean; temporary?: boolean; contextRevision?: number; contextVersion?: string; accountScope?: string; targetWords?: string[]; customTopic?: string; goal?: string; openingPrompt?: string };
 export type VoiceSnapshot = { phase: VoicePhase; message: string; muted: boolean; paused: boolean; playbackBlocked: boolean; seconds: number; usageSeconds: number | null; maxSeconds: number; closeConfirmed: boolean };
 type VoiceEvent = { type?: string; delta?: string; start_ms?: number; end_ms?: number; event_id?: string; usage?: { seconds?: number }; error?: { message?: string }; session?: { id?: string } };
 type SessionReply = { sessionId: string; sdp: string; model: string; maxSeconds: number };
@@ -24,6 +24,9 @@ export class NativeLiveSession {
   private audio?: HTMLAudioElement;
   private diagnosticContext?: AudioContext;
   private diagnostic = false;
+  private silentOutput = false;
+  private dictation = false;
+  private pendingCloseIds = new Set<string>();
   private abort?: AbortController;
   private sessionId?: string;
   private startupTimer?: ReturnType<typeof setTimeout>;
@@ -38,6 +41,7 @@ export class NativeLiveSession {
     this.deps = { fetch: (...args) => fetch(...args), getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints), createPeer: () => new RTCPeerConnection(), createAudio: () => new Audio(), createAudioContext: () => new AudioContext(), now: () => Date.now(), ...dependencies };
   }
   get state() { return { ...this.snapshot }; }
+  get elapsedMs() { return this.snapshot.phase === "connected" ? Math.max(0, this.deps.now() - this.startedAt) : 0; }
   private update(patch: Partial<VoiceSnapshot>) { this.snapshot = { ...this.snapshot, ...patch }; this.callbacks.onState(this.state); }
   private send(event: object) { if (this.channel?.readyState === "open") { this.channel.send(JSON.stringify({ ...event, event_id: crypto.randomUUID() })); return true; } return false; }
   private stopCapture() { this.stream?.getTracks().forEach((track) => track.stop()); this.stream = undefined; }
@@ -49,17 +53,26 @@ export class NativeLiveSession {
     if (this.peer) { this.peer.ontrack = null; this.peer.onconnectionstatechange = null; this.peer.close(); this.peer = undefined; }
     if (this.audio) { this.audio.pause(); this.audio.srcObject = null; this.audio = undefined; }
   }
+  get hasPendingClose() { return this.pendingCloseIds.size > 0; }
+  async retryClose() {
+    for (const id of [...this.pendingCloseIds]) await this.closeRemote(id);
+    this.update({ closeConfirmed: !this.hasPendingClose, message: this.hasPendingClose ? "服务器尚未确认结束，请再次重试关闭。" : "语音会话已关闭。" });
+  }
   private closeRemote(sessionId: string) {
+    this.pendingCloseIds.add(sessionId);
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 8_000);
-    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then((response) => response.ok).catch(() => false).finally(() => clearTimeout(timer));
+    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then((response) => { if (response.ok) this.pendingCloseIds.delete(sessionId); return response.ok; }).catch(() => false).finally(() => clearTimeout(timer));
   }
   async start(options: VoiceOptions) {
     if (["connecting", "connected", "closing"].includes(this.snapshot.phase)) return;
+    if (this.hasPendingClose) { this.update({ message: "上次语音尚未确认关闭，请先重试关闭。" }); return; }
     const generation = ++this.generation;
     const current = () => generation === this.generation;
     this.endPromise = undefined;
     this.diagnostic = options.diagnostic === true;
+    this.dictation = options.purpose === "dictation";
+    this.silentOutput = options.silentOutput === true || this.dictation;
     this.update({ phase: "connecting", message: this.diagnostic ? "正在准备无麦克风连接测试…" : "正在请求麦克风…", seconds: 0, usageSeconds: null, muted: false, paused: false, playbackBlocked: false, closeConfirmed: false, maxSeconds: this.diagnostic ? 20 : options.minutes * 60 });
     this.abort = new AbortController();
     this.startupTimer = setTimeout(() => { if (current() && this.snapshot.phase === "connecting") void this.end("连接超时，请检查网络后重新开始。", true); }, 35_000);
@@ -76,7 +89,7 @@ export class NativeLiveSession {
       if (!current()) { stream.getTracks().forEach((track) => track.stop()); return; }
       this.stream = stream;
       const peer = this.deps.createPeer(); this.peer = peer;
-      const audio = this.deps.createAudio(); this.audio = audio; audio.autoplay = true;
+      const audio = this.deps.createAudio(); this.audio = audio; audio.autoplay = true; audio.muted = this.silentOutput;
       audio.setAttribute("playsinline", "");
       peer.ontrack = (event) => { if (!current()) return; audio.srcObject = event.streams[0] || new MediaStream([event.track]); void this.resumePlayback(); };
       for (const track of stream.getAudioTracks()) peer.addTrack(track, stream);
@@ -121,8 +134,9 @@ export class NativeLiveSession {
       clearTimeout(this.startupTimer); this.startedAt = this.deps.now();
       this.update({ phase: "connected", message: this.diagnostic ? "Live 已连接，正在等待测试语音；20 秒后自动结束。" : "已连接，慢慢说，我在听。" });
       this.clock = setInterval(() => { const seconds = Math.max(0, Math.floor((this.deps.now() - this.startedAt) / 1000)); this.update({ seconds }); if (seconds >= this.snapshot.maxSeconds) void this.end(this.diagnostic ? "连接测试已结束。" : "本次练习时间到了，语音已结束。"); }, 500);
-      this.send({ type: "session.commentary.append", delegation_id: null, content: this.diagnostic ? "Say this short test sentence aloud: Hello! Your English speaking practice is ready. Then remain silent." : "Greet the learner briefly in English, ask one opening question about the selected topic, then pause and listen. Give them time to think." });
+      if (!this.dictation) this.send({ type: "session.commentary.append", delegation_id: null, content: this.diagnostic ? "Say this short test sentence aloud: Hello! Your English speaking practice is ready. Then remain silent." : "Greet the learner briefly in English, ask one opening question about the selected topic, then pause and listen. Give them time to think." });
     } else if ((event.type === "session.input_transcript.delta" || event.type === "session.output_transcript.delta") && typeof event.delta === "string") {
+      if (this.dictation && event.type === "session.output_transcript.delta") return;
       this.callbacks.onTranscript({ role: event.type === "session.input_transcript.delta" ? "user" : "assistant", text: event.delta, startMs: event.start_ms, endMs: event.end_ms });
     } else if (event.type === "session.usage.updated") {
       if (typeof event.usage?.seconds === "number") this.update({ usageSeconds: event.usage.seconds });
@@ -151,13 +165,14 @@ export class NativeLiveSession {
   }
   pause(paused: boolean) {
     if (this.snapshot.phase !== "connected") return;
-    if (this.audio) this.audio.muted = paused;
+    if (this.audio) this.audio.muted = this.silentOutput || paused;
     this.send({ type: "session.instructions.append", delegation_id: null, content: paused ? "Stop speaking now. The learner is thinking. Stay quiet until they explicitly ask to continue. Do not fill the silence." : "The learner is ready to continue. Resume the English practice gently, keeping your reply brief and listening patiently." });
     this.update({ paused, message: paused ? "AI 播放已暂停，留点时间想一想；会话仍在计时。" : "继续对话。" });
   }
   async resumePlayback() {
     const audio = this.audio;
     if (!audio) return;
+    if (this.silentOutput) audio.muted = true;
     try { await audio.play(); if (this.audio === audio) this.update({ playbackBlocked: false }); }
     catch { if (this.audio === audio) this.update({ playbackBlocked: true }); }
   }
@@ -210,7 +225,7 @@ export function appendTranscript(turns: TranscriptTurn[], fragment: TranscriptTu
 }
 
 export type VoiceDiscussionTurn = { role: "user" | "assistant"; text: string };
-export type VoiceRecord = { id: string; createdAt: string; topicId: string; level: string; seconds: number; transcript: TranscriptTurn[]; feedback?: VoiceFeedback; discussion?: VoiceDiscussionTurn[]; customTopic?: string; goal?: string; openingPrompt?: string };
+export type VoiceRecord = { contextRevision?: number; id: string; createdAt: string; topicId: string; level: string; seconds: number; transcript: TranscriptTurn[]; feedback?: VoiceFeedback; discussion?: VoiceDiscussionTurn[]; customTopic?: string; goal?: string; openingPrompt?: string };
 /** Bound the feedback request, leaving the complete local transcript available to the learner. */
 export function feedbackTranscript(turns: TranscriptTurn[], maximum = 18000): TranscriptTurn[] {
   let remaining = maximum;

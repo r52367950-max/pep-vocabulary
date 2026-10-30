@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeft, Check, ChevronRight, Plus, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { runAssistant, AssistantError } from "@/lib/ai-client";
+import { learningContextStore, refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
+import { captureWritingContext, writingContextCurrent, writeWritingInContext, WritingContextChangedError, type WritingContext } from "@/lib/writing-context";
 import { deleteWriting, listWritings, saveWriting, createLocalId, type WritingGenre, type WritingRecord } from "@/lib/storage";
 import { countWords, findTargetUses, latestVersion, localWritingChecks, newWriting, suggestTargets, WRITING_GENRES, writingTitle } from "@/lib/writing";
 import { StudioSymbol } from "../symbol";
@@ -31,16 +33,30 @@ export default function WritingWorkspace({ data, initialTargets, openId, onExit,
   onPractice: (entries: LexiconIndexEntry[]) => void;
   onWord: (entry: LexiconIndexEntry) => void;
 }) {
+  const policy = useSyncExternalStore(learningContextStore.subscribe, learningContextStore.get, learningContextStore.getServerSnapshot);
+  const boundary = useRef({ scope: policy.memory?.accountScope ?? null as string | null, temporary: policy.temporary, serial: 0 });
+  const scope = policy.memory?.accountScope;
+  if (boundary.current.temporary !== policy.temporary || (scope && boundary.current.scope && scope !== boundary.current.scope)) boundary.current.serial++;
+  boundary.current.temporary = policy.temporary;
+  if (scope) boundary.current.scope = scope;
+  // A mode/account boundary starts a fresh workspace: temporary drafts never become delayed saves.
+  return <WritingWorkspaceSession key={boundary.current.serial} data={data} initialTargets={policy.temporary ? [] : boundary.current.serial ? undefined : initialTargets} openId={policy.temporary || boundary.current.serial ? null : openId} onExit={onExit} onPractice={onPractice} onWord={onWord} temporary={policy.temporary} />;
+}
+
+function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPractice, onWord, temporary }: {
+  data: Vocabulary; initialTargets?: string[]; openId?: string | null; onExit: () => void;
+  onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void; temporary: boolean;
+}) {
   const [records, setRecords] = useState<WritingRecord[] | null>(null);
   const [view, setView] = useState<View>(openId ? { kind: "edit", id: openId } : initialTargets ? { kind: "setup" } : { kind: "list" });
-  const reload = useCallback(() => listWritings().catch(() => []).then((rows) => {
+  const reload = useCallback(() => (temporary ? Promise.resolve([]) : listWritings()).catch(() => []).then((rows) => {
     setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
-  }), []);
+  }), [temporary]);
   useEffect(() => {
     let active = true;
-    listWritings().catch(() => []).then((rows) => { if (active) setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))); });
+    (temporary ? Promise.resolve([]) : listWritings()).catch(() => []).then((rows) => { if (active) setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))); });
     return () => { active = false; };
-  }, []);
+  }, [temporary]);
 
   const back = () => { if (view.kind === "edit" || view.kind === "setup") setView({ kind: "list" }); else onExit(); };
   const exit = useEffectEvent(back);
@@ -71,10 +87,11 @@ export default function WritingWorkspace({ data, initialTargets, openId, onExit,
         <span className="learn-header-spacer" />
         {view.kind === "list" && <button className="secondary writing-new" onClick={() => setView({ kind: "setup" })}><Plus size={16} aria-hidden="true" />新写一篇</button>}
       </header>
+      {temporary && <p className="ai-note writing-stage" style={{ paddingBottom: 8 }} role="status">临时写作：本次草稿与批改不保存，切换模式后不会补存。需要保留原文时请先复制。</p>}
       {records === null ? <div className="learn-pending" role="status">正在读取写作记录…</div>
         : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (id) => { await deleteWriting(id); await reload(); }} />
-          : view.kind === "setup" ? <WritingSetup data={data} initialTargets={initialTargets} onCreate={async (created) => { await saveWriting(created); upsert(created); setView({ kind: "edit", id: created.id }); }} />
-            : record ? <WritingEditor key={record.id} record={record} data={data} onSave={upsert} onPractice={onPractice} onWord={onWord} />
+          : view.kind === "setup" ? <WritingSetup data={data} initialTargets={initialTargets} temporary={temporary} onCreate={async (created) => { const context = captureWritingContext(); await writeWritingInContext(context, () => saveWriting(created)); if (!writingContextCurrent(context)) return; upsert(created); setView({ kind: "edit", id: created.id }); }} />
+            : record ? <WritingEditor key={record.id} record={record} data={data} onSave={upsert} onPractice={onPractice} onWord={onWord} temporary={temporary} />
               : <div className="learn-pending">这篇写作已不存在。</div>}
     </div>
   );
@@ -124,11 +141,14 @@ function WritingList({ records, data, onOpen, onDelete }: { records: WritingReco
   );
 }
 
-function WritingSetup({ data, initialTargets, onCreate }: { data: Vocabulary; initialTargets?: string[]; onCreate: (record: WritingRecord) => void }) {
+function WritingSetup({ data, initialTargets, onCreate, temporary }: { data: Vocabulary; initialTargets?: string[]; onCreate: (record: WritingRecord) => Promise<void>; temporary: boolean }) {
   const [genre, setGenre] = useState<WritingGenre>("free");
   const [prompt, setPrompt] = useState(SAMPLE_PROMPTS.free[0]);
   const [round, setRound] = useState(0);
-  const [targets, setTargets] = useState<string[]>(() => initialTargets?.length ? initialTargets : suggestTargets(data.history.active, data.cards, data.byId, 6).map((entry) => entry.id));
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const createPending = useRef(false);
+  const [targets, setTargets] = useState<string[]>(() => temporary ? [] : initialTargets?.length ? initialTargets : suggestTargets(data.history.active, data.cards, data.byId, 6).map((entry) => entry.id));
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const pickGenre = (next: WritingGenre) => {
@@ -156,7 +176,7 @@ function WritingSetup({ data, initialTargets, onCreate }: { data: Vocabulary; in
       <section className="writing-targets-setup" aria-labelledby="targets-title">
         <div className="writing-targets-head">
           <h2 id="targets-title">目标词</h2>
-          <button className="text-button" onClick={() => {
+          <button className="text-button" disabled={temporary} onClick={() => {
             const next = suggestTargets(data.history.active, data.cards, data.byId, 6 * (round + 2)).slice((round + 1) * 6);
             if (next.length) { setRound(round + 1); setTargets(next.map((entry) => entry.id)); }
             else data.notify("没有更多最近学过的词了。");
@@ -172,14 +192,22 @@ function WritingSetup({ data, initialTargets, onCreate }: { data: Vocabulary; in
           </p>
         ) : <p className="ai-note">没有目标词也可以写；先学几个词，这里会推荐最近学过和答错的词。</p>}
       </section>
-      <button className="primary writing-begin" disabled={!prompt.trim()} onClick={() => onCreate(newWriting(genre, targets, prompt.trim()))}>开始写作</button>
+      {temporary && <p className="ai-note">临时写作不读取历史目标词；草稿与 AI 反馈仅在本次页面保留，不保存到本机记录。切换模式后不会补存。</p>}
+      {createError && <p className="ai-status is-error" role="alert">{createError}</p>}
+      <button className="primary writing-begin" disabled={!prompt.trim() || creating} onClick={async () => {
+        if (createPending.current) return;
+        createPending.current = true; setCreating(true); setCreateError("");
+        try { await onCreate(newWriting(genre, targets, prompt.trim())); }
+        catch (cause) { setCreateError(cause instanceof Error ? cause.message : "未能开始写作，请重试。"); }
+        finally { createPending.current = false; setCreating(false); }
+      }}>{creating ? "正在准备…" : "开始写作"}</button>
     </main>
   );
 }
 
-function WritingEditor({ record, data, onSave, onPractice, onWord }: {
+function WritingEditor({ record, data, onSave, onPractice, onWord, temporary }: {
   record: WritingRecord; data: Vocabulary; onSave: (record: WritingRecord) => void;
-  onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void;
+  onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void; temporary: boolean;
 }) {
   const current = latestVersion(record);
   const [text, setText] = useState(current.text);
@@ -192,7 +220,16 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
   const saveFailed = useRef(false);
   const writes = useRef(Promise.resolve());
   const reviewController = useRef<AbortController | null>(null);
-  useEffect(() => () => reviewController.current?.abort(), []);
+  const reviewContext = useRef<WritingContext | null>(null);
+  useEffect(() => {
+    const unsubscribe = learningContextStore.subscribe(() => {
+      if (reviewContext.current && !writingContextCurrent(reviewContext.current)) {
+        reviewController.current?.abort(); reviewController.current = null; reviewContext.current = null;
+        setReviewing(null); setError(new WritingContextChangedError().message);
+      }
+    });
+    return () => { reviewController.current?.abort(); unsubscribe(); };
+  }, []);
   const profile = useLearnerProfile(data);
   const seconds = useElapsed(reviewing);
   const targets = useMemo(() => record.targetIds.flatMap((id) => (data.byId.get(id) ? [data.byId.get(id)!] : [])), [record.targetIds, data.byId]);
@@ -200,25 +237,29 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
   const checks = useMemo(() => localWritingChecks(text, uses, record.wordRange), [text, uses, record.wordRange]);
   const words = countWords(text);
 
-  const persist = useCallback((next: WritingRecord) => {
+  const persist = useCallback((next: WritingRecord, context = captureWritingContext(), signal?: AbortSignal) => {
+    if (signal?.aborted || !writingContextCurrent(context)) return Promise.reject(new WritingContextChangedError());
     latest.current = next;
+    if (temporary) { onSave(next); setSaved(true); return Promise.resolve(); }
     setSaved(false);
     // Queue writes immediately, including the last keystroke before leaving the editor.
     const pending = writes.current.then(async () => {
       if (saveFailed.current) throw new Error("草稿尚未保存。请复制当前文字后重新打开，避免覆盖其他页面的修改。");
-      await saveWriting(next, committed.current);
+      await writeWritingInContext(context, () => saveWriting(next, committed.current), signal);
       committed.current = next;
+      if (!writingContextCurrent(context) || signal?.aborted) return;
       onSave(next);
       if (latest.current === next) setSaved(true);
     });
     writes.current = pending.catch((cause) => {
+      if (cause instanceof WritingContextChangedError) return;
       saveFailed.current = true;
       const message = cause instanceof Error ? cause.message : "草稿未能保存到本机，请复制文字后重试。";
       setError(message);
       data.notify(message);
     });
     return pending;
-  }, [onSave, data]);
+  }, [onSave, data, temporary]);
 
   const edit = (value: string) => {
     if (reviewController.current) return;
@@ -242,24 +283,27 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
     setError("");
     setReviewing(Date.now());
     try {
+      const memory = await refreshLearningContext(controller.signal);
+      if (controller.signal.aborted) return;
+      const context = captureWritingContext(); reviewContext.current = context;
       const base = latest.current;
       const versions = [...base.versions];
       const last = versions[versions.length - 1];
       versions[versions.length - 1] = { ...last, text, savedAt: new Date().toISOString() };
-      await persist({ ...base, versions, updatedAt: new Date().toISOString() });
+      await persist({ ...base, versions, updatedAt: new Date().toISOString() }, context, controller.signal);
       if (controller.signal.aborted) return;
       const input = { genre: base.genre, prompt: base.prompt, essay: text, wordIds: base.targetIds };
-      const answer = await runAssistant("review-essay", input, { profile: await profile(), signal: controller.signal });
-      if (controller.signal.aborted) return;
+      const answer = await runAssistant("review-essay", input, { profile: temporary ? null : await profile(), signal: controller.signal });
+      if (controller.signal.aborted || !contextStillCurrent(memory, temporary) || !writingContextCurrent(context)) return;
       const at = versions.length - 1;
       versions[at] = { ...versions[at], review: { reviewedAt: answer.cachedAt || new Date().toISOString(), model: answer.model, result: answer.result } };
-      await persist({ ...base, versions, updatedAt: new Date().toISOString() });
+      await persist({ ...base, versions, updatedAt: new Date().toISOString() }, context, controller.signal);
+      if (controller.signal.aborted || !writingContextCurrent(context)) return;
       setMode("review");
     } catch (cause) {
-      setError(cause instanceof AssistantError || cause instanceof Error ? cause.message : "批改失败，可以稍后重试。");
+      if (!controller.signal.aborted) setError(cause instanceof AssistantError || cause instanceof Error ? cause.message : "批改失败，可以稍后重试。");
     } finally {
-      reviewController.current = null;
-      setReviewing(null);
+      if (reviewController.current === controller) { reviewController.current = null; reviewContext.current = null; setReviewing(null); }
     }
   };
 
@@ -290,7 +334,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
           value={text} readOnly={reviewing !== null} onChange={(event) => edit(event.target.value)} placeholder="Start writing here…" maxLength={8000} />
         <p className="writing-count" aria-live="polite">
           <span className="learn-tabular">{words}</span> 词 · 目标 {record.wordRange[0]}–{record.wordRange[1]}
-          <span>{saved ? "已保存在本机" : "正在保存…"}</span>
+          <span>{temporary ? "临时草稿 · 不保存记录" : saved ? "已保存在本机" : "正在保存…"}</span>
         </p>
       </div>
       <aside className="writing-rail" aria-label="写作提示">
@@ -318,7 +362,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord }: {
         <section className="writing-ai">
           {data.settings.aiEnabled ? (
             reviewing !== null ? (
-              <div className="ai-status" role="status"><span className="ai-spinner" aria-hidden="true" />AI 正在批改{seconds >= 3 ? `… ${seconds} 秒` : "…"}{seconds >= 20 ? "（完整批改约需一两分钟）" : ""}</div>
+              <div className="ai-status" role="status"><span className="ai-spinner" aria-hidden="true" />AI 正在批改{seconds >= 3 ? `… ${seconds} 秒` : "…"}{seconds >= 20 ? "（完整批改约需一两分钟）" : ""}<button className="text-button" onClick={() => { reviewController.current?.abort(); reviewController.current = null; reviewContext.current = null; setReviewing(null); }}>取消批改</button></div>
             ) : (
               <>
                 <button className="primary" disabled={countWords(text) < 5} onClick={review}><Sparkles size={16} aria-hidden="true" />AI 批改</button>

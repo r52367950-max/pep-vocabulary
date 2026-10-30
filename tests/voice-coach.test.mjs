@@ -32,6 +32,103 @@ function fakeCompletion(output) {
 const plan = { topicId: 'culture', level: 'B2', minutes: 10, title: '推荐一本书', goal: '用两个理由推荐一本书，并回应不同看法。', openingPrompt: 'What book would you recommend, and why?', reason: '结合你选择的文化话题。' };
 const transcript = [{ role: 'assistant', text: 'What do you enjoy?' }, { role: 'user', text: 'I like reading books because I learn about other lives.' }];
 
+test('unified memory preserves provenance through legacy clients, rejects account changes and temporary writes', async () => {
+  const db = setup();
+  const { GET, PUT } = await import('../app/api/learning-memory/route.ts');
+  const unified = (body, query = '') => new Request(`${origin}/api/learning-memory${query}`, { method: body ? 'PUT' : 'GET', headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const first = await (await GET(unified())).json();
+  const added = await PUT(unified({ ...first, notes: [{ ...note, source: 'confirmed_suggestion', kind: 'expression' }] }));
+  assert.equal(added.status, 200);
+  let current = await added.json();
+  assert.equal(current.notes[0].source, 'confirmed_suggestion');
+  assert.ok(current.notes[0].confirmedAt);
+  const legacy = await putVoiceMemory(req('memory', { revision: current.revision, enabled: true, notes: [note], recentTopics: [] }, 'PUT'));
+  current = await legacy.json();
+  assert.equal(current.notes[0].source, 'confirmed_suggestion');
+  assert.equal(current.notes[0].kind, 'expression');
+  const temporary = await (await GET(unified(undefined, '?temporary=1'))).json();
+  assert.equal(temporary.enabled, false); assert.deepEqual(temporary.notes, []);
+  assert.equal(temporary.revision, current.revision);
+  assert.equal((await PUT(unified({ ...current, temporary: true, notes: [] }))).status, 409);
+  requestHeaders.set('oai-authenticated-user-email', 'other-account@example.test');
+  assert.equal((await PUT(unified({ ...first, notes: [note] }))).status, 409, 'same revision must not allow a different account scope');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM voice_learning_memories').get().n, 1);
+  requestHeaders.set('oai-authenticated-user-email', 'voice-memory-owner@example.test');
+  const deleted = await PUT(unified({ ...current, notes: [] }));
+  assert.equal(deleted.status, 200);
+  const final = await deleted.json();
+  assert.equal(final.revision, current.revision + 1); assert.deepEqual(final.notes, []);
+});
+
+test('legacy provenance is not assigned invented historical confirmation dates', async () => {
+  const db = setup(), key = await authenticatedUserKey();
+  db.prepare('INSERT INTO voice_learning_memories (user_key,notes) VALUES (?,?)').run(key, JSON.stringify([note]));
+  const current = await readVoiceMemory(key);
+  assert.equal(current.notes[0].source, 'legacy'); assert.equal(current.notes[0].confirmedAt, null);
+  const result = await putVoiceMemory(req('memory', { ...current, enabled: false }, 'PUT'));
+  assert.equal((await result.json()).notes[0].confirmedAt, null);
+});
+
+test('temporary or paused context is empty and config changes invalidate context metadata', async () => {
+  setup();
+  const { resolveLearningContext, memoryMetadata } = await import('../lib/learning-memory/context.ts');
+  const key = await authenticatedUserKey(), before = await memoryMetadata(key);
+  await configure();
+  assert.notEqual((await memoryMetadata(key)).contextVersion, before.contextVersion);
+  await putVoiceMemory(req('memory', { ...empty, notes: [note] }, 'PUT'));
+  const current = await readVoiceMemory(key);
+  assert.deepEqual((await resolveLearningContext(key, { temporary: true })).memory.notes, []);
+  await assert.rejects(resolveLearningContext(key, { contextRevision: 0 }), e => e.status === 409 || e.code === 'learning_context_changed');
+  await assert.rejects(resolveLearningContext(key, { accountScope: 'wrong' }), e => e.code === 'learning_account_changed');
+  await putVoiceMemory(req('memory', { ...current, enabled: false }, 'PUT'));
+  assert.equal((await resolveLearningContext(key, {})).enabled, false);
+  assert.deepEqual((await resolveLearningContext(key, {})).memory.notes, []);
+});
+
+test('ordinary text assistant shares account notes and excludes both historical sources when paused or temporary', async (t) => {
+  setup(); await configure();
+  const { handleAssistantRequest } = await import('../lib/assistant/server.ts');
+  const word = 'pep-1e3e7e41accdc5f7';
+  env.ASSETS = { fetch: async () => Response.json([{ id: word, headword: 'abandon', chineseCore: '放弃', partsOfSpeech: ['vt'], scopes: ['high-selective'], sources: [], flags: { formalReleaseEligible: true } }]) };
+  await putVoiceMemory(req('memory', { ...empty, notes: [note] }, 'PUT'));
+  const calls = [], original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async (_url, init) => { calls.push(JSON.parse(init.body)); return fakeCompletion({ summary: '放弃', meaning: ['放弃'], grammar: [], collocations: [], examples: [], personalNote: null, evidenceIds: [word], limitations: [] }); };
+  const body = { wordId: word, profile: { notes: [{ id: word, text: 'PRIVATE_PROFILE_SENTINEL' }] } };
+  const first = await handleAssistantRequest(req('explain', body), 'explain');
+  assert.equal(first.status, 200, await first.clone().text());
+  assert.match(JSON.stringify(calls[0]), /委婉反对/); assert.match(JSON.stringify(calls[0]), /PRIVATE_PROFILE_SENTINEL/);
+  const response = await first.json(); assert.equal(response.contextRevision, 1); assert.match(response.accountScope, /^[a-f0-9]{64}$/);
+  const temp = await handleAssistantRequest(req('explain', { ...body, temporary: true }), 'explain');
+  assert.equal(temp.status, 200, await temp.clone().text());
+  assert.doesNotMatch(JSON.stringify(calls[1]), /委婉反对|PRIVATE_PROFILE_SENTINEL/);
+  await putVoiceMemory(req('memory', { ...await readVoiceMemory(await authenticatedUserKey()), enabled: false }, 'PUT'));
+  const paused = await handleAssistantRequest(req('explain', body), 'explain');
+  assert.equal(paused.status, 200, await paused.clone().text());
+  assert.doesNotMatch(JSON.stringify(calls[2]), /委婉反对|PRIVATE_PROFILE_SENTINEL/);
+  assert.match(JSON.stringify(calls[2]), /abandon/);
+});
+
+test('feedback shares context while dictation Live instructions never receive target answers or memory', async (t) => {
+  setup(); await configure();
+  await putVoiceMemory(req('memory', { ...empty, notes: [note] }, 'PUT'));
+  const { voiceFeedback } = await import('../lib/voice/server.ts');
+  const original = globalThis.fetch, calls = [];
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async (_url, init) => { calls.push(JSON.parse(init.body)); return fakeCompletion({ strength: '说明了原因', improvements: [], retryPrompt: 'What else do you enjoy?', expressions: [] }); };
+  const feedback = await voiceFeedback(req('feedback', { topicId: 'culture', transcript }));
+  assert.equal(feedback.status, 200, await feedback.clone().text()); assert.match(JSON.stringify(calls[0]), /委婉反对/);
+  const tempFeedback = await voiceFeedback(req('feedback', { topicId: 'culture', transcript, temporary: true }));
+  assert.equal(tempFeedback.status, 200); assert.doesNotMatch(JSON.stringify(calls[1]), /委婉反对/);
+  globalThis.fetch = async (_url, init) => { calls.push(JSON.parse(init.body)); return Response.json({ session: { id: 'live_dictation_test' }, transport: { type: 'webrtc', sdp: 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n' } }); };
+  const body = { topicId: 'culture', minutes: 5, purpose: 'dictation', targetWords: ['SECRET_TARGET'], sdp: 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n' };
+  const session = await createVoiceSession(req('session', body));
+  assert.equal(session.status, 200, await session.clone().text());
+  assert.match(calls[2].session.instructions, /dictation control session/);
+  assert.doesNotMatch(calls[2].session.instructions, /SECRET_TARGET|委婉反对/);
+  assert.equal((await createVoiceSession(req('session', { ...body, purpose: 'other' }))).status, 400);
+});
+
 test('memory is durable and isolated, needs no AI key, and supports disable and clearing', async (t) => {
   const db = setup(); const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });
@@ -39,20 +136,25 @@ test('memory is durable and isolated, needs no AI key, and supports disable and 
   const first = await getVoiceMemory(req('memory', undefined, 'GET'));
   assert.equal(first.status, 200);
   assert.equal(first.headers.get('cache-control'), 'no-store, max-age=0');
-  assert.deepEqual(await first.json(), empty);
+  const firstBody = await first.json();
+  assert.match(firstBody.accountScope, /^[a-f0-9]{64}$/);
+  const { accountScope, contextVersion, ...firstMemory } = firstBody;
+  assert.deepEqual(firstMemory, empty);
   const saved = await putVoiceMemory(req('memory', { ...empty, notes: [note], recentTopics: ['雨天散步'] }, 'PUT'));
   assert.equal(saved.status, 200, await saved.clone().text());
   assert.equal((await saved.json()).revision, 1);
   assert.equal(db.prepare('SELECT count(*) AS n FROM voice_learning_memories').get().n, 1);
   requestHeaders.set('oai-authenticated-user-email', 'separate-owner@example.test');
-  assert.deepEqual(await (await getVoiceMemory(req('memory', undefined, 'GET'))).json(), empty);
+  const other = await (await getVoiceMemory(req('memory', undefined, 'GET'))).json();
+  assert.notEqual(other.accountScope, accountScope);
+  assert.deepEqual(other.notes, []);
   requestHeaders.set('oai-authenticated-user-email', 'voice-memory-owner@example.test');
   let memory = await readVoiceMemory(await authenticatedUserKey());
-  assert.deepEqual(memory.notes, [note]);
+  assert.deepEqual(memory.notes.map(({ id, text }) => ({ id, text })), [note]);
   const disabled = await putVoiceMemory(req('memory', { ...memory, enabled: false }, 'PUT'));
   assert.equal(disabled.status, 200, await disabled.clone().text());
   memory = await disabled.json();
-  assert.equal(memory.revision, 2); assert.equal(memory.enabled, false); assert.deepEqual(memory.notes, [note]);
+  assert.equal(memory.revision, 2); assert.equal(memory.enabled, false); assert.deepEqual(memory.notes.map(({ id, text }) => ({ id, text })), [note]);
   const cleared = await putVoiceMemory(req('memory', { ...memory, notes: [], recentTopics: [] }, 'PUT'));
   assert.equal(cleared.status, 200);
   assert.deepEqual((await cleared.json()).notes, []);

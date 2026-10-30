@@ -48,6 +48,7 @@ const validBodies = {
   '/api/voice/speech': { text: 'A short listening exercise.' },
   '/api/voice/feedback': { topicId: 'daily', transcript: [{ role: 'user', text: 'I prefer the train because it is comfortable.' }] },
   '/api/voice/memory': { revision: 0, enabled: true, notes: [{ id: 'test_note', text: 'Practice discussing books.' }], recentTopics: [] },
+  '/api/learning-memory': { accountScope: 'test-scope', revision: 0, enabled: true, notes: [{ id: 'test_note', text: 'Practice discussing books.' }], recentTopics: [] },
   '/api/voice/recommend': { topicId: 'culture', level: 'B2', minutes: 10 },
   '/api/voice/discuss': { topicId: 'culture', level: 'B2', transcript: [{ role: 'user', text: 'I enjoy reading novels.' }], messages: [{ role: 'user', text: 'How could I say that more naturally?' }] },
 };

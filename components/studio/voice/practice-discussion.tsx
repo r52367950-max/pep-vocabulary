@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Send, Sparkles } from "lucide-react";
+import { refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
 import { feedbackTranscript, voiceRequest, type TranscriptTurn } from "@/lib/voice/client";
 
 export type DiscussionMessage = { role: "user" | "assistant"; text: string };
-export function PracticeDiscussion({ sessionKey, topicId, level, transcript, messages, onChange, configured, onRemember, remembered = [], memoryBusy = false }: {
+export function PracticeDiscussion({ sessionKey, topicId, level, transcript, messages, onChange, configured, onRemember, remembered = [], memoryBusy = false, temporary = false }: {
   sessionKey: string; topicId: string; level: string; transcript: TranscriptTurn[]; messages: DiscussionMessage[];
   onChange: (messages: DiscussionMessage[]) => void; configured: boolean;
-  onRemember: (text: string) => Promise<boolean>; remembered?: string[]; memoryBusy?: boolean;
+  onRemember: (text: string) => Promise<boolean>; remembered?: string[]; memoryBusy?: boolean; temporary?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,20 +28,22 @@ export function PracticeDiscussion({ sessionKey, topicId, level, transcript, mes
     let room = 11000;
     const context = next.slice().reverse().flatMap((item) => { const text = item.text.slice(-Math.min(3000, room)); room -= text.length; return text ? [{ ...item, text }] : []; }).reverse();
     try {
-      const result = await voiceRequest<{ reply: string; memorySuggestions: string[] }>("/api/voice/discuss", { topicId, level, transcript: feedbackTranscript(transcript, 12000), messages: context }, abort.signal);
-      if (abort.signal.aborted) return;
+      const memory = await refreshLearningContext(abort.signal);
+      const result = await voiceRequest<{ reply: string; memorySuggestions: string[] }>("/api/voice/discuss", { topicId, level, transcript: feedbackTranscript(transcript, 12000), messages: context, temporary, accountScope: memory.accountScope, contextRevision: memory.revision, contextVersion: memory.contextVersion }, abort.signal);
+      await refreshLearningContext(abort.signal);
+      if (abort.signal.aborted || !contextStillCurrent(memory, temporary)) return;
       onChange([...next, { role: "assistant", text: result.reply }]);
-      setSuggestions(result.memorySuggestions || []); setDraft("");
+      setSuggestions(temporary ? [] : result.memorySuggestions || []); setDraft("");
       requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "auto", block: "nearest" }));
     } catch (cause) { if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : "暂时无法回复，请重试。"); }
-    finally { inFlight.current = false; if (!abort.signal.aborted) setBusy(false); }
+    finally { if (abortRef.current === abort) { inFlight.current = false; setBusy(false); } }
   };
   return <section className="voice-discussion" aria-label="练习后对话">
     {!messages.length && <div className="voice-discussion-welcome"><h2>刚才聊得怎么样？</h2><button className="text-button" disabled={busy || !configured} onClick={() => void ask("总结这次练习，选一句我说过的话给出更自然的表达，再给我一条具体建议。 ")}><Sparkles size={16} />帮我回顾一下</button></div>}
     <div className="voice-discussion-messages" aria-live="polite" aria-busy={busy}>{messages.map((message, index) => <div className={`voice-discussion-message ${message.role}`} key={index}><span>{message.role === "user" ? "你" : "英语伙伴"}</span><p>{message.text}</p></div>)}{busy && <p className="voice-muted">正在想一想刚才的表达…</p>}<div ref={endRef} /></div>
-    {suggestions.length > 0 && <div className="voice-memory-suggestions"><p>下次可以记住这些</p>{suggestions.map((note) => { const added = remembered.includes(note); return <button className="secondary" key={note} disabled={added || memoryBusy} onClick={async () => { if (await onRemember(note)) { setMemoryError(""); } else setMemoryError("未能保存这条记忆，请在学习记忆中重新读取后再试。"); }}>{added && <Check size={16} />}<span>{note}</span><small>{added ? "已记住" : "记住这条"}</small></button>; })}<small>由你确认后保存；你可以随时在学习记忆中编辑或删除。</small></div>}
+    {!temporary && suggestions.length > 0 && <div className="voice-memory-suggestions"><p>下次可以记住这些</p>{suggestions.map((note) => { const added = remembered.includes(note); return <button className="secondary" key={note} disabled={added || memoryBusy} onClick={async () => { if (await onRemember(note)) { setMemoryError(""); } else setMemoryError("未能保存这条记忆，请在学习记忆中重新读取后再试。"); }}>{added && <Check size={16} />}<span>{note}</span><small>{added ? "已记住" : "记住这条"}</small></button>; })}<small>由你确认后保存；你可以随时在学习记忆中编辑或删除。</small></div>}
     {(error || memoryError) && <p role="alert" className="voice-notice">{error || memoryError}</p>}
     <form className="voice-discussion-form" onSubmit={(event) => { event.preventDefault(); void ask(draft); }}><label className="learn-sr" htmlFor="voice-discussion-input">继续聊</label><div><textarea id="voice-discussion-input" rows={2} maxLength={1000} value={draft} disabled={busy} placeholder="问问刚才的表达，或聊聊想改进的地方…" onChange={(event) => setDraft(event.target.value)} /><button type="submit" className="primary" disabled={busy || !configured || !draft.trim()} aria-label="发送复盘问题" title="发送复盘问题"><Send size={18} /></button></div></form>
-    <p className="voice-muted">基于转写与已启用的记忆，使用文字模型额度；不评价发音。</p>
+    <p className="voice-muted">{temporary ? "仅使用本次转写与对话，不保存记录或记忆。" : "基于转写与已启用的学习记忆。"}使用文字模型额度；不评价发音。</p>
   </section>;
 }

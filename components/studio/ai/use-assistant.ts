@@ -5,6 +5,7 @@ import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { AssistantTask } from "@/lib/assistant/prompt";
 import type { LearnerProfile } from "@/lib/assistant/profile";
 import { AssistantError, profileSnapshot, readCached, runAssistant, usageStore, type AssistantResult } from "@/lib/ai-client";
+import { learningContextStore, localProfileAllowed, refreshLearningContext } from "@/lib/learning-context-client";
 import { buildLearnerProfile } from "@/lib/learner-profile";
 import { headwordLookup } from "@/lib/mistakes";
 import { listWritings } from "@/lib/storage";
@@ -28,12 +29,14 @@ async function writingSummary(): Promise<LearnerProfile["writing"]> {
   }
 }
 
-/** Returns a function that yields the learner profile, rebuilt only when it meaningfully changes. */
+/** Rebuild from current local records only after this account explicitly opts in. */
 export function useLearnerProfile(data: Vocabulary) {
   const lookup = useMemo(() => headwordLookup(data.index), [data.index]);
   const latest = useRef({ data, lookup });
   useEffect(() => { latest.current = { data, lookup }; });
   return useCallback(async () => {
+    const context = await refreshLearningContext();
+    if (!localProfileAllowed(context)) return null;
     const writing = await writingSummary();
     const { data: current, lookup: words } = latest.current;
     return profileSnapshot(current.history.active.length, `w${writing?.count || 0}`, () =>
@@ -48,16 +51,28 @@ export type AssistantState<T> =
   | { status: "error"; message: string; code: string };
 
 /**
- * One assistant task in a component. `peek` shows a cached answer without a request; `run`
+ * One assistant task in a component. `peek` validates policy without a model request; `run`
  * requests (or reuses the cache); leaving the component cancels a pending request.
  */
 export function useAssistant<T = Record<string, unknown>>(task: AssistantTask, data: Vocabulary) {
   const profile = useLearnerProfile(data);
   const [state, setState] = useState<AssistantState<T>>({ status: "idle" });
   const controller = useRef<AbortController | null>(null);
-  useEffect(() => () => controller.current?.abort(), []);
+  const generation = useRef(0);
+  useEffect(() => {
+    let previous = learningContextStore.get();
+    const unsubscribe = learningContextStore.subscribe(() => {
+      const next = learningContextStore.get();
+      if (next.epoch !== previous.epoch && (previous.memory || next.temporary !== previous.temporary)) {
+        generation.current++; controller.current?.abort(); setState({ status: "idle" });
+      }
+      previous = next;
+    });
+    return () => { generation.current++; controller.current?.abort(); unsubscribe(); };
+  }, []);
   const run = useCallback(async (input: Record<string, unknown>, options: { refresh?: boolean; personal?: boolean } = {}) => {
     controller.current?.abort();
+    const ticket = ++generation.current;
     const current = new AbortController();
     controller.current = current;
     setState({ status: "loading", startedAt: Date.now() });
@@ -66,21 +81,26 @@ export function useAssistant<T = Record<string, unknown>>(task: AssistantTask, d
         refresh: options.refresh, signal: current.signal,
         profile: options.personal === false ? null : await profile(),
       });
-      if (!current.signal.aborted) setState({ status: "done", value });
+      if (!current.signal.aborted && ticket === generation.current) setState({ status: "done", value });
       return value;
     } catch (error) {
-      if (current.signal.aborted) return null;
+      if (current.signal.aborted || ticket !== generation.current) return null;
       setState({ status: "error", message: error instanceof Error ? error.message : "AI 暂时不可用。", code: error instanceof AssistantError ? error.code : "error" });
       return null;
     }
   }, [task, profile]);
   const peek = useCallback(async (input: Record<string, unknown>) => {
-    const cached = await readCached<T>(task, input);
-    if (cached) setState({ status: "done", value: cached });
-    else setState({ status: "idle" });
-    return cached;
-  }, [task]);
-  const cancel = useCallback(() => { controller.current?.abort(); setState({ status: "idle" }); }, []);
+    controller.current?.abort();
+    const ticket = ++generation.current;
+    const current = new AbortController(); controller.current = current;
+    try {
+      const cached = await readCached<T>(task, input, { profile: await profile(), signal: current.signal });
+      if (ticket !== generation.current || current.signal.aborted) return null;
+      setState(cached ? { status: "done", value: cached } : { status: "idle" });
+      return cached;
+    } catch { if (ticket === generation.current && !current.signal.aborted) setState({ status: "idle" }); return null; }
+  }, [task, profile]);
+  const cancel = useCallback(() => { generation.current++; controller.current?.abort(); setState({ status: "idle" }); }, []);
   return { state, run, peek, cancel };
 }
 

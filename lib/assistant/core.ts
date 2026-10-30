@@ -371,9 +371,9 @@ export function sameAiCredentialScope(
  * System prompt first (identical for every request), then the learner profile, then this task.
  * See ./prompt.ts for why the order matters for provider-side prompt caching.
  */
-export function buildAssistantPrompt(request: ParsedAssistantRequest, evidence: LexiconEvidence[], profile: unknown = null) {
+export function buildAssistantPrompt(request: ParsedAssistantRequest, evidence: LexiconEvidence[], profile: unknown = null, memory: unknown = null) {
   const { task, ...input } = request;
-  return { system: SYSTEM_PROMPT, user: buildUserMessage(profile, task, input, evidence) };
+  return { system: SYSTEM_PROMPT, user: buildUserMessage(profile, task, input, evidence, memory) };
 }
 
 function cleanOutputText(value: unknown, field: string, maximum = 2000): string {

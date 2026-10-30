@@ -180,3 +180,35 @@ test("local history has twelve records, updates by id, and tolerates unavailable
   storage.setItem(VOICE_HISTORY_KEY, "broken"); assert.deepEqual(readVoiceHistory(storage), []);
   assert.deepEqual(readVoiceHistory({ getItem() { throw new Error("denied"); } }), []);
 });
+
+test('dictation Live never plays output or exposes answer captions and sends no conversational greeting', async () => {
+  const f = fixture();
+  try {
+    await f.client.start({ ...options, purpose: 'dictation', silentOutput: true, temporary: true, accountScope: 'scope', contextRevision: 4, contextVersion: '2' });
+    assert.equal(f.audio.muted, true);
+    f.emit({ type: 'session.started' });
+    assert.ok(!f.sent.some((event) => event.type === 'session.commentary.append'));
+    f.emit({ type: 'session.output_transcript.delta', delta: 'SECRET ANSWER', start_ms: 1, end_ms: 5 });
+    f.emit({ type: 'session.input_transcript.delta', delta: 'C A T', start_ms: 10, end_ms: 20 });
+    assert.deepEqual(f.transcripts, [{ role: 'user', text: 'C A T', startMs: 10, endMs: 20 }]);
+    f.client.pause(false); await f.client.resumePlayback();
+    assert.equal(f.audio.muted, true);
+    const payload = JSON.parse(f.calls[0].init.body);
+    assert.equal(payload.purpose, 'dictation'); assert.equal(payload.accountScope, 'scope'); assert.equal(payload.temporary, true);
+    await f.client.end();
+  } finally { f.client.dispose(); }
+});
+test('pending server close is recoverable and blocks starting another billed session', async () => {
+  let closes = 0, sessions = 0;
+  const f = fixture({ fetch: async (url) => {
+    if (url.endsWith('session')) { sessions++; return new Response(JSON.stringify(reply)); }
+    closes++; return new Response('{}', { status: closes === 1 ? 503 : 200 });
+  } });
+  try {
+    await f.client.start(options); f.emit({ type: 'session.started' }); await f.client.end();
+    assert.equal(f.client.hasPendingClose, true);
+    await f.client.start(options); assert.equal(sessions, 1);
+    await f.client.retryClose(); assert.equal(f.client.hasPendingClose, false); assert.equal(f.client.state.closeConfirmed, true);
+    assert.equal(closes, 2);
+  } finally { f.client.dispose(); }
+});

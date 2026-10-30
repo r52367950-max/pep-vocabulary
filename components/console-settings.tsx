@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { assistantCacheSize, clearAssistantCache } from "@/lib/ai-client";
+import { LearningMemoryPanel, useLearningMemory } from "./studio/voice/learning-memory";
 import type { AppSettings } from "@/lib/storage";
 import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from "./studio/ai-connection";
 
@@ -93,6 +94,7 @@ export default function ConsoleSettings({
   onClear: () => void;
   initialSection?: "general" | "ai";
 }) {
+  const learningMemory = useLearningMemory();
   const [section, setSection] = useState<Section>(initialSection);
   const [mobilePanel, setMobilePanel] = useState(initialSection !== "general");
   const panelHeading = useRef<HTMLHeadingElement>(null);
@@ -306,6 +308,7 @@ export default function ConsoleSettings({
           )}
           {section === "learning" && (
             <>
+              <section className="settings-card"><LearningMemoryPanel controls={learningMemory} /></section>
               <section className="settings-card">
                 <header>
                   <BookOpenCheck size={20} aria-hidden="true" />
@@ -717,7 +720,7 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.7.3</dd>
+                  <dd>2.8.0</dd>
                 </div>
                 <div>
                   <dt>数据格式</dt>

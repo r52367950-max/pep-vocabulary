@@ -7,7 +7,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules:
 const results = [];
 try {
   const request = async (path, init) => mf.dispatchFetch(`http://localhost${path}`, init);
-  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401], ['/api/voice/status', 401], ['/api/voice/memory', 401]]) {
+  for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401], ['/api/voice/status', 401], ['/api/voice/memory', 401], ['/api/learning-memory', 401]]) {
     const response = await request(path);
     const text = await response.text();
     assert.equal(response.status, expected, `${path}: ${text.slice(0, 120)}`);
@@ -35,9 +35,9 @@ try {
       for (const asset of assets) assert.equal((await request(asset)).status, 200, asset);
     }
   }
-  for (const path of ['/api/voice/session', '/api/voice/close', '/api/voice/speech', '/api/voice/feedback', '/api/voice/recommend', '/api/voice/discuss', '/api/voice/memory']) {
+  for (const path of ['/api/voice/session', '/api/voice/close', '/api/voice/speech', '/api/voice/feedback', '/api/voice/recommend', '/api/voice/discuss', '/api/voice/memory', '/api/learning-memory']) {
     for (const [name, extraHeaders, status] of [['unauthenticated', {}, 401], ['cross-origin', { origin: 'https://evil.test' }, 403]]) {
-      const response = await request(path, { method: path.endsWith('/memory') ? 'PUT' : 'POST', headers: { 'content-type': 'application/json', ...extraHeaders }, body: '{}' });
+      const response = await request(path, { method: path.endsWith('memory') ? 'PUT' : 'POST', headers: { 'content-type': 'application/json', ...extraHeaders }, body: '{}' });
       assert.equal(response.status, status, await response.clone().text());
       assert.match(response.headers.get('cache-control') || '', /no-store/);
       results.push({ path: `${path} ${name}`, status });
@@ -98,7 +98,9 @@ try {
   const savedMemory = await memoryResponse.json();
   assert.equal(savedMemory.revision, 1);
   assert.equal(savedMemory.enabled, true);
-  assert.deepEqual(savedMemory.notes, memoryDraft.notes);
+  assert.deepEqual(savedMemory.notes.map(({ id, text }) => ({ id, text })), memoryDraft.notes);
+  assert.equal(savedMemory.notes[0].source, 'manual');
+  assert.ok(savedMemory.notes[0].confirmedAt);
   assert.deepEqual(savedMemory.recentTopics, memoryDraft.recentTopics);
   const otherHeaders = { ...headers, 'oai-authenticated-user-email': 'another-smoke@example.test' };
   const otherMemory = await (await request('/api/voice/memory', { headers: otherHeaders })).json();
@@ -106,7 +108,7 @@ try {
   assert.deepEqual(otherMemory.notes, [], 'a second account must not see the first account learning memory');
   const otherWrite = await request('/api/voice/memory', { method: 'PUT', headers: otherHeaders, body: JSON.stringify({ revision: 0, enabled: false, notes: [{ id: 'note_other_1', text: 'Practice travel conversations.' }], recentTopics: [] }) });
   assert.equal(otherWrite.status, 200, await otherWrite.clone().text());
-  assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, memoryDraft.notes);
+  assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, savedMemory.notes);
   await bootstrap(db);
   assert.deepEqual(await (await request('/api/voice/memory', { headers })).json(), savedMemory, 'bootstrap replay preserves saved memory');
   const clearMemory = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ revision: savedMemory.revision, enabled: false, notes: [], recentTopics: [] }) });
@@ -118,6 +120,43 @@ try {
   assert.deepEqual(clearedMemory.recentTopics, []);
   assert.equal((await (await request('/api/voice/memory', { headers: otherHeaders })).json()).notes.length, 1);
   results.push({ path: '/api/voice/memory persists, isolates accounts, rejects stale edits, and clears without paid calls', status: 'passed' });
+  // The shared endpoint is the same durable account record, including provenance.
+  const unifiedInitial = await (await request('/api/learning-memory', { headers })).json();
+  assert.deepEqual(unifiedInitial, clearedMemory);
+  assert.match(unifiedInitial.accountScope, /^[a-f0-9]{64}$/);
+  const unifiedNote = { id: 'note_shared_1', text: 'I prefer short explanations.', source: 'confirmed_suggestion', kind: 'preference' };
+  const unifiedSavedResponse = await request('/api/learning-memory', { method: 'PUT', headers, body: JSON.stringify({ ...unifiedInitial, enabled: true, notes: [unifiedNote] }) });
+  assert.equal(unifiedSavedResponse.status, 200, await unifiedSavedResponse.clone().text());
+  const unifiedSaved = await unifiedSavedResponse.json();
+  assert.equal(unifiedSaved.revision, unifiedInitial.revision + 1);
+  assert.equal(unifiedSaved.notes[0].source, unifiedNote.source);
+  assert.ok(unifiedSaved.notes[0].updatedAt);
+  assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, unifiedSaved.notes);
+  const legacyKeepMetadata = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ revision: unifiedSaved.revision, enabled: true, notes: [{ id: unifiedNote.id, text: unifiedNote.text }], recentTopics: [] }) });
+  assert.equal(legacyKeepMetadata.status, 200);
+  const preserved = await legacyKeepMetadata.json();
+  assert.deepEqual(preserved.notes, unifiedSaved.notes, 'legacy id/text writes retain provenance and timestamps');
+  const pausedResponse = await request('/api/learning-memory', { method: 'PUT', headers, body: JSON.stringify({ ...preserved, enabled: false }) });
+  assert.equal(pausedResponse.status, 200);
+  const paused = await pausedResponse.json();
+  assert.equal(paused.enabled, false); assert.deepEqual(paused.notes, preserved.notes);
+  const temporary = await (await request('/api/learning-memory?temporary=1', { headers })).json();
+  assert.equal(temporary.enabled, false); assert.equal(temporary.revision, paused.revision);
+  assert.deepEqual(temporary.notes, []); assert.deepEqual(temporary.recentTopics, []);
+  const temporaryWrite = await request('/api/learning-memory', { method: 'PUT', headers, body: JSON.stringify({ ...paused, temporary: true, notes: [] }) });
+  assert.equal(temporaryWrite.status, 409);
+  assert.deepEqual(await (await request('/api/learning-memory', { headers })).json(), paused, 'temporary requests do not alter durable notes');
+  const otherShared = await (await request('/api/learning-memory', { headers: otherHeaders })).json();
+  assert.notEqual(otherShared.accountScope, paused.accountScope);
+  assert.equal(otherShared.notes[0].id, 'note_other_1');
+  const wrongAccount = await request('/api/learning-memory', { method: 'PUT', headers: otherHeaders, body: JSON.stringify({ ...paused, revision: otherShared.revision }) });
+  assert.equal(wrongAccount.status, 409, 'same revision cannot override a different authenticated account');
+  const staleShared = await request('/api/learning-memory', { method: 'PUT', headers, body: JSON.stringify(unifiedSaved) });
+  assert.equal(staleShared.status, 409);
+  const deletedShared = await request('/api/learning-memory', { method: 'PUT', headers, body: JSON.stringify({ ...paused, notes: [], recentTopics: [] }) });
+  assert.equal(deletedShared.status, 200);
+  assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, []);
+  results.push({ path: '/api/learning-memory shares legacy data, preserves provenance, isolates accounts, pauses and rejects temporary writes', status: 'passed' });
   const unconfiguredVoice = await request('/api/voice/status', { headers });
   assert.equal(unconfiguredVoice.status, 200, await unconfiguredVoice.clone().text());
   const unconfiguredBody = await unconfiguredVoice.json();
