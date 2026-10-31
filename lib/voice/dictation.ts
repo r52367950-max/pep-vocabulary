@@ -36,7 +36,7 @@ export const DICTATION_SENTENCES: DictationItem[] = [
   ["environment-2", "Protecting wildlife requires cooperation between local communities and researchers.", "环境 · 自然保护"],
   ["technology-1", "The evidence suggests that the new method could save energy.", "科技 · 讨论证据"],
   ["technology-2", "We should distinguish reliable information from personal opinions.", "科技 · 信息判断"],
-].map(([id, text, hint]) => ({ id: `sentence:${id}`, mode: "sentences", text, hint, source: "词迹原创练习句" }));
+].map(([id, text, hint]) => ({ id: `sentence:${id}`, mode: "sentences", text, hint, source: "词迹例句" }));
 
 export function wordDictationItems(entries: LexiconIndexEntry[]): DictationItem[] {
   const seen = new Set<string>();

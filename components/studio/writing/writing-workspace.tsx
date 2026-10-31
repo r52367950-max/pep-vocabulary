@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeft, Check, ChevronRight, Plus, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronRight, Pencil, Plus, RefreshCw, Search, Shuffle, Sparkles, Trash2, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { recordLearningActivity } from "@/lib/learning-journal-client";
@@ -10,12 +10,16 @@ import { learningContextStore, refreshLearningContext, contextStillCurrent } fro
 import { captureWritingContext, writingContextCurrent, writeWritingInContext, WritingContextChangedError, type WritingContext } from "@/lib/writing-context";
 import { deleteWriting, listWritings, saveWriting, createLocalId, type WritingGenre, type WritingRecord } from "@/lib/storage";
 import { countWords, findTargetUses, latestVersion, localWritingChecks, newWriting, suggestTargets, WRITING_GENRES, writingTitle } from "@/lib/writing";
+import { mergeTargetIds } from "@/lib/writing-targets";
 import { StudioSymbol } from "../symbol";
+import { ActionMenu } from "../action-menu";
+import { StudioDialog } from "../studio-dialog";
 import { useElapsed, useLearnerProfile } from "../ai/use-assistant";
 import EssayReview from "./essay-review";
 import HandwritingUpload, { HandwritingAssessment } from "./handwriting-upload";
+import TargetWordPicker from "./target-word-picker";
 import type { WritingHandwritingAssessment } from "@/lib/writing-recognition";
-import { WRITING_TOPICS, recommendWritingTopic, randomWritingTopic, topicPrompt, WRITING_TOPIC_SOURCES, validWritingTopic, type WritingTopic } from "@/lib/writing-topics";
+import { WRITING_TOPICS, recommendWritingTopic, randomWritingTopic, topicPrompt, validWritingTopic, type WritingTopic } from "@/lib/writing-topics";
 
 type View = { kind: "list" } | { kind: "setup" } | { kind: "edit"; id: string };
 
@@ -141,24 +145,27 @@ function WritingList({ records, data, onOpen, onDelete }: { records: WritingReco
 }
 
 function WritingSetup({ data, initialTargets, onCreate, temporary, recentTitles }: { data: Vocabulary; initialTargets?: string[]; recentTitles: string[]; onCreate: (record: WritingRecord) => Promise<void>; temporary: boolean }) {
+  const initialTargetIds = () => temporary ? [] : mergeTargetIds([], initialTargets?.length ? initialTargets : suggestTargets(data.history.active, data.cards, data.byId, 6).map(entry => entry.id), data.byId);
   const topicContext = (ids: string[]) => {
     const entries = temporary ? [] : ids.flatMap(id => data.byId.get(id) ? [data.byId.get(id)!] : []);
     return { wordIds: entries.flatMap(entry => [entry.id, entry.headword]), bookIds: [...new Set(entries.flatMap(entry => entry.sources.map(source => source.bookId)))], units: [...new Set(entries.flatMap(entry => entry.sources.map(source => source.unit)))], recentTitles: temporary ? [] : recentTitles };
   };
   const [genre, setGenre] = useState<WritingGenre>("free");
-  const [topic, setTopic] = useState<WritingTopic>(() => recommendWritingTopic("free", topicContext(temporary ? [] : initialTargets?.length ? initialTargets : suggestTargets(data.history.active, data.cards, data.byId, 6).map(entry => entry.id))));
+  const [topic, setTopic] = useState<WritingTopic>(() => recommendWritingTopic("free", topicContext(initialTargetIds())));
   const [prompt, setPrompt] = useState(() => topicPrompt(topic));
   const [generating, setGenerating] = useState(false);
-  const [generatedTopic, setGeneratedTopic] = useState(false);
+  const [dialog, setDialog] = useState<"library" | "edit" | "targets" | null>(null);
+  const [draftPrompt, setDraftPrompt] = useState("");
   const topicRequest = useRef<AbortController | null>(null);
   const topicSequence = useRef(0);
   useEffect(() => () => { topicSequence.current++; topicRequest.current?.abort(); }, []);
-  const chooseTopic = (next: WritingTopic) => { topicSequence.current++; topicRequest.current?.abort(); topicRequest.current = null; setGenerating(false); setTopic(next); setGeneratedTopic(false); setPrompt(topicPrompt(next)); setCreateError(""); };
+  const cancelGeneration = () => { topicSequence.current++; topicRequest.current?.abort(); topicRequest.current = null; setGenerating(false); };
+  const chooseTopic = (next: WritingTopic) => { cancelGeneration(); setTopic(next); setPrompt(topicPrompt(next)); setCreateError(""); };
   const [round, setRound] = useState(0);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const createPending = useRef(false);
-  const [targets, setTargets] = useState<string[]>(() => temporary ? [] : initialTargets?.length ? initialTargets : suggestTargets(data.history.active, data.cards, data.byId, 6).map((entry) => entry.id));
+  const [targets, setTargets] = useState<string[]>(initialTargetIds);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const pickGenre = (next: WritingGenre) => { setGenre(next); chooseTopic(recommendWritingTopic(next, topicContext(targets))); };
@@ -175,7 +182,7 @@ function WritingSetup({ data, initialTargets, onCreate, temporary, recentTitles 
       await refreshLearningContext(controller.signal);
       if (controller.signal.aborted || sequence !== topicSequence.current || !contextStillCurrent(memory, temporary)) return;
       if (!validWritingTopic(answer.topic) || answer.topic.kind !== genre) throw new Error("题目不完整，请重新出题。");
-      setTopic(answer.topic); setGeneratedTopic(true); setPrompt(topicPrompt(answer.topic));
+      setTopic(answer.topic); setPrompt(topicPrompt(answer.topic));
     } catch (cause) { if (sequence === topicSequence.current) setCreateError(controller.signal.aborted ? "出题已取消或超时。" : cause instanceof Error ? cause.message : "出题失败。"); }
     finally { clearTimeout(timeout); if (sequence === topicSequence.current) { topicRequest.current = null; setGenerating(false); } }
   };
@@ -188,28 +195,34 @@ function WritingSetup({ data, initialTargets, onCreate, temporary, recentTitles 
         ))}
       </div>
       <section className="writing-topic-card" aria-label="本次写作题目">
-        <div className="writing-topic-meta"><span>{topic.cefr}</span><span>{topic.wordMin}–{topic.wordMax} 词</span><span>{generatedTopic ? "AI 原创题" : "原创练习题"}</span></div>
-        <h2>{topic.title}</h2>
-        <p className="ai-note">{[...topic.themes, ...topic.skills].slice(0, 4).join(" · ")}</p>
-        <p className="writing-topic-text">{prompt}</p>
-        <div className="writing-topic-actions">
-          <button className="text-button" title="根据近期目标词与单元匹配；暂无记录时从 B1 起步" onClick={() => chooseTopic(recommendWritingTopic(genre, { ...topicContext(targets), recentTitles: [...recentTitles, topic.title], recentTopicIds: [topic.id] }))}>按进度推荐</button>
-          <button className="text-button" onClick={() => chooseTopic(randomWritingTopic(genre, topic.id))}>随机</button>
-          <button className="text-button" disabled={!data.settings.aiEnabled || generating} onClick={() => void generate()}><Sparkles size={14} aria-hidden="true" />{generating ? "正在出题…" : "AI 出题"}</button>
-          {generating && <button className="text-button" onClick={() => { topicSequence.current++; topicRequest.current?.abort(); topicRequest.current = null; setGenerating(false); }}>取消</button>}
+        <div className="writing-topic-heading">
+          <div className="writing-topic-meta"><span>{topic.cefr}</span><span>{topic.wordMin}–{topic.wordMax} 词</span></div>
+          <ActionMenu label="题目选项" items={[
+            { label: "从题库选择…", icon: <BookOpen size={17} />, onSelect: () => setDialog("library") },
+            { label: "调整题目…", icon: <Pencil size={17} />, onSelect: () => { setDraftPrompt(prompt); setDialog("edit"); } },
+            { label: "按进度推荐", icon: <RefreshCw size={17} />, separator: true, onSelect: () => chooseTopic(recommendWritingTopic(genre, { ...topicContext(targets), recentTitles: [...recentTitles, topic.title], recentTopicIds: [topic.id] })) },
+            { label: "随机换题", icon: <Shuffle size={17} />, onSelect: () => chooseTopic(randomWritingTopic(genre, topic.id)) },
+            { label: "AI 出题", icon: <Sparkles size={17} />, disabled: !data.settings.aiEnabled || generating, onSelect: () => void generate() },
+          ]} />
         </div>
+        <h2>{prompt === topicPrompt(topic) ? topic.title : "自定义题目"}</h2>
+        <p className="writing-topic-text">{prompt}</p>
+        {generating && <div className="writing-topic-actions" role="status"><span>正在出题…</span><button className="text-button" onClick={cancelGeneration}>取消</button></div>}
       </section>
-      <details className="writing-topic-library"><summary>从题库选择 · {WRITING_TOPICS.filter(item => item.kind === genre).length} 题</summary><label className="sr-only" htmlFor="writing-topic-select">选择写作题目</label><select id="writing-topic-select" value={WRITING_TOPICS.some(item => item.id === topic.id) ? topic.id : ""} onChange={event => { const next = WRITING_TOPICS.find(item => item.id === event.target.value); if (next) chooseTopic(next); }}><option value="" disabled>选择题目</option>{WRITING_TOPICS.filter(item => item.kind === genre).map(item => <option key={item.id} value={item.id}>{item.cefr} · {item.title} · {item.wordMin}–{item.wordMax} 词</option>)}</select></details>
-      <details className="writing-topic-sources"><summary>题型参考与来源</summary><p className="ai-note">{generatedTopic ? "AI 原创练习" : "原创练习"}，参考下列写作活动与题型设计，并非考试原题。</p>{WRITING_TOPIC_SOURCES.filter(source => topic.sourceIds.includes(source.id)).slice(0, 2).map(source => <a key={source.id} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</details>
-      <details className="writing-custom-prompt"><summary>调整题目或使用自己的题目</summary><label className="ai-field"><span>{genre === "continuation" ? "原文与两段段首句" : "题目要求"}</span><textarea rows={genre === "continuation" ? 9 : 4} maxLength={4000} value={prompt} onChange={event => setPrompt(event.target.value)} /></label></details>
       <section className="writing-targets-setup" aria-labelledby="targets-title">
         <div className="writing-targets-head">
           <h2 id="targets-title">目标词</h2>
-          <button className="text-button" disabled={temporary} onClick={() => {
-            const next = suggestTargets(data.history.active, data.cards, data.byId, 6 * (round + 2)).slice((round + 1) * 6);
-            if (next.length) { setRound(round + 1); setTargets(next.map((entry) => entry.id)); }
-            else data.notify("没有更多最近学过的词了。");
-          }}><RefreshCw size={14} aria-hidden="true" />换一组</button>
+          <div className="writing-target-actions">
+            <button className="text-button" onClick={() => setDialog("targets")}><Plus size={16} aria-hidden="true" />添加词</button>
+            <ActionMenu label="词语选项" items={[
+              { label: "换一组推荐词", icon: <RefreshCw size={17} />, disabled: temporary, onSelect: () => {
+                const next = suggestTargets(data.history.active, data.cards, data.byId, 6 * (round + 2)).slice((round + 1) * 6);
+                if (next.length) { setRound(round + 1); setTargets(next.map((entry) => entry.id)); }
+                else data.notify("没有更多最近学过的词了。");
+              } },
+              { label: "清空目标词", icon: <Trash2 size={17} />, disabled: !targets.length, onSelect: () => setTargets([]) },
+            ]} />
+          </div>
         </div>
         {targets.length ? (
           <p className="writing-line">
@@ -219,9 +232,14 @@ function WritingSetup({ data, initialTargets, onCreate, temporary, recentTitles 
               </button>
             ))}
           </p>
-        ) : <p className="ai-note">没有目标词也可以写；先学几个词，这里会推荐最近学过和答错的词。</p>}
+        ) : <p className="ai-note">从词库添加想练习的词。</p>}
       </section>
-      {temporary && <p className="ai-note">临时写作不读取历史目标词；草稿与 AI 反馈仅在本次页面保留，不保存到本机记录。切换模式后不会补存。</p>}
+      {dialog === "library" && <WritingTopicPicker genre={genre} currentId={topic.id} onClose={() => setDialog(null)} onChoose={next => { chooseTopic(next); setDialog(null); }} />}
+      {dialog === "edit" && <StudioDialog title="调整题目" className="writing-topic-edit" onClose={() => setDialog(null)} footer={<><button className="secondary" onClick={() => setDialog(null)}>取消</button><button className="primary" disabled={!draftPrompt.trim() || draftPrompt.length > 4000} onClick={() => { cancelGeneration(); setPrompt(draftPrompt.trim()); setCreateError(""); setDialog(null); }}>使用题目</button></>}>
+        <label className="ai-field"><span>{genre === "continuation" ? "原文与两段段首句" : "题目要求"}</span><textarea autoFocus rows={genre === "continuation" ? 14 : 9} maxLength={4000} value={draftPrompt} onChange={event => setDraftPrompt(event.target.value)} /></label>
+        <p className="ai-note writing-topic-edit-count">{draftPrompt.length} / 4000</p>
+      </StudioDialog>}
+      {dialog === "targets" && <TargetWordPicker data={data} selectedIds={targets} onAdd={ids => { setTargets(current => mergeTargetIds(current, ids, data.byId)); setDialog(null); }} onClose={() => setDialog(null)} />}
       {createError && <p className="ai-status is-error" role="alert">{createError}</p>}
       <button className="primary writing-begin" disabled={!prompt.trim() || prompt.length > 4000 || creating || generating} onClick={async () => {
         if (createPending.current) return;
@@ -232,6 +250,27 @@ function WritingSetup({ data, initialTargets, onCreate, temporary, recentTitles 
       }}>{creating ? "正在准备…" : "开始写作"}</button>
     </main>
   );
+}
+
+function WritingTopicPicker({ genre, currentId, onChoose, onClose }: {
+  genre: WritingGenre; currentId: string; onChoose: (topic: WritingTopic) => void; onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const search = query.trim().toLocaleLowerCase();
+  const topics = WRITING_TOPICS.filter(item => item.kind === genre && (!search || [item.title, item.prompt, item.cefr, ...item.themes, ...item.skills].join(" ").toLocaleLowerCase().includes(search)));
+  return <StudioDialog title="从题库选择" className="writing-topic-picker" onClose={onClose} footer={<button className="secondary" onClick={onClose}>取消</button>}>
+    <div className="writing-topic-search">
+      <Search size={18} aria-hidden="true" />
+      <input autoFocus type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label="搜索写作题目" placeholder="搜索题目、主题或难度" />
+    </div>
+    <p className="ai-note" role="status">{WRITING_GENRES[genre].label} · {topics.length} 题</p>
+    {topics.length ? <ul className="writing-topic-results">{topics.map(item => <li key={item.id}>
+      <button className="writing-topic-choice" aria-pressed={item.id === currentId} onClick={() => onChoose(item)}>
+        <span><strong lang="en">{item.title}</strong><small>{item.cefr} · {item.wordMin}–{item.wordMax} 词</small><span lang="en">{item.prompt}</span></span>
+        {item.id === currentId && <Check size={20} aria-hidden="true" />}
+      </button>
+    </li>)}</ul> : <div className="writing-topic-empty"><p>没有找到相关题目</p><button className="text-button" onClick={() => setQuery("")}>清除搜索</button></div>}
+  </StudioDialog>;
 }
 
 function WritingEditor({ record, data, generation, onSave, onPractice, onWord, temporary }: {

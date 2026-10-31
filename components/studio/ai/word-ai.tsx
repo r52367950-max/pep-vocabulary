@@ -128,7 +128,7 @@ export default function WordAi({ entry, data }: { entry: LexiconIndexEntry; data
             </>
           ) : (
             <>
-              <p className="ai-note">按词根词缀拆开，再配一个好记的联想。拆不开的词只给联想。</p>
+              <p className="ai-note">拆词联想，帮你记住含义和拼写。</p>
               <AiStatus state={mnemonic.state} onCancel={mnemonic.cancel} onRetry={() => mnemonic.run(mnemonicInput)} />
               {mnemonic.state.status !== "loading" && <button className="secondary ai-go" onClick={() => mnemonic.run(mnemonicInput)}><Sparkles size={16} aria-hidden="true" />生成记忆方法</button>}
             </>

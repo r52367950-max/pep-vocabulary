@@ -17,6 +17,7 @@ import { BOOKS, selectEntries, type StudyMode } from "@/lib/study";
 import { delimitedCell } from "@/lib/export";
 import { StudioSymbol } from "./symbol";
 import { CoursePicker, Empty, sourceLabel } from "./shared";
+import { ActionMenu } from "./action-menu";
 
 export default function Lexicon({
   data,
@@ -102,24 +103,11 @@ export default function Lexicon({
           <p className="lexicon-caption">{scope === "book" ? `${BOOKS.find(book => book.id === bookId)?.label ?? "当前教材"}${unit !== "all" ? `，${unit}` : ""}` : "全部词库"}</p>
         </div>
         <div className="lexicon-actions">
-          <button
-            className="text-button"
-            aria-pressed={selecting}
-            onClick={() => {
-              setSelecting(!selecting);
-              setSelected(new Set());
-            }}
-          >
-            {selecting ? "完成" : "选择"}
-          </button>
-          <button
-            className="icon-button"
-            onClick={exportRows}
-            aria-label="导出当前词表"
-            title="导出当前词表"
-          >
-            <Download size={19} aria-hidden="true" />
-          </button>
+          {selecting && <button className="text-button" onClick={() => { setSelecting(false); setSelected(new Set()); }}>完成选择</button>}
+          <ActionMenu label="词库选项" items={[
+            { label: selecting ? "取消选择" : "选择词语", icon: <Check size={17} aria-hidden="true" />, onSelect: () => { setSelecting(!selecting); setSelected(new Set()); } },
+            { label: "导出当前词表", icon: <Download size={17} aria-hidden="true" />, onSelect: exportRows, disabled: !rows.length },
+          ]} />
         </div>
       </div>
       <div className="lexicon-toolbar">

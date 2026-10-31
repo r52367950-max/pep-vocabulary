@@ -7,6 +7,7 @@ import "./settings-dialog.css";
 import "./learn.css";
 import "./ai-writing.css";
 import "./voice.css";
+import "./secondary-ui.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",

@@ -426,7 +426,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
         {result && <h3>{result.correct ? "听写正确" : `匹配 ${result.matched} / ${result.total} 词`}</h3>}
         <p className="dictation-target" lang="en">{item.text}</p><p className="dictation-note">{item.hint} · {item.source}</p>
         {!submitted && <p className="dictation-note">本次已看答案，不记入掌握记录。可重新听写；本轮看过答案的题仍作为辅助练习。</p>}
-        {submitted && attempt.assisted && <p className="dictation-note">本题使用过提示或答案，仅供练习，不计入独立掌握或改变错题记录。</p>}
+        {submitted && attempt.assisted && <p className="dictation-note">本题已使用提示或答案，记为辅助练习，掌握和错题记录保持不变。</p>}
         {result && !result.correct && <><p className="dictation-note">逐词对照：划线为多写或写错，下方为应写内容。</p><div className="dictation-diff" lang="en">{result.differences.map((part, index) => <span key={index} className={`dictation-token is-${part.kind}`}>{part.kind === "equal" ? part.expected : <>{part.actual && <del>{part.actual}</del>}{part.expected && <ins>{part.expected}</ins>}<small>{part.kind === "missing" ? "漏写" : part.kind === "extra" ? "多写" : "替换"}</small></>}</span>)}</div></>}
         <p className="dictation-note">忽略大小写和标点；接受已列明的常见缩写、英美拼写变体。含歧义的缩写按原文核对。此结果仅比较听写文字。</p>
         <div className="dictation-actions">{submitted && <button type="button" className="primary" onClick={() => { stop(); if (position + 1 >= queue.length) void live.current?.close(); setPosition(position + 1); resetAnswer(queue[position + 1]); input.current?.focus(); }}>下一项 <ArrowRight size={16} aria-hidden="true" /></button>}<button type="button" className="secondary" onClick={() => { stop(); resetAnswer(); input.current?.focus(); }}><RotateCcw size={15} aria-hidden="true" />重新听写</button></div>

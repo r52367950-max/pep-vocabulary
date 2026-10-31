@@ -551,7 +551,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
               <h3>表达反馈</h3>
               <button className="text-button" disabled={active || !hasPractice || feedbackBusy || !status?.configured || !privacy.memory || !!privacy.error} onClick={() => void requestFeedback()}><Sparkles size={16} />{feedbackBusy ? "正在整理…" : feedback ? "重新整理" : "整理反馈"}</button>
             </div>
-            <p className="voice-muted">先检查转写。文字反馈不能评定发音或口音。</p>
+            <p className="voice-muted">核对转写后生成反馈。</p>
             {feedbackError && <p role="alert" className="voice-inline-error">{feedbackError}</p>}
             {feedback && (
               <>

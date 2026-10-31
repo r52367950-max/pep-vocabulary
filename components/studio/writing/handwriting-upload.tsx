@@ -10,9 +10,9 @@ import "./handwriting-upload.css";
 
 type Recognition = { operationId: string; text: string; uncertainSpans: { text: string; reason: string }[]; requiresConfirmation: true; handwriting: WritingHandwritingAssessment };
 export function HandwritingAssessment({ assessment }: { assessment: WritingHandwritingAssessment }) {
-  return <section className="handwriting-assessment" aria-label="书写训练参考">
-    <div className="handwriting-heading"><strong>书写训练参考</strong><span>{assessment.score === null ? "照片不足以评分" : `${assessment.score} / ${assessment.outOf}`}</span></div>
-    <p className="ai-note">基于上传原稿，独立于作文内容成绩，不计入总分。</p>
+  return <section className="handwriting-assessment" aria-label="书写评价">
+    <div className="handwriting-heading"><strong>书写评价</strong><span>{assessment.score === null ? "照片不足以评分" : `${assessment.score} / ${assessment.outOf}`}</span></div>
+    <p className="ai-note">书写单独评分。</p>
     <p>{assessment.summary}</p>
     {assessment.photoQuality.issues.length > 0 && <p className="ai-note">照片情况：{assessment.photoQuality.issues.join("；")}</p>}
     <details><summary>查看书写建议</summary><dl>{assessment.dimensions.map(item => <div key={item.id}><dt>{({ legibility: "字迹辨识", "size-spacing": "大小与间距", "baseline-lines": "基线与行距", "layout-neatness": "布局与整洁" })[item.id]} · {item.score === null ? "暂不评分" : `${item.score} / 5`}</dt><dd>{item.evidence} {item.suggestion}</dd></div>)}</dl></details>

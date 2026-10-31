@@ -39,7 +39,7 @@ export function AiStatus<T>({ state, onRetry, onCancel, onRefresh, busyLabel = "
         {cachedAt ? `本机保存的回答 · ${time(cachedAt)}` : usage
           ? `本次 ${usage.total.toLocaleString()} token${usage.cacheHit ? `，其中 ${usage.cacheHit.toLocaleString()} 命中缓存` : ""}${usage.estimated ? "（估算）" : ""}`
           : "刚刚生成"}
-        {" · "}AI 生成，仅供参考
+        {" · "}AI 生成
       </span>
       {onRefresh && <button className="text-button" onClick={onRefresh}><RotateCcw size={13} aria-hidden="true" />重新生成</button>}
     </p>
@@ -58,11 +58,6 @@ function PersonalNote({ value }: { value: unknown }) {
   return typeof value === "string" && value ? <p className="ai-personal"><strong>结合你的记录</strong>{value}</p> : null;
 }
 
-function Limitations({ value }: { value: unknown }) {
-  const items = texts(value);
-  return items.length ? <p className="ai-limits">{items.join(" ")}</p> : null;
-}
-
 const english = (text: string) => <span className="english" lang="en">{text}</span>;
 
 export function ExplainView({ result, words }: { result: Record<string, unknown>; words: Words }) {
@@ -75,13 +70,12 @@ export function ExplainView({ result, words }: { result: Record<string, unknown>
       {texts(result.grammar).length > 0 && <Section title="用法与语法"><Bullets items={texts(result.grammar)} /></Section>}
       {texts(result.collocations).length > 0 && <Section title="常见搭配"><Bullets items={texts(result.collocations)} /></Section>}
       {list<{ sentence: string; translation: string }>(result.examples).length > 0 && (
-        <Section title="例句（AI 新写）">
+        <Section title="例句">
           {list<{ sentence: string; translation: string }>(result.examples).map((example, i) => (
             <p key={i} className="ai-example">{english(example.sentence)}<small>{example.translation}</small></p>
           ))}
         </Section>
       )}
-      <Limitations value={result.limitations} />
     </div>
   );
 }
@@ -112,7 +106,6 @@ export function SentenceCheckView({ result, words }: { result: Record<string, un
       </dl>
       {typeof result.revision === "string" && result.revision && <Section title="参考改写"><p className="ai-example">{english(result.revision)}</p></Section>}
       <PersonalNote value={result.personalNote} />
-      <Limitations value={result.limitations} />
     </div>
   );
 }
@@ -143,27 +136,23 @@ export function ContrastView({ result, words }: { result: Record<string, unknown
           ))}
         </Section>
       )}
-      <Limitations value={result.limitations} />
     </div>
   );
 }
 
 export function MnemonicView({ result, words }: { result: Record<string, unknown>; words: Words }) {
   const parts = list<{ part: string; meaning: string }>(result.breakdown);
-  const confidence = { high: "较有把握", medium: "部分有把握", low: "把握不大，仅作联想" }[String(result.confidence)] || "";
   return (
     <div className="ai-result">
       <AiProvenance result={result} words={words} />
       {parts.length > 0 && (
-        <div className="ai-parts" aria-label="词根词缀拆分">
+        <div className="ai-parts" aria-label="拆词联想">
           {parts.map((part, i) => <span key={i}><strong className="english">{part.part}</strong><small>{part.meaning}</small></span>)}
         </div>
       )}
-      {confidence && <p className="ai-note">词源：{confidence}</p>}
       {typeof result.memoryHook === "string" && <Section title="联想"><p>{result.memoryHook}</p></Section>}
       {typeof result.story === "string" && <Section title="小场景"><p>{result.story}</p></Section>}
       {texts(result.family).length > 0 && <Section title="同族词"><p className="english">{texts(result.family).join(" · ")}</p></Section>}
-      <Limitations value={result.limitations} />
     </div>
   );
 }
@@ -233,7 +222,6 @@ export function PracticeView({ result, words, onFinish }: { result: Record<strin
           {wrong.length > 0 && <button className="primary" onClick={() => onFinish(wrong)}>把这些词加入练习</button>}
         </div>
       )}
-      <Limitations value={result.limitations} />
     </div>
   );
 }
@@ -298,7 +286,6 @@ export function StoryView({ result, words }: { result: Record<string, unknown>; 
           </ol>
         </Section>
       )}
-      <Limitations value={result.limitations} />
     </div>
   );
 }
@@ -335,7 +322,6 @@ export function DiagnoseView({ result, words, onWord }: { result: Record<string,
           <div className="ai-chips">{focus.map((entry) => <button key={entry.id} className="english" onClick={() => onWord?.(entry)}>{entry.headword}</button>)}</div>
         </Section>
       )}
-      <Limitations value={result.limitations} />
     </div>
   );
 }
