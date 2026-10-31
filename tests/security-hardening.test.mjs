@@ -31,6 +31,8 @@ const wordB = 'pep-07d418db40de3fe8';
 const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
 // Representative valid bodies for the private mutation routes.
 const validBodies = {
+  '/api/writing/generate-topic': {operationId:'security-topic-1234',kind:'free'},
+  '/api/writing/recognize': {operationId:'security-writing-123',image:'data:image/png;base64,invalid'},
   '/api/voice/learning-tool': { name:'prepare_dictation',callId:'call_test',sessionId:'live_test',arguments:{query:'book',count:3,mode:'words'},accountScope:'test-scope' },
   '/api/learning-journal': { accountScope:'test-scope',privacyRevision:0,eventId:'test-event',kind:'study',title:'Study',summary:'Completed a practice.',refIds:[],counts:{},occurredAt:new Date().toISOString(),timezone:'UTC' },
   '/api/sync': { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: '2026-09-24T00:00:00Z', payload: backup },

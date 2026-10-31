@@ -1,5 +1,7 @@
 "use client";
 
+import packageInfo from "../package.json";
+
 import {
   ArrowLeft,
   BookOpenCheck,
@@ -737,7 +739,7 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.8.0</dd>
+                  <dd>{packageInfo.version}</dd>
                 </div>
                 <div>
                   <dt>数据格式</dt>
