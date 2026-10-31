@@ -9,4 +9,4 @@
 | `web-design-guidelines` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines) | MIT | 交互、响应式与无障碍检查 |
 | `apple-design` | [dickwu/apple-design-skill](https://github.com/dickwu/apple-design-skill) | 未附开源许可；HIG 原文版权归 Apple，上游说明仅供辅助设计审查 | 按苹果 HIG 复查界面、深色模式、iPad 适配 |
 
-2026-09-24 从各仓库默认分支复制，未做修改。更新时重新复制整个目录。`apple-design` 即 2.1 使用过的 apple-design-skill，现名 apple-design；它随附的 `scripts/pull-hig.mjs` 仅用于刷新参考资料，不属于应用代码。
+2026-09-24 从各仓库默认分支复制，随后在本仓库维护安全修改。更新时审阅完整差异，保留本地安全边界；不要直接覆盖整个目录。`apple-design` 即 2.1 使用过的 apple-design-skill，现名 apple-design；它随附的 `scripts/pull-hig.mjs` 仅生成待审阅的临时参考资料，不直接更新代理加载的文件，也不属于应用代码。

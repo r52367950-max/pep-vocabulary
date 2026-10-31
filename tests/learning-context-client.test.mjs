@@ -3,8 +3,10 @@ import test from 'node:test';
 import 'fake-indexeddb/auto';
 import { runAssistant, readCached, clearAssistantCache, assistantCacheSize, profileSnapshot } from '../lib/ai-client.ts';
 import { learningContextStore, refreshLearningContext, setTemporaryMode, setLocalProfileAllowed, localProfileAllowed, saveLearningMemory, invalidateLearningContext } from '../lib/learning-context-client.ts';
+import { installPracticeLocks } from './local-practice-locks.mjs';
 
 function setup(t) {
+  installPracticeLocks(t);
   const originalFetch = globalThis.fetch, originalStorage = globalThis.localStorage;
   const storage = new Map();
   globalThis.localStorage = { getItem: k => storage.get(k) || null, setItem: (k,v) => storage.set(k,String(v)), removeItem: k => storage.delete(k) };
@@ -52,7 +54,7 @@ test('local history requires scope-specific opt-in; same-count note edits invali
   const first={date:'today',notes:[{id:'one',text:'first note'}]};
   await runAssistant('explain',{wordId:'same'},{profile:first});
   assert.equal(f.modelCalls[0].profile,undefined);
-  setLocalProfileAllowed(true);
+  await setLocalProfileAllowed(true);
   await runAssistant('explain',{wordId:'same'},{profile:first});
   assert.deepEqual(f.modelCalls[1].profile,first);
   const changed={...first,notes:[{id:'one',text:'edited note'}]};
@@ -67,7 +69,7 @@ test('local history requires scope-specific opt-in; same-count note edits invali
 
 test('paused and temporary modes omit profiles; temporary does not persist model cache or memory', async t => {
   const f=setup(t); await clearAssistantCache();
-  await refreshLearningContext(); setLocalProfileAllowed(true);
+  await refreshLearningContext(); await setLocalProfileAllowed(true);
   f.memory={...f.memory,enabled:false,revision:2};
   await runAssistant('explain',{wordId:'paused'},{profile:{notes:['private']}});
   assert.equal(f.modelCalls[0].profile,undefined);

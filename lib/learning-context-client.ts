@@ -1,3 +1,4 @@
+import { localPracticeGeneration, localPracticeWritesSupported, practiceGenerationCurrent, writeLocalPracticeData, type PracticeGeneration } from "./local-practice-generation";
 /** One browser-tab privacy policy. Only an opaque opt-in scope is stored; never notes or chat. */
 export type LearningNote = { id: string; text: string; source?: "manual" | "confirmed_suggestion" | "legacy"; kind?: "preference" | "expression" | "learning_note"; confirmedAt?: string; updatedAt?: string };
 export type LearningMemory = { accountScope: string; revision: number; enabled: boolean; notes: LearningNote[]; recentTopics: string[]; model?: string; contextVersion?: string };
@@ -5,20 +6,32 @@ export type LearningContextState = { memory: LearningMemory | null; temporary: b
 const INITIAL: LearningContextState = { memory: null, temporary: false, epoch: 0, error: "" };
 let state = INITIAL;
 let requestSequence = 0;
+let memoryGeneration: PracticeGeneration = null;
 const listeners = new Set<() => void>();
 let connected = false;
 let channel: BroadcastChannel | undefined;
 const PROFILE_OWNER_KEY = "vocab-local-profile-owner-v1";
 export function localProfileAllowed(memory: LearningMemory | null) {
-  if (!memory || !memory.enabled || state.temporary || typeof localStorage === "undefined") return false;
+  if (!memory || !memory.enabled || state.temporary || typeof localStorage === "undefined" || !practiceGenerationCurrent(memoryGeneration)) return false;
   try { return localStorage.getItem(PROFILE_OWNER_KEY) === memory.accountScope; } catch { return false; }
 }
-export function setLocalProfileAllowed(allowed: boolean) {
+export async function setLocalProfileAllowed(allowed: boolean) {
   if (!state.memory || state.temporary) return;
-  try { if (allowed) localStorage.setItem(PROFILE_OWNER_KEY, state.memory.accountScope); else localStorage.removeItem(PROFILE_OWNER_KEY); }
-  catch { throw new Error("浏览器无法保存这个选择，请检查存储权限。"); }
+  const memory = state.memory, generation = memoryGeneration;
+  const update = (storage: Storage) => {
+    if (state.memory !== memory || state.temporary) throw new Error("学习模式已改变，请重新确认这个选择。");
+    if (allowed) storage.setItem(PROFILE_OWNER_KEY, memory.accountScope); else storage.removeItem(PROFILE_OWNER_KEY);
+  };
+  if (!allowed && !localPracticeWritesSupported()) update(localStorage);
+  else await writeLocalPracticeData(generation, update);
   state = { ...state, epoch: state.epoch + 1 }; emit();
   channel?.postMessage({ changed: true });
+}
+/** Device reset must revoke consent even without a loaded account or in temporary mode. */
+export function clearLocalProfileConsent() {
+  connect();
+  localStorage.removeItem(PROFILE_OWNER_KEY);
+  invalidateLearningContext(true);
 }
 function emit() { listeners.forEach((listener) => listener()); }
 function signature(memory: LearningMemory | null) { return memory ? `${memory.accountScope}:${memory.revision}:${memory.enabled}:${memory.model || ""}:${memory.contextVersion || "1"}` : ""; }
@@ -39,6 +52,7 @@ export const learningContextStore = {
 };
 export function invalidateLearningContext(broadcast = false) {
   requestSequence++;
+  memoryGeneration = null;
   state = { ...state, memory: null, epoch: state.epoch + 1, error: "" }; emit();
   if (broadcast) channel?.postMessage({ changed: true });
 }
@@ -46,6 +60,7 @@ export function setTemporaryMode(temporary: boolean) {
   connect();
   if (state.temporary === temporary) return;
   requestSequence++;
+  memoryGeneration = null;
   state = { memory: null, temporary, epoch: state.epoch + 1, error: "" }; emit();
 }
 function parseMemory(value: unknown): LearningMemory {
@@ -53,7 +68,9 @@ function parseMemory(value: unknown): LearningMemory {
   if (!m || typeof m.accountScope !== "string" || !m.accountScope || !Number.isSafeInteger(m.revision) || m.revision < 0 || typeof m.enabled !== "boolean" || !Array.isArray(m.notes) || !Array.isArray(m.recentTopics)) throw new Error("学习记忆状态无效，请重新读取。");
   return m;
 }
-function adopt(memory: LearningMemory, broadcast = false) {
+function adopt(memory: LearningMemory, generation: PracticeGeneration, broadcast = false) {
+  if (!practiceGenerationCurrent(generation)) throw new Error("本机学习数据已清空，请重新读取学习记忆。");
+  memoryGeneration = generation;
   const changed = signature(state.memory) !== signature(memory);
   state = { ...state, memory, error: "", epoch: state.epoch + (changed ? 1 : 0) }; emit();
   if (broadcast) channel?.postMessage({ changed: true });
@@ -81,6 +98,7 @@ async function fetchLearningContext(): Promise<LearningMemory> {
   connect();
   const sequence = ++requestSequence;
   const temporary = state.temporary;
+  const generation = localPracticeGeneration();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
   try {
@@ -88,8 +106,8 @@ async function fetchLearningContext(): Promise<LearningMemory> {
     const value = await response.json();
     if (!response.ok) throw new Error(value?.error?.message || "无法确认当前账户的学习记忆，请重试。");
     const memory = parseMemory(value);
-    if (temporary !== state.temporary) throw new Error("学习模式已改变，请重新开始。");
-    if (sequence === requestSequence) adopt(memory);
+    if (temporary !== state.temporary || !practiceGenerationCurrent(generation)) throw new Error("学习模式或本机数据已改变，请重新开始。");
+    if (sequence === requestSequence) adopt(memory, generation);
     // A newer read/write must never be overwritten by this older response.
     if (sequence !== requestSequence && signature(state.memory) !== signature(memory)) throw new Error("学习记忆已更新，请重试。");
     return memory;
@@ -103,12 +121,13 @@ export async function saveLearningMemory(next: LearningMemory, signal?: AbortSig
   const current = await refreshLearningContext(signal);
   if (current.accountScope !== next.accountScope || current.revision !== next.revision) throw new Error("账户或记忆已更新，请重新读取后再保存。");
   const sequence = ++requestSequence;
+  const generation = memoryGeneration;
   const response = await fetch("/api/learning-memory", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next), signal });
   const value = await response.json();
   if (!response.ok) throw new Error(response.status === 409 ? "其他页面更新了学习记忆。请重新读取，再保存你的修改。" : value?.error?.message || "记忆没有保存，请重试。");
   const memory = parseMemory(value);
-  if (sequence !== requestSequence || state.temporary || signal?.aborted) { invalidateLearningContext(true); throw new Error("学习模式已改变，请重新读取保存结果。"); }
-  adopt(memory, true);
+  if (sequence !== requestSequence || state.temporary || signal?.aborted || !practiceGenerationCurrent(generation)) { invalidateLearningContext(true); throw new Error("学习模式已改变，请重新读取保存结果。"); }
+  adopt(memory, generation, true);
   return memory;
 }
-export function contextStillCurrent(memory: LearningMemory, temporary: boolean) { return temporary === state.temporary && signature(memory) === signature(state.memory); }
+export function contextStillCurrent(memory: LearningMemory, temporary: boolean) { return practiceGenerationCurrent(memoryGeneration) && temporary === state.temporary && signature(memory) === signature(state.memory); }

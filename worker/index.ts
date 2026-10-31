@@ -2,6 +2,7 @@
 /** Cloudflare Worker entry point. Static images are served by ASSETS. */
 import handler from "vinext/server/app-router-entry";
 import { createSecureHandler } from "./security";
+export { VoiceDeadline } from "./voice-deadline";
 
 // Security headers wrap every response this Worker renders (built Worker,
 // `vinext start`, Miniflare smoke). `vite` dev serves requests without this

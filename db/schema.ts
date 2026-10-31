@@ -25,6 +25,12 @@ export const aiConfigs = sqliteTable("ai_configs", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Credential deletion rotates this durable fence even when no config exists.
+export const aiConfigGenerations = sqliteTable("ai_config_generations", {
+  userKey: text("user_key").primaryKey(),
+  generation: text("generation").notNull(),
+});
+
 export const aiRateLimits = sqliteTable("ai_rate_limits", {
   bucketKey: text("bucket_key").primaryKey(),
   requestCount: integer("request_count").notNull().default(1),

@@ -5,7 +5,7 @@ import { request as httpRequest } from 'node:http';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { legacyAiCredential } from '../tests/legacy-ai-credential.mjs';
 const paths = readdirSync('dist/server', { recursive: true }).filter(p => p.endsWith('.js')).sort((a,b) => a === 'index.js' ? -1 : b === 'index.js' ? 1 : a.localeCompare(b));
-const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules: paths.map(p => ({ type: 'ESModule', path: resolve('dist/server', p) })), modulesRoot: 'dist/server', compatibilityDate: '2026-09-11', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB', 'LEGACY'], bindings: { IDENTITY_TRUSTED_HOSTS: 'localhost', AI_ALLOWED_PROVIDER_ORIGINS: 'https://api.example.com', AI_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') }, assets: { directory: 'dist/client', binding: 'ASSETS', routerConfig: { has_user_worker: true } } }));
+const mf = new Miniflare(convertV4MiniflareOptions({ name: 'pep-smoke', modules: paths.map(p => ({ type: 'ESModule', path: resolve('dist/server', p) })), modulesRoot: 'dist/server', compatibilityDate: '2026-09-11', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB', 'LEGACY'], durableObjects: { VOICE_DEADLINES: { className: 'VoiceDeadline', useSQLite: true } }, outboundService: async () => new Response(null, { status: 404 }), bindings: { IDENTITY_TRUSTED_HOSTS: 'localhost', AI_ALLOWED_PROVIDER_ORIGINS: 'https://api.example.com', AI_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') }, assets: { directory: 'dist/client', binding: 'ASSETS', routerConfig: { has_user_worker: true } } }));
 const results = [];
 try {
   const ready = await mf.ready;
@@ -103,6 +103,26 @@ try {
     }
   };
   await bootstrap(db);
+  // Namespace-only durable control runs in workerd with all outbound traffic
+  // mocked locally. A fake credential is used only to close a fake session.
+  const deadlines = await mf.getDurableObjectNamespace('VOICE_DEADLINES');
+  const deadlineOwner = 'smoke-deadline-owner', deadlineId = 'live_smoke_deadline';
+  const deadlineUntil = Date.now() + 120_000;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const master = await crypto.subtle.importKey('raw', Buffer.alloc(32, 7), 'AES-GCM', false, ['encrypt']);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv,
+    additionalData: new TextEncoder().encode(JSON.stringify(['pep-vocab-ai-config:v2', `voice-deadline:${deadlineOwner}:${deadlineId}`, 'openai-compatible', 'https://api.openai.com/v1'])) }, master, new TextEncoder().encode('test-key-for-local-smoke-only-012345'));
+  for (const bucket of [`voice-active:${deadlineOwner}`, `voice-session:${deadlineOwner}:${deadlineId}`]) {
+    await db.prepare('INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, ?, ?)').bind(bucket, deadlineUntil, Number.MAX_SAFE_INTEGER).run();
+  }
+  const deadline = deadlines.get(deadlines.idFromName(`${deadlineOwner}:${deadlineId}`));
+  const armed = await deadline.fetch('https://voice-deadline/arm', { method: 'POST', body: JSON.stringify({ userKey: deadlineOwner, sessionId: deadlineId, until: deadlineUntil,
+    credential: { encryptedApiKey: Buffer.from(ciphertext).toString('base64'), keyIv: Buffer.from(iv).toString('base64'), encryptionVersion: 2 } }) });
+  assert.equal(armed.status, 200, await armed.clone().text());
+  assert.equal((await deadline.fetch('https://voice-deadline/close', { method: 'POST' })).status, 200);
+  assert.equal((await deadline.fetch('https://voice-deadline/close', { method: 'POST' })).status, 200);
+  assert.equal((await db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').bind(`voice-active:${deadlineOwner}`).first()).request_count, 0);
+  results.push({ path: 'durable voice deadline encrypted snapshot, confirmed close, and idempotence', status: 'passed' });
   // A previous hosting release can have this table without the migration ledger.
   // Seed the observed legacy shape independently, including data that must survive.
   const legacy = await mf.getD1Database('LEGACY');

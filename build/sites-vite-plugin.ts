@@ -15,6 +15,22 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+async function hashVendorFiles(fingerprint: ReturnType<typeof createHash>, root: string, prefix = "") {
+  const entries = (await readdir(resolve(root, prefix), { withFileTypes: true }))
+    .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  for (const entry of entries) {
+    const file = `${prefix}${entry.name}`;
+    if (entry.isDirectory()) await hashVendorFiles(fingerprint, root, `${file}/`);
+    else if (entry.isFile()) {
+      const bytes = await readFile(resolve(root, file));
+      // Include file boundaries and paths as well as bytes: additions, removals
+      // and renames must invalidate the cache just like same-path parser fixes.
+      fingerprint.update(JSON.stringify([`vendor/${file}`, bytes.length]));
+      fingerprint.update(bytes);
+    }
+  }
+}
+
 // Packages Sites metadata and migrations after Vite finishes compiling.
 export function sites(): Plugin {
   let root = process.cwd();
@@ -61,6 +77,8 @@ export function sites(): Plugin {
             fingerprint.update(await readFile(resolve(staticRoot, file)));
           }
         }
+        const vendorRoot = resolve(root, "public", "vendor");
+        if (await exists(vendorRoot)) await hashVendorFiles(fingerprint, vendorRoot);
         const worker = await readFile(resolve(root, "public", "sw.js"), "utf8");
         fingerprint.update(worker);
         await writeFile(resolve(root, "dist", "client", "sw.js"), worker.replace('"vocab-shell-v2"', `"vocab-shell-v2-${fingerprint.digest("hex").slice(0, 16)}"`));

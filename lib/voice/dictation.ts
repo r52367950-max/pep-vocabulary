@@ -1,4 +1,5 @@
 import type { LexiconIndexEntry } from "../lexicon";
+import { readLocalPracticeData, writeLocalPracticeData, type PracticeGeneration } from "../local-practice-generation";
 
 export type DictationMode = "words" | "sentences";
 export type DictationItem = { id: string; mode: DictationMode; text: string; hint: string; source: string; wordId?: string };
@@ -6,6 +7,20 @@ export type DictationDiff = { kind: "equal" | "missing" | "extra" | "replace"; e
 export type DictationResult = { correct: boolean; matched: number; total: number; differences: DictationDiff[] };
 export type DictationHistory = { item: DictationItem; attempts: number; mistakes: number; lastAnswer: string; lastAt: string; resolved: boolean };
 export const DICTATION_HISTORY_KEY = "vocab-studio:voice-dictation:v1";
+
+function localHistoryKey(scope: string) { return `${DICTATION_HISTORY_KEY}:account:${encodeURIComponent(scope)}`; }
+export async function readLocalDictationHistory(scope: string) {
+  return readLocalPracticeData((storage) => parseDictationHistory(storage.getItem(localHistoryKey(scope))));
+}
+export function saveLocalDictationAttempt(scope: string, generation: PracticeGeneration, item: DictationItem, answer: string, allowed = () => true) {
+  return writeLocalPracticeData(generation, (storage) => {
+    if (!allowed()) throw new Error("账户或学习模式已改变，请重新开始练习。");
+    const key = localHistoryKey(scope);
+    const rows = recordDictationAttempt(parseDictationHistory(storage.getItem(key)), item, answer);
+    storage.setItem(key, JSON.stringify(rows));
+    return rows;
+  });
+}
 
 /** Editorial sentences, not licensed textbook excerpts or purported authentic speech. */
 export const DICTATION_SENTENCES: DictationItem[] = [

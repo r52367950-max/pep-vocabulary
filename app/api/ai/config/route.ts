@@ -127,6 +127,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    const binding = env.DB;
+    if (!binding) throw new Error("Configuration store unavailable");
+    // Read the durable deletion fence before the config snapshot. Deleting an
+    // absent row must also invalidate an already-admitted first save.
+    await binding.prepare(`INSERT INTO ai_config_generations (user_key, generation) VALUES (?, ?)
+      ON CONFLICT(user_key) DO NOTHING`).bind(userKey, crypto.randomUUID()).run();
+    const fence = await binding.prepare("SELECT generation FROM ai_config_generations WHERE user_key=?")
+      .bind(userKey).first<{ generation: string }>();
+    if (!fence) throw new Error("Configuration fence unavailable");
     const db = getDb();
     const [current] = await db.select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
     if (current && current.encryptionVersion !== 2 && current.encryptionVersion !== 3 && (body.apiKey === undefined || body.apiKey === "")) {
@@ -172,21 +181,21 @@ export async function POST(request: Request) {
       return json({ error: "无法升级当前密钥存储，请重新填写 API Key。" }, 503);
     }
 
-    // Compare the exact configuration read above. A racing key replacement or
-    // deletion cannot be resurrected by a model-only save retaining an old key.
-    const binding = env.DB;
-    if (!binding) throw new Error("Configuration store unavailable");
+    // Compare the exact configuration and its durable deletion generation.
     const writeToken = crypto.randomUUID();
     const values = [body.provider, baseUrl, model, dailyLimit, timeoutSeconds,
       encrypted.encryptedApiKey, encrypted.keyIv, encrypted.encryptionVersion, writeToken];
     const configWrite = current
       ? binding.prepare(`UPDATE ai_configs SET provider=?, base_url=?, model=?, daily_limit=?, timeout_seconds=?,
           encrypted_api_key=?, key_iv=?, encryption_version=?, write_token=?, updated_at=CURRENT_TIMESTAMP
-          WHERE user_key=? AND write_token=? AND encrypted_api_key=? AND key_iv=? RETURNING user_key`)
-        .bind(...values, userKey, current.writeToken, current.encryptedApiKey, current.keyIv)
+          WHERE user_key=? AND write_token=? AND encrypted_api_key=? AND key_iv=?
+          AND EXISTS (SELECT 1 FROM ai_config_generations WHERE user_key=? AND generation=?) RETURNING user_key`)
+        .bind(...values, userKey, current.writeToken, current.encryptedApiKey, current.keyIv, userKey, fence.generation)
       : binding.prepare(`INSERT INTO ai_configs (provider, base_url, model, daily_limit, timeout_seconds,
-          encrypted_api_key, key_iv, encryption_version, write_token, user_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(user_key) DO NOTHING RETURNING user_key`).bind(...values, userKey);
+          encrypted_api_key, key_iv, encryption_version, write_token, user_key)
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          WHERE EXISTS (SELECT 1 FROM ai_config_generations WHERE user_key=? AND generation=?)
+          ON CONFLICT(user_key) DO NOTHING RETURNING user_key`).bind(...values, userKey, userKey, fence.generation);
     const writes = [configWrite];
     if (dailyTokenBudget !== undefined || body.maxOutputTokens !== undefined) {
       // This write runs only if THIS batch won the config CAS. The unique token
@@ -215,7 +224,13 @@ export async function DELETE(request: Request) {
   const limited = await mutationRateLimit(userKey);
   if (limited) return limited;
   try {
-    await getDb().delete(aiConfigs).where(eq(aiConfigs.userKey, userKey));
+    const binding = env.DB;
+    if (!binding) throw new Error("Configuration store unavailable");
+    await binding.batch([
+      binding.prepare(`INSERT INTO ai_config_generations (user_key, generation) VALUES (?, ?)
+        ON CONFLICT(user_key) DO UPDATE SET generation=excluded.generation`).bind(userKey, crypto.randomUUID()),
+      binding.prepare("DELETE FROM ai_configs WHERE user_key=?").bind(userKey),
+    ]);
     return json({ ok: true, ...publicConfig() });
   } catch { return json({ error: "暂时无法移除 API 配置。" }, 503); }
 }

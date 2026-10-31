@@ -10,8 +10,8 @@
 
 - 文字：官方 OpenAI 地址使用 Responses API；兼容服务保留 Chat Completions，已有 DeepSeek 配置不会自动更换。
 - 实时语音：浏览器通过原生 WebRTC 传输音频，服务端使用已加密保存的 Key 创建 Live 会话并返回 SDP。长期 Key 不下发浏览器，不写入前端持久存储或学习备份。
-- 会话关闭：浏览器发送 `session.close`；服务端通过 Live sideband WebSocket 发出相同命令，并等待 `session.closed`。刷新后可以关闭所属账号遗留的会话，不允许跨账号关闭。
-- 听写：用户明确选择 AI 语音并点击播放后才请求音频。服务端核对返回转录与目标原文，并验证 WAV。重播和 0.8 倍播放复用本页音频缓存。
+- 会话关闭：浏览器发送 `session.close`；服务端通过 Live sideband WebSocket 发出相同命令，并等待 `session.closed`。刷新后可以关闭所属账号遗留的会话，不允许跨账号关闭。服务端在返回 SDP 前持久化截止时间和加密关闭凭据；Durable Object 闹钟到期后关闭会话，失败时保留单活锁并持续重试。删除或更换 AI 配置不影响已创建会话的关闭。
+- 听写：用户明确选择 AI 语音并点击播放后才请求音频。服务端按归一化词元和字符量保守预留时长，核对返回转录与目标原文，并验证 WAV；可安全解析音频时长时只追加超出预留的秒数，不退还预留。重播和 0.8 倍播放复用本页音频缓存。
 - 反馈：结束后可先修正转写，再请求文字反馈。最多两条改进，只能引用学习者实际发言；不从转写推断发音分数。
 
 | 站点接口 | 用途 |
@@ -25,15 +25,21 @@
 | POST `/api/voice/recommend` | 按学习记忆和用户选择生成最多三组可编辑推荐 |
 | POST `/api/voice/discuss` | 围绕本次转写继续文字复盘，返回可选择保存的记忆建议 |
 
-所有接口复用站点身份、同源校验、服务端加密配置和用量控制。语音以 D1 原子预留每日 3600 秒，提前结束不退还应用预留；文字 token 另行预留。静音和思考暂停仍会产生语音费用。页面时限、单活锁和预算控制不等于服务商硬账单上限。创建请求若在拿到 session ID 前超时，无法确认上游是否创建，故不自动重试。
+所有接口复用站点身份、同源校验、服务端加密配置和用量控制。语音以 D1 原子预留每日 3600 秒，提前结束不退还应用预留；文字 token 另行预留。静音和思考暂停仍会产生语音费用。每个 Live 会话的服务端截止时间从开始预留预算时计算，浏览器倒计时仅辅助显示。闹钟调度、服务商排空和网络故障仍可能使实际终止稍晚，应用预算不等于服务商硬账单上限。创建请求若在拿到 session ID 前超时，无法确认上游是否创建，故不自动重试。
 
 最近 12 次口语转写、反馈与复盘对话、最多 300 条听写记录仅存当前浏览器，不包含录音，不进入现有学习备份；可从各自页面删除。每次最多保留最近 150 段转写，长对话的反馈最多使用最近 18,000 字符。
+
+全局清空本机数据会删除所有账号的本机口语、听写记录和学习画像授权，并阻止其他标签页回写清空前的记录。安全持久化使用 Web Locks；不支持它的浏览器仍可练习、读取和清除已有记录，但不保存新的敏感练习记录或画像授权。
 
 ## 研究与取舍
 
 核对日期：2026-10-29。实现依据 OpenAI 的 [WebRTC 指南](https://developers.openai.com/api/docs/guides/voice-webrtc)、[Live 会话管理](https://developers.openai.com/api/docs/guides/live-conversations)、[sideband 控制](https://developers.openai.com/api/docs/guides/voice-server-controls?api=live)、[音频 Chat Completions](https://developers.openai.com/api/docs/guides/audio-chat-completions)和 [Responses 文本生成](https://developers.openai.com/api/docs/guides/text?api-mode=responses)。没有把旧 Realtime 事件名混用到 Live 协议。
 
 也考察了 [LiTy](https://github.com/voidism/LiTy) 的语音/文字语言伙伴思路、[SpeakAlong](https://github.com/r4yg/speakalong) 的重复播放、隐藏文本、变速与本机学习记录。本次采用短任务、可隐藏答案、重播慢放和独立记录，未复制项目代码、录音或课文。教学依据与边界见 [VOICE_DESIGN.md](./VOICE_DESIGN.md)。
+
+## 服务端时限部署
+
+`vite.config.ts` 声明 `VOICE_DEADLINES` Durable Object 绑定、`VoiceDeadline` 导出和 `voice-deadline-v1` SQLite 类迁移。托管发布必须保留此绑定和迁移；仅有 D1 不足以运行自动关闭。缺少绑定时状态接口显示未就绪，创建接口在任何收费请求前返回 503。部署后需确认实际绑定；本地构建通过不等于线上已配备该资源。仍未确认关闭的会话及其单活锁不会被普通限流数据清理；确认关闭后才释放。加密关闭快照仅保留到确认关闭，轮换加密主密钥时应先等所有会话结束，再移除旧解密密钥。
 
 ## 验证边界
 

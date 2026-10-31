@@ -1,3 +1,5 @@
+import { readLocalPracticeData, writeLocalPracticeData, type PracticeGeneration } from "../local-practice-generation";
+
 export type VoicePhase = "idle" | "connecting" | "connected" | "closing" | "ended" | "error";
 export type VoiceStatus = { configured: boolean; ready: boolean; reason?: string; models: { voice: string; text: string }; dailySecondsLimit?: number; usedSeconds?: number; remainingSeconds?: number; resetsAt?: string; timeLimitNotice?: string; activeSession?: { sessionId: string; expiresAt: string } | null };
 export type TranscriptTurn = { role: "user" | "assistant"; text: string; startMs?: number; endMs?: number };
@@ -264,4 +266,28 @@ export function readVoiceHistory(storage: Pick<Storage, "getItem">): VoiceRecord
 export function saveVoiceRecord(storage: Pick<Storage, "getItem" | "setItem">, record: VoiceRecord) {
   const rows = [record, ...readVoiceHistory(storage).filter((item) => item.id !== record.id)].slice(0, 12);
   storage.setItem(VOICE_HISTORY_KEY, JSON.stringify(rows)); return rows;
+}
+
+export type LocalVoiceHistory = { scope: string; generation: PracticeGeneration; rows: VoiceRecord[] };
+function scopedHistoryStorage(storage: Storage, scope: string) {
+  return { getItem: (key: string) => storage.getItem(`${key}:${scope}`), setItem: (key: string, value: string) => storage.setItem(`${key}:${scope}`, value) };
+}
+export async function readLocalVoiceHistory(scope: string): Promise<LocalVoiceHistory> {
+  const snapshot = await readLocalPracticeData((storage) => readVoiceHistory(scopedHistoryStorage(storage, scope)));
+  return { scope, generation: snapshot.generation, rows: snapshot.value };
+}
+export function saveLocalVoiceRecord(snapshot: Pick<LocalVoiceHistory, "scope" | "generation">, record: VoiceRecord, allowed = () => true) {
+  return writeLocalPracticeData(snapshot.generation, (storage) => {
+    if (!allowed()) throw new Error("账户或学习模式已改变，请重新开始练习。");
+    return saveVoiceRecord(scopedHistoryStorage(storage, snapshot.scope), record);
+  });
+}
+export function deleteLocalVoiceRecord(snapshot: Pick<LocalVoiceHistory, "scope" | "generation">, recordId: string, allowed = () => true) {
+  return writeLocalPracticeData(snapshot.generation, (storage) => {
+    if (!allowed()) throw new Error("账户或学习模式已改变，请重新打开练习记录。");
+    const scoped = scopedHistoryStorage(storage, snapshot.scope);
+    const rows = readVoiceHistory(scoped).filter((row) => row.id !== recordId);
+    scoped.setItem(VOICE_HISTORY_KEY, JSON.stringify(rows));
+    return rows;
+  });
 }

@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { sqliteD1 } from './sqlite-d1.mjs';
+import { deadlineNamespace } from './voice-deadline-env.mjs';
 import { createVoiceSession, closeVoiceSession, createVoiceSpeech, voiceFeedback, voiceStatus, reserveVoiceSeconds, sanitizeVoiceFeedback } from '../lib/voice/server.ts';
 import { VOICE_TOPICS } from '../lib/voice/curriculum.ts';
 import { closeOpenAISession, normalizedSpeechText, speechAudio, voiceOpenAI } from '../lib/voice/openai.ts';
@@ -16,6 +17,7 @@ function setup() {
   const db = new DatabaseSync(':memory:');
   for (const name of readdirSync(new URL('../drizzle/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort()) db.exec(readFileSync(new URL(`../drizzle/${name}`, import.meta.url), 'utf8'));
   env.DB = sqliteD1(db);
+  env.VOICE_DEADLINES = deadlineNamespace(env);
   env.AI_CONFIG_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
   requestHeaders.set('oai-authenticated-user-email', 'voice-owner@example.test');
   return db;
