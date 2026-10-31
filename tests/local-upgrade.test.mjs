@@ -73,7 +73,7 @@ test('concurrent setting patches preserve unrelated fields and snapshots use one
 test('learning diagnosis never reuses an answer from an old learning profile', async (t) => {
   const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
   let calls = 0;
-  globalThis.fetch = async () => Response.json({ ok: true, model: 'm', result: { summary: String(++calls) } });
+  globalThis.fetch = async (url) => String(url).startsWith('/api/learning-memory') ? Response.json({ accountScope: 'local-test', revision: 1, enabled: false, notes: [], recentTopics: [], contextVersion: 'm' }) : Response.json({ ok: true, model: 'm', result: { summary: String(++calls) } });
   assert.equal((await runAssistant('diagnose', {})).result.summary, '1');
   assert.equal((await runAssistant('diagnose', {})).result.summary, '2');
   assert.equal(await assistantCacheSize(), 0);
@@ -81,7 +81,7 @@ test('learning diagnosis never reuses an answer from an old learning profile', a
 
 test('AI cache has a deterministic 600-entry maximum', async (t) => {
   const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
-  globalThis.fetch = async () => Response.json({ ok: true, model: 'm', result: { summary: 's' } });
+  globalThis.fetch = async (url) => String(url).startsWith('/api/learning-memory') ? Response.json({ accountScope: 'local-test', revision: 1, enabled: false, notes: [], recentTopics: [], contextVersion: 'm' }) : Response.json({ ok: true, model: 'm', result: { summary: 's' } });
   for (let i = 0; i < 603; i++) await runAssistant('explain', { wordId: `cache-${i}` });
   assert.equal(await assistantCacheSize(), 600);
 });

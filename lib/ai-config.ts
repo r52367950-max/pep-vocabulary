@@ -4,7 +4,7 @@ import { normalizeBaseUrl, type AiProvider } from "@/lib/assistant/core";
 
 export const AI_PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: string }> = {
   deepseek: { baseUrl: "https://api.deepseek.com/v1", model: "deepseek-v4-flash" },
-  "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
+  "openai-compatible": { baseUrl: "https://api.openai.com/v1", model: "gpt-6.1-terra" },
 };
 
 export class AiProviderOriginError extends Error {}

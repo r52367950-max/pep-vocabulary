@@ -81,7 +81,8 @@ export default function WordDetail({
           </h2>
           <Pronounce text={entry.headword} notify={data.notify} />
           <button
-            className={`icon-button ${data.cards.get(entry.id)?.favorite ? "is-favorite" : ""}`}
+            className={`icon-button favorite-button ${data.cards.get(entry.id)?.favorite ? "is-favorite" : ""}`}
+            aria-pressed={!!data.cards.get(entry.id)?.favorite}
             aria-label={
               data.cards.get(entry.id)?.favorite ? "取消收藏" : "收藏单词"
             }

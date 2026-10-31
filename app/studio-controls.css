@@ -23,14 +23,14 @@
 .segmented-control {
   display: inline-flex;
   background: var(--blue-pale);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 4px;
   gap: 4px;
 }
 .segmented button,
 .segmented-control button {
   padding: 7px 13px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   font-size: 0.8125rem;
   min-height: 36px;
   white-space: nowrap;
@@ -154,10 +154,10 @@
   color: var(--green-ink);
 }
 .is-favorite {
-  color: var(--amber);
+  color: var(--ink);
 }
 .is-favorite svg {
-  fill: var(--amber-pale);
+  fill: currentColor;
 }
 .pagination {
   display: flex;
@@ -252,7 +252,7 @@
   font-size: 0.8125rem;
   display: inline-block;
   background: var(--bg);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 4px 8px;
   margin: 0 6px 6px 0;
   color: var(--muted);
@@ -279,7 +279,7 @@
   background: var(--surface);
   padding: 26px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-card);
 }
 .activity-metrics > div {
   display: flex;
@@ -599,7 +599,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   padding: 15px 8px;
-  border-radius: 11px;
+  border-radius: var(--radius-control);
 }
 .rating-buttons small {
   color: var(--muted);
@@ -672,7 +672,7 @@
 .completion-mistakes {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   text-align: left;
   padding: 24px;
   margin: 0 0 23px;
@@ -757,7 +757,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  border-top: 1px solid var(--line);
 }
 .settings-row small {
   font-size: 0.8125rem;
@@ -820,7 +819,7 @@
   gap: 10px;
   padding: 15px;
   background: var(--green-pale);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   font-size: 0.8125rem;
   color: var(--green-ink);
 }
@@ -907,7 +906,7 @@
   margin-top: 20px;
   padding: 16px;
   background: var(--bg);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
 }
 .connection-diagnostic-head {
   display: flex;
@@ -928,7 +927,6 @@
   display: flex;
   gap: 10px;
   padding: 13px 0;
-  border-bottom: 1px solid var(--line);
   font-size: 0.8125rem;
 }
 .connection-check-list > div > div {
@@ -962,7 +960,6 @@
   justify-content: space-between;
   gap: 20px;
   padding: 13px 0;
-  border-top: 1px solid var(--line);
   font-size: 0.8125rem;
 }
 .about-card dt {
@@ -1348,7 +1345,7 @@
   }
   .study-question {
     padding: 32px 24px 29px;
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     min-height: 305px;
   }
   .question-instruction {

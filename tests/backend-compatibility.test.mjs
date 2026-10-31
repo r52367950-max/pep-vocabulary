@@ -129,7 +129,7 @@ test('an official FQDN trailing dot retains the official model parameters', () =
     { baseUrl: 'https://api.openai.com.example.test/v1' }).temperature, .4);
 });
 
-test('reading classification uses the same official-model temperature rules', async (t) => {
+test('reading classification uses Responses for official models and retains compatible-host temperature rules', async (t) => {
   const db = new DatabaseSync(':memory:');
   t.after(() => db.close());
   for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter((name) => name.endsWith('.sql')).sort()) {
@@ -141,16 +141,20 @@ test('reading classification uses the same official-model temperature rules', as
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
   const calls = [];
-  globalThis.fetch = async (_url, init) => {
-    calls.push(JSON.parse(init.body));
-    return Response.json({ choices: [{ message: { content: '{"category":"science","difficulty":"B1"}' }, finish_reason: 'stop' }],
-      usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } });
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    const content = '{"category":"science","difficulty":"B1"}';
+    return url === 'https://api.openai.com/v1/responses'
+      ? Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: content }] }],
+        usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 } })
+      : Response.json({ choices: [{ message: { content }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } });
   };
   const post = (path, body, action) => new Request(`https://app.test${path}`, { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-vocab-action': action }, body: JSON.stringify(body) });
   for (const [baseUrl, model, expectedTemperature] of [
     ['https://api.openai.com/v1', 'o4-mini', undefined],
-    ['https://api.openai.com/v1', 'gpt-4.1-mini', 0],
+    ['https://api.openai.com/v1', 'gpt-4.1-mini', undefined],
     ['https://llm.example.test/v1', 'o4-mini', 0],
   ]) {
     const saved = await configPost(post('/api/ai/config', { provider: 'openai-compatible', baseUrl, model,
@@ -158,9 +162,24 @@ test('reading classification uses the same official-model temperature rules', as
     assert.equal(saved.status, 200);
     const response = await classify(post('/api/reading/classify', { title: 'A science article', text: 'This article describes a science experiment. '.repeat(4) }, 'reading-classify'));
     assert.equal(response.status, 200);
-    const sent = calls.at(-1);
+    assert.deepEqual(await response.json(), { ok: true, category: 'science', difficulty: 'B1' });
+    const { url, body: sent } = calls.at(-1);
+    assert.equal(sent.model, model);
     assert.equal(sent.temperature, expectedTemperature);
     assert.equal('temperature' in sent, expectedTemperature !== undefined);
-    assert.equal(sent[baseUrl.includes('api.openai.com') && model === 'o4-mini' ? 'max_completion_tokens' : 'max_tokens'], 160);
+    if (baseUrl === 'https://api.openai.com/v1') {
+      assert.equal(url, 'https://api.openai.com/v1/responses');
+      assert.equal(sent.max_output_tokens, 160);
+      assert.equal('max_completion_tokens' in sent, false);
+      assert.equal('max_tokens' in sent, false);
+      assert.equal('messages' in sent, false);
+      assert.deepEqual(sent.input.map((message) => message.role), ['system', 'user']);
+      assert.equal(sent.store, false);
+    } else {
+      assert.equal(url, 'https://llm.example.test/v1/chat/completions');
+      assert.equal(sent.max_tokens, 160);
+      assert.equal('max_output_tokens' in sent, false);
+      assert.deepEqual(sent.messages.map((message) => message.role), ['system', 'user']);
+    }
   }
 });

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { assistantCacheSize, clearAssistantCache } from "@/lib/ai-client";
+import { LearningMemoryPanel, useLearningMemory } from "./studio/voice/learning-memory";
 import type { AppSettings } from "@/lib/storage";
 import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from "./studio/ai-connection";
 
@@ -55,12 +56,12 @@ const providerDefaults: Record<
   },
   "openai-compatible": {
     baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4.1-mini",
+    model: "gpt-6.1-terra",
   },
 };
 const defaultAIConfig: AIConfig = {
-  provider: "deepseek",
-  ...providerDefaults.deepseek,
+  provider: "openai-compatible",
+  ...providerDefaults["openai-compatible"],
   dailyLimit: 30,
   timeoutSeconds: 25,
   hasApiKey: false,
@@ -87,14 +88,17 @@ export default function ConsoleSettings({
   onUpdate,
   onOpenData,
   onClear,
+  initialSection = "general",
 }: {
   settings: AppSettings;
   onUpdate: (patch: Partial<AppSettings>) => void;
   onOpenData: () => void;
   onClear: () => void;
+  initialSection?: "general" | "ai";
 }) {
-  const [section, setSection] = useState<Section>("general");
-  const [mobilePanel, setMobilePanel] = useState(false);
+  const learningMemory = useLearningMemory();
+  const [section, setSection] = useState<Section>(initialSection);
+  const [mobilePanel, setMobilePanel] = useState(initialSection !== "general");
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const sectionButtons = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({});
   const [aiConfig, setAIConfig] = useState<AIConfig>(defaultAIConfig);
@@ -133,6 +137,7 @@ export default function ConsoleSettings({
   }, [section]);
 
   const chooseProvider = (provider: AIProvider) => {
+    setApiKey("");
     setAIConfig((current) => ({
       ...current,
       provider,
@@ -178,6 +183,7 @@ export default function ConsoleSettings({
       if (!response.ok) throw new Error(result.error || "保存失败");
       setAIConfig(result);
       if (!settings.aiEnabled) onUpdate({ aiEnabled: true });
+      window.dispatchEvent(new Event("vocab-ai-config-changed"));
       setMessage({ kind: "success", text: "API 配置已保存，密钥不会返回浏览器。" });
     });
   };
@@ -199,6 +205,7 @@ export default function ConsoleSettings({
       setAIConfig(defaultAIConfig);
       setApiKey("");
       onUpdate({ aiEnabled: false });
+      window.dispatchEvent(new Event("vocab-ai-config-changed"));
       setMessage({ kind: "success", text: "API 配置已移除。" });
     });
   };
@@ -305,6 +312,7 @@ export default function ConsoleSettings({
           )}
           {section === "learning" && (
             <>
+              <section className="settings-card"><LearningMemoryPanel controls={learningMemory} /></section>
               <section className="settings-card">
                 <header>
                   <BookOpenCheck size={20} aria-hidden="true" />
@@ -387,8 +395,7 @@ export default function ConsoleSettings({
                   <div>
                     <h2>模型 API</h2>
                     <p>
-                      支持 DeepSeek 与 OpenAI-compatible Chat
-                      Completions；请求只从站点服务端发出。
+                      支持 OpenAI、DeepSeek 与兼容接口；API Key 仅由站点服务端使用。
                     </p>
                   </div>
                   <span
@@ -401,7 +408,7 @@ export default function ConsoleSettings({
                       : aiConfig.requiresKeyReentry
                         ? "需重新填写密钥"
                         : aiConfig.hasApiKey
-                          ? "已部署"
+                          ? "已保存"
                           : "待配置"}
                   </span>
                 </header>
@@ -416,6 +423,11 @@ export default function ConsoleSettings({
                 </div>
               </section>
               <section className="settings-card api-form">
+                <div className="openai-setup-card">
+                  <div><strong>OpenAI 一次配置</strong><p>文字学习使用 GPT-6.1 Terra，口语使用 GPT-Live 1。选好推荐配置，填入你的 OpenAI API Key 并保存即可。</p></div>
+                  <button className="console-secondary" onClick={() => chooseProvider("openai-compatible")} disabled={saving || loadingConfig}>使用 OpenAI 推荐配置</button>
+                  <small>语音与听写使用同一把密钥；已有其他服务商的配置会在你点击保存后替换。</small>
+                </div>
                 {aiConfig.requiresKeyReentry && (
                   <p className="settings-message error" role="status">
                     原有密钥的加密格式缺少账号与接口地址绑定，已暂停使用。接口配置仍保留，请重新填写 API Key 并保存。
@@ -442,7 +454,7 @@ export default function ConsoleSettings({
                     >
                       <option value="deepseek">DeepSeek</option>
                       <option value="openai-compatible">
-                        OpenAI-compatible
+                        OpenAI / 兼容接口
                       </option>
                     </select>
                   </label>
@@ -469,7 +481,7 @@ export default function ConsoleSettings({
                       list={
                         aiConfig.provider === "deepseek"
                           ? "deepseek-models"
-                          : undefined
+                          : "openai-models"
                       }
                       value={aiConfig.model}
                       onChange={(event) => {
@@ -482,7 +494,7 @@ export default function ConsoleSettings({
                       placeholder={
                         aiConfig.provider === "deepseek"
                           ? "deepseek-v4-flash"
-                          : "provider-model-id"
+                          : "gpt-6.1-terra"
                       }
                       spellCheck={false}
                     />
@@ -491,7 +503,8 @@ export default function ConsoleSettings({
                       <option value="deepseek-flash" />
                       <option value="deepseek-v4-pro" />
                     </datalist>
-                    <small>填写服务商当前开放的模型 ID。</small>
+                    <datalist id="openai-models"><option value="gpt-6.1-terra" /><option value="gpt-6.1-sol" /><option value="gpt-6-luna" /></datalist>
+                    <small>这里选择文字模型；口语会自动使用独立语音模型。</small>
                   </label>
                   <label>
                     <span>API Key</span>
@@ -630,9 +643,7 @@ export default function ConsoleSettings({
                   )}
                 </div>
                 <p className="connection-test-note">
-                  测试先进行一次不携带密钥、不会计费的 HTTPS
-                  探测，再发送两次极小的真实请求检查基础生成与 JSON
-                  输出；会产生少量服务商用量。
+                  测试连接会发送少量真实请求，检查文字生成与 JSON 输出并产生服务商用量。语音权限在首次开始口语练习时单独验证。
                 </p>
                 {message && (
                   <p
@@ -669,6 +680,9 @@ export default function ConsoleSettings({
                     <p>
                       AI 请求会附带一份学习画像：最近的错误作答、错误类型、薄弱词、易混词、最近 12 条笔记和写作概况，用来做个性化讲解与出题。
                       作文批改会发送作文全文与题目。教材信息只来自服务端重新读取的正式词库证据；不发送整份词库或完整学习记录。
+                    </p>
+                    <p>
+                      口语练习会把麦克风音频发送给 OpenAI；结束后获取反馈时发送你确认过的对话转写。AI 听写只发送当前朗读文本，设备朗读不使用 API。
                     </p>
                   </div>
                 </header>
@@ -723,11 +737,11 @@ export default function ConsoleSettings({
               <dl>
                 <div>
                   <dt>应用版本</dt>
-                  <dd>2.3.0</dd>
+                  <dd>2.8.0</dd>
                 </div>
                 <div>
                   <dt>数据格式</dt>
-                  <dd>1.1.0</dd>
+                  <dd>1.2.0</dd>
                 </div>
                 <div>
                   <dt>词库发布状态</dt>

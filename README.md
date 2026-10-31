@@ -1,8 +1,10 @@
-# 词迹 2.5.2
+# 词迹 2.8.0
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
 [打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+
+2.8.0 加入语音练习、听写、跨 AI 功能共享的账号学习记忆，以及需要确认的 Live 听写输入；保留本地优先、临时练习与账号隔离。详见 [共享学习记忆](docs/SHARED-LEARNING-MEMORY.md)、[语音接口](docs/VOICE_API.md)及[语音设计](docs/VOICE_DESIGN.md)。本分支同时纳入下述 2.5.1/2.5.2 修复；GitHub 更新不代表站点已重新部署。
 
 2.5.2 将 AI 出站目标限制到站点管理员批准的 HTTPS origin；官方 DeepSeek 与 OpenAI 默认可用，自定义兼容服务需配置 `AI_ALLOWED_PROVIDER_ORIGINS`。成功请求结算保留独立的提示词与实际回答用量下限，配置保存与删除共用限流；备份恢复在替换数据前拒绝过深或过大的扩展数据，HTML 导入在创建 DOM 前限制大小与标记数量。详见 [AI 部署说明](AI_ASSISTANT_DEPLOYMENT.md)、[数据格式](DATA_SCHEMA.md)和[阅读说明](docs/READING_2.1.md)。
 

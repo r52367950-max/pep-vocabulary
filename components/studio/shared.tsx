@@ -10,8 +10,7 @@ import { BOOKS, getBookUnits } from "@/lib/study";
 export function BrandMark({ size = 28 }: { size?: number }) {
   return (
     <svg className="brand-mark" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <rect className="brand-mark-ground" width="100" height="100" rx="22.37" />
-      <g transform="translate(14 14) scale(.72)">
+      <g>
         <path className="brand-mark-curve" d="M14 26C19 44 24 52 33 55V33C39 46 45 50 55 52V38C62 46 70 48 82 48" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M14 78H86" stroke="#0071E3" strokeWidth="2" strokeLinecap="round" />
         <circle cx="82" cy="48" r="7" fill="#0071E3" />

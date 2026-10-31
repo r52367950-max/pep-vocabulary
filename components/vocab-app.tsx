@@ -12,7 +12,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import {
   CloudOff,
@@ -46,6 +45,7 @@ const StudySession = lazy(() => import("./studio/study-session"));
 const WordDetail = lazy(() => import("./studio/word-detail"));
 const LearnActivity = lazy(() => import("./studio/learn/learn-activity"));
 const WritingWorkspace = lazy(() => import("./studio/writing/writing-workspace"));
+const VoiceWorkspace = lazy(() => import("./studio/voice-workspace"));
 type View = "today" | "lexicon" | "reading" | "activity";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
@@ -106,17 +106,16 @@ const Toaster = memo(function Toaster() {
   );
 });
 
-const subscribeNothing = () => () => {};
-const shortcutLabel = () => (/Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "⌘ K" : "Ctrl K");
-
 export default function VocabApp() {
   const data = useVocabulary();
-  const shortcut = useSyncExternalStore(subscribeNothing, shortcutLabel, () => "⌘ K");
   const [view, setView] = useState<View>("today");
   // Views stay mounted once visited (hidden with <Activity>), keeping search, page and open article.
   const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set(["today"]));
   if (!visited.has(view)) setVisited(new Set(visited).add(view));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<"general" | "ai">("general");
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceInitialTab, setVoiceInitialTab] = useState<"speaking" | "dictation">("speaking");
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
@@ -131,7 +130,7 @@ export default function VocabApp() {
   // answer rather than before the next card can paint. Elsewhere it stays in step with the data.
   const deferredCards = useDeferredValue(data.cards);
   const deferredHistory = useDeferredValue(data.history);
-  const offscreen = session !== null || learn !== null || writing !== null;
+  const offscreen = session !== null || learn !== null || writing !== null || voiceOpen;
   const planCards = offscreen ? deferredCards : data.cards;
   const planHistory = offscreen ? deferredHistory : data.history;
   // One computation per data change and local date: Today and Activity read the same object.
@@ -267,6 +266,7 @@ export default function VocabApp() {
       !session &&
       !learn &&
       !writing &&
+      !voiceOpen &&
       !selected &&
       !settingsOpen &&
       (((event.metaKey || event.ctrlKey) &&
@@ -369,6 +369,7 @@ export default function VocabApp() {
   const showLexicon = useCallback(() => setView("lexicon"), []);
   const showReading = useCallback(() => setView("reading"), []);
   const showActivity = useCallback(() => setView("activity"), []);
+  const showVoice = useCallback((tab: "speaking" | "dictation" = "speaking") => { setVoiceInitialTab(tab); setVoiceOpen(true); }, []);
   const resumeSession = useMemo(
     () =>
       resume
@@ -397,13 +398,14 @@ export default function VocabApp() {
   };
   // The system back gesture closes the top layer instead of leaving the app.
   useBackGuard(
-    !!(selected || settingsOpen || session || learn || writing || view !== "today"),
+    !!(selected || settingsOpen || session || learn || writing || voiceOpen || view !== "today"),
     () => {
       if (selected) setSelected(null);
       else if (settingsOpen) setSettingsOpen(false);
       else if (session) closeSession();
       else if (learn) setLearn(null);
       else if (writing) setWriting(null);
+      else if (voiceOpen) setVoiceOpen(false);
       else setView("today");
     },
   );
@@ -421,6 +423,9 @@ export default function VocabApp() {
       sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem("pep-vocab-cloud-link-v2");
       localStorage.removeItem("pep-vocab-sync-revision");
+      localStorage.removeItem("pep-vocab-voice-history-v1");
+      localStorage.removeItem("pep-vocab-voice-captions-v1");
+      localStorage.removeItem("vocab-studio:voice-dictation:v1");
       onReplaced();
       await data.reload();
       data.notify("本机学习数据已清空。");
@@ -522,6 +527,14 @@ export default function VocabApp() {
         {toast}
       </>
     );
+  if (voiceOpen)
+    return <>
+      <Suspense fallback={<Pending />}>
+        <VoiceWorkspace initialTab={voiceInitialTab} entries={scope} onClose={() => setVoiceOpen(false)} onOpenSettings={() => { setSettingsSection("ai"); setSettingsOpen(true); }} />
+      </Suspense>
+      {settingsOpen && <Suspense fallback={null}><SettingsDialog initialSection={settingsSection} data={data} onClose={() => { setSettingsOpen(false); setSettingsSection("general"); }} onClear={clear} onReplaced={onReplaced} /></Suspense>}
+      {toast}
+    </>;
   return (
     <div className="vocab-studio">
       <a className="skip-link" href="#main-content">
@@ -534,24 +547,6 @@ export default function VocabApp() {
           aria-label="词迹首页"
         >
           <Brand />
-        </button>
-        <button
-          className="sidebar-search"
-          aria-label="搜索词库"
-          onClick={() => {
-            setView("lexicon");
-            setTimeout(
-              () =>
-                document
-                  .querySelector<HTMLInputElement>("#lexicon-search")
-                  ?.focus(),
-              150,
-            );
-          }}
-        >
-          <Search size={17} aria-hidden="true" />
-          <span>搜索</span>
-          <kbd>{shortcut}</kbd>
         </button>
         <nav className="desktop-nav" aria-label="主要导航">
           {navigation.slice(0, 3).map(({ id, label, symbol }) => (
@@ -663,6 +658,7 @@ export default function VocabApp() {
               }
               resume={resumeSession}
               onWrite={onWrite}
+              onVoice={showVoice}
             />
           </ViewPane>
           {visited.has("lexicon") && (
@@ -712,7 +708,7 @@ export default function VocabApp() {
           </button>
         ))}
       </nav>
-      {settingsOpen && <Suspense fallback={null}><SettingsDialog data={data} onClose={() => setSettingsOpen(false)} onClear={clear} onReplaced={onReplaced} /></Suspense>}
+      {settingsOpen && <Suspense fallback={null}><SettingsDialog initialSection={settingsSection} data={data} onClose={() => { setSettingsOpen(false); setSettingsSection("general"); }} onClear={clear} onReplaced={onReplaced} /></Suspense>}
       {selected && (
         <Suspense fallback={null}>
           <WordDetail

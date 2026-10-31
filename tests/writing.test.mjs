@@ -76,19 +76,20 @@ test('older backups still import and gain an empty writings list', async () => {
   assert.deepEqual(oldest.writings, []);
 });
 
-test('assistant answers are cached locally and a repeat view sends no request', async (t) => {
+test('assistant cache verifies policy but reuses matching account and input without another model call', async (t) => {
   await clearAssistantCache();
   const calls = [];
   const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });
   globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('/api/learning-memory')) return Response.json({ accountScope: 'test-account', revision: 1, enabled: false, notes: [], recentTopics: [], contextVersion: 'test-model' });
     calls.push({ url, body: JSON.parse(init.body) });
     return Response.json({ ok: true, model: 'm', result: { kind: 'explain', summary: 's' }, usage: { prompt: 10, completion: 5, cacheHit: 8, total: 15, estimated: false, today: 15, budget: 1000 } });
   };
   const input = { wordId: 'pep-a46c38628a99e102', focus: 'grammar' };
   const first = await runAssistant('explain', input, { profile: { date: '2026-09-29' } });
   assert.equal(first.cachedAt, null);
-  assert.equal(calls[0].body.profile.date, '2026-09-29');
+  assert.equal(calls[0].body.profile, undefined, 'paused policy excludes historical profile');
   const second = await runAssistant('explain', { focus: 'grammar', wordId: 'pep-a46c38628a99e102' });
   assert.ok(second.cachedAt, 'served from the cache regardless of key order');
   assert.equal(calls.length, 1);
@@ -96,13 +97,13 @@ test('assistant answers are cached locally and a repeat view sends no request', 
   assert.equal(calls.length, 2);
   assert.equal(await assistantCacheSize(), 1);
   assert.equal(cacheKey('explain', { b: 1, a: 2 }), cacheKey('explain', { a: 2, b: 1 }));
-  globalThis.fetch = async () => Response.json({ ok: false, error: { code: 'token_budget_exhausted', message: '预算用完' } }, { status: 429 });
+  globalThis.fetch = async (url) => String(url).startsWith('/api/learning-memory') ? Response.json({ accountScope: 'test-account', revision: 1, enabled: false, notes: [], recentTopics: [], contextVersion: 'test-model' }) : Response.json({ ok: false, error: { code: 'token_budget_exhausted', message: '预算用完' } }, { status: 429 });
   await assert.rejects(runAssistant('explain', { wordId: 'pep-other0000000000' }), (error) => error.code === 'token_budget_exhausted');
   await clearAssistantCache();
   assert.equal(await readCached('explain', input), null);
   let builds = 0;
   const build = () => ({ built: ++builds });
-  assert.equal(profileSnapshot(10, 'w0', build), profileSnapshot(29, 'w0', build));
+  assert.notEqual(profileSnapshot(10, 'w0', build), profileSnapshot(29, 'w0', build), 'rebuild sees note edits even if review count is unchanged');
   assert.notEqual(profileSnapshot(30, 'w0', build), profileSnapshot(29, 'w0', build));
 });
 

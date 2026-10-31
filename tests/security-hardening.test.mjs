@@ -29,7 +29,7 @@ const modules = Object.fromEntries(await Promise.all(routeFiles.map(async file =
 const wordA = 'pep-1e3e7e41accdc5f7';
 const wordB = 'pep-07d418db40de3fe8';
 const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
-// The smallest body each POST route accepts before it checks identity.
+// Representative valid bodies for the private mutation routes.
 const validBodies = {
   '/api/sync': { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: '2026-09-24T00:00:00Z', payload: backup },
   '/api/ai/config': { provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-only-not-a-real-key-000000', dailyLimit: 30, timeoutSeconds: 25 },
@@ -43,6 +43,14 @@ const validBodies = {
   '/api/assistant/story': { wordIds: [wordA, wordB, 'pep-0000000000000001'] },
   '/api/assistant/diagnose': { wordIds: [wordA] },
   '/api/reading/classify': { title: 'A test article', text: 'This is an English reading sample. '.repeat(5) },
+  '/api/voice/session': { sdp: 'v=0\r\n', topicId: 'daily', level: 'B2', minutes: 10 },
+  '/api/voice/close': { sessionId: 'test-session' },
+  '/api/voice/speech': { text: 'A short listening exercise.' },
+  '/api/voice/feedback': { topicId: 'daily', transcript: [{ role: 'user', text: 'I prefer the train because it is comfortable.' }] },
+  '/api/voice/memory': { revision: 0, enabled: true, notes: [{ id: 'test_note', text: 'Practice discussing books.' }], recentTopics: [] },
+  '/api/learning-memory': { accountScope: 'test-scope', revision: 0, enabled: true, notes: [{ id: 'test_note', text: 'Practice discussing books.' }], recentTopics: [] },
+  '/api/voice/recommend': { topicId: 'culture', level: 'B2', minutes: 10 },
+  '/api/voice/discuss': { topicId: 'culture', level: 'B2', transcript: [{ role: 'user', text: 'I enjoy reading novels.' }], messages: [{ role: 'user', text: 'How could I say that more naturally?' }] },
 };
 const actions = { '/api/ai/config': 'settings', '/api/ai/test': 'settings', '/api/reading/classify': 'reading-classify', '/api/sync': 'sync' };
 const call = (path, method, { headers = {}, body } = {}) => {
@@ -101,7 +109,7 @@ test('AI settings mutations require the settings action header', async () => {
 
 test('oversized bodies are refused with 413, including chunked bodies without Content-Length', async () => {
   asIdentity(OWNER);
-  for (const [path, method] of endpoints().filter(([, method]) => method === 'POST')) {
+  for (const [path, method] of endpoints().filter(([, method]) => method === 'POST' || method === 'PUT')) {
     let produced = 0;
     let cancelled = false;
     const endless = new ReadableStream({
@@ -228,7 +236,8 @@ test('HTML documents carry a per-request nonce CSP that matches the one handed t
   assert.equal(first.headers.get('x-frame-options'), 'DENY');
   assert.equal(first.headers.get('x-content-type-options'), 'nosniff');
   assert.equal(first.headers.get('referrer-policy'), 'same-origin');
-  assert.match(first.headers.get('permissions-policy'), /microphone=\(\).*|camera=\(\)/);
+  assert.match(first.headers.get('permissions-policy'), /microphone=\(self\)/);
+  assert.match(first.headers.get('permissions-policy'), /camera=\(\)/);
   assert.equal(first.headers.get('strict-transport-security'), 'max-age=31536000');
   // The offline shell stays storable by the service worker but never by shared caches.
   assert.equal(first.headers.get('cache-control'), 'private, no-cache');

@@ -1,6 +1,7 @@
 import type { AssistantTask } from "./assistant/prompt";
 import type { LearnerProfile } from "./assistant/profile";
 import { stableJson } from "./stable-json";
+import { contextStillCurrent, localProfileAllowed, learningContextStore, refreshLearningContext, type LearningMemory } from "./learning-context-client";
 
 /**
  * Browser side of the assistant. Results are cached in their own IndexedDB database, never in
@@ -56,17 +57,27 @@ async function cacheRequest<T>(mode: IDBTransactionMode, work: (store: IDBObject
   });
 }
 
-/** The cache key covers the task and its input, not the profile: a saved answer stays valid all day and beyond. */
+/** Legacy helper remains deterministic; persistent keys additionally include a verified context. */
 export const cacheKey = (task: AssistantTask, input: Record<string, unknown>) => `${task}:${stableJson(input)}`;
-
-export async function readCached<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>): Promise<AssistantResult<T> | null> {
-  if (task === "diagnose") return null; // The same empty input describes changing learning history.
+async function scopedKey(task: AssistantTask, input: Record<string, unknown>, memory: LearningMemory, profile: LearnerProfile | null) {
+  const bytes = new TextEncoder().encode(stableJson({ input, profile }));
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `context-v2:${memory.accountScope}:${memory.revision}:${memory.enabled}:${memory.contextVersion || "learning-memory-v1"}:${task}:${digest}`;
+}
+async function cachedByKey<T>(key: string): Promise<AssistantResult<T> | null> {
   try {
-    const row = await cacheRequest<CachedRow>("readonly", (store) => store.get(cacheKey(task, input)));
+    const row = await cacheRequest<CachedRow>("readonly", (store) => store.get(key));
     return row ? { result: row.result as T, model: row.model, cachedAt: row.createdAt, usage: null } : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+export async function readCached<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>, options: { profile?: LearnerProfile | null; signal?: AbortSignal } = {}): Promise<AssistantResult<T> | null> {
+  if (task === "diagnose" || learningContextStore.get().temporary || options.signal?.aborted) return null;
+  try {
+    const memory = await refreshLearningContext(options.signal);
+    const epoch = learningContextStore.get().epoch;
+    const cached = await cachedByKey<T>(await scopedKey(task, input, memory, localProfileAllowed(memory) ? options.profile || null : null));
+    return !options.signal?.aborted && epoch === learningContextStore.get().epoch && contextStillCurrent(memory, false) ? cached : null;
+  } catch { return null; } // An unknown account/policy never falls back to old personalised data.
 }
 
 async function writeCached(row: CachedRow) {
@@ -105,61 +116,59 @@ export const usageStore = {
   set(usage: AssistantUsage | null) { latestUsage = usage; listeners.forEach((listener) => listener()); },
 };
 
-/**
- * Runs one assistant task. A cached answer is returned unless `refresh` is set; a fresh answer is
- * cached. The profile is sent as data for personalised feedback and is not part of the cache key.
- */
+/** Validate account and privacy policy before every cache read and before displaying a response. */
 export async function runAssistant<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>, options: {
   profile?: LearnerProfile | null; refresh?: boolean; signal?: AbortSignal; cache?: boolean;
 } = {}): Promise<AssistantResult<T>> {
-  const checkAborted = () => {
-    if (options.signal?.aborted) throw new AssistantError("已取消。", "aborted", true);
-  };
-  checkAborted();
-  const useCache = options.cache !== false && task !== "diagnose";
-  if (useCache && !options.refresh) {
-    const cached = await readCached<T>(task, input);
-    checkAborted();
-    if (cached) return cached;
-  }
+  if (options.signal?.aborted) throw new AssistantError("已取消。", "aborted", true);
+  let memory: LearningMemory;
+  try { memory = await refreshLearningContext(options.signal); }
+  catch (error) { throw new AssistantError(options.signal?.aborted ? "已取消。" : error instanceof Error ? error.message : "无法读取学习记忆。", options.signal?.aborted ? "aborted" : "context_unavailable", true); }
+  const temporary = learningContextStore.get().temporary;
+  const policyEpoch = learningContextStore.get().epoch;
+  const profile = !temporary && localProfileAllowed(memory) ? options.profile || null : null;
   const controller = new AbortController();
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
+  const unsubscribe = learningContextStore.subscribe(() => { if (!contextStillCurrent(memory, temporary) || learningContextStore.get().epoch !== policyEpoch) abort(); });
   const timer = setTimeout(abort, CLIENT_TIMEOUT_MS);
-  let payload: { ok?: boolean; result?: T; model?: string; usage?: AssistantUsage; error?: { code?: string; message?: string; retryable?: boolean } };
+  const checkCurrent = () => {
+    if (controller.signal.aborted || !contextStillCurrent(memory, temporary)) throw new AssistantError("请求已取消或学习记忆已更新，请重新开始。", "aborted", true);
+  };
+  const useCache = !temporary && options.cache !== false && task !== "diagnose";
   try {
+    const key = await scopedKey(task, input, memory, profile);
+    checkCurrent();
+    if (useCache && !options.refresh) {
+      const cached = await cachedByKey<T>(key);
+      checkCurrent();
+      if (cached) return cached;
+    }
     const response = await fetch(`/api/assistant/${task}`, {
-      method: "POST",
+      method: "POST", credentials: "same-origin",
       headers: { "content-type": "application/json", "x-vocab-action": "assistant" },
-      body: JSON.stringify({ ...input, ...(options.profile ? { profile: options.profile } : {}) }),
+      body: JSON.stringify({ ...input, temporary, accountScope: memory.accountScope, contextRevision: memory.revision, contextVersion: memory.contextVersion, ...(profile ? { profile } : {}) }),
       signal: controller.signal,
     });
-    payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.ok || !payload.result) {
-      throw new AssistantError(payload.error?.message || "AI 暂时不可用；本地学习不受影响。", payload.error?.code || `http_${response.status}`, Boolean(payload.error?.retryable));
-    }
+    const payload = await response.json().catch(() => ({})) as { ok?: boolean; result?: T; model?: string; contextRevision?: number; accountScope?: string; usage?: AssistantUsage; error?: { code?: string; message?: string; retryable?: boolean } };
+    checkCurrent();
+    if (!response.ok || !payload.ok || !payload.result) throw new AssistantError(payload.error?.message || "AI 暂时不可用；本地学习不受影响。", payload.error?.code || `http_${response.status}`, Boolean(payload.error?.retryable));
+    if ((payload.accountScope && payload.accountScope !== memory.accountScope) || (payload.contextRevision !== undefined && payload.contextRevision !== memory.revision)) throw new AssistantError("账户或学习记忆已更新，请重新开始。", "context_changed", true);
+    // Covers changes on another device while the model request was running.
+    await refreshLearningContext(controller.signal);
+    checkCurrent();
+    const model = payload.model || "";
+    if (payload.usage) usageStore.set(payload.usage);
+    if (useCache) await writeCached({ key, task, createdAt: new Date().toISOString(), model, result: payload.result as Record<string, unknown> });
+    checkCurrent();
+    return { result: payload.result, model, cachedAt: null, usage: payload.usage || null };
   } catch (error) {
     if (error instanceof AssistantError) throw error;
-    if (controller.signal.aborted) throw new AssistantError(options.signal?.aborted ? "已取消。" : "AI 请求超时，可以稍后重试。", "aborted", true);
-    throw new AssistantError("无法连接 AI 服务，请检查网络；本地学习不受影响。", "network", true);
-  } finally {
-    clearTimeout(timer);
-    options.signal?.removeEventListener("abort", abort);
-  }
-  const model = payload.model || "";
-  if (payload.usage) usageStore.set(payload.usage);
-  const result = payload.result as T;
-  if (useCache) await writeCached({ key: cacheKey(task, input), task, createdAt: new Date().toISOString(), model, result: result as Record<string, unknown> });
-  return { result, model, cachedAt: null, usage: payload.usage || null };
+    if (controller.signal.aborted) throw new AssistantError("请求已取消或学习记忆已更新，请重试。", "aborted", true);
+    throw new AssistantError("无法确认当前学习上下文或连接AI服务，请重试。", "network", true);
+  } finally { clearTimeout(timer); unsubscribe(); options.signal?.removeEventListener("abort", abort); }
 }
 
-/**
- * The profile changes after every answer, but a byte-identical profile keeps the provider's
- * prompt cache warm. So it is rebuilt only when the day changes or 30 more reviews exist.
- */
-let snapshot: { key: string; profile: LearnerProfile } | null = null;
-export function profileSnapshot(reviewCount: number, extraKey: string, build: () => LearnerProfile): LearnerProfile {
-  const key = `${new Date().toLocaleDateString("sv-SE")}:${Math.floor(reviewCount / 30)}:${extraKey}`;
-  if (snapshot?.key !== key) snapshot = { key, profile: build() };
-  return snapshot.profile;
-}
+/** Rebuild from actual current notes/writing; counts cannot detect edits or deletions. */
+export function profileSnapshot(_reviewCount: number, _extraKey: string, build: () => LearnerProfile): LearnerProfile { return build(); }

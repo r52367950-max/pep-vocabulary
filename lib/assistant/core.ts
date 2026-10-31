@@ -329,8 +329,28 @@ export function chatCompletionsUrl(baseUrl: string, provider?: AiProvider): stri
   return url.toString();
 }
 
+/** Official OpenAI text requests use Responses; compatible vendors retain their wire protocol. */
+export function usesOpenAIResponses(baseUrl: string): boolean {
+  const url = new URL(baseUrl);
+  return url.origin === "https://api.openai.com" && ["", "/v1", "/v1/responses", "/v1/chat/completions"].includes(url.pathname.replace(/\/+$/, ""));
+}
+
+export function completionEndpoint(baseUrl: string, provider?: AiProvider): string {
+  return usesOpenAIResponses(baseUrl) ? "https://api.openai.com/v1/responses" : chatCompletionsUrl(baseUrl, provider);
+}
+
+export function responsesPayload(payload: Record<string, unknown>, maximum: number): Record<string, unknown> {
+  return {
+    model: payload.model, input: payload.messages, max_output_tokens: maximum,
+    stream: Boolean(payload.stream), store: false,
+    ...(payload.response_format ? { text: { format: payload.response_format } } : {}),
+    ...(payload.prompt_cache_key ? { prompt_cache_key: payload.prompt_cache_key } : {}),
+    ...(/^gpt-[56]/.test(String(payload.model)) ? { reasoning: { effort: "low" } } : {}),
+  };
+}
+
 export function connectionEndpointCandidates(provider: AiProvider, baseUrl: string): string[] {
-  const primary = chatCompletionsUrl(baseUrl, provider);
+  const primary = completionEndpoint(baseUrl, provider);
   const url = new URL(baseUrl);
   const path = url.pathname.replace(/\/+$/, "");
   if (provider !== "deepseek" || url.hostname !== "api.deepseek.com" || (path !== "" && path !== "/v1")) {
@@ -351,9 +371,9 @@ export function sameAiCredentialScope(
  * System prompt first (identical for every request), then the learner profile, then this task.
  * See ./prompt.ts for why the order matters for provider-side prompt caching.
  */
-export function buildAssistantPrompt(request: ParsedAssistantRequest, evidence: LexiconEvidence[], profile: unknown = null) {
+export function buildAssistantPrompt(request: ParsedAssistantRequest, evidence: LexiconEvidence[], profile: unknown = null, memory: unknown = null) {
   const { task, ...input } = request;
-  return { system: SYSTEM_PROMPT, user: buildUserMessage(profile, task, input, evidence) };
+  return { system: SYSTEM_PROMPT, user: buildUserMessage(profile, task, input, evidence, memory) };
 }
 
 function cleanOutputText(value: unknown, field: string, maximum = 2000): string {
@@ -776,6 +796,7 @@ const MODEL_OUTPUT_LIMITS: Array<[RegExp, number]> = [
   [/^deepseek-(?:flash|pro|v4)/, 393_216],
   [/^deepseek-reasoner$/, 65_536],
   [/^deepseek-chat$/, 8_192],
+  [/^gpt-6/, 128_000],
   [/^gpt-4\.1/, 32_768],
   [/^gpt-4o/, 16_384],
   [/^gpt-4-turbo|^gpt-4-\d{4}/, 4_096],
@@ -845,7 +866,7 @@ export function connectionTestPayload(provider: AiProvider, model: string, struc
         { role: "system", content: "Return a JSON object only. Do not include Markdown." },
         { role: "user", content: 'Return exactly {"ok":true}.' },
       ],
-      ...outputTokenParameters(model, baseUrl, 64),
+      ...outputTokenParameters(model, baseUrl, baseUrl && usesOpenAIResponses(baseUrl) && /^gpt-6/.test(model) ? 512 : 64),
       response_format: { type: "json_object" },
       stream: false,
       ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
@@ -857,7 +878,7 @@ export function connectionTestPayload(provider: AiProvider, model: string, struc
       { role: "system", content: "Reply with exactly OK." },
       { role: "user", content: "Connection test." },
     ],
-    ...outputTokenParameters(model, baseUrl, 16),
+    ...outputTokenParameters(model, baseUrl, baseUrl && usesOpenAIResponses(baseUrl) && /^gpt-6/.test(model) ? 256 : 16),
     stream: false,
     ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
   };
@@ -976,11 +997,11 @@ export async function fetchChatCompletionWithTimeout(
   return (await fetchCompletion(fetcher, url, init, { idleMs: timeoutMs, totalMs: timeoutMs, stream: false })).content;
 }
 
-function mappedUpstreamFailure(status: number): AssistantUpstreamError {
+export function mappedUpstreamFailure(status: number): AssistantUpstreamError {
   if (status >= 300 && status < 400) return new AssistantUpstreamError("provider_redirect_rejected", "模型接口返回了重定向；为防止密钥被转发，词迹没有继续请求。", 502, false, status);
   if (status === 401 || status === 403) return new AssistantUpstreamError("provider_auth_failed", "API Key 无效，或当前密钥无权调用该模型。", 503, false, status);
   if (status === 402) return new AssistantUpstreamError("provider_payment_required", "模型账户余额不足，或尚未开通 API 计费。", 503, false, status);
-  if (status === 404 || status === 405) return new AssistantUpstreamError("provider_endpoint_not_found", "Chat Completions 地址或模型名不正确。", 502, false, status);
+  if (status === 404 || status === 405) return new AssistantUpstreamError("provider_endpoint_not_found", "模型接口地址或模型名不正确。", 502, false, status);
   if (status === 408 || status === 429) return new AssistantUpstreamError("provider_busy", "模型服务当前繁忙或已达到服务商限额，请稍后重试。", 503, true, status);
   if (status === 400 || status === 422) return new AssistantUpstreamError("provider_rejected_request", "模型服务拒绝了请求参数，请检查模型名和接口兼容性。", 502, false, status);
   if (status >= 500) return new AssistantUpstreamError("provider_unavailable", "模型服务暂时不可用，请稍后重试。", 502, true, status);
@@ -996,8 +1017,8 @@ const tokenCount = (value: unknown) => (typeof value === "number" && Number.isSa
 export function parseUsage(value: unknown): CompletionUsage | null {
   if (!value || typeof value !== "object") return null;
   const usage = value as Record<string, unknown>;
-  const prompt = tokenCount(usage.prompt_tokens), completion = tokenCount(usage.completion_tokens);
-  const details = usage.prompt_tokens_details as Record<string, unknown> | undefined;
+  const prompt = tokenCount(usage.prompt_tokens ?? usage.input_tokens), completion = tokenCount(usage.completion_tokens ?? usage.output_tokens);
+  const details = (usage.prompt_tokens_details ?? usage.input_tokens_details) as Record<string, unknown> | undefined;
   const cacheHit = tokenCount(usage.prompt_cache_hit_tokens) || tokenCount(details?.cached_tokens);
   if (!prompt && !completion) return null;
   return { prompt, completion, cacheHit: Math.min(cacheHit, prompt), total: Math.max(tokenCount(usage.total_tokens), prompt + completion), estimated: false };
@@ -1030,6 +1051,8 @@ export async function readChatCompletionDetailed(response: Response, signal?: Ab
   } catch {
     throw new AssistantUpstreamError("invalid_provider_response", "模型服务返回了无法识别的数据。", 502, true);
   }
+  const document = outputRecord(payload);
+  if (Array.isArray(document.output)) return parseResponsesCompletion(document, promptChars);
   const choices = outputRecord(payload).choices;
   if (!Array.isArray(choices) || !choices.length) throw new AssistantUpstreamError("invalid_provider_response", "模型服务没有返回回答。", 502, true);
   const choice = outputRecord(choices[0], "choices[0]");
@@ -1040,6 +1063,22 @@ export async function readChatCompletionDetailed(response: Response, signal?: Ab
     usage: parseUsage((payload as Record<string, unknown>).usage) || estimateUsage(promptChars, content),
     finishReason: typeof choice.finish_reason === "string" ? choice.finish_reason : null,
   };
+}
+
+export function parseResponsesCompletion(payload: Record<string, unknown>, promptChars = 0): Completion {
+  if (payload.status === "failed" || payload.status === "cancelled") throw new AssistantUpstreamError("provider_unavailable", "模型未完成回答，请重试。", 502, true);
+  const output = Array.isArray(payload.output) ? payload.output : [];
+  let content = "";
+  for (const item of output) {
+    if (!item || typeof item !== "object" || item.type !== "message" || !Array.isArray(item.content)) continue;
+    for (const part of item.content) {
+      if (part?.type === "refusal") throw new AssistantUpstreamError("model_refusal", "模型无法完成这个请求，请调整输入。", 422, false);
+      if (part?.type === "output_text" && typeof part.text === "string") content += part.text;
+    }
+  }
+  const text = cleanOutputText(content, "output_text", 300_000);
+  return { content: text, usage: parseUsage(payload.usage) || estimateUsage(promptChars, text),
+    finishReason: payload.status === "incomplete" ? "length" : "stop" };
 }
 
 const MAX_STREAM_BYTES = 6_000_000;
@@ -1072,6 +1111,13 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     let chunk: Record<string, unknown>;
     try { chunk = outputRecord(JSON.parse(data)); }
     catch { throw new AssistantUpstreamError("invalid_provider_response", "模型服务返回了无法识别的数据。", 502, true); }
+    if (chunk.type === "error" || chunk.type === "response.failed") throw new AssistantUpstreamError("provider_unavailable", "模型回答传输失败，请重试。", 502, true);
+    if (chunk.type === "response.refusal.delta") throw new AssistantUpstreamError("model_refusal", "模型无法完成这个请求，请调整输入。", 422, false);
+    if (chunk.type === "response.output_text.delta" && typeof chunk.delta === "string") content += chunk.delta;
+    if (chunk.type === "response.completed" || chunk.type === "response.incomplete") {
+      const final = parseResponsesCompletion(outputRecord(chunk.response), promptChars);
+      content = final.content; usage = final.usage; finishReason = final.finishReason; done = true;
+    }
     usage = parseUsage(chunk.usage) || usage;
     const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as Record<string, unknown> | undefined) : undefined;
     const delta = choice?.delta as Record<string, unknown> | undefined;
@@ -1140,7 +1186,7 @@ export async function fetchCompletion(fetcher: typeof fetch, url: string, init: 
   }
 }
 
-async function readBoundedResponseText(response: Response, maximumBytes: number, signal?: AbortSignal, onChunk?: () => void): Promise<string> {
+export async function readBoundedResponseText(response: Response, maximumBytes: number, signal?: AbortSignal, onChunk?: () => void): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

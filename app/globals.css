@@ -4,6 +4,10 @@
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Noto Sans CJK SC", sans-serif;
   --font-display: var(--font-ui);
   --font-reading: ui-serif, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --radius-control: 20px;
+  --radius-card: 28px;
+  --radius-sheet: 32px;
+  --radius-inset: 16px;
   --ease-settle: cubic-bezier(.22, 1, .36, 1);
   --ease-feedback: cubic-bezier(.2, .7, .3, 1);
   /* A critically damped spring (damping 1, response .35s); settles by ~300ms, fully by 500ms. */
@@ -126,7 +130,7 @@ select {
   min-width: 0;
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   padding: 10px 13px;
 }
 textarea {
@@ -263,7 +267,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   padding: 5px 10px;
   font-size: 0.8125rem;
   background: var(--grouped);
@@ -334,7 +338,7 @@ a:hover {
   background: var(--grouped);
   border: 0;
   min-height: 48px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
 }
 .search-field input {
   font-size: 1rem;
@@ -343,12 +347,12 @@ a:hover {
   background: var(--grouped);
   padding: 4px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
 }
 .segmented-control button {
   min-height: 38px;
   font-size: 0.875rem;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   padding: 7px 16px;
 }
 .segmented-control button[aria-pressed="true"] {
@@ -401,7 +405,7 @@ a:hover {
   padding-left: 0;
 }
 .activity-metrics > div + div {
-  border-left: 1px solid var(--line);
+  border-left: 0;
 }
 .activity-metrics > div > svg {
   display: none;
@@ -413,7 +417,7 @@ a:hover {
 .forecast-panel,
 .review-log {
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--radius-card);
   background: var(--grouped);
   box-shadow: none;
 }
@@ -460,7 +464,7 @@ a:hover {
   line-height: 1.6;
 }
 .study-choices button {
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   font-size: 1.0625rem;
 }
 .answer-feedback .example-block {
@@ -481,13 +485,13 @@ a:hover {
 }
 .settings-nav button {
   min-height: 46px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   font-size: 0.875rem;
 }
 .settings-card {
   background: var(--grouped);
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--radius-card);
   box-shadow: none;
 }
 .settings-card header {
@@ -513,7 +517,7 @@ a:hover {
 .data-cards > section {
   background: var(--grouped);
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--radius-card);
   box-shadow: none;
   padding: 28px;
 }
@@ -524,7 +528,7 @@ a:hover {
   font-size: 0.9375rem;
 }
 .toast {
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   background: var(--ink);
   color: var(--bg);
   box-shadow: 0 8px 30px #00000020;
@@ -553,7 +557,7 @@ html[data-theme="dark"] {
   gap: 8px;
   margin-bottom: 22px;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--grouped);
   color: var(--muted);
   font-size: 0.8125rem;
@@ -682,7 +686,7 @@ html[data-theme="dark"] {
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
 }
 /* A soft scroll edge where content slides under the floating controls, instead of a hard divider. */
 .study-controls::before {
@@ -714,7 +718,7 @@ html[data-theme="dark"] {
 .rating-buttons button {
   min-height: 74px;
   background: var(--grouped);
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   padding: 14px 8px;
 }
@@ -740,7 +744,7 @@ html[data-theme="dark"] {
 }
 .example-block {
   background: var(--grouped);
-  border-radius: 14px;
+  border-radius: var(--radius-control);
 }
 .example-block p {
   font-family: inherit;
@@ -778,7 +782,7 @@ html[data-theme="dark"] {
   .word-dialog {
     width: calc(100% - 20px);
     max-height: calc(100dvh - 24px);
-    border-radius: 24px;
+    border-radius: var(--radius-card);
     padding: 24px;
   }
   .detail-word h2 {
@@ -848,7 +852,7 @@ html[data-theme="dark"] {
     gap: 7px;
   }
   .rating-buttons button {
-    border-radius: 12px;
+    border-radius: var(--radius-control);
     padding: 12px 4px;
   }
   .study-footer {
@@ -882,7 +886,7 @@ html[data-theme="dark"] {
     gap: 18px;
   }
   .settings-card {
-    border-radius: 16px;
+    border-radius: var(--radius-control);
   }
   .data-cards {
     grid-template-columns: 1fr;
@@ -1002,4 +1006,15 @@ html[data-theme="dark"] {
     font-size: 1rem;
   }
 
+}
+
+/* Continuous corners are an enhancement; older engines keep the same radius scale.
+   Circular media, progress rings and checks intentionally retain their geometry. */
+@supports (corner-shape: squircle) {
+  :where(input:not([type=checkbox]):not([type=radio]), textarea, select,
+    .search-field, .segmented, .segmented-control, .scope-switch, .scope-selection,
+    .desktop-nav button, .daily-feature, .practice-option, .word-list-heading,
+    .lexicon-filters, .settings-card, .settings-dialog, .word-dialog, .import-dialog,
+    .security-callout, .study-choices button, .dictation-emblem, .dictation-play,
+    .dictation-history li, .dictation-notice) { corner-shape: squircle; }
 }

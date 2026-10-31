@@ -1,3 +1,4 @@
+import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
 import { consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-classification";
 import type { D1Database } from "@cloudflare/workers-types";
@@ -21,7 +22,9 @@ import {
   AssistantInputError,
   AssistantUpstreamError,
   buildAssistantPrompt,
-  chatCompletionsUrl,
+  completionEndpoint,
+  usesOpenAIResponses,
+  responsesPayload,
   connectionEndpointCandidates,
   connectionTestPayload,
   fetchCompletion,
@@ -44,7 +47,7 @@ const MAX_GENERATION_MS = 300_000;
 import { DEFAULT_TOKEN_BUDGET, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
 
 /** Shared paid-generation boundary for learning, classification and connection tests. */
-async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string } = {}) {
+export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string } = {}) {
   if (request.signal.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
   const outputCap = Number(payload.max_tokens ?? payload.max_completion_tokens);
   const prompt = JSON.stringify(payload.messages);
@@ -53,11 +56,13 @@ async function complete(config: UserRuntimeConfig, request: Request, payload: Re
   delete body.max_tokens;
   delete body.max_completion_tokens;
   delete body.temperature;
-  const completion = await fetchCompletion(fetchAiProvider, options.url || chatCompletionsUrl(config.baseUrl, config.provider), {
+  const completion = await fetchCompletion(fetchAiProvider, options.url || completionEndpoint(config.baseUrl, config.provider), {
     method: "POST", redirect: "manual", signal: request.signal,
     headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json", accept: "text/event-stream, application/json" },
-    body: JSON.stringify({ ...body, ...generationParameters(config.model, config.baseUrl, reservation.maxOutputTokens,
-      typeof payload.temperature === "number" ? payload.temperature : undefined) }),
+    body: JSON.stringify(usesOpenAIResponses(config.baseUrl) ? responsesPayload(payload, reservation.maxOutputTokens) : {
+      ...body, ...generationParameters(config.model, config.baseUrl, reservation.maxOutputTokens,
+        typeof payload.temperature === "number" ? payload.temperature : undefined),
+    }),
   }, { idleMs: options.idleMs ?? config.timeoutMs, totalMs: options.totalMs ?? MAX_GENERATION_MS, stream: Boolean(payload.stream), promptChars: prompt.length });
   const { today, usage } = await settleTokens(reservation, completion.usage, completion.content);
   completion.usage = usage;
@@ -92,7 +97,7 @@ type RuntimeBindings = {
   DB?: D1Database;
 };
 
-type UserRuntimeConfig = {
+export type UserRuntimeConfig = {
   userKey: string;
   provider: AiProvider;
   baseUrl: string;
@@ -303,7 +308,7 @@ async function enforceConnectionTestRateLimit(userKey: string) {
   await incrementBucket(`connection-test:day:${userKey}:${dayStart}`, dayStart + 86_400_000, 30);
 }
 
-async function authenticatedConfig(request: Request) {
+export async function authenticatedConfig(request: Request) {
   assertSameOrigin(request);
   const userKey = await authenticatedUserKey();
   if (!userKey) throw new AssistantInputError("authentication_required", "AI 助手需要经过站点身份验证。", 401);
@@ -311,7 +316,7 @@ async function authenticatedConfig(request: Request) {
   return { config, userKey };
 }
 
-async function authenticatedRuntime(request: Request) {
+export async function authenticatedRuntime(request: Request) {
   const { config, userKey } = await authenticatedConfig(request);
   await enforceRateLimit(userKey, config.dailyLimit);
   return config;
@@ -433,13 +438,14 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     const config = await authenticatedRuntime(request);
     const rows = await releaseIndex(request);
     const evidence = resolveLexiconEvidence(rows, parsed.wordIds);
+    const context = await resolveLearningContext(config.userKey, body);
     let profile;
-    try { profile = parseLearnerProfile(body.profile, releaseWords(rows)); }
+    try { profile = context.enabled ? parseLearnerProfile(body.profile, releaseWords(rows)) : null; }
     catch (error) {
       if (error instanceof ProfileInputError) throw new AssistantInputError("invalid_request", "学习画像格式不正确。");
       throw error;
     }
-    const prompt = buildAssistantPrompt(parsed, evidence, profile);
+    const prompt = buildAssistantPrompt(parsed, evidence, profile, learningContextData(context.memory));
     const { completion, today: usedToday } = await complete(config, request,
       upstreamPayload(config.model, prompt, task, config.provider, {
         maxTokens: resolveMaxOutputTokens(config.model, config.maxOutputTokens), stream: true,
@@ -452,7 +458,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     const result = sanitizeModelResult(task, completion.content, evidence, maximumItems, parsed);
     return Response.json(
       {
-        ok: true, task, provider: config.provider, model: config.model, evidence, result,
+        ok: true, task, provider: config.provider, model: config.model, evidence, result, ...contextMetadata(context),
         usage: { ...completion.usage, today: usedToday, budget: config.dailyTokenBudget },
       },
       { status: 200, headers: responseHeaders() },
