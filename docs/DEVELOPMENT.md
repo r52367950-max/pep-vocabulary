@@ -11,6 +11,7 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | 全部单元/回归测试 | `npm run test:unit` |
 | 指定回归测试 | `node --import ./tests/register.mjs --test tests/sync.test.mjs`，替换为受影响的测试文件 |
 | 生产构建及产物校验 | `npm run build` |
+| Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`，默认输出 `outputs/site.tar.gz`；包含 Worker、完整迁移目录与托管配置 |
 | 本地 Worker/D1 检查 | 构建后执行 `npm run test:runtime` |
 | 完整验收 | `npm test`：数据审计、类型检查、单元测试、构建、Worker 检查；ESLint 另用 `npm run lint` |
 | 词库数据审计 | `npm run data:audit`；会更新 `data/audit-summary.json`，留意生成差异 |
@@ -39,6 +40,8 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 仓库已包含可运行词库，日常开发无需 `data:manifest` 或 `data:build`。调整来源/提取流程时才使用它们，并准备 `PEP_VOCAB_SOURCE_CACHE` 等脚本所需输入；缺少原始缓存时不要覆盖发布数据。发布来源记录时复查私有文件路径与标识。
 
 版本沿用三段规则：大重构升主版本，多处功能改进/主要功能增加升次版本，小修升补丁版本。纯文档整理不自动升级应用版本。GitHub 提交与 Sites 部署是不同操作，线上状态需从实际部署核实。
+
+发布包保留 `dist/server` 入口、源 `drizzle/` 及其 journal，并按生成的 Wrangler 路径提供根 `migrations/`。打包使用普通文件，避免 tar 硬链接被发布器拒绝。同一提交已保存的 Sites 版本会复用原部署包；修正打包流程后应提交修正并发布新版本。发布完成后核对实际数据库迁移，不能仅以发布器返回成功代替迁移验收。
 
 ## 指引维护依据
 
