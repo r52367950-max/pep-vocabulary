@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { validateLexiconRelease } from "./lexicon-release.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
 const books = readJson("config/books.json");
 const sourceManifest = readJson("source_manifest.json");
-const releaseManifest = readJson("public/data/v1/manifest.json");
 const reconciliation = readJson("data/unit-reconciliation.json");
-const entries = releaseManifest.chunks.flatMap((chunk) => readJson(`public/data/v1/${chunk.file}`));
+const { entries } = validateLexiconRelease(join(root, "public/data/v1"));
 const standard = readFileSync(join(root, "data/build/raw/STD-HS.jsonl"), "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
 
 const errors = [];

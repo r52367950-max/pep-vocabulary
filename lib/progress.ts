@@ -1,10 +1,27 @@
 import type { ReviewEvent } from "./storage";
 
+/** Absolute time, with a fixed ID tie-breaker so reload and arrival order agree. */
+function compareReviews(a: ReviewEvent, b: ReviewEvent) {
+  const aTime = Date.parse(a.timestampUtc), bTime = Date.parse(b.timestampUtc);
+  // Invalid legacy timestamps sort before dated records, without changing their payloads.
+  const at = Number.isFinite(aTime) ? aTime : -Infinity;
+  const bt = Number.isFinite(bTime) ? bTime : -Infinity;
+  return at !== bt ? (at < bt ? -1 : 1) : a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0;
+}
+
+/** Oldest first. Already ordered inputs are reused; unordered arrays are copied. */
+export function chronologicalReviews(reviews: readonly ReviewEvent[]): readonly ReviewEvent[] {
+  for (let i = 1; i < reviews.length; i++)
+    if (compareReviews(reviews[i - 1], reviews[i]) > 0)
+      return [...reviews].sort(compareReviews);
+  return reviews;
+}
+
 export function activeReviews(events: readonly ReviewEvent[]) {
   const undone = new Set(
     events.filter((e) => e.eventType === "undo").map((e) => e.targetEventId),
   );
-  return events.filter((e) => e.eventType !== "undo" && !undone.has(e.eventId));
+  return chronologicalReviews(events.filter((e) => e.eventType !== "undo" && !undone.has(e.eventId)));
 }
 
 const localDay = (date: Date) => date.toLocaleDateString("sv-SE");
@@ -110,14 +127,29 @@ function removeLast<T>(list: T[], item: T) {
   if (at >= 0) list.splice(at, 1);
 }
 
+function insertChronologically(list: ReviewEvent[], event: ReviewEvent) {
+  if (!list.length || compareReviews(list[list.length - 1], event) <= 0) {
+    list.push(event);
+    return;
+  }
+  // Only late arrivals or clock rollback need to move existing entries.
+  let low = 0, high = list.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (compareReviews(list[middle], event) <= 0) low = middle + 1;
+    else high = middle;
+  }
+  list.splice(low, 0, event);
+}
+
 function activate(store: HistoryStore, event: ReviewEvent) {
-  store.active.push(event);
+  insertChronologically(store.active, event);
   let day = store.days.get(event.localDate);
   if (!day) {
     day = { events: [], cards: new Map(), fresh: new Map(), ms: 0, correct: 0 };
     store.days.set(event.localDate, day);
   }
-  day.events.push(event);
+  insertChronologically(day.events, event);
   bump(day.cards, event.cardId, 1);
   if (isFresh(event)) bump(day.fresh, event.cardId, 1);
   day.ms += spent(event);
@@ -140,8 +172,8 @@ function deactivate(store: HistoryStore, event: ReviewEvent) {
 }
 
 /**
- * Review history that grows in place: appending an answer is O(1) amortised, and the active
- * reviews, per-day buckets and stats stay in step without rescanning every event.
+ * Review history that grows in place: chronological review appends are O(1) amortised; late arrivals
+ * use binary insertion. Active reviews, per-day buckets and stats stay in step without rescanning.
  * A handle is a cheap immutable-looking token over a shared store; each change returns a new one so
  * React deps re-run. A stale handle reads the latest data, which only defers a render, never corrupts it.
  */
@@ -154,7 +186,7 @@ export class ReviewHistory {
     this.version = store.version;
   }
 
-  /** Rebuilds from persisted events in the order given (IndexedDB key order). */
+  /** Preserves persisted audit order and builds chronological active-review indexes. */
   static from(events: readonly ReviewEvent[]) {
     const store = newStore();
     for (const event of events) {
@@ -166,9 +198,10 @@ export class ReviewHistory {
         store.undone.add(event.targetEventId ?? "");
       }
     }
-    for (const event of store.events)
-      if (event.eventType !== "undo" && !store.undone.has(event.eventId))
-        activate(store, event);
+    const active = chronologicalReviews(store.events.filter(
+      (event) => event.eventType !== "undo" && !store.undone.has(event.eventId),
+    ));
+    for (const event of active) activate(store, event);
     store.version = 1;
     return new ReviewHistory(store);
   }
@@ -209,7 +242,7 @@ export class ReviewHistory {
   get undos(): readonly ReviewEvent[] {
     return this.store.undos;
   }
-  /** Non-undo events that are not undone, same order as {@link activeReviews}. Read-only. */
+  /** Active reviews, oldest first by absolute time then event ID. Read-only. */
   get active(): readonly ReviewEvent[] {
     return this.store.active;
   }

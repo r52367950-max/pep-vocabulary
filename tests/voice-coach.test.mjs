@@ -139,6 +139,8 @@ test('memory is durable and isolated, needs no AI key, and supports disable and 
   const firstBody = await first.json();
   assert.match(firstBody.accountScope, /^[a-f0-9]{64}$/);
   const { accountScope, contextVersion, ...firstMemory } = firstBody;
+  assert.equal(typeof contextVersion, 'string');
+  assert.ok(contextVersion.length > 0);
   assert.deepEqual(firstMemory, empty);
   const saved = await putVoiceMemory(req('memory', { ...empty, notes: [note], recentTopics: ['雨天散步'] }, 'PUT'));
   assert.equal(saved.status, 200, await saved.clone().text());

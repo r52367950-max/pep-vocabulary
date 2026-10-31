@@ -1,3 +1,4 @@
+import { configurePdfResourceBudget, pdfResourceBudget, checkedPdfAllocation } from "./resource-budget.mjs";
 /**
  * @licstart The following is the entire license notice for the
  * JavaScript code in this page
@@ -10011,12 +10012,14 @@ async function JBig2(moduleArg = {}) {
     return 0;
   };
   function _createImageData(size) {
-    Module.imageData = new Uint8Array(size);
+    Module.imageData = new Uint8Array(checkedPdfAllocation(size));
   }
   var getHeapMax = () => 2147483648;
   var alignMemory = (size, alignment) => Math.ceil(size / alignment) * alignment;
   var growMemory = size => {
     var oldHeapSize = wasmMemory.buffer.byteLength;
+    pdfResourceBudget().checkSize(size);
+    checkedPdfAllocation(size - oldHeapSize);
     var pages = (size - oldHeapSize + 65535) / 65536 | 0;
     try {
       wasmMemory.grow(pages);
@@ -10027,6 +10030,7 @@ async function JBig2(moduleArg = {}) {
   var _emscripten_resize_heap = requestedSize => {
     var oldSize = HEAPU8.length;
     requestedSize >>>= 0;
+    pdfResourceBudget().checkSize(requestedSize);
     var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
       return false;
@@ -10044,11 +10048,12 @@ async function JBig2(moduleArg = {}) {
   };
   function _setImageData(array_ptr, pitch8, pitch32, height) {
     if (pitch32 === pitch8) {
+      checkedPdfAllocation(pitch32 * height);
       Module.imageData = new Uint8ClampedArray(HEAPU8.subarray(array_ptr, array_ptr + pitch32 * height));
       return;
     }
     const destSize = pitch8 * height;
-    const imageData = Module.imageData = new Uint8ClampedArray(destSize);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(destSize));
     for (let srcStart = array_ptr, destStart = 0; destStart < destSize; srcStart += pitch32, destStart += pitch8) {
       imageData.set(HEAPU8.subarray(srcStart, srcStart + pitch8), destStart);
     }
@@ -10080,6 +10085,7 @@ async function JBig2(moduleArg = {}) {
     _ccitt_decode = Module["_ccitt_decode"] = wasmExports["n"];
     __emscripten_timeout = wasmExports["o"];
     memory = wasmMemory = wasmExports["i"];
+    checkedPdfAllocation(wasmMemory.buffer.byteLength);
     __indirect_function_table = wasmExports["__indirect_function_table"];
   }
   var wasmImports = {
@@ -11256,6 +11262,8 @@ const RefinementTemplates = [{
 const ReusedContexts = [0x9b25, 0x0795, 0x00e5, 0x0195];
 const RefinementReusedContexts = [0x0020, 0x0008];
 function decodeBitmapTemplate0(width, height, decodingContext) {
+  pdfResourceBudget().image(width, height);
+  checkedPdfAllocation(width * height);
   const decoder = decodingContext.decoder;
   const contexts = decodingContext.contextCache.getContexts("GB");
   const bitmap = [];
@@ -11274,6 +11282,8 @@ function decodeBitmapTemplate0(width, height, decodingContext) {
   return bitmap;
 }
 function decodeBitmap(mmr, width, height, templateIndex, prediction, skip, at, decodingContext) {
+  pdfResourceBudget().image(width, height);
+  checkedPdfAllocation(width * height);
   if (mmr) {
     const input = new Reader(decodingContext.data, decodingContext.start, decodingContext.end);
     return decodeMMRBitmap(input, width, height, false);
@@ -11380,6 +11390,8 @@ function decodeBitmap(mmr, width, height, templateIndex, prediction, skip, at, d
   return bitmap;
 }
 function decodeRefinement(width, height, templateIndex, referenceBitmap, offsetX, offsetY, prediction, at, decodingContext) {
+  pdfResourceBudget().image(width, height);
+  checkedPdfAllocation(width * height);
   let codingTemplate = RefinementTemplates[templateIndex].coding;
   if (templateIndex === 0) {
     codingTemplate = codingTemplate.concat([at[0]]);
@@ -11558,6 +11570,8 @@ function decodeSymbolDictionary(huffman, refinement, symbols, numberOfNewSymbols
   return exportedSymbols;
 }
 function decodeTextRegion(huffman, refinement, width, height, defaultPixelValue, numberOfSymbolInstances, stripSize, inputSymbols, symbolCodeLength, transposed, dsOffset, referenceCorner, combinationOperator, huffmanTables, refinementTemplateIndex, refinementAt, decodingContext, logStripSize, huffmanInput) {
+  pdfResourceBudget().image(width, height);
+  checkedPdfAllocation(width * height);
   if (huffman && refinement) {
     throw new Jbig2Error("refinement with Huffman is not supported");
   }
@@ -11707,6 +11721,8 @@ function decodePatternDictionary(mmr, patternWidth, patternHeight, maxPatternInd
   return patterns;
 }
 function decodeHalftoneRegion(mmr, patterns, template, regionWidth, regionHeight, defaultPixelValue, enableSkip, combinationOperator, gridWidth, gridHeight, gridOffsetX, gridOffsetY, gridVectorX, gridVectorY, decodingContext) {
+  pdfResourceBudget().image(regionWidth, regionHeight);
+  checkedPdfAllocation(regionWidth * regionHeight);
   const skip = null;
   if (enableSkip) {
     throw new Jbig2Error("skip is not supported");
@@ -12142,7 +12158,7 @@ class SimpleSegmentVisitor {
   onPageInformation(info) {
     this.currentPageInfo = info;
     const rowSize = info.width + 7 >> 3;
-    const buffer = new Uint8ClampedArray(rowSize * info.height);
+    const buffer = new Uint8ClampedArray(checkedPdfAllocation(rowSize * info.height));
     if (info.defaultPixelValue) {
       buffer.fill(0xff);
     }
@@ -12654,6 +12670,8 @@ function getSymbolDictionaryHuffmanTables(dictionary, referredTo, customTables) 
   };
 }
 function readUncompressedBitmap(reader, width, height) {
+  pdfResourceBudget().image(width, height);
+  checkedPdfAllocation(width * height);
   const bitmap = [];
   for (let y = 0; y < height; y++) {
     const row = new Uint8Array(width);
@@ -12666,6 +12684,8 @@ function readUncompressedBitmap(reader, width, height) {
   return bitmap;
 }
 function decodeMMRBitmap(input, width, height, endOfBlock) {
+  pdfResourceBudget().image(width, height);
+  checkedPdfAllocation(width * height);
   const params = {
     K: -1,
     Columns: width,
@@ -12763,6 +12783,7 @@ class JBig2CCITTFaxWasmImage {
     }
   }
   static async decode(bytes, width, height, globals, CCITTOptions) {
+    pdfResourceBudget().image(width, height);
     if (!this.#modulePromise) {
       const {
         promise,
@@ -12838,6 +12859,7 @@ const emptyBuffer = new Uint8Array(0);
 class DecodeStream extends BaseStream {
   constructor(maybeMinBufferLength) {
     super();
+    this.resourceBudget = pdfResourceBudget();
     this._rawMinBufferLength = maybeMinBufferLength || 0;
     this.pos = 0;
     this.bufferLength = 0;
@@ -12857,6 +12879,7 @@ class DecodeStream extends BaseStream {
     return this.bufferLength === 0;
   }
   ensureBuffer(requested) {
+    this.resourceBudget.checkSize(requested);
     const buffer = this.buffer;
     if (requested <= buffer.byteLength) {
       return buffer;
@@ -12865,11 +12888,13 @@ class DecodeStream extends BaseStream {
     while (size < requested) {
       size *= 2;
     }
-    const buffer2 = new Uint8Array(size);
+    size = Math.min(size, this.resourceBudget.streamLimit);
+    const buffer2 = new Uint8Array(this.resourceBudget.reserve(size));
     buffer2.set(buffer);
     return this.buffer = buffer2;
   }
   getByte() {
+    this.resourceBudget.check();
     const pos = this.pos;
     while (this.bufferLength <= pos) {
       if (this.eof) {
@@ -12880,6 +12905,7 @@ class DecodeStream extends BaseStream {
     return this.buffer[this.pos++];
   }
   getBytes(length, decoderOptions = null) {
+    this.resourceBudget.check();
     const pos = this.pos;
     let end;
     if (length) {
@@ -12902,6 +12928,7 @@ class DecodeStream extends BaseStream {
     return this.buffer.subarray(pos, end);
   }
   async getImageData(length, decoderOptions) {
+    this.resourceBudget.check();
     if (!this.canAsyncDecodeImageFromBuffer) {
       if (this.isAsyncDecoder) {
         return this.decodeImage(null, length, decoderOptions);
@@ -12912,8 +12939,14 @@ class DecodeStream extends BaseStream {
     return this.decodeImage(data, length, decoderOptions);
   }
   async asyncGetBytesFromDecompressionStream(name) {
+    this.resourceBudget.check();
     this.stream.reset();
     const bytes = this.stream.isAsync ? await this.stream.asyncGetBytes() : this.stream.getBytes();
+    // Native implementations need not bound output allocated from one write.
+    // Budgeted imports use the checked JS decoders instead of this fast path.
+    if (Number.isFinite(this.resourceBudget.streamLimit) || Number.isFinite(this.resourceBudget.documentLimit)) {
+      return { decompressed: null, compressed: bytes };
+    }
     try {
       const {
         readable,
@@ -12928,10 +12961,12 @@ class DecodeStream extends BaseStream {
       const chunks = [];
       let totalLength = 0;
       for await (const chunk of readable) {
+        this.resourceBudget.checkSize(totalLength + chunk.byteLength);
+        this.resourceBudget.reserve(chunk.byteLength);
         chunks.push(chunk);
         totalLength += chunk.byteLength;
       }
-      const data = new Uint8Array(totalLength);
+      const data = new Uint8Array(this.resourceBudget.reserve(totalLength));
       let offset = 0;
       for (const chunk of chunks) {
         data.set(chunk, offset);
@@ -12942,6 +12977,7 @@ class DecodeStream extends BaseStream {
         compressed: bytes
       };
     } catch {
+      this.resourceBudget.check();
       return {
         decompressed: null,
         compressed: bytes
@@ -12952,6 +12988,7 @@ class DecodeStream extends BaseStream {
     this.pos = 0;
   }
   makeSubStream(start, length, dict = null) {
+    this.resourceBudget.check();
     if (length === undefined) {
       while (!this.eof) {
         this.readBlock();
@@ -12968,6 +13005,7 @@ class DecodeStream extends BaseStream {
     return this.stream ? this.stream.getBaseStreams() : null;
   }
   clone() {
+    this.resourceBudget.check();
     while (!this.eof) {
       this.readBlock();
     }
@@ -13853,6 +13891,9 @@ function findNextFileMarker(data, currentPos, startPos = currentPos) {
   };
 }
 function prepareComponents(frame) {
+  // A JPEG with DNL may initially have zero lines; its recursive parse supplies
+  // the actual height before coefficients are allocated.
+  pdfResourceBudget().image(frame.samplesPerLine, frame.scanLines || 1, frame.components.length);
   const mcusPerLine = Math.ceil(frame.samplesPerLine / 8 / frame.maxH);
   const mcusPerColumn = Math.ceil(frame.scanLines / 8 / frame.maxV);
   for (const component of frame.components) {
@@ -13861,7 +13902,7 @@ function prepareComponents(frame) {
     const blocksPerLineForMcu = mcusPerLine * component.h;
     const blocksPerColumnForMcu = mcusPerColumn * component.v;
     const blocksBufferSize = 64 * blocksPerColumnForMcu * (blocksPerLineForMcu + 1);
-    component.blockData = new Int16Array(blocksBufferSize);
+    component.blockData = new Int16Array(checkedPdfAllocation(blocksBufferSize * 2) / 2);
     component.blocksPerLine = blocksPerLine;
     component.blocksPerColumn = blocksPerColumn;
   }
@@ -13906,6 +13947,7 @@ class JpegImage {
     let exifOffsets = null;
     let offset = 0;
     let numComponents = null;
+    let width, height;
     let fileMarker = readUint16(data, offset);
     offset += 2;
     if (fileMarker !== 0xffd8) {
@@ -13937,6 +13979,11 @@ class JpegImage {
         case 0xffc0:
         case 0xffc1:
         case 0xffc2:
+          // DNL JPEGs require the JS parser to resolve their actual height.
+          if (readUint16(data, offset + 3) === 0) return null;
+          width = readUint16(data, offset + 5);
+          height = readUint16(data, offset + 3);
+          pdfResourceBudget().image(width, height, 4);
           numComponents = data[offset + (2 + 1 + 2 + 2)];
           break markerLoop;
         case 0xffff:
@@ -13955,6 +14002,7 @@ class JpegImage {
     if (numComponents === 3 && colorTransform === 0) {
       return null;
     }
+    checkedPdfAllocation(width * height * 4);
     return exifOffsets || {};
   }
   parse(data, {
@@ -14213,7 +14261,7 @@ class JpegImage {
     let output;
     const numComponents = this.components.length;
     const dataLength = width * height * numComponents;
-    const data = new Uint8ClampedArray(dataLength);
+    const data = new Uint8ClampedArray(checkedPdfAllocation(dataLength));
     const xScaleBlockOffset = new Uint32Array(width);
     const mask3LSB = 0xfffffff8;
     let lastComponentScaleX;
@@ -14341,7 +14389,7 @@ class JpegImage {
     const data = this._getLinearizedBlockData(width, height, isSourcePDF);
     if (this.numComponents === 1 && (forceRGBA || forceRGB)) {
       const len = data.length * (forceRGBA ? 4 : 3);
-      const rgbaData = new Uint8ClampedArray(len);
+      const rgbaData = new Uint8ClampedArray(checkedPdfAllocation(len));
       let offset = 0;
       if (forceRGBA) {
         grayToRGBA(data, new Uint32Array(rgbaData.buffer));
@@ -14355,7 +14403,7 @@ class JpegImage {
       return rgbaData;
     } else if (this.numComponents === 3 && this._isColorConversionNeeded) {
       if (forceRGBA) {
-        const rgbaData = new Uint8ClampedArray(data.length / 3 * 4);
+        const rgbaData = new Uint8ClampedArray(checkedPdfAllocation(data.length / 3 * 4));
         return this._convertYccToRgba(data, rgbaData);
       }
       return this._convertYccToRgb(data);
@@ -14505,6 +14553,7 @@ class JpegStream extends DecodeStream {
       });
       return (await decoder.decode()).image;
     } catch (reason) {
+      this.resourceBudget.check();
       warn(`getTransferableImage - failed: "${reason}".`);
       return null;
     } finally {
@@ -14621,6 +14670,7 @@ async function OpenJPEG(moduleArg = {}) {
     function receiveInstance(instance, module) {
       wasmExports = instance.exports;
       wasmMemory = wasmExports["r"];
+      checkedPdfAllocation(wasmMemory.buffer.byteLength);
       updateMemoryViews();
       assignWasmExports(wasmExports);
       return wasmExports;
@@ -14715,7 +14765,7 @@ async function OpenJPEG(moduleArg = {}) {
   };
   function _copy_pixels_1(compG_ptr, nb_pixels) {
     compG_ptr >>= 2;
-    const imageData = Module.imageData = new Uint8ClampedArray(nb_pixels);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(nb_pixels));
     const compG = HEAP32.subarray(compG_ptr, compG_ptr + nb_pixels);
     imageData.set(compG);
   }
@@ -14723,7 +14773,7 @@ async function OpenJPEG(moduleArg = {}) {
     compR_ptr >>= 2;
     compG_ptr >>= 2;
     compB_ptr >>= 2;
-    const imageData = Module.imageData = new Uint8ClampedArray(nb_pixels * 3);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(nb_pixels * 3));
     const compR = HEAP32.subarray(compR_ptr, compR_ptr + nb_pixels);
     const compG = HEAP32.subarray(compG_ptr, compG_ptr + nb_pixels);
     const compB = HEAP32.subarray(compB_ptr, compB_ptr + nb_pixels);
@@ -14738,7 +14788,7 @@ async function OpenJPEG(moduleArg = {}) {
     compG_ptr >>= 2;
     compB_ptr >>= 2;
     compA_ptr >>= 2;
-    const imageData = Module.imageData = new Uint8ClampedArray(nb_pixels * 4);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(nb_pixels * 4));
     const compR = HEAP32.subarray(compR_ptr, compR_ptr + nb_pixels);
     const compG = HEAP32.subarray(compG_ptr, compG_ptr + nb_pixels);
     const compB = HEAP32.subarray(compB_ptr, compB_ptr + nb_pixels);
@@ -14754,6 +14804,8 @@ async function OpenJPEG(moduleArg = {}) {
   var alignMemory = (size, alignment) => Math.ceil(size / alignment) * alignment;
   var growMemory = size => {
     var oldHeapSize = wasmMemory.buffer.byteLength;
+    pdfResourceBudget().checkSize(size);
+    checkedPdfAllocation(size - oldHeapSize);
     var pages = (size - oldHeapSize + 65535) / 65536 | 0;
     try {
       wasmMemory.grow(pages);
@@ -14764,6 +14816,7 @@ async function OpenJPEG(moduleArg = {}) {
   var _emscripten_resize_heap = requestedSize => {
     var oldSize = HEAPU8.length;
     requestedSize >>>= 0;
+    pdfResourceBudget().checkSize(requestedSize);
     var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
       return false;
@@ -14946,7 +14999,7 @@ async function OpenJPEG(moduleArg = {}) {
   };
   function _gray_to_rgba(compG_ptr, nb_pixels) {
     compG_ptr >>= 2;
-    const imageData = Module.imageData = new Uint8ClampedArray(nb_pixels * 4);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(nb_pixels * 4));
     const compG = HEAP32.subarray(compG_ptr, compG_ptr + nb_pixels);
     for (let i = 0; i < nb_pixels; i++) {
       imageData[4 * i] = imageData[4 * i + 1] = imageData[4 * i + 2] = compG[i];
@@ -14956,7 +15009,7 @@ async function OpenJPEG(moduleArg = {}) {
   function _graya_to_rgba(compG_ptr, compA_ptr, nb_pixels) {
     compG_ptr >>= 2;
     compA_ptr >>= 2;
-    const imageData = Module.imageData = new Uint8ClampedArray(nb_pixels * 4);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(nb_pixels * 4));
     const compG = HEAP32.subarray(compG_ptr, compG_ptr + nb_pixels);
     const compA = HEAP32.subarray(compA_ptr, compA_ptr + nb_pixels);
     for (let i = 0; i < nb_pixels; i++) {
@@ -14972,7 +15025,7 @@ async function OpenJPEG(moduleArg = {}) {
     compR_ptr >>= 2;
     compG_ptr >>= 2;
     compB_ptr >>= 2;
-    const imageData = Module.imageData = new Uint8ClampedArray(nb_pixels * 4);
+    const imageData = Module.imageData = new Uint8ClampedArray(checkedPdfAllocation(nb_pixels * 4));
     const compR = HEAP32.subarray(compR_ptr, compR_ptr + nb_pixels);
     const compG = HEAP32.subarray(compG_ptr, compG_ptr + nb_pixels);
     const compB = HEAP32.subarray(compB_ptr, compB_ptr + nb_pixels);
@@ -15112,6 +15165,7 @@ class JpxImage {
       path);
       instance = mod.default();
     } catch (e) {
+      pdfResourceBudget().check();
       warn(`JpxImage#getJsModule: ${e}`);
     }
     fallbackCallback(instance);
@@ -16802,7 +16856,7 @@ let makeBrotliDecode = () => {
       return;
     }
     const ringBufferSizeWithSlack = newSize + 37;
-    const newBuffer = new Int8Array(ringBufferSizeWithSlack);
+    const newBuffer = new Int8Array(checkedPdfAllocation(ringBufferSizeWithSlack));
     const oldBuffer = s.ringBuffer;
     if (oldBuffer.length !== 0) {
       newBuffer.set(oldBuffer.subarray(0, s.ringBufferSize), 0);
@@ -18127,7 +18181,8 @@ let makeBrotliDecode = () => {
     let totalOutput = 0;
     let chunks = [];
     while (true) {
-      let chunk = new Int8Array(16384);
+      pdfResourceBudget().checkSize(totalOutput + 16384);
+      let chunk = new Int8Array(checkedPdfAllocation(16384));
       chunks.push(chunk);
       s.output = chunk;
       s.outputOffset = 0;
@@ -18139,7 +18194,7 @@ let makeBrotliDecode = () => {
     }
     close(s);
     closeInput(s);
-    let result = new Int8Array(totalOutput);
+    let result = new Int8Array(checkedPdfAllocation(totalOutput));
     let offset = 0;
     for (let i = 0; i < chunks.length; ++i) {
       let chunk = chunks[i];
@@ -18266,6 +18321,7 @@ class CCITTFaxStream extends DecodeStream {
     try {
       this.buffer = await JBig2CCITTFaxWasmImage.decode(bytes, this.dict.get("W", "Width"), this.dict.get("H", "Height"), null, this.params);
     } catch {
+      this.resourceBudget.check();
       warn("CCITTFaxStream: Falling back to JS CCITTFax decoder.");
       return this.decodeImageFallback(bytes, length);
     }
@@ -18291,7 +18347,7 @@ class CCITTFaxStream extends DecodeStream {
       }
     };
     if (length && this.buffer.byteLength < length) {
-      this.buffer = new Uint8Array(length);
+      this.buffer = new Uint8Array(this.resourceBudget.reserve(length));
     }
     this.ccittFaxDecoder = new CCITTFaxDecoder(source, params);
     let outPos = 0;
@@ -18642,6 +18698,7 @@ class Jbig2Stream extends DecodeStream {
       }
       this.buffer = await JBig2CCITTFaxWasmImage.decode(bytes, this.dict.get("Width"), this.dict.get("Height"), globals);
     } catch {
+      this.resourceBudget.check();
       warn("Jbig2Stream: Falling back to JS JBIG2 decoder.");
       return this.decodeImageFallback(bytes, length);
     }
@@ -18714,6 +18771,8 @@ class JpxStream extends DecodeStream {
       return this.buffer;
     }
     bytes ||= this.bytes;
+    const properties = JpxImage.parseImageProperties(new Stream(bytes));
+    this.resourceBudget.image(properties.width, properties.height, Math.max(properties.componentsCount, decoderOptions?.numComponents || 4));
     this.buffer = await JpxImage.decode(bytes, decoderOptions);
     this.bufferLength = this.buffer.length;
     this.eof = true;
@@ -39668,7 +39727,7 @@ class PDFImage {
     }
     if (isOffscreenCanvasSupported) {
       if (ImageResizer.needsToBeResized(width, height)) {
-        const data = new Uint8ClampedArray(width * height * 4);
+        const data = new Uint8ClampedArray(checkedPdfAllocation(width * height * 4));
         convertBlackAndWhiteToRGBA({
           src: imgArray,
           dest: data,
@@ -39685,8 +39744,10 @@ class PDFImage {
           interpolate
         });
       }
-      const canvas = new OffscreenCanvas(width, height);
+      checkedPdfAllocation(width * height * 4);
+    const canvas = new OffscreenCanvas(width, height);
       const ctx = canvas.getContext("2d");
+      checkedPdfAllocation(width * height * 4);
       const imgData = ctx.createImageData(width, height);
       convertBlackAndWhiteToRGBA({
         src: imgArray,
@@ -39712,9 +39773,10 @@ class PDFImage {
     if (image instanceof DecodeStream && (!inverseDecode || haveFullData)) {
       data = imgArray;
     } else if (!inverseDecode) {
+      checkedPdfAllocation(imgArray.byteLength);
       data = new Uint8Array(imgArray);
     } else {
-      data = new Uint8Array(computedLength);
+      data = new Uint8Array(checkedPdfAllocation(computedLength));
       data.set(imgArray);
       data.fill(0xff, actualLength);
     }
@@ -39769,11 +39831,11 @@ class PDFImage {
     let bufferPos = 0;
     let output;
     if (bpc <= 8) {
-      output = new Uint8Array(length);
+      output = new Uint8Array(checkedPdfAllocation(length));
     } else if (bpc <= 16) {
-      output = new Uint16Array(length);
+      output = new Uint16Array(checkedPdfAllocation(length * 2) / 2);
     } else {
-      output = new Uint32Array(length);
+      output = new Uint32Array(checkedPdfAllocation(length * 4) / 4);
     }
     const rowComps = width * numComps;
     const max = (1 << bpc) - 1;
@@ -40038,8 +40100,10 @@ class PDFImage {
     let alpha01, maybeUndoPreblend;
     let canvas, ctx, canvasImgData, data;
     if (isOffscreenCanvasSupported && !mustBeResized) {
+      checkedPdfAllocation(drawWidth * drawHeight * 4);
       canvas = new OffscreenCanvas(drawWidth, drawHeight);
       ctx = canvas.getContext("2d");
+      checkedPdfAllocation(drawWidth * drawHeight * 4);
       canvasImgData = ctx.createImageData(drawWidth, drawHeight);
       data = canvasImgData.data;
     }
@@ -40047,7 +40111,7 @@ class PDFImage {
     if (!forceRGBA && !this.smask && !this.mask) {
       if (!isOffscreenCanvasSupported || mustBeResized) {
         imgData.kind = ImageKind.RGB_24BPP;
-        data = new Uint8ClampedArray(drawWidth * drawHeight * 3);
+        data = new Uint8ClampedArray(checkedPdfAllocation(drawWidth * drawHeight * 3));
         alpha01 = 0;
       } else {
         const arr = new Uint32Array(data.buffer);
@@ -40057,7 +40121,7 @@ class PDFImage {
       maybeUndoPreblend = false;
     } else {
       if (!isOffscreenCanvasSupported || mustBeResized) {
-        data = new Uint8ClampedArray(drawWidth * drawHeight * 4);
+        data = new Uint8ClampedArray(checkedPdfAllocation(drawWidth * drawHeight * 4));
       }
       alpha01 = 1;
       maybeUndoPreblend = true;
@@ -40118,7 +40182,7 @@ class PDFImage {
       outputWidth = resolvedDestWidth;
       yRatio = srcHeight / resolvedDestHeight;
       const xRatio = srcWidth / resolvedDestWidth;
-      xScaled = new Uint32Array(resolvedDestWidth);
+      xScaled = new Uint32Array(checkedPdfAllocation(resolvedDestWidth * 4) / 4);
       for (let i = 0; i < resolvedDestWidth; i++) {
         xScaled[i] = Math.floor(i * xRatio);
       }
@@ -40181,12 +40245,14 @@ class PDFImage {
     }
   }
   createBitmap(kind, width, height, src) {
+    checkedPdfAllocation(width * height * 4);
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
     let imgData;
     if (kind === ImageKind.RGBA_32BPP) {
       imgData = new ImageData(src, width, height);
     } else {
+      checkedPdfAllocation(width * height * 4);
       imgData = ctx.createImageData(width, height);
       convertToRGBA({
         kind,
@@ -40237,6 +40303,7 @@ class PDFImage {
       return imageBytes;
     }
     assert(imageBytes instanceof Uint8Array, 'PDFImage.getImageBytes: Unsupported "imageBytes" type.');
+    checkedPdfAllocation(imageBytes.byteLength);
     return new Uint8Array(imageBytes);
   }
 }
@@ -40827,7 +40894,7 @@ class PartialEvaluator {
         }
       }
     }
-    PDFImage.buildImage({
+    const imageTask = PDFImage.buildImage({
       xref: this.xref,
       res: resources,
       image,
@@ -40850,6 +40917,7 @@ class PartialEvaluator {
       }
       return this._sendImgData(objId, null, cacheGlobally);
     });
+    pdfResourceBudget().track(imageTask);
     if (cacheKey) {
       const cacheData = {
         objId,
@@ -69427,6 +69495,7 @@ class WorkerMessageHandler {
       docId,
       apiVersion
     } = docParams;
+    const resourceBudget = configurePdfResourceBudget(docParams.evaluatorOptions);
     const workerVersion = "5.6.205";
     if (apiVersion !== workerVersion) {
       throw new Error(`The API version "${apiVersion}" does not match ` + `the Worker version "${workerVersion}".`);
@@ -69441,6 +69510,7 @@ class WorkerMessageHandler {
     const workerHandlerName = docId + "_worker";
     let handler = new MessageHandler(workerHandlerName, docId, port);
     function ensureNotTerminated() {
+      resourceBudget.check();
       if (terminated) {
         throw new Error("Worker was terminated");
       }
@@ -69467,6 +69537,7 @@ class WorkerMessageHandler {
       }
       const [numPages, fingerprints] = await Promise.all([pdfManager.ensureDoc("numPages"), pdfManager.ensureDoc("fingerprints")]);
       const htmlForXfa = isPureXfa ? await pdfManager.ensureDoc("htmlForXfa") : null;
+      resourceBudget.check();
       return {
         numPages,
         fingerprints,
@@ -70000,7 +70071,7 @@ class WorkerMessageHandler {
           annotationStorage: data.annotationStorage,
           modifiedIds: data.modifiedIds,
           pageIndex
-        }).then(function (operatorListInfo) {
+        }).then(info => { resourceBudget.check(); return info; }).then(function (operatorListInfo) {
           finishWorkerTask(task);
           if (start) {
             info(`page=${pageIndex + 1} - getOperatorList: time=` + `${Date.now() - start}ms, len=${operatorListInfo.length}`);
@@ -70032,7 +70103,7 @@ class WorkerMessageHandler {
           sink,
           includeMarkedContent,
           disableNormalization
-        }).then(function () {
+        }).then(() => resourceBudget.check()).then(function () {
           finishWorkerTask(task);
           if (start) {
             info(`page=${pageIndex + 1} - getTextContent: time=` + `${Date.now() - start}ms`);
@@ -70047,6 +70118,7 @@ class WorkerMessageHandler {
         });
       });
     });
+    handler.on("CheckResourceBudget", () => resourceBudget.waitForPending());
     handler.on("GetStructTree", function (data) {
       return pdfManager.getPage(data.pageIndex).then(page => pdfManager.ensure(page, "getStructTree"));
     });

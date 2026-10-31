@@ -19,7 +19,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   const [liveSnapshot, setLiveSnapshot] = useState<VoiceSnapshot | null>(null);
   const [liveUnconfirmed, setLiveUnconfirmed] = useState(false);
   const callbacks = useRef({ onLiveActiveChange, onLiveUnconfirmedChange });
-  callbacks.current = { onLiveActiveChange, onLiveUnconfirmedChange };
+  useEffect(() => { callbacks.current = { onLiveActiveChange, onLiveUnconfirmedChange }; }, [onLiveActiveChange, onLiveUnconfirmedChange]);
   const [commandDraft, setCommandDraft] = useState<{ attemptId: string; command: DictationVoiceCommand } | null>(null);
   const [commandListening, setCommandListening] = useState(false);
   const commandCapture = useRef<{ handle: Awaited<ReturnType<SpellingCaptureAdapter["start"]>>; abort: AbortController; attemptId: string } | null>(null);
@@ -88,6 +88,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     live.current = transport;
     return () => { mounted = false; stopMedia(); transport.dispose(); if (live.current === transport) live.current = null; };
   }, [stopMedia]);
+  const captureLabel = suppliedCapture?.label ?? "Live 语音输入（可能计费，固定题目仍由设备或 AI 音频播放）";
   const spellingCapture = useMemo<SpellingCaptureAdapter>(() => suppliedCapture ?? ({
     label: "Live 语音输入（可能计费，固定题目仍由设备或 AI 音频播放）",
     start: async ({ signal }) => {
@@ -103,7 +104,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
         return transport.begin(signal);
       } finally { signal.removeEventListener("abort", cancelOpening); }
     },
-  }), [suppliedCapture, temporary, accountScope, contextEpoch]);
+  }), [suppliedCapture, temporary, accountScope]);
   useEffect(() => {
     let mounted = true;
     stopMedia(); void live.current?.close(); cache.current.clear(); historyRef.current = [];
@@ -358,7 +359,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
           <button type="button" aria-pressed={attempt.answerMode === "spelled"} disabled={item.mode !== "words" || liveUnconfirmed} onClick={() => { stop(); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "spelled" }); }}>逐字母拼读</button>
         </div>
         {attempt.answerMode === "spelled" && <>
-          <p className="dictation-note">{spellingCapture?.label} · 点按钮后才开启麦克风。逐个说出字母，词间说“空格”；识别后先确认文字。</p>
+          <p className="dictation-note">{captureLabel} · 点按钮后才开启麦克风。逐个说出字母，词间说“空格”；识别后先确认文字。</p>
           {attempt.phase === "capturing" ? <button className="secondary" type="button" disabled={captureFinishing || liveSnapshot?.phase === "connecting"} onClick={() => void finishSpelling()}><Square size={16} />{captureFinishing ? "正在整理拼读…" : liveSnapshot?.phase === "connecting" ? "正在连接…" : "结束拼读"}</button> : <button className="secondary" type="button" disabled={!heard || liveUnconfirmed} onClick={() => void beginSpelling()}><Mic size={16} />{liveSnapshot?.phase === "connected" ? "开始拼读" : "开启 Live 并开始拼读"}</button>}
           {attempt.phase === "capturing" && <button type="button" className="secondary" onClick={stop}>取消拼读</button>}
         </>}

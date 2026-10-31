@@ -21,7 +21,17 @@ export function useLearningMemory() {
     catch (cause) { if (mounted.current && !abort.signal.aborted) setError(cause instanceof Error ? cause.message : "学习记忆暂时无法读取。"); }
   }, []);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); }; }, []);
-  useEffect(() => { if (!context.memory && !context.error) void load(); }, [context.epoch, context.memory, context.error, load]);
+  useEffect(() => {
+    if (context.memory || context.error || pending.current) return;
+    const abort = new AbortController();
+    controller.current?.abort(); controller.current = abort;
+    // Fetch is an external subscription; state changes only after it settles.
+    void refreshLearningContext(abort.signal).then(
+      () => { if (mounted.current && !abort.signal.aborted) setError(""); },
+      (cause) => { if (mounted.current && !abort.signal.aborted) setError(cause instanceof Error ? cause.message : "学习记忆暂时无法读取。"); },
+    );
+    return () => abort.abort();
+  }, [context.epoch, context.memory, context.error]);
   const save = useCallback(async (next: LearningMemory) => {
     if (pending.current || learningContextStore.get().temporary) return false;
     pending.current = true; setBusy(true); setError("");
@@ -49,14 +59,20 @@ export function useLearningMemory() {
 }
 
 type MemoryControls = ReturnType<typeof useLearningMemory>;
-export function LearningMemoryPanel({ controls, disabled = false }: { controls: MemoryControls; disabled?: boolean }) {
+export function LearningMemoryPanel(props: { controls: MemoryControls; disabled?: boolean }) {
+  // Account/mode changes unmount the draft state before any new account can see
+  // or submit it. A revision update for the same account retains unfinished edits.
+  const { memory, temporary } = props.controls;
+  return <LearningMemoryForm key={`${memory?.accountScope ?? "unloaded"}:${temporary}`} {...props} />;
+}
+
+function LearningMemoryForm({ controls, disabled = false }: { controls: MemoryControls; disabled?: boolean }) {
   const { memory, error, busy, load, save, remember, temporary, setTemporary, localProfileEnabled, setProfileAllowed } = controls;
   const [newNote, setNewNote] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [deleted, setDeleted] = useState<LearningNote | null>(null);
   const blocked = disabled || busy || temporary;
   const noteId = useId();
-  useEffect(() => { setDrafts({}); setDeleted(null); setNewNote(""); }, [memory?.accountScope, temporary]);
   return <details className="voice-memory voice-disclosure">
     <summary><span>学习记忆</span><span>{temporary ? "临时练习" : memory ? `${memory.enabled ? "正在使用" : "已暂停"} · ${memory.notes.length} 条` : "查看与管理"}</span></summary>
     <div className="voice-memory-content">

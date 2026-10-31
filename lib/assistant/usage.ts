@@ -35,8 +35,13 @@ export async function readTokenUsage(userKey: string) {
 export type TokenReservation = {
   keys: ReturnType<typeof tokenKeys>;
   amount: number;
+  promptEstimate: number;
   maxOutputTokens: number;
 };
+
+function tokenEstimate(text: string) {
+  return Math.max(Math.ceil(new TextEncoder().encode(text).byteLength / 3), Math.ceil(text.length / 2));
+}
 
 /**
  * Reserve before contacting a paid provider. The conditional UPSERT, not the
@@ -48,7 +53,7 @@ export async function reserveTokens(userKey: string, budget: number, prompt: str
   const db = database();
   const keys = tokenKeys(userKey, now);
   const used = await readBucket(db, keys.total);
-  const promptEstimate = Math.max(Math.ceil(new TextEncoder().encode(prompt).byteLength / 3), Math.ceil(prompt.length / 2)) + 256;
+  const promptEstimate = tokenEstimate(prompt) + 256;
   const maxOutputTokens = Math.min(outputCap, budget - used - promptEstimate);
   const exhausted = () => new TokenBudgetError(Math.max(1, Math.ceil((keys.day.expiresAt - now) / 1000)));
   if (maxOutputTokens < Math.min(256, outputCap)) throw exhausted();
@@ -61,13 +66,15 @@ export async function reserveTokens(userKey: string, budget: number, prompt: str
      RETURNING request_count`,
   ).bind(keys.total, amount, keys.day.expiresAt, amount, budget, budget).first();
   if (!row) throw exhausted();
-  return { keys, amount, maxOutputTokens };
+  return { keys, amount, promptEstimate, maxOutputTokens };
 }
 
-/** All counters settle together, or the original conservative reservation stays. */
-export async function settleTokens(reservation: TokenReservation, usage: CompletionUsage): Promise<number | null> {
+/** Provider reports cannot refund below independently estimated prompt and actual output. */
+export async function settleTokens(reservation: TokenReservation, reported: CompletionUsage, content: string): Promise<{ today: number | null; usage: CompletionUsage }> {
   const db = database();
   const { keys, amount } = reservation;
+  const floor = reservation.promptEstimate + tokenEstimate(content);
+  const usage = { ...reported, total: Math.max(reported.total, floor), estimated: reported.estimated || reported.total < floor };
   const increment = (key: string, delta: number) => db.prepare(
     `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, ?, ?)
      ON CONFLICT(bucket_key) DO UPDATE SET request_count = request_count + excluded.request_count
@@ -79,9 +86,9 @@ export async function settleTokens(reservation: TokenReservation, usage: Complet
       increment(keys.cacheHit, usage.cacheHit),
       increment(keys.output, usage.completion),
     ]);
-    return total.results[0]?.request_count ?? null;
+    return { today: total.results[0]?.request_count ?? null, usage };
   } catch {
     // Never refund when accounting failed: later requests still see the reserve.
-    return null;
+    return { today: null, usage };
   }
 }

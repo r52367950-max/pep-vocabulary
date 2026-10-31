@@ -1,16 +1,16 @@
 # 项目状态入口
 
-核对日期：2026-10-30；包含 2.7.2 全站界面统一与语音动效；保留长期学习记忆与复盘对话。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
+核对日期：2026-10-31；2.8.0 语音练习、共享学习记忆与 Live 听写已整合主分支 2.5.1/2.5.2 修复。本页反映仓库，不推断 Sites 当前部署状态或未推送的改动。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.7.2 | `package.json` |
+| 应用版本 | 2.8.0 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0 | `public/data/v1/manifest.json` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
 | 本机个人文章 | 独立 IndexedDB；不包含在学习 JSON 备份中 | `lib/personal-readings.ts`、`lib/storage.ts` |
 | 云端备份 | 带 revision 冲突保护的手动快照，尚无自动事件合并 | `app/api/sync/route.ts` |
-| 数据库迁移 | 0000–0006（0006 新增账号学习记忆，保留 revision 冲突保护） | `drizzle/` 与迁移 journal |
+| 数据库迁移 | 0000–0006（保留 0000–0005；0006 新增账号学习记忆） | `drizzle/` 与迁移 journal |
 
 当前仓库功能见 [README](README.md)，开发约定见 [AGENTS.md](AGENTS.md)。版本、测试数量和数据缺口以后以对应代码、生成数据与本次执行结果为准，不把这里的快照作为永久常量。
 
@@ -25,3 +25,5 @@
 旧 A–G 关卡、固定下一步任务和 8 月份通过数量已从状态入口移除；原文可由 Git 历史追溯。
 
 2.5.0 的核心变更见 `docs/BACKEND_ARCHITECTURE.md`。预算原子预留、配置 CAS、作文 CAS、备份深层校验、同步元数据预检已实现；仍是本地优先与手动快照备份。
+
+2.5.2 收紧 AI 目标来源、用量结算及配置修改频率，并限制备份和 HTML 导入的资源消耗。第三方 AI 服务须由管理员配置 `AI_ALLOWED_PROVIDER_ORIGINS`；此工作区不代表线上已升级。

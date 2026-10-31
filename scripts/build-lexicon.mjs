@@ -1,14 +1,27 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createReleaseStage, lexiconIndexEntry, publishLexiconRelease, validateLexiconRelease } from "./lexicon-release.mjs";
+import { middleSourceRows, snapshotSourceInputs } from "./source-inputs.mjs";
 import { basename, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const cache = process.env.PEP_VOCAB_SOURCE_CACHE || "/workspace/source-cache/pep-vocab";
+const cacheRoot = process.env.PEP_VOCAB_SOURCE_CACHE || "/workspace/source-cache/pep-vocab";
 const books = JSON.parse(readFileSync(join(root, "config/books.json"), "utf8"));
+const sourceLock = JSON.parse(readFileSync(join(root, "config/source-input-lock.json"), "utf8"));
+const sourceSnapshot = snapshotSourceInputs(cacheRoot, sourceLock, { requiredFiles: [
+  ...books.map((book) => book.path), "standards/high-school-english-2017-2020.pdf",
+  "standards/compulsory-english-2022.pdf", "open-data/ipa-dict/en_UK.txt",
+  "open-data/ipa-dict/en_US.txt", "open-data/ecdict/ecdict.csv",
+  "open-data/oewn/english-wordnet-2025-plus-json.zip",
+] });
+const cache = sourceSnapshot.root;
+process.on("exit", () => sourceSnapshot.cleanup());
 const rawDir = join(root, "data/build/raw");
 const normalizedDir = join(root, "data/build/normalized");
-const releaseDir = join(root, "public/data/v1");
+const releaseTarget = join(root, "public/data/v1");
+const releaseDir = createReleaseStage(releaseTarget);
+process.on("exit", () => rmSync(releaseDir, { recursive: true, force: true }));
 mkdirSync(rawDir, { recursive: true });
 mkdirSync(normalizedDir, { recursive: true });
 mkdirSync(join(releaseDir, "chunks"), { recursive: true });
@@ -325,9 +338,9 @@ const middleUnitStarts = {
 function middleMarkdownFiles(book) {
   const manifestPath = join(cache, "open-data/mikigo-middle/files_complete.tsv");
   const label = book.volume.replace("全一册", "全册");
-  const rows = readFileSync(manifestPath, "utf8").trim().split(/\r?\n/).map((line) => line.split("\t"));
-  return rows.filter(([, source]) => source.includes(`人教版初中英语-${label}/`) && source.endsWith(".md") && !source.endsWith("index.md"))
-    .map(([file, source]) => ({ file: join(cache, "open-data/mikigo-middle", file), source, order: Number(basename(source).split("_")[0]) || 1 }))
+  const rows = middleSourceRows(readFileSync(manifestPath, "utf8"));
+  return rows.filter(({ source }) => source.includes(`人教版初中英语-${label}/`) && source.endsWith(".md") && !source.endsWith("index.md"))
+    .map(({ file, source }) => ({ file: join(cache, file), source, order: Number(basename(source).split("_")[0]) || 1 }))
     .sort((a, b) => a.order - b.order);
 }
 
@@ -446,14 +459,18 @@ function openDefinition(record) {
   return null;
 }
 
+if (standardRecords.length !== 2997) throw new Error(`Incomplete curriculum source: ${standardRecords.length} rows`);
+const rawOutputs = [];
+const normalizedOutputs = [];
 const sourceRecords = [];
 for (const book of books) {
   const records = book.stage === "high" ? extractHighBook(book).map(parseRawHigh) : extractMiddleBook(book);
+  if (!records.length) throw new Error(`No source records for ${book.id}`);
   sourceRecords.push(...records);
-  writeFileSync(join(rawDir, `${book.id}.jsonl`), `${records.map((item) => JSON.stringify(item)).join("\n")}\n`);
+  rawOutputs.push([join(rawDir, `${book.id}.jsonl`), `${records.map((item) => JSON.stringify(item)).join("\n")}\n`]);
 }
 sourceRecords.push(...standardRecords);
-writeFileSync(join(rawDir, "STD-HS.jsonl"), `${standardRecords.map((item) => JSON.stringify(item)).join("\n")}\n`);
+rawOutputs.push([join(rawDir, "STD-HS.jsonl"), `${standardRecords.map((item) => JSON.stringify(item)).join("\n")}\n`]);
 const ecdictAll = await loadEcdict(new Set(sourceRecords.map((record) => record.lookup)));
 
 const normalized = sourceRecords.filter((item) => item.lookup && /^[a-z0-9]/i.test(item.lookup)).map((item) => ({
@@ -463,7 +480,7 @@ const normalized = sourceRecords.filter((item) => item.lookup && /^[a-z0-9]/i.te
 }));
 for (const book of books) {
   const records = normalized.filter((item) => item.bookId === book.id);
-  writeFileSync(join(normalizedDir, `${book.id}.jsonl`), `${records.map((item) => JSON.stringify(item)).join("\n")}\n`);
+  normalizedOutputs.push([join(normalizedDir, `${book.id}.jsonl`), `${records.map((item) => JSON.stringify(item)).join("\n")}\n`]);
 }
 
 const grouped = new Map();
@@ -549,12 +566,7 @@ for (const entry of entries) {
 }
 
 const released = entries.filter((entry) => entry.flags.formalReleaseEligible);
-const index = released.map((entry) => ({
-  id: entry.id, headword: entry.headword, lookup: entry.lookup, tier: entry.tier, scopes: entry.scopes,
-  chineseCore: entry.chineseCore, britishIpa: entry.britishIpa, americanIpa: entry.americanIpa,
-  partsOfSpeech: entry.partsOfSpeech, sources: entry.sources.map(({ bookId, volume, unit, printedPage }) => ({ bookId, volume, unit, printedPage })),
-  flags: entry.flags,
-}));
+const index = released.map(lexiconIndexEntry);
 
 const chunkSize = 180;
 const chunks = [];
@@ -592,8 +604,6 @@ for (const book of books) {
     });
   }
 }
-writeFileSync(join(root, "data/unit-reconciliation.json"), `${JSON.stringify(unitRows, null, 2)}\n`);
-
 const missingIpa = released.filter((item) => !item.britishIpa || !item.americanIpa).length;
 const missingEnglish = released.filter((item) => item.scopes.some((scope) => scope.startsWith("high")) && !item.englishCore).length;
 const report = `# 词库审计报告\n\n` +
@@ -606,6 +616,11 @@ const report = `# 词库审计报告\n\n` +
   `## 发布规则\n\n正式候选只纳入具有稳定词头、中文核心义和可用发音字段（短语允许系统 TTS）的记录。unknown 或 prohibited 权限内容、教材整页、整段课文、未核验真人音频、上游扩展例句均未进入发布包。\n\n` +
   `## 尚未达到“最终正式版”的字段级缺口\n\n` +
   `当前包是可运行的审核候选，不冒充已完成人工终审。高中开放英文简义缺口 ${missingEnglish} 条；B 层关系字段尚含 provisional；两册扫描版的页码级人工双人复核仍需继续。精确缺口可由 \`npm run data:audit\` 和 \`data/unit-reconciliation.json\` 重现。\n`;
-writeFileSync(join(root, "VOCAB_AUDIT_REPORT.md"), report);
+validateLexiconRelease(releaseDir);
+publishLexiconRelease(releaseDir, releaseTarget, { additionalOutputs: [
+  ...rawOutputs, ...normalizedOutputs,
+  [join(root, "data/unit-reconciliation.json"), `${JSON.stringify(unitRows, null, 2)}\n`],
+  [join(root, "VOCAB_AUDIT_REPORT.md"), report],
+] });
 
 console.log(JSON.stringify({ sourceRecords: sourceRecords.length, normalized: normalized.length, unique: entries.length, released: released.length, missingIpa, missingEnglish }, null, 2));

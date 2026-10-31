@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { env } from 'cloudflare:workers';
 import { decryptApiKey, encryptApiKey, needsReencryption, reencryptApiKey, refreshStoredCredential } from '../lib/ai-config.ts';
+import { legacyAiCredential } from './legacy-ai-credential.mjs';
 
 const key = (byte) => Buffer.alloc(32, byte).toString('base64');
 const K1 = key(21), K2 = key(22), K3 = key(23);
@@ -17,28 +18,29 @@ function configure({ legacy, keys, active } = {}) {
 const open = (row, forScope = scope) => decryptApiKey(row.encryptedApiKey, row.keyIv, row.encryptionVersion, forScope ?? undefined);
 beforeEach(() => configure());
 
-test('legacy-only environment keeps writing v2 and v1 exactly as before', async () => {
+test('legacy master-key environment writes scoped v2 and rejects unscoped v1', async () => {
   configure({ legacy: K1 });
   const v2 = await encryptApiKey(secret, scope);
   assert.equal(v2.encryptionVersion, 2);
   assert.doesNotMatch(v2.encryptedApiKey, /:/);
   assert.equal(await open(v2), secret);
-  const v1 = await encryptApiKey(secret);
+  const v1 = await legacyAiCredential(secret, K1);
   assert.equal(v1.encryptionVersion, 1);
-  assert.equal(await open(v1, null), secret);
+  await assert.rejects(open(v1, null));
+  await assert.rejects(encryptApiKey(secret));
   assert.equal(needsReencryption(v2), false);
-  assert.equal(needsReencryption(v1), true);
+  assert.throws(() => needsReencryption(v1));
 });
 
-test('v1 and v2 rows still decrypt after the key set is introduced with k1 as the legacy key', async () => {
+test('v2 remains readable across key-set introduction while unscoped v1 stays blocked', async () => {
   configure({ legacy: K1 });
-  const v1 = await encryptApiKey(secret);
+  const v1 = await legacyAiCredential(secret, K1);
   const v2 = await encryptApiKey(secret, scope);
   for (const keys of [{ k1: K1, k2: K2 }, { k2: K2 }]) {
     configure({ legacy: K1, keys, active: 'k2' });
-    assert.equal(await open(v1, null), secret);
+    await assert.rejects(open(v1, null));
     assert.equal(await open(v2), secret);
-    assert.equal(needsReencryption(v1), true);
+    assert.throws(() => needsReencryption(v1));
     assert.equal(needsReencryption(v2), true);
   }
   configure({ keys: { k1: K1, k2: K2 }, active: 'k1' });

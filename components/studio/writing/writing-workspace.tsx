@@ -34,13 +34,16 @@ export default function WritingWorkspace({ data, initialTargets, openId, onExit,
   onWord: (entry: LexiconIndexEntry) => void;
 }) {
   const policy = useSyncExternalStore(learningContextStore.subscribe, learningContextStore.get, learningContextStore.getServerSnapshot);
-  const boundary = useRef({ scope: policy.memory?.accountScope ?? null as string | null, temporary: policy.temporary, serial: 0 });
+  const [boundary, setBoundary] = useState(() => ({ scope: policy.memory?.accountScope ?? null as string | null, temporary: policy.temporary, serial: 0 }));
   const scope = policy.memory?.accountScope;
-  if (boundary.current.temporary !== policy.temporary || (scope && boundary.current.scope && scope !== boundary.current.scope)) boundary.current.serial++;
-  boundary.current.temporary = policy.temporary;
-  if (scope) boundary.current.scope = scope;
+  if (boundary.temporary !== policy.temporary || (scope && scope !== boundary.scope)) {
+    const changed = boundary.temporary !== policy.temporary || Boolean(scope && boundary.scope && scope !== boundary.scope);
+    // Adjust render state before committing children. An initial account lookup keeps its seed;
+    // a pending lookup keeps the last known scope, so a later account switch still resets it.
+    setBoundary({ scope: scope || boundary.scope, temporary: policy.temporary, serial: boundary.serial + (changed ? 1 : 0) });
+  }
   // A mode/account boundary starts a fresh workspace: temporary drafts never become delayed saves.
-  return <WritingWorkspaceSession key={boundary.current.serial} data={data} initialTargets={policy.temporary ? [] : boundary.current.serial ? undefined : initialTargets} openId={policy.temporary || boundary.current.serial ? null : openId} onExit={onExit} onPractice={onPractice} onWord={onWord} temporary={policy.temporary} />;
+  return <WritingWorkspaceSession key={boundary.serial} data={data} initialTargets={policy.temporary ? [] : boundary.serial ? undefined : initialTargets} openId={policy.temporary || boundary.serial ? null : openId} onExit={onExit} onPractice={onPractice} onWord={onWord} temporary={policy.temporary} />;
 }
 
 function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPractice, onWord, temporary }: {
@@ -48,6 +51,8 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
   onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void; temporary: boolean;
 }) {
   const [records, setRecords] = useState<WritingRecord[] | null>(null);
+  // An open editor belongs to the dataset it read; preserve its text when another page restores data.
+  const [generation] = useState(() => data.generation);
   const [view, setView] = useState<View>(openId ? { kind: "edit", id: openId } : initialTargets ? { kind: "setup" } : { kind: "list" });
   const reload = useCallback(() => (temporary ? Promise.resolve([]) : listWritings()).catch(() => []).then((rows) => {
     setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
@@ -89,9 +94,9 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
       </header>
       {temporary && <p className="ai-note writing-stage" style={{ paddingBottom: 8 }} role="status">临时写作：本次草稿与批改不保存，切换模式后不会补存。需要保留原文时请先复制。</p>}
       {records === null ? <div className="learn-pending" role="status">正在读取写作记录…</div>
-        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (id) => { await deleteWriting(id); await reload(); }} />
-          : view.kind === "setup" ? <WritingSetup data={data} initialTargets={initialTargets} temporary={temporary} onCreate={async (created) => { const context = captureWritingContext(); await writeWritingInContext(context, () => saveWriting(created)); if (!writingContextCurrent(context)) return; upsert(created); setView({ kind: "edit", id: created.id }); }} />
-            : record ? <WritingEditor key={record.id} record={record} data={data} onSave={upsert} onPractice={onPractice} onWord={onWord} temporary={temporary} />
+        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (id) => { try { await deleteWriting(id, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); } }} />
+          : view.kind === "setup" ? <WritingSetup data={data} initialTargets={initialTargets} temporary={temporary} onCreate={async (created) => { const context = captureWritingContext(); await writeWritingInContext(context, () => saveWriting(created, null, generation)); if (!writingContextCurrent(context)) return; upsert(created); setView({ kind: "edit", id: created.id }); }} />
+            : record ? <WritingEditor key={record.id} record={record} data={data} generation={generation} onSave={upsert} onPractice={onPractice} onWord={onWord} temporary={temporary} />
               : <div className="learn-pending">这篇写作已不存在。</div>}
     </div>
   );
@@ -205,8 +210,8 @@ function WritingSetup({ data, initialTargets, onCreate, temporary }: { data: Voc
   );
 }
 
-function WritingEditor({ record, data, onSave, onPractice, onWord, temporary }: {
-  record: WritingRecord; data: Vocabulary; onSave: (record: WritingRecord) => void;
+function WritingEditor({ record, data, generation, onSave, onPractice, onWord, temporary }: {
+  record: WritingRecord; data: Vocabulary; generation: string; onSave: (record: WritingRecord) => void;
   onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void; temporary: boolean;
 }) {
   const current = latestVersion(record);
@@ -245,7 +250,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord, temporary }: 
     // Queue writes immediately, including the last keystroke before leaving the editor.
     const pending = writes.current.then(async () => {
       if (saveFailed.current) throw new Error("草稿尚未保存。请复制当前文字后重新打开，避免覆盖其他页面的修改。");
-      await writeWritingInContext(context, () => saveWriting(next, committed.current), signal);
+      await writeWritingInContext(context, () => saveWriting(next, committed.current, generation), signal);
       committed.current = next;
       if (!writingContextCurrent(context) || signal?.aborted) return;
       onSave(next);
@@ -259,7 +264,7 @@ function WritingEditor({ record, data, onSave, onPractice, onWord, temporary }: 
       data.notify(message);
     });
     return pending;
-  }, [onSave, data, temporary]);
+  }, [onSave, data, temporary, generation]);
 
   const edit = (value: string) => {
     if (reviewController.current) return;

@@ -28,6 +28,10 @@
 .ai-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: .75rem; }
 .ai-meta .text-button { gap: 4px; padding: 4px 0; min-height: 32px; font-size: .8125rem; }
 .ai-result { display: flex; flex-direction: column; gap: 16px; width: 100%; font-size: .9375rem; line-height: 1.65; }
+.ai-provenance { display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ai-provenance summary { min-height: 44px; padding: 8px 0; cursor: pointer; color: var(--muted-strong); font-size: .875rem; }
+.ai-provenance details > .ai-note { margin-bottom: 8px; }
+.ai-provenance li { overflow-wrap: anywhere; }
 .ai-lead { font-size: 1rem; color: var(--ink); }
 .ai-section h4 { font-size: .8125rem; font-weight: 600; color: var(--muted-strong); margin-bottom: 6px; }
 .ai-bullets { display: flex; flex-direction: column; gap: 6px; padding-left: 1.1em; list-style: disc; }

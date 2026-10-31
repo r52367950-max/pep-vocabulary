@@ -3,5 +3,6 @@ declare module "cloudflare:workers" {
   export const env: {
     DB?: import("@cloudflare/workers-types").D1Database;
     ASSETS?: { fetch: typeof fetch };
+    AI_ALLOWED_PROVIDER_ORIGINS?: string;
   };
 }

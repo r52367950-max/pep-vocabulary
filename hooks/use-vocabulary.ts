@@ -16,6 +16,8 @@ import {
   loadSettings,
   patchSettings,
   loadLearningState,
+  INITIAL_DATA_GENERATION,
+  DataReplacedError,
   updateCardMetadata,
   type AppSettings,
   type ReviewEvent,
@@ -29,33 +31,41 @@ export function useVocabulary() {
   const [settings, setSettings] = useState(defaultSettings);
   const [cards, setCards] = useState<Map<string, StoredCard>>(new Map());
   const [history, setHistory] = useState(() => new ReviewHistory());
+  const [generation, setGeneration] = useState(INITIAL_DATA_GENERATION);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
   const writes = useRef(Promise.resolve());
   const channel = useRef<BroadcastChannel | null>(null);
   const persistAsked = useRef(false);
+  const readVersion = useRef(0);
 
   const reload = useCallback(async () => {
-    const { cards: storedCards, events: storedEvents, settings: storedSettings } = await loadLearningState();
+    const version = ++readVersion.current;
+    const { cards: storedCards, events: storedEvents, settings: storedSettings, generation: storedGeneration } = await loadLearningState();
+    if (version !== readVersion.current) return;
     setCards(new Map(storedCards.map((card) => [card.id, card])));
     setHistory(ReviewHistory.from(storedEvents));
     setSettings(storedSettings);
+    setGeneration(storedGeneration);
   }, []);
 
   useEffect(() => {
     let active = true;
+    const version = ++readVersion.current;
     Promise.all([
       loadLexicon(),
       loadLearningState(),
     ])
-      .then(([lexicon, { cards: storedCards, events: storedEvents, settings: storedSettings }]) => {
+      .then(([lexicon, { cards: storedCards, events: storedEvents, settings: storedSettings, generation: storedGeneration }]) => {
         if (!active) return;
         setIndex(lexicon.index);
         setManifest(lexicon.manifest);
+        if (version !== readVersion.current) return;
         setCards(new Map(storedCards.map((card) => [card.id, card])));
         setHistory(ReviewHistory.from(storedEvents));
         setSettings(storedSettings);
+        setGeneration(storedGeneration);
       })
       .catch((cause) => {
         if (active)
@@ -68,6 +78,10 @@ export function useVocabulary() {
     connection();
     window.addEventListener("online", connection);
     window.addEventListener("offline", connection);
+    const visible = () => {
+      if (document.visibilityState === "visible") void reload().catch(() => notify("本机数据未能重新读取，请重试。"));
+    };
+    document.addEventListener("visibilitychange", visible);
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production")
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     if (typeof BroadcastChannel !== "undefined") {
@@ -94,6 +108,7 @@ export function useVocabulary() {
       channel.current = null;
       window.removeEventListener("online", connection);
       window.removeEventListener("offline", connection);
+      document.removeEventListener("visibilitychange", visible);
     };
   }, [reload]);
 
@@ -120,16 +135,16 @@ export function useVocabulary() {
   const updateSettings = useCallback(async (patch: Partial<AppSettings>) => {
     writes.current = writes.current
       .then(async () => {
-        const next = await patchSettings(patch);
+        const next = await patchSettings(patch, generation);
         setSettings(next);
         channel.current?.postMessage("settings");
       })
-      .catch(() => notify("设置未能保存，请重试。"));
+      .catch((cause) => notify(cause instanceof DataReplacedError ? cause.message : "设置未能保存，请重试。"));
     await writes.current;
-  }, []);
+  }, [generation]);
 
-  const saveReview = useCallback(async (event: ReviewEvent) => {
-    await commitReview(event);
+  const saveReview = useCallback(async (event: ReviewEvent, expectedGeneration = generation) => {
+    await commitReview(event, expectedGeneration);
     setCards((previous) => {
       const next = new Map(previous);
       if (event.eventType === "undo") {
@@ -145,21 +160,21 @@ export function useVocabulary() {
       persistAsked.current = true;
       void requestPersistentStorage();
     }
-  }, []);
+  }, [generation]);
 
   const metadata = useCallback(
-    async (id: string, patch: { note?: string; toggleFavorite?: boolean }) => {
+    async (id: string, patch: { note?: string; toggleFavorite?: boolean }, expectedGeneration = generation) => {
       try {
-        const card = await updateCardMetadata(newStoredCard(id), patch);
+        const card = await updateCardMetadata(newStoredCard(id), patch, expectedGeneration);
         setCards((previous) => new Map(previous).set(id, card));
         channel.current?.postMessage("metadata");
         return true;
-      } catch {
-        notify("未能保存，请重试。");
+      } catch (cause) {
+        notify(cause instanceof DataReplacedError ? cause.message : "未能保存，请重试。");
         return false;
       }
     },
-    [],
+    [generation],
   );
 
   // Built once per lexicon load and shared, so views do not rescan the 4,681 entries.
@@ -178,6 +193,7 @@ export function useVocabulary() {
       settings,
       cards,
       history,
+      generation,
       loading,
       error,
       online,
@@ -194,6 +210,7 @@ export function useVocabulary() {
       settings,
       cards,
       history,
+      generation,
       loading,
       error,
       online,

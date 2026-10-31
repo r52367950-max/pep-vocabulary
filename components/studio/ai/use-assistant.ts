@@ -60,15 +60,16 @@ export function useAssistant<T = Record<string, unknown>>(task: AssistantTask, d
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
   useEffect(() => {
+    const invalidateRequest = () => { generation.current++; controller.current?.abort(); };
     let previous = learningContextStore.get();
     const unsubscribe = learningContextStore.subscribe(() => {
       const next = learningContextStore.get();
       if (next.epoch !== previous.epoch && (previous.memory || next.temporary !== previous.temporary)) {
-        generation.current++; controller.current?.abort(); setState({ status: "idle" });
+        invalidateRequest(); setState({ status: "idle" });
       }
       previous = next;
     });
-    return () => { generation.current++; controller.current?.abort(); unsubscribe(); };
+    return () => { invalidateRequest(); unsubscribe(); };
   }, []);
   const run = useCallback(async (input: Record<string, unknown>, options: { refresh?: boolean; personal?: boolean } = {}) => {
     controller.current?.abort();

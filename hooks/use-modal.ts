@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export function useModal(onClose: () => void) {
+export function useModal(onClose: () => void | boolean | Promise<void | boolean>) {
   const dialog = useRef<HTMLDialogElement>(null);
   const outside = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef(false);
   const [closing, setClosing] = useState(false);
   useEffect(() => {
     const node = dialog.current; if (!node) return;
@@ -27,9 +28,14 @@ export function useModal(onClose: () => void) {
     return () => { if (timer.current) clearTimeout(timer.current); node.removeEventListener("keydown", trap); node.close(); Object.assign(style, original); window.scrollTo({ top: y, behavior: "instant" }); trigger?.focus({ preventScroll: true }); };
   }, []);
   const requestClose = useCallback(() => {
-    if (timer.current) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { onClose(); return; }
-    setClosing(true); timer.current = setTimeout(onClose, 160);
+    if (timer.current || pending.current) return;
+    const finish = async () => {
+      pending.current = true;
+      try { if (await onClose() === false) setClosing(false); }
+      finally { pending.current = false; timer.current = null; }
+    };
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { void finish(); return; }
+    setClosing(true); timer.current = setTimeout(() => { void finish(); }, 160);
   }, [onClose]);
   return { dialog, closing, requestClose,
     onCancel: (event: React.SyntheticEvent) => { event.preventDefault(); requestClose(); },

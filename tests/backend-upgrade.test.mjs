@@ -37,8 +37,10 @@ test('concurrent budget reservations never admit more than the available allowan
   assert.ok(results.filter((result) => result.status === 'rejected').every((result) => result.reason instanceof TokenBudgetError));
   assert.ok((await readTokenUsage('user')).total <= 3000);
   const first = accepted[0].value;
-  assert.equal(await settleTokens(first, { prompt: 100, completion: 50, total: 150, cacheHit: 80, estimated: false }), 150);
-  assert.deepEqual({ ...(await readTokenUsage('user')), date: null, resetsAt: null }, { total: 150, output: 50, cacheHit: 80, date: null, resetsAt: null });
+  const settled = await settleTokens(first, { prompt: 100, completion: 50, total: 150, cacheHit: 80, estimated: false }, 'answer');
+  assert.equal(settled.today, first.promptEstimate + 3);
+  assert.equal(settled.usage.estimated, true);
+  assert.deepEqual({ ...(await readTokenUsage('user')), date: null, resetsAt: null }, { total: first.promptEstimate + 3, output: 50, cacheHit: 80, date: null, resetsAt: null });
 });
 
 test('output is reduced to remaining budget and an uncertain failed call keeps its reservation', async () => {
@@ -48,7 +50,7 @@ test('output is reduced to remaining budget and an uncertain failed call keeps i
   await assert.rejects(reserveTokens('user', 3000, 'prompt', 100), TokenBudgetError);
   const failAfterFirstWrite = { ...binding, batch: async (statements) => binding.batch([statements[0], binding.prepare('SELECT * FROM missing_accounting_table')]) };
   env.DB = failAfterFirstWrite;
-  assert.equal(await settleTokens(reserved, { prompt: 10, completion: 10, total: 20, cacheHit: 0, estimated: false }), null);
+  assert.equal((await settleTokens(reserved, { prompt: 10, completion: 10, total: 20, cacheHit: 0, estimated: false }, 'answer')).today, null);
   env.DB = binding;
   assert.equal((await readTokenUsage('user')).total, 3000, 'first accounting write was rolled back');
 });
@@ -56,9 +58,9 @@ test('output is reduced to remaining budget and an uncertain failed call keeps i
 test('a request finishing after midnight settles the day in which it began', async () => {
   const beforeMidnight = Date.parse('2026-09-29T15:59:59Z');
   const reserved = await reserveTokens('midnight', 2000, 'prompt', 500, beforeMidnight);
-  await settleTokens(reserved, { prompt: 10, completion: 20, total: 30, cacheHit: 0, estimated: false });
+  await settleTokens(reserved, { prompt: 10, completion: 20, total: 30, cacheHit: 0, estimated: false }, 'answer');
   const rows = db.prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key LIKE 'tokens:day:midnight:%'").all();
-  assert.deepEqual(rows.map((row) => [row.bucket_key, row.request_count]), [[`tokens:day:midnight:${budgetDay(beforeMidnight).start}`, 30]]);
+  assert.deepEqual(rows.map((row) => [row.bucket_key, row.request_count]), [[`tokens:day:midnight:${budgetDay(beforeMidnight).start}`, reserved.promptEstimate + 3]]);
 });
 
 test('provider usage cannot undercount its own prompt plus completion', () => {

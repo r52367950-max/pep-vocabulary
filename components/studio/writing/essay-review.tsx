@@ -5,6 +5,7 @@ import { Check, CircleHelp, X } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { validWritingReview } from "@/lib/writing-review";
 import { locateIssues } from "@/lib/writing";
+import { AiProvenance } from "../ai/ai-provenance";
 
 type Issue = { quote: string; type: string; suggestion: string; reason: string };
 type TargetVerdict = { wordId: string; status: "good" | "issue" | "missing"; note: string };
@@ -62,6 +63,7 @@ export default function EssayReview({ essay, result, previous, targets, words, r
   const continuation = result.continuation as { linkage: string | null; plot: string | null } | null | undefined;
   return (
     <article className="essay-review" aria-labelledby="review-title">
+      <AiProvenance result={result} words={words} />
       <header className="essay-score">
         <div>
           <h1 id="review-title" tabIndex={-1}>批改结果</h1>

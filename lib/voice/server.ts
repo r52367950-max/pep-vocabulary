@@ -201,9 +201,12 @@ export async function createVoiceSpeech(request: Request) {
       max_completion_tokens: reservation.maxOutputTokens,
       messages: [{ role: "system", content: prompt }, { role: "user", content: JSON.stringify({ quotedText: original }) }],
     }, 4_500_000, Math.min(config.timeoutMs, 45_000));
-    const usage = parseUsage(payload.usage);
-    if (usage) await settleTokens(reservation, usage);
     const audio = speechAudio(payload, original);
+    const usage = parseUsage(payload.usage);
+    // Verified speech has the quoted text as output; preserve the prompt/output
+    // floor even when a provider under-reports tokens. Invalid or missing-usage
+    // responses retain their conservative reservation.
+    if (usage) await settleTokens(reservation, usage, original);
     return new Response(audio.buffer as ArrayBuffer, { headers: { "content-type": "audio/wav", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   } catch (error) { return assistantErrorResponse(error); }
 }

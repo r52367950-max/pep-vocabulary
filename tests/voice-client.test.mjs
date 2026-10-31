@@ -4,7 +4,7 @@ import { NativeLiveSession, appendTranscript, feedbackTranscript, readVoiceHisto
 
 const options = { topicId: "everyday", level: "B1", minutes: 10 };
 const reply = { sessionId: "live_test", sdp: "answer", model: "gpt-live-1", maxSeconds: 600 };
-function fixture(overrides = {}) {
+function fixture(overrides = {}, observeState) {
   const calls = [], sent = [], states = [], transcripts = [];
   const track = { enabled: true, stopped: 0, stop() { this.stopped++; } };
   const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
@@ -12,7 +12,7 @@ function fixture(overrides = {}) {
   const peer = { iceGatheringState: "complete", connectionState: "connected", localDescription: { sdp: "offer" }, closed: 0, remote: 0, createOffer: async () => ({ type: "offer", sdp: "offer" }), setLocalDescription: async () => {}, createDataChannel: () => channel, addTrack() {}, async setRemoteDescription() { this.remote++; }, close() { this.closed++; } };
   const audio = { muted: false, autoplay: false, srcObject: null, paused: 0, setAttribute() {}, play: async () => {}, pause() { this.paused++; } };
   const deps = { getUserMedia: async () => stream, createPeer: () => peer, createAudio: () => audio, now: () => 1000, fetch: async (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify(url.endsWith("session") ? reply : { ok: true }), { status: 200 }); }, ...overrides };
-  const client = new NativeLiveSession({ onState: (state) => states.push(state), onTranscript: (turn) => transcripts.push(turn) }, deps);
+  const client = new NativeLiveSession({ onState: (state) => { states.push(state); observeState?.(state); }, onTranscript: (turn) => transcripts.push(turn) }, deps);
   const emit = (event) => channel.onmessage?.({ data: JSON.stringify(event) });
   return { client, peer, track, stream, audio, channel, calls, sent, states, transcripts, emit };
 }
@@ -210,5 +210,33 @@ test('pending server close is recoverable and blocks starting another billed ses
     await f.client.start(options); assert.equal(sessions, 1);
     await f.client.retryClose(); assert.equal(f.client.hasPendingClose, false); assert.equal(f.client.state.closeConfirmed, true);
     assert.equal(closes, 2);
+  } finally { f.client.dispose(); }
+});
+
+
+test("late cancelled startup notifies subscribers when remote close becomes pending and clears", async () => {
+  let resolveSession, resolveClose;
+  const pendingStates = [];
+  const f = fixture({ fetch: (url) => new Promise((resolve) => {
+    if (url.endsWith("session")) resolveSession = resolve;
+    else resolveClose = resolve;
+  }) }, () => pendingStates.push(f.client.hasPendingClose));
+  try {
+    const starting = f.client.start(options);
+    for (let i = 0; i < 10 && !resolveSession; i++) await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(resolveSession);
+    f.channel.readyState = "closed";
+    await f.client.end();
+    pendingStates.length = 0;
+    resolveSession(new Response(JSON.stringify(reply)));
+    await starting;
+    assert.equal(f.peer.remote, 0);
+    assert.ok(f.track.stopped > 0);
+    assert.equal(f.client.state.phase, "ended");
+    assert.deepEqual(pendingStates, [true], "show the close retry even without another phase change");
+    resolveClose(new Response('{}'));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(pendingStates, [true, false], "clear the close retry when background cleanup succeeds");
+    assert.equal(f.client.state.phase, "ended", "background cleanup must not revive the cancelled session");
   } finally { f.client.dispose(); }
 });

@@ -59,10 +59,19 @@ export class NativeLiveSession {
     this.update({ closeConfirmed: !this.hasPendingClose, message: this.hasPendingClose ? "服务器尚未确认结束，请再次重试关闭。" : "语音会话已关闭。" });
   }
   private closeRemote(sessionId: string) {
+    const previouslyPending = this.hasPendingClose;
     this.pendingCloseIds.add(sessionId);
+    // Late startup answers may arrive after local cancellation, outside end().
+    // Notify consumers whenever close availability changes, including that path.
+    if (!previouslyPending) this.update({});
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 8_000);
-    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then((response) => { if (response.ok) this.pendingCloseIds.delete(sessionId); return response.ok; }).catch(() => false).finally(() => clearTimeout(timer));
+    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then((response) => {
+      const previouslyPending = this.hasPendingClose;
+      if (response.ok) this.pendingCloseIds.delete(sessionId);
+      if (previouslyPending !== this.hasPendingClose) this.update({});
+      return response.ok;
+    }).catch(() => false).finally(() => clearTimeout(timer));
   }
   async start(options: VoiceOptions) {
     if (["connecting", "connected", "closing"].includes(this.snapshot.phase)) return;

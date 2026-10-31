@@ -41,7 +41,7 @@ POST /api/assistant/diagnose           学习诊断与一周计划
 
 - `max_tokens` 统一为 10,000；已知模型的文档上限更低时取模型上限（如 `deepseek-chat` 8,192），设置页可再填更低的“单次输出上限”。DeepSeek V4/V4.1（`deepseek-v4-flash`、`deepseek-flash` 等）上限为 384K，因此实际为 10,000。OpenAI 官方 o 系列与 gpt-5 使用 `max_completion_tokens`。
 - 回答以流式读取。设置里的超时（10–60 秒）是“无响应超时”：超过这么久没有新内容才中止；整个请求最长 5 分钟。回答因输出上限被截断时返回 `output_truncated`。
-- 每日 token 预算默认 200,000，可设 1 万–500 万，按北京时间日期计。每次请求前检查，用完返回 `429 token_budget_exhausted`；用量按服务商返回的 `usage` 累计（没有时按字符估算），答案即使校验失败也计入。请求次数限额（每分钟 12 次、每日 5–200 次）保持不变。
+- 每日 token 预算默认 200,000，可设 1 万–500 万，按北京时间日期计。每次请求前原子预留提示词估算加输出额度，用完返回 `429 token_budget_exhausted`。成功后结算取服务商 `usage` 与独立的提示词、实际回答估算下限中的较大值；服务商少报、缺失或无效用量不能突破这个下限，采用下限时标记为估算。失败或未完成请求保留预留，答案即使校验失败也计入。这是本地预算，不是服务商账单的精确上限。请求次数限额（每分钟 12 次、每日 5–200 次）保持不变。
 - 预算与输出上限保存在 `ai_preferences` 表（迁移 `0003_small_smiling_tiger.sql`，`CREATE TABLE IF NOT EXISTS`）；用量计数复用 `ai_rate_limits`，键前缀为 `tokens:`、`tokens-hit:`、`tokens-out:`。未执行 0003 时使用默认预算，保存预算会提示先部署迁移。
 - DeepSeek 请求显式关闭 thinking，避免推理 token 占用 10,000 的输出额度。
 
@@ -62,11 +62,14 @@ HARNESS_API_KEY=... node --import ./tests/register.mjs scripts/ai-harness.mjs --
 
 首次通过设置界面保存配置前：
 
-1. 部署 `drizzle/` 中的最新 D1 迁移。
-2. 生成一个随机 32-byte 值并以 base64 保存为 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`。
-3. 由经过站点身份验证的用户在“设置 → AI 接口”保存自己的接口配置。
+1. 设置 `IDENTITY_TRUSTED_HOSTS` 为经过身份网关的精确域名（多个域名逗号分隔，不含协议、路径、端口或通配符）。缺失、空或非法配置会拒绝私有 API 身份；本地学习不受影响。本地测试需显式配置自己的测试域名，没有 localhost 自动绕过。
+2. 确认这些域名的网关移除用户伪造的身份头，并禁用或保护绕过网关的 Worker / preview 入口。域名列表不替代经过验证的身份会话或签名断言。
+3. 部署 `drizzle/` 中的最新 D1 迁移。
+4. 生成一个随机 32-byte 值并以 base64 保存为 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`。
+5. 如需自定义兼容服务，由管理员设置 `AI_ALLOWED_PROVIDER_ORIGINS`：逗号分隔的精确 HTTPS origin，例如 `https://llm.example.com,https://gateway.example.com:8443`，不含路径、通配符、凭据、查询参数或片段。官方 `https://api.deepseek.com` 与 `https://api.openai.com` 默认允许，空值仅允许这两项；非法列表关闭 AI 出站请求。管理员只应批准自己控制或信任的服务及其 DNS、实际出站目标；此策略把目标选择权交给管理员，并非 DNS 预检或 IP 固定。用户不能通过设置添加新 origin。
+6. 由经过站点身份验证的用户在“设置 → AI 接口”保存自己的接口配置。
 
-新保存的 API key 使用独立 96-bit IV 和绑定账号、服务商、规范化目标 URL 的 AES-256-GCM v2 上下文加密后保存到 D1；旧 v1 密文兼容读取并在成功保存时升级。服务端接口从不回显明文、密文、IV 或 Key 尾号。Base URL 的规范化目标发生变化时必须重新提交 API key，防止已保存凭据被转发到新目标。
+新保存的 API key 使用独立 96-bit IV 和绑定账号、服务商、规范化目标 URL 的 AES-256-GCM v2 上下文加密后保存到 D1。旧 v1 密文缺少账号与目标绑定，运行时不再解密、发送或自动迁移；原配置行保留，GET 返回 `requiresKeyReentry=true` / `hasApiKey=false`，设置页提示用户重新填写服务商 API key。空密钥保存会明确拒绝，不覆盖原行；重新填写后正常保存为 v2 / v3。不能仅根据可被修改的数据库行推断旧密文的原归属或目的地。服务端接口从不回显明文、密文、IV 或 Key 尾号。Base URL 的规范化目标发生变化时必须重新提交 API key，防止已保存凭据被转发到新目标。
 
 ### 主密钥轮换
 
@@ -75,18 +78,18 @@ HARNESS_API_KEY=... node --import ./tests/register.mjs scripts/ai-harness.mjs --
 - `AI_CONFIG_ENCRYPTION_KEYS`：JSON 对象，键为 kid（`^[a-z0-9]{1,16}$`），值为 base64 编码的 32 字节密钥，例如 `{"k1":"<当前 AI_CONFIG_ENCRYPTION_KEY 的值>","k2":"<新值>"}`。
 - `AI_CONFIG_ENCRYPTION_KEY_ACTIVE`：新密文使用的 kid，必须存在于上面的对象中。
 
-配置了 `AI_CONFIG_ENCRYPTION_KEYS` 后新密文写成 v3：AES-GCM 的附加验证数据为 `["pep-vocab-ai-config:v3", kid, userKey, provider, baseUrl]`，`encrypted_api_key` 存为 `kid:base64`，`encryption_version=3`。v1、v2 密文始终视为 `k1`（对象里没有 `k1` 时使用旧的 `AI_CONFIG_ENCRYPTION_KEY`）。密钥集格式不合法、密钥不是 32 字节、kid 不合规或 `ACTIVE` 不存在时，加解密一律失败并返回统一的“无法使用密钥存储”错误，不会退回旧密钥。
+配置了 `AI_CONFIG_ENCRYPTION_KEYS` 后新密文写成 v3：AES-GCM 的附加验证数据为 `["pep-vocab-ai-config:v3", kid, userKey, provider, baseUrl]`，`encrypted_api_key` 存为 `kid:base64`，`encryption_version=3`。v2 密文始终视为 `k1`（对象里没有 `k1` 时使用旧的 `AI_CONFIG_ENCRYPTION_KEY`）；v1 始终拒绝。密钥集格式不合法、密钥不是 32 字节、kid 不合规或 `ACTIVE` 不存在时，加解密一律失败并返回统一的“无法使用密钥存储”错误，不会退回旧密钥。
 
 轮换步骤：
 
 1. 生成新的 32 字节随机值（`openssl rand -base64 32`）。先把当前 `AI_CONFIG_ENCRYPTION_KEY` 作为 `k1`、新值作为 `k2` 写入 `AI_CONFIG_ENCRYPTION_KEYS`，并设置 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE=k2`；保留旧的 `AI_CONFIG_ENCRYPTION_KEY`。
-2. 部署。已有 v1/v2 密文仍可解密；之后每次在设置页保存并保留已有密钥时，服务端会用 `k2` 重新加密（`needsReencryption` / `reencryptApiKey`，条件是保存路径上凭据的 kid 不是活动 kid）。助手运行时在解密成功后可调用 `refreshStoredCredential()` 逐步迁移，见下。
-3. 确认没有遗留旧密文：`SELECT COUNT(*) FROM ai_configs WHERE encrypted_api_key NOT LIKE 'k2:%'` 必须为 0。仍有旧行的用户重新保存一次设置（或重新填写 API key）即可迁移。
+2. 部署。已有 v2 密文仍可解密；之后每次在设置页保存并保留已有密钥时，服务端会用 `k2` 重新加密（`needsReencryption` / `reencryptApiKey`，条件是保存路径上凭据的 kid 不是活动 kid）。助手运行时在解密成功后可调用 `refreshStoredCredential()` 逐步迁移有作用域的 v2 / 旧活动密钥 v3。v1 用户必须重新填写 API key，不能懒迁移。
+3. 确认没有遗留旧密文：`SELECT COUNT(*) FROM ai_configs WHERE encrypted_api_key NOT LIKE 'k2:%'` 必须为 0。仍有 v2 / 旧密钥 v3 的用户重新保存一次设置即可迁移；v1 行必须重新填写 API key。
 4. 结果为 0 之后才从 `AI_CONFIG_ENCRYPTION_KEYS` 与 `AI_CONFIG_ENCRYPTION_KEY` 中移除 `k1`。
 
 回滚：移除 `k1` 之前，把 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE` 切回 `k1` 即可，`k2` 写下的 v3 密文继续可读。任何时候都不要在还有旧密文的情况下删除旧密钥；旧密钥丢失后对应密文无法恢复，用户需要重新填写 API key。
 
-运行时懒迁移：`lib/ai-config.ts` 导出 `refreshStoredCredential(db, row, scope, plaintext?)`。在 `lib/assistant/server.ts` 的 `loadUserRuntimeConfig` 成功解密后调用它，传入带 `prepare()` 的 D1 对象、刚读取的 `{ encryptedApiKey, keyIv, encryptionVersion }` 行、解密所用的 `{ userKey, provider, baseUrl }`，以及已解出的明文。它只在需要迁移时执行 `UPDATE ai_configs SET encrypted_api_key=?, key_iv=?, encryption_version=?, updated_at=CURRENT_TIMESTAMP WHERE user_key=? AND encrypted_api_key=?`，条件更新保证并发的设置保存不会被覆盖；永不抛出，返回本次是否更新了行。调用不应阻塞或影响本次请求（忽略返回值即可）。
+运行时懒迁移：`lib/ai-config.ts` 导出 `refreshStoredCredential(db, row, scope, plaintext?)`。在 `lib/assistant/server.ts` 的 `loadUserRuntimeConfig` 成功解密后调用它，传入带 `prepare()` 的 D1 对象、刚读取的 `{ encryptedApiKey, keyIv, encryptionVersion }` 行、解密所用的 `{ userKey, provider, baseUrl }`，以及已解出的明文。v1 在任何入口（包括传入明文时）均拒绝迁移。它只在有作用域凭据需要迁移时执行 `UPDATE ai_configs SET encrypted_api_key=?, key_iv=?, encryption_version=?, updated_at=CURRENT_TIMESTAMP WHERE user_key=? AND encrypted_api_key=?`，条件更新保证并发的设置保存不会被覆盖；永不抛出，返回本次是否更新了行。它不影响本次请求的成功判断，但当前实现仍等待 D1 更新完成。
 
 从早期 GitHub 版本升级时保留并先执行历史迁移 `0001_flawless_human_cannonball.sql`，再执行 `0002_swift_cerise.sql` 创建按站点身份隔离的 `ai_configs`。早期全局 `ai_provider_config` 不再被运行时代码读取；升级后应由各用户在设置页重新保存自己的 API key。不要删除或改写已经执行过的历史迁移。
 
@@ -95,7 +98,7 @@ DeepSeek 默认配置为：
 - Base URL：`https://api.deepseek.com/v1`
 - 模型：`deepseek-v4-flash`
 
-旧配置中的官方 DeepSeek 根地址会在服务端自动规范化为 `/v1`，并在目标凭据范围不变时保留已加密密钥。OpenAI-compatible 默认使用 `https://api.openai.com/v1` 与 `gpt-4.1-mini`，也可填写其他经过 HTTPS 与公网目标校验的兼容接口。
+旧配置中的官方 DeepSeek 根地址会在服务端自动规范化为 `/v1`，并在目标凭据范围不变时保留已加密密钥。OpenAI-compatible 默认使用 `https://api.openai.com/v1` 与 `gpt-4.1-mini`，也可填写管理员批准的兼容接口。升级后已有自定义地址在获批前拒绝读取和使用，原配置与密钥保留，错误提示联系管理员批准；不会悄悄显示或发送到默认服务。配置保存、运行时加载及每次出站请求均检查 origin，探测与生成共用策略；Base URL 路径及已加密凭据的 URL 作用域保持原有语义。
 
 上述默认模型是应用运行时配置（见 `lib/ai-config.ts`），不是开发本仓库时对 Opus 或 GPT 的选型要求；实际服务可用性需另行验证。
 
@@ -115,8 +118,8 @@ DeepSeek 默认配置为：
 ## 安全与运行边界
 
 - API key 不进入 IndexedDB、浏览器持久化、客户端包、同步备份、导出文件或应用日志。
-- Base URL 默认只允许 HTTPS，拒绝凭据、查询参数、片段、私网及特殊用途地址；本机 HTTP 仅能由显式开发变量开启。
-- 配置写入和删除要求同源请求、自定义动作头与站点身份。
+- Base URL 只允许管理员批准的 HTTPS origin，并拒绝凭据、查询参数、片段、私网及特殊用途地址。旧 `AI_ALLOW_INSECURE_LOCAL_BASE_URL` 运行时绕过已移除，本机 HTTP 不可用。
+- 配置写入和删除要求同源请求、自定义动作头与站点身份，共用每身份每分钟 12 次、每天 100 次的原子限流；超限返回 429 与 `Retry-After`，限流存储失败时返回 503，均不执行加密或配置写入。
 - D1 使用按身份、分钟和日期的原子限流；限流存储失败时关闭请求。
 - 上游连接与响应正文共用超时，并采用增量大小限制；不跟随重定向。
 - 模型输出不写回正式词库；讲解等回答缓存在本机独立数据库，作文批改随作文保存在学习数据中。

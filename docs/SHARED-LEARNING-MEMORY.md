@@ -24,6 +24,8 @@ Spelled input is editable and requires confirmation before scoring. Commands als
 
 ## Validation and limits
 
-`npm test` covers source audit, type checking, 252 unit tests, build and Worker/D1 smoke (including isolation, temporary writes, stale revision, provenance and legacy compatibility). Mock browser checks cover three viewports, keyboard grading, reduced motion, no answer leakage before response, local-only temporary writing, account changes and close-failure recovery after memory invalidation.
+`npm test` covers source audit, type checking, the unit and regression suite, build and Worker/D1 smoke (including isolation, temporary writes, stale revision, provenance and legacy compatibility). The original 2.8.0 implementation recorded mock browser checks covering three viewports, keyboard grading, reduced motion, no answer leakage before response, local-only temporary writing, account changes and close-failure recovery after memory invalidation.
 
-No paid Live/TTS calls were made during implementation. Real microphone permissions, provider latency, transcription timing and audio playback still require a separately authorized real-service check. Live input timestamps are approximate; ambiguous or missing transcription fails safely to keyboard input rather than being graded automatically.
+The GitHub integration retains the 2.5.1/2.5.2 identity, credential, token-accounting, backup and import protections. Regression coverage also combines Responses transport with token floors, TTS audio usage with conservative reservations, and writing privacy checks with restored-dataset generation checks.
+
+No paid Live/TTS calls were made during implementation or integration. Real microphone permissions, provider latency, transcription timing and audio playback still require a separately authorized real-service check. Live input timestamps are approximate; ambiguous or missing transcription fails safely to keyboard input rather than being graded automatically.

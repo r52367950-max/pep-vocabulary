@@ -20,6 +20,7 @@ export type StudySessionState = {
   position: number;
   startedAt: number;
   revision?: number;
+  dataGeneration?: string;
   finishedAt?: number;
   results: SessionResult[];
   retries: Record<string, number>;
@@ -30,17 +31,27 @@ export type StudySessionState = {
 export function sessionEventId(session: StudySessionState) {
   return `${session.id}:${session.position}:${session.revision ?? 0}`;
 }
+
+function eventCoordinates(id: string | undefined, sessionId: string) {
+  if (!id?.startsWith(`${sessionId}:`)) return null;
+  const match = /^(0|[1-9]\d*):(0|[1-9]\d*)$/.exec(id.slice(sessionId.length + 1));
+  if (!match) return null;
+  const position = Number(match[1]), revision = Number(match[2]);
+  return Number.isSafeInteger(position) && position < MAX_SESSION_STEPS && Number.isSafeInteger(revision)
+    ? { position, revision } : null;
+}
 export function advanceSession(
   session: StudySessionState,
   event: ReviewEvent,
 ): StudySessionState {
   const timestamp = Date.parse(event.timestampUtc);
+  const coordinates = eventCoordinates(event.eventId, session.id);
   if (
     session.position >= session.queue.length ||
     session.queue[session.position] !== event.cardId ||
     event.eventType === "undo" ||
     !Number.isFinite(timestamp) ||
-    timestamp < session.startedAt ||
+    !coordinates || coordinates.position !== session.position || coordinates.revision > (session.revision ?? 0) ||
     typeof event.correct !== "boolean" ||
     !Number.isFinite(event.hints) ||
     event.hints < 0
@@ -59,6 +70,8 @@ export function advanceSession(
   const position = session.position + 1;
   return {
     ...session,
+    // Wall-clock adjustments do not change the event's identity or persisted answer.
+    startedAt: Math.min(session.startedAt, timestamp),
     queue,
     retries,
     position,
@@ -80,6 +93,7 @@ function validCheckpoint(
   value: StudySessionState,
   validIds: ReadonlySet<string>,
   now: number,
+  clockSkewAllowed = false,
 ) {
   const modes = ["daily", "review", "mistakes", "dictation", "context", "new"];
   if (
@@ -97,14 +111,15 @@ function validCheckpoint(
     value.position < 0 ||
     value.position > value.queue.length ||
     !Number.isFinite(value.startedAt) ||
-    value.startedAt > now ||
+    (value.startedAt > now && !clockSkewAllowed) ||
     now - value.startedAt > 86400_000 ||
     (value.revision !== undefined &&
       (!Number.isSafeInteger(value.revision) || value.revision < 0)) ||
+    (value.dataGeneration !== undefined && (typeof value.dataGeneration !== "string" || value.dataGeneration.length > 200)) ||
     (value.finishedAt !== undefined &&
       (!Number.isFinite(value.finishedAt) ||
         value.finishedAt < value.startedAt ||
-        value.finishedAt > now ||
+        (value.finishedAt > now && !clockSkewAllowed) ||
         value.position !== value.queue.length)) ||
     !Array.isArray(value.results) ||
     value.results.length !== value.position ||
@@ -152,24 +167,17 @@ export function restoreSession(
   validIds: ReadonlySet<string>,
   events: ReviewSource,
   now = Date.now(),
+  dataGeneration?: string,
 ): StudySessionState | null {
   if (!raw || raw.length > 150_000 || !Number.isFinite(now)) return null;
   try {
     const saved = JSON.parse(raw) as StudySessionState;
-    if (!validCheckpoint(saved, validIds, now)) return null;
-    const eventPosition = (id: string | undefined) => {
-      if (!id?.startsWith(`${saved.id}:`)) return null;
-      const suffix = id.slice(saved.id.length + 1);
-      const match = /^(0|[1-9]\d*):(0|[1-9]\d*)$/.exec(suffix);
-      if (!match) return null;
-      const position = Number(match[1]),
-        revision = Number(match[2]);
-      return Number.isSafeInteger(position) &&
-        position < MAX_SESSION_STEPS &&
-        Number.isSafeInteger(revision)
-        ? { position, revision }
-        : null;
-    };
+    // A current dataset-bound checkpoint can survive a clock correction. Older,
+    // unbound checkpoints retain their stricter time checks.
+    const clockSkewAllowed = dataGeneration !== undefined && saved?.dataGeneration === dataGeneration;
+    if (!validCheckpoint(saved, validIds, now, clockSkewAllowed)) return null;
+    if (dataGeneration !== undefined && (saved.dataGeneration ?? "initial") !== dataGeneration) return null;
+    const eventPosition = (id: string | undefined) => eventCoordinates(id, saved.id);
     const byPosition = new Map<
       number,
       { event: ReviewEvent; revision: number }
@@ -214,7 +222,7 @@ export function restoreSession(
       if (!committed) break;
       if (
         committed.cardId !== value.queue[value.position] ||
-        Date.parse(committed.timestampUtc) > now
+        (!clockSkewAllowed && Date.parse(committed.timestampUtc) > now)
       )
         return null;
       value = advanceSession(value, committed);
