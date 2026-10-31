@@ -1,5 +1,7 @@
 # 2.3.0 优化报告：性能、精简、安全与无障碍
 
+> 历史评估记录：其中“身份开关可选、默认关闭”描述不再适用。当前 `IDENTITY_TRUSTED_HOSTS` 必须配置，身份仍完全依赖可信网关；请遵循 [当前安全方案](SECURITY_PLAN.md)。
+
 2026-09-24，基于 2.2.1（`58ac110`），分支 `claude/wonderful-tesla-o3ibu4`。目标是在不改外观、不改数据与学习语义的前提下，处理 [交接须知](OPTIMIZATION_HANDOFF.md) 里列出的问题。发布摘要见 [RELEASE_2.3.0.md](RELEASE_2.3.0.md)，安全方案见 [SECURITY_PLAN.md](SECURITY_PLAN.md)。
 
 ## 一、结论

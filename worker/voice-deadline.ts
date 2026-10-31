@@ -2,11 +2,17 @@ import type { D1Database, DurableObjectState } from "@cloudflare/workers-types";
 import { decryptApiKey } from "../lib/ai-config";
 import { AssistantUpstreamError } from "../lib/assistant/core";
 import { closeOpenAISession } from "../lib/voice/openai";
-import { voiceDeadlineScope, type VoiceDeadlineRecord } from "../lib/voice/deadline";
+import { finalizeVoiceLease, irrecoverableVoiceClose, voiceDeadlineScope, voiceLeaseExpired, voicePendingExpiry, type VoiceDeadlineRecord, type VoiceCloseResult } from "../lib/voice/deadline";
 
-const RETRY_MS = 15_000;
-type ActiveDeadline = VoiceDeadlineRecord & { closing?: true };
-type DeadlineState = ActiveDeadline | { closed: true };
+const MAX_ATTEMPTS = 8;
+const backoff = (attempt: number) => Math.min(15_000 * 2 ** Math.max(0, attempt - 1), 300_000);
+type ActiveDeadline = VoiceDeadlineRecord & { closing?: true; attempts?: number; nextAttemptAt?: number };
+type FinalizingDeadline = Omit<VoiceDeadlineRecord, "credential"> & {
+  finalizing: true; confirmed: boolean; reason: string; releaseAt: number;
+  cleanupAttempts: number; nextCleanupAt?: number;
+};
+type ClosedDeadline = { closed: true; confirmed?: false; reason?: string };
+type DeadlineState = ActiveDeadline | FinalizingDeadline | ClosedDeadline;
 
 /** Namespace-only backend control. No public route forwards requests here. */
 export class VoiceDeadline {
@@ -26,9 +32,9 @@ export class VoiceDeadline {
             typeof record.credential.encryptedApiKey !== "string" || typeof record.credential.keyIv !== "string" ||
             ![2, 3].includes(record.credential.encryptionVersion)) return new Response(null, { status: 400 });
           if (await this.state.storage.get("session")) return new Response(null, { status: 409 });
-          // Persist the encrypted capability and wakeup together before returning SDP.
-          await this.state.storage.transaction(async (transaction) => {
-            await transaction.put("session", record);
+          await this.state.storage.transaction(async transaction => {
+            await transaction.put("session", { userKey: record.userKey, sessionId: record.sessionId,
+              until: record.until, credential: record.credential });
             await transaction.setAlarm(record.until - 60_000);
           });
           return Response.json({ ok: true });
@@ -36,10 +42,12 @@ export class VoiceDeadline {
         if (action !== "/close") return new Response(null, { status: 404 });
         const record = await this.state.storage.get<DeadlineState>("session");
         if (!record) return new Response(null, { status: 404 });
-        if (!("closed" in record)) await this.finish(record);
-        return Response.json({ ok: true });
+        if (!("closed" in record)) await this.process(record);
+        const result = await this.state.storage.get<DeadlineState>("session");
+        if (!result || !("closed" in result)) return new Response(null, { status: 503 });
+        return Response.json(this.result(result));
       } catch {
-        // No provider text, encrypted credentials, or account identifiers in logs.
+        // No provider text, ciphertext or account identifiers in logs.
         return new Response(null, { status: 503 });
       }
     });
@@ -49,40 +57,97 @@ export class VoiceDeadline {
     await this.state.blockConcurrencyWhile(async () => {
       const record = await this.state.storage.get<DeadlineState>("session");
       if (!record || "closed" in record) return;
-      const deadline = record.until - 60_000;
-      if (!record.closing && Date.now() < deadline) { await this.state.storage.setAlarm(deadline); return; }
-      // Throw as well: Cloudflare's alarm retry covers failure to persist our
-      // own retry alarm, while the saved alarm covers longer provider outages.
-      await this.finish(record);
+      if (!("finalizing" in record) && !record.closing && Date.now() < record.until - 60_000) {
+        await this.state.storage.setAlarm(record.until - 60_000); return;
+      }
+      // Throw when persistence fails so Cloudflare's own bounded retry can cover
+      // failure to store our alarm. Stored backoff also gates those early retries.
+      await this.process(record);
     });
   }
 
-  private async finish(record: ActiveDeadline) {
-    // The retry survives eviction, network failure and credential/config deletion.
-    await this.state.storage.transaction(async (transaction) => {
-      await transaction.put("session", { ...record, closing: true });
-      await transaction.setAlarm(Date.now() + RETRY_MS);
+  private result(record: ClosedDeadline): VoiceCloseResult {
+    return { ok: true, confirmed: record.confirmed !== false, terminal: record.confirmed === false,
+      ...(record.reason ? { reason: record.reason } : {}) };
+  }
+
+  private async process(record: ActiveDeadline | FinalizingDeadline) {
+    if ("finalizing" in record) { await this.cleanup(record); return; }
+    if (voiceLeaseExpired(record.until)) { await this.finalize(record, false, "grace_expired"); return; }
+    const attempts = Number.isSafeInteger(record.attempts) && record.attempts! >= 0 ? record.attempts! : 0;
+    if (attempts >= MAX_ATTEMPTS) { await this.finalize(record, false, "retry_exhausted", voicePendingExpiry(record.until)); return; }
+    if (record.nextAttemptAt && Date.now() < record.nextAttemptAt) {
+      await this.state.storage.setAlarm(record.nextAttemptAt); return;
+    }
+    const next: ActiveDeadline = { ...record, closing: true, attempts: attempts + 1,
+      nextAttemptAt: Math.min(Date.now() + backoff(attempts + 1), voicePendingExpiry(record.until)) };
+    // Count before the paid provider control request, including eviction/restart.
+    await this.state.storage.transaction(async transaction => {
+      await transaction.put("session", next);
+      await transaction.setAlarm(next.nextAttemptAt!);
     });
-    const key = await decryptApiKey(record.credential.encryptedApiKey, record.credential.keyIv,
-      record.credential.encryptionVersion, voiceDeadlineScope(record.userKey, record.sessionId));
+    let key: string;
+    try { key = await decryptApiKey(record.credential.encryptedApiKey, record.credential.keyIv,
+      record.credential.encryptionVersion, voiceDeadlineScope(record.userKey, record.sessionId)); }
+    catch { await this.finalize(record, false, "credential_unavailable"); return; }
     try { await closeOpenAISession(new Request("https://voice-deadline/close"), key, record.sessionId, 8_000); }
-    catch (error) { if (!(error instanceof AssistantUpstreamError) || error.providerStatus !== 404) throw error; }
+    catch (error) {
+      if (error instanceof AssistantUpstreamError && error.providerStatus === 404) {
+        await this.finalize(record, true, "closed"); return;
+      }
+      if (irrecoverableVoiceClose(error)) { await this.finalize(record, false, "provider_rejected_close"); return; }
+      if (next.attempts! >= MAX_ATTEMPTS) {
+        await this.finalize(record, false, "retry_exhausted", voicePendingExpiry(record.until)); return;
+      }
+      throw error;
+    }
+    await this.finalize(record, true, "closed");
+  }
+
+  private async finalize(record: ActiveDeadline, confirmed: boolean, reason: string, releaseAt = Date.now()) {
+    const pending: FinalizingDeadline = { userKey: record.userKey, sessionId: record.sessionId, until: record.until,
+      finalizing: true, confirmed, reason, releaseAt, cleanupAttempts: 0 };
+    // Strip credentials before any D1 cleanup. A failed database cannot retain a
+    // revoked key or cause another request with that key after terminalization.
+    await this.state.storage.transaction(async transaction => {
+      await transaction.put("session", pending);
+      await transaction.setAlarm(Math.max(releaseAt, Date.now() + backoff(1)));
+    });
+    if (Date.now() >= releaseAt) await this.cleanup(pending);
+  }
+
+  private async cleanup(record: FinalizingDeadline) {
+    const now = Date.now();
+    if (now < record.releaseAt) { await this.state.storage.setAlarm(record.releaseAt); return; }
+    if (record.nextCleanupAt && now < record.nextCleanupAt) {
+      await this.state.storage.setAlarm(record.nextCleanupAt); return;
+    }
+    if (record.cleanupAttempts >= MAX_ATTEMPTS) {
+      // D1 recovery cannot run forever either. The admission CAS independently
+      // reclaims the finite lease at the same grace boundary, even for old rows.
+      if (!voiceLeaseExpired(record.until, now)) {
+        await this.state.storage.transaction(async transaction => {
+          await transaction.put("session", { ...record, nextCleanupAt: voicePendingExpiry(record.until) });
+          await transaction.setAlarm(voicePendingExpiry(record.until));
+        });
+        return;
+      }
+      await this.storeClosed({ closed: true, confirmed: false, reason: "cleanup_unavailable" }); return;
+    }
+    const next: FinalizingDeadline = { ...record, cleanupAttempts: record.cleanupAttempts + 1,
+      nextCleanupAt: now + backoff(record.cleanupAttempts + 1) };
+    await this.state.storage.transaction(async transaction => {
+      await transaction.put("session", next);
+      await transaction.setAlarm(next.nextCleanupAt!);
+    });
     if (!this.bindings.DB) throw new Error("Voice database unavailable");
-    // The finalized session row fences repeated cleanup even if a newer call
-    // happens to have the same timestamp lease and the DO tombstone write fails.
-    // Keep both writes atomic, releasing the active lease before finalizing ours.
-    await this.bindings.DB.batch([
-      this.bindings.DB.prepare(`UPDATE ai_rate_limits SET request_count=0, expires_at=?
-        WHERE bucket_key=? AND request_count=? AND NOT EXISTS
-          (SELECT 1 FROM ai_rate_limits WHERE bucket_key=? AND request_count!=?)`)
-        .bind(Date.now() + 86_400_000, `voice-active:${record.userKey}`, record.until,
-          `voice-session:${record.userKey}:${record.sessionId}`, record.until),
-      this.bindings.DB.prepare(`INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, 0, ?)
-        ON CONFLICT(bucket_key) DO UPDATE SET request_count=0, expires_at=excluded.expires_at WHERE request_count=?`)
-        .bind(`voice-session:${record.userKey}:${record.sessionId}`, Date.now() + 86_400_000, record.until),
-    ]);
-    await this.state.storage.transaction(async (transaction) => {
-      await transaction.put("session", { closed: true });
+    await finalizeVoiceLease(this.bindings.DB, record.userKey, record.sessionId, record.until, now);
+    await this.storeClosed(record.confirmed ? { closed: true } : { closed: true, confirmed: false, reason: record.reason });
+  }
+
+  private async storeClosed(record: ClosedDeadline) {
+    await this.state.storage.transaction(async transaction => {
+      await transaction.put("session", record);
       await transaction.deleteAlarm();
     });
   }

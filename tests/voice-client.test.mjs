@@ -240,3 +240,25 @@ test("late cancelled startup notifies subscribers when remote close becomes pend
     assert.equal(f.client.state.phase, "ended", "background cleanup must not revive the cancelled session");
   } finally { f.client.dispose(); }
 });
+
+test('terminal server recovery permits another practice without claiming the provider confirmed closure', async () => {
+  let sessions = 0;
+  const f = fixture({ fetch: async url => {
+    if (url.endsWith('session')) { sessions++; return Response.json(reply); }
+    return Response.json({ ok: true, terminal: true, confirmed: false, reason: 'provider_rejected_close' });
+  } });
+  try {
+    await f.client.start(options); f.emit({ type: 'session.started' });
+    f.channel.readyState = 'closed';
+    await f.client.end();
+    assert.equal(f.client.hasPendingClose, false);
+    assert.equal(f.client.state.closeConfirmed, false);
+    assert.match(f.client.state.message, /远端关闭未确认/);
+    assert.doesNotMatch(f.client.state.message, /重试关闭上次语音/);
+    await f.client.retryClose();
+    assert.equal(f.client.state.closeConfirmed, false);
+    assert.match(f.client.state.message, /可以开始新的练习/);
+    await f.client.start(options);
+    assert.equal(sessions, 2);
+  } finally { f.client.dispose(); }
+});

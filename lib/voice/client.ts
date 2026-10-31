@@ -29,6 +29,7 @@ export class NativeLiveSession {
   private silentOutput = false;
   private dictation = false;
   private pendingCloseIds = new Set<string>();
+  private terminalCloseIds = new Set<string>();
   private abort?: AbortController;
   private sessionId?: string;
   private startupTimer?: ReturnType<typeof setTimeout>;
@@ -58,7 +59,9 @@ export class NativeLiveSession {
   get hasPendingClose() { return this.pendingCloseIds.size > 0; }
   async retryClose() {
     for (const id of [...this.pendingCloseIds]) await this.closeRemote(id);
-    this.update({ closeConfirmed: !this.hasPendingClose, message: this.hasPendingClose ? "服务器尚未确认结束，请再次重试关闭。" : "语音会话已关闭。" });
+    const confirmed = this.snapshot.closeConfirmed || (!this.hasPendingClose && !this.terminalCloseIds.size);
+    this.update({ closeConfirmed: confirmed, message: this.hasPendingClose ? "服务器尚未确认结束，请再次重试关闭。" :
+      confirmed ? "语音会话已关闭。" : "服务端已停止本次会话管理，远端关闭未确认；可以开始新的练习。" });
   }
   private closeRemote(sessionId: string) {
     const previouslyPending = this.hasPendingClose;
@@ -68,16 +71,22 @@ export class NativeLiveSession {
     if (!previouslyPending) this.update({});
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 8_000);
-    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then((response) => {
+    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then(async (response) => {
+      const result = await response.json().catch(() => null);
+      const terminal = result?.terminal === true || result?.confirmed === false;
       const previouslyPending = this.hasPendingClose;
-      if (response.ok) this.pendingCloseIds.delete(sessionId);
+      if (response.ok) {
+        this.pendingCloseIds.delete(sessionId);
+        if (terminal) this.terminalCloseIds.add(sessionId); else this.terminalCloseIds.delete(sessionId);
+      }
       if (previouslyPending !== this.hasPendingClose) this.update({});
-      return response.ok;
+      return response.ok && !terminal;
     }).catch(() => false).finally(() => clearTimeout(timer));
   }
   async start(options: VoiceOptions) {
     if (["connecting", "connected", "closing"].includes(this.snapshot.phase)) return;
     if (this.hasPendingClose) { this.update({ message: "上次语音尚未确认关闭，请先重试关闭。" }); return; }
+    this.terminalCloseIds.clear();
     const generation = ++this.generation;
     const current = () => generation === this.generation;
     this.endPromise = undefined;
@@ -206,7 +215,9 @@ export class NativeLiveSession {
         if (this.generation !== finalGeneration) return;
         if (acknowledged) this.update({ closeConfirmed: true });
       }
-      this.update({ phase: failed ? "error" : "ended", message: sessionId && !this.snapshot.closeConfirmed ? `${message} 本机麦克风已停止，但服务器尚未确认结束；请重试关闭上次语音。` : message });
+      this.update({ phase: failed ? "error" : "ended", message: sessionId && !this.snapshot.closeConfirmed ?
+        this.pendingCloseIds.has(sessionId) ? `${message} 本机麦克风已停止，但服务器尚未确认结束；请重试关闭上次语音。` :
+          this.terminalCloseIds.has(sessionId) ? `${message} 服务端已停止本次会话管理，远端关闭未确认。` : message : message });
     })();
     return this.endPromise;
   }
