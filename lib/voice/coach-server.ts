@@ -63,8 +63,8 @@ export function voiceCustomContext(body: Record<string, unknown>) {
     openingPrompt: body.openingPrompt === undefined ? "" : text(body.openingPrompt, "开场问题", 600, true),
   };
 }
-export function memoryContext(memory: VoiceMemory) {
-  return memory.enabled ? { learningNotes: memory.notes.map((item) => item.text), recentTopics: memory.recentTopics } : { learningNotes: [], recentTopics: [] };
+export function memoryContext(memory: VoiceMemory & { learningJournal?: unknown }) {
+  return memory.enabled ? { learningNotes: memory.notes.map((item) => item.text), recentTopics: memory.recentTopics, learningJournal: memory.learningJournal ?? [] } : { learningNotes: [], recentTopics: [], learningJournal: [] };
 }
 export function liveLearningContext(memory: VoiceMemory, custom: ReturnType<typeof voiceCustomContext>) {
   return [

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useS
 import { ArrowLeft, Check, ChevronRight, Plus, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
+import { recordLearningActivity } from "@/lib/learning-journal-client";
 import { runAssistant, AssistantError } from "@/lib/ai-client";
 import { learningContextStore, refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
 import { captureWritingContext, writingContextCurrent, writeWritingInContext, WritingContextChangedError, type WritingContext } from "@/lib/writing-context";
@@ -298,12 +299,13 @@ function WritingEditor({ record, data, generation, onSave, onPractice, onWord, t
       await persist({ ...base, versions, updatedAt: new Date().toISOString() }, context, controller.signal);
       if (controller.signal.aborted) return;
       const input = { genre: base.genre, prompt: base.prompt, essay: text, wordIds: base.targetIds };
-      const answer = await runAssistant("review-essay", input, { profile: temporary ? null : await profile(), signal: controller.signal });
+      const answer = await runAssistant("review-essay", input, { profile: temporary ? null : await profile(), signal: controller.signal, activity: false });
       if (controller.signal.aborted || !contextStillCurrent(memory, temporary) || !writingContextCurrent(context)) return;
       const at = versions.length - 1;
       versions[at] = { ...versions[at], review: { reviewedAt: answer.cachedAt || new Date().toISOString(), model: answer.model, result: answer.result } };
       await persist({ ...base, versions, updatedAt: new Date().toISOString() }, context, controller.signal);
       if (controller.signal.aborted || !writingContextCurrent(context)) return;
+      if (!temporary) void recordLearningActivity({ eventId: `writing-${base.id}-${versions[at].id}`, kind: "writing", title: `${WRITING_GENRES[base.genre].label}写作练习`, summary: "完成写作与反馈，练习目标词的运用。", refIds: base.targetIds.slice(0, 20), counts: { reviewed: 1, words: countWords(text) } }, { accountScope: memory.accountScope });
       setMode("review");
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof AssistantError || cause instanceof Error ? cause.message : "批改失败，可以稍后重试。");

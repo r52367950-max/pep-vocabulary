@@ -16,6 +16,7 @@ try {
     const authority = new URL(url);
     const headers = new Headers(init.headers);
     headers.set('host', authority.host);
+    if (init.body !== undefined) headers.set('content-length', String(Buffer.byteLength(init.body)));
     const target = new URL(authority.pathname + authority.search, ready);
     // Negative checks can reject before consuming a body; use an isolated
     // socket so their closed keep-alive connection cannot affect the next case.
@@ -215,6 +216,29 @@ try {
   assert.equal(deletedShared.status, 200);
   assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, []);
   results.push({ path: '/api/learning-memory shares legacy data, preserves provenance, isolates accounts, pauses and rejects temporary writes', status: 'passed' });
+  const journalInitial = await (await request('/api/learning-journal', { headers })).json();
+  assert.deepEqual(journalInitial.days, []);
+  const contextBeforeJournal = await (await request('/api/learning-memory?metadata=1', { headers })).json();
+  const journalEvent = { accountScope: journalInitial.accountScope, privacyRevision: journalInitial.privacyRevision, eventId: 'smoke-journal-1', kind: 'vocabulary', title: 'Smoke learning activity', summary: 'One recorded practice, no mastery inference.', refIds: ['test-word'], counts: { reviewed: 1 }, occurredAt: new Date().toISOString(), timezone: 'UTC' };
+  const journalWrites = await Promise.all([1,2].map(() => request('/api/learning-journal', { method:'POST',headers,body:JSON.stringify(journalEvent) })));
+  assert.deepEqual(journalWrites.map(r=>r.status),[200,200]);
+  const journalSaved = await (await request('/api/learning-journal', { headers })).json();
+  assert.equal(journalSaved.revision,1); assert.equal(journalSaved.days[0].eventCount,1);
+  const contextAfterJournal = await (await request('/api/learning-memory?metadata=1', { headers })).json();
+  assert.equal(contextAfterJournal.contextVersion,contextBeforeJournal.contextVersion,'automatic activity must not stop Live through privacy version changes');
+  assert.equal(contextAfterJournal.journalRevision,1);
+  assert.deepEqual((await (await request('/api/learning-journal', { headers:otherHeaders })).json()).days,[]);
+  assert.deepEqual((await (await request('/api/learning-journal?temporary=1', { headers })).json()).days,[]);
+  const journalTemp = await request('/api/learning-journal', {method:'POST',headers,body:JSON.stringify({...journalEvent,eventId:'temp-event',temporary:true})});
+  assert.equal(journalTemp.status,409);
+  const journalDelete = await request('/api/learning-journal',{method:'DELETE',headers,body:JSON.stringify({accountScope:journalSaved.accountScope,revision:journalSaved.revision,eventId:journalEvent.eventId})});
+  assert.equal(journalDelete.status,200,await journalDelete.clone().text());
+  const journalDeleted = await journalDelete.json();
+  assert.deepEqual(journalDeleted.days,[]);
+  const journalReplay=await request('/api/learning-journal',{method:'POST',headers,body:JSON.stringify({...journalEvent,privacyRevision:journalDeleted.privacyRevision})});
+  assert.equal(journalReplay.status,200); assert.equal((await journalReplay.json()).ignored,'deleted');
+  assert.notEqual((await (await request('/api/learning-memory?metadata=1',{headers})).json()).contextVersion,contextAfterJournal.contextVersion);
+  results.push({path:'/api/learning-journal atomic idempotency, independent activity revision, privacy deletion and no resurrection',status:'passed'});
   const unconfiguredVoice = await request('/api/voice/status', { headers });
   assert.equal(unconfiguredVoice.status, 200, await unconfiguredVoice.clone().text());
   const unconfiguredBody = await unconfiguredVoice.json();

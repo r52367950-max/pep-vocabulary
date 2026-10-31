@@ -33,13 +33,17 @@ export const PRIVATE_API_ROUTES: Readonly<Record<string, readonly string[]>> = {
   "/api/assistant/diagnose": ["POST"],
   "/api/reading/classify": ["POST"],
   "/api/voice/status": ["GET"],
+  "/api/voice/learning-tool": ["POST"],
   "/api/voice/session": ["POST"],
   "/api/voice/close": ["POST"],
   "/api/voice/speech": ["POST"],
   "/api/voice/feedback": ["POST"],
   "/api/voice/memory": ["GET", "PUT"],
   "/api/learning-memory": ["GET", "PUT"],
+  "/api/learning-journal": ["GET", "POST", "PUT", "DELETE"],
   "/api/voice/recommend": ["POST"],
+  "/api/voice/dictation-plan": ["POST"],
+  "/api/voice/dictation-recognize": ["POST"],
   "/api/voice/discuss": ["POST"],
 };
 

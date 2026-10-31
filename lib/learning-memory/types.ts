@@ -6,5 +6,5 @@ export type LearningNote = {
   confirmedAt: string | null;
   updatedAt: string | null;
 };
-export type LearningMemory = { revision: number; enabled: boolean; notes: LearningNote[]; recentTopics: string[] };
+export type LearningMemory = { revision: number; enabled: boolean; notes: LearningNote[]; recentTopics: string[]; learningJournal?: Array<{date:string;summary:string;source:string;eventCount:number;sourceEventIds:string[];refIds:string[]}> };
 export const CONTEXT_VERSION = "learning-memory-v1";

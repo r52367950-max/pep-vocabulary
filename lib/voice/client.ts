@@ -1,3 +1,4 @@
+import type { DictationItem } from "./dictation";
 import { readLocalPracticeData, writeLocalPracticeData, type PracticeGeneration } from "../local-practice-generation";
 
 export type VoicePhase = "idle" | "connecting" | "connected" | "closing" | "ended" | "error";
@@ -6,7 +7,10 @@ export type TranscriptTurn = { role: "user" | "assistant"; text: string; startMs
 export type VoiceFeedback = { strength: string; improvements: { original: string; suggestion: string; reason: string }[]; retryPrompt: string; expressions: { text: string; meaning: string }[] };
 export type VoiceOptions = { topicId: string; level: string; minutes: number; diagnostic?: boolean; purpose?: "conversation" | "dictation"; silentOutput?: boolean; temporary?: boolean; contextRevision?: number; contextVersion?: string; accountScope?: string; targetWords?: string[]; customTopic?: string; goal?: string; openingPrompt?: string };
 export type VoiceSnapshot = { phase: VoicePhase; message: string; muted: boolean; paused: boolean; playbackBlocked: boolean; seconds: number; usageSeconds: number | null; maxSeconds: number; closeConfirmed: boolean };
-type VoiceEvent = { type?: string; delta?: string; start_ms?: number; end_ms?: number; event_id?: string; usage?: { seconds?: number }; error?: { message?: string }; session?: { id?: string } };
+export type LiveDictationPlan = { items: DictationItem[]; reason: string; clarification: string };
+type LearningToolCall = { callId: string; item: Record<string, unknown>; abort: AbortController; done: boolean; inputRevision: number };
+type LearningToolGroup = { calls: Map<string, LearningToolCall>; completed: boolean; continued: boolean };
+type VoiceEvent = { delegation?: { id?: string; target?: string }; delegation_id?: string; event?: Record<string, unknown>; type?: string; delta?: string; start_ms?: number; end_ms?: number; event_id?: string; usage?: { seconds?: number }; error?: { message?: string }; session?: { id?: string } };
 type SessionReply = { sessionId: string; sdp: string; model: string; maxSeconds: number };
 type Dependencies = { fetch: typeof fetch; getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>; createPeer: () => RTCPeerConnection; createAudio: () => HTMLAudioElement; createAudioContext: () => AudioContext; now: () => number };
 
@@ -39,7 +43,13 @@ export class NativeLiveSession {
   private endPromise?: Promise<void>;
   private snapshot: VoiceSnapshot = { phase: "idle", message: "准备好就开始", muted: false, paused: false, playbackBlocked: false, seconds: 0, usageSeconds: null, maxSeconds: 600, closeConfirmed: false };
   private deps: Dependencies;
-  constructor(private callbacks: { onState: (state: VoiceSnapshot) => void; onTranscript: (turn: TranscriptTurn) => void }, dependencies?: Partial<Dependencies>) {
+  private learningOptions?: VoiceOptions;
+  private inputRevision = 0;
+  private toolGroups = new Map<string, LearningToolGroup>();
+  private delegationResponses = new Map<string, string>();
+  private delegationInputs = new Map<string, number>();
+  private seenToolCalls = new Set<string>();
+  constructor(private callbacks: { onState: (state: VoiceSnapshot) => void; onTranscript: (turn: TranscriptTurn) => void; onDictationPlan?: (plan: LiveDictationPlan) => void }, dependencies?: Partial<Dependencies>) {
     this.deps = { fetch: (...args) => fetch(...args), getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints), createPeer: () => new RTCPeerConnection(), createAudio: () => new Audio(), createAudioContext: () => new AudioContext(), now: () => Date.now(), ...dependencies };
   }
   get state() { return { ...this.snapshot }; }
@@ -49,6 +59,8 @@ export class NativeLiveSession {
   private stopCapture() { this.stream?.getTracks().forEach((track) => track.stop()); this.stream = undefined; }
   private cleanup() {
     clearTimeout(this.startupTimer); clearTimeout(this.closeTimer); clearInterval(this.clock);
+    for (const group of this.toolGroups.values()) for (const call of group.calls.values()) call.abort.abort();
+    this.toolGroups.clear(); this.delegationResponses.clear(); this.delegationInputs.clear(); this.seenToolCalls.clear();
     this.stopCapture();
     if (this.diagnosticContext) { void this.diagnosticContext.close().catch(() => undefined); this.diagnosticContext = undefined; }
     if (this.channel) { this.channel.onmessage = null; this.channel.onclose = null; this.channel.close(); this.channel = undefined; }
@@ -83,6 +95,7 @@ export class NativeLiveSession {
     this.endPromise = undefined;
     this.diagnostic = options.diagnostic === true;
     this.dictation = options.purpose === "dictation";
+    this.learningOptions = { ...options }; this.inputRevision = 0;
     this.silentOutput = options.silentOutput === true || this.dictation;
     this.update({ phase: "connecting", message: this.diagnostic ? "正在准备无麦克风连接测试…" : "正在请求麦克风…", seconds: 0, usageSeconds: null, muted: false, paused: false, playbackBlocked: false, closeConfirmed: false, maxSeconds: this.diagnostic ? 20 : options.minutes * 60 });
     this.abort = new AbortController();
@@ -141,6 +154,11 @@ export class NativeLiveSession {
     });
   }
   private handleEvent(event: VoiceEvent) {
+    if (event.type === "session.delegation.created" && event.delegation?.target === "responses" && typeof event.delegation.id === "string") {
+      if (this.delegationInputs.size >= 128) this.delegationInputs.delete(this.delegationInputs.keys().next().value!);
+      this.delegationInputs.set(event.delegation.id, this.inputRevision); return;
+    }
+    if (event.type === "response.event") { this.handleLearningEvent(event); return; }
     if (event.type === "session.started" && this.snapshot.phase === "connecting") {
       clearTimeout(this.startupTimer); this.startedAt = this.deps.now();
       this.update({ phase: "connected", message: this.diagnostic ? "Live 已连接，正在等待测试语音；20 秒后自动结束。" : "已连接，慢慢说，我在听。" });
@@ -148,6 +166,10 @@ export class NativeLiveSession {
       if (!this.dictation) this.send({ type: "session.commentary.append", delegation_id: null, content: this.diagnostic ? "Say this short test sentence aloud: Hello! Your English speaking practice is ready. Then remain silent." : "Greet the learner briefly in English, ask one opening question about the selected topic, then pause and listen. Give them time to think." });
     } else if ((event.type === "session.input_transcript.delta" || event.type === "session.output_transcript.delta") && typeof event.delta === "string") {
       if (this.dictation && event.type === "session.output_transcript.delta") return;
+      if (event.type === "session.input_transcript.delta") {
+        this.inputRevision++;
+        for (const group of this.toolGroups.values()) for (const call of group.calls.values()) if (!call.done) call.abort.abort();
+      }
       this.callbacks.onTranscript({ role: event.type === "session.input_transcript.delta" ? "user" : "assistant", text: event.delta, startMs: event.start_ms, endMs: event.end_ms });
     } else if (event.type === "session.usage.updated") {
       if (typeof event.usage?.seconds === "number") this.update({ usageSeconds: event.usage.seconds });
@@ -167,6 +189,68 @@ export class NativeLiveSession {
         } else this.update({ phase: "ended", message: "语音练习已结束。" });
       }
     } else if (event.type === "error") this.update({ message: "语音服务未能处理操作。可以结束后重试。" });
+  }
+  /** Responses lifecycle snapshots omit output arrays: collect complete items, then resume once. */
+  private handleLearningEvent(envelope: VoiceEvent) {
+    if (this.dictation || this.diagnostic || this.snapshot.phase !== "connected" || !envelope.event || typeof envelope.delegation_id !== "string") return;
+    const event = envelope.event, delegationId = envelope.delegation_id;
+    const response = event.response as { id?: unknown } | undefined;
+    if (event.type === "response.created" && typeof response?.id === "string") this.delegationResponses.set(delegationId, response.id);
+    const responseId = typeof event.response_id === "string" ? event.response_id : typeof response?.id === "string" ? response.id : this.delegationResponses.get(delegationId);
+    if (!responseId || responseId.length > 200) return;
+    if (event.type !== "response.output_item.done" && event.type !== "response.completed") return;
+    const item = event.item as Record<string, unknown> | undefined;
+    const functionItem = event.type === "response.output_item.done" && item?.type === "function_call" && typeof item.call_id === "string" && /^[A-Za-z0-9_-]{1,200}$/.test(item.call_id);
+    let group = this.toolGroups.get(responseId);
+    if (!group && !functionItem) return;
+    if (!group) {
+      if (this.toolGroups.size >= 24) { this.update({ message: "本次学习检索次数已达上限，可结束后重新开始。" }); return; }
+      group = { calls: new Map(), completed: false, continued: false }; this.toolGroups.set(responseId, group);
+    }
+    if (event.type === "response.completed") { group.completed = true; this.continueLearningTools(); return; }
+    if (!item || item.type !== "function_call" || typeof item.call_id !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(item.call_id)) return;
+    if (this.seenToolCalls.has(item.call_id)) return;
+    if (group.calls.size >= 4 || this.seenToolCalls.size >= 48) { this.update({ message: "学习工具请求过多，请结束后重试。" }); return; }
+    this.seenToolCalls.add(item.call_id);
+    const call: LearningToolCall = { callId: item.call_id, item, abort: new AbortController(), done: false, inputRevision: this.delegationInputs.get(delegationId) ?? this.inputRevision };
+    group.calls.set(call.callId, call);
+    void this.runLearningTool(call, group);
+  }
+  private continueLearningTools() {
+    const pending = [...this.toolGroups.entries()].filter(([, group]) => !group.continued && group.calls.size > 0);
+    if (!pending.length || this.snapshot.phase !== "connected" || pending.some(([, group]) => !group.completed || [...group.calls.values()].some(call => !call.done))) return;
+    // response.create continues the configured backend, so return every known pending call first.
+    if (this.send({ type: "response.create" })) for (const [id, group] of pending) { group.continued = true; this.toolGroups.delete(id); }
+  }
+  private async runLearningTool(call: LearningToolCall, group: LearningToolGroup) {
+    const generation = this.generation, options = this.learningOptions;
+    let output: Record<string, unknown> = { status: "unavailable", message: "没有完成听写准备，请询问学习者后再试。" };
+    const timer = setTimeout(() => call.abort.abort(), 15_000);
+    try {
+      if (call.item.name !== "prepare_dictation" || typeof call.item.arguments !== "string" || call.item.arguments.length > 4000 || !options?.accountScope || !this.sessionId) throw new Error("学习工具或账户状态无效。");
+      if (call.inputRevision !== this.inputRevision) { call.abort.abort(); throw new Error("旧的学习请求已被新的内容替代。"); }
+      const args = JSON.parse(call.item.arguments);
+      const response = await this.deps.fetch("/api/voice/learning-tool", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: call.abort.signal, body: JSON.stringify({ name: call.item.name, callId: call.callId, arguments: args, sessionId: this.sessionId, accountScope: options.accountScope, contextRevision: options.contextRevision, contextVersion: options.contextVersion, temporary: options.temporary }) });
+      const result = await response.json() as LiveDictationPlan & { accountScope?: string; contextRevision?: number; contextVersion?: string; temporary?: boolean; error?: { message?: string } };
+      if (!response.ok) throw new Error(result.error?.message || "未能检索听写材料。");
+      if (generation !== this.generation || this.snapshot.phase !== "connected") return;
+      if (call.abort.signal.aborted || call.inputRevision !== this.inputRevision) throw new Error("你补充了新的内容，已丢弃旧的推荐。请按最新要求重新准备。");
+      if (result.accountScope !== options.accountScope || result.contextRevision !== options.contextRevision || result.contextVersion !== options.contextVersion || result.temporary !== !!options.temporary) throw new Error("学习上下文已变化，请重新准备。");
+      if (!Array.isArray(result.items) || result.items.length > 12 || typeof result.reason !== "string" || typeof result.clarification !== "string" || result.items.some(item => !item || typeof item.id !== "string" || typeof item.text !== "string" || !["words", "sentences"].includes(item.mode))) throw new Error("推荐材料格式无效。");
+      // Exercise answers are app data only; the voice backend receives a status, never targets.
+      this.callbacks.onDictationPlan?.({ items: result.items, reason: result.reason, clarification: result.clarification });
+      output = { status: result.items.length ? "prepared" : "needs_clarification", count: result.items.length, message: result.reason || result.clarification, instruction: "Do not guess or read exercise targets. Tell the learner the app has the prepared group, or ask the returned clarification." };
+      this.update({ message: result.items.length ? "已准备一组听写，可在听写页开始。" : result.clarification });
+    } catch (error) {
+      output = { status: call.abort.signal.aborted ? "cancelled" : "unavailable", message: call.abort.signal.aborted ? "该次检索已取消或被新内容替代，请按最新对话重新准备。" : error instanceof Error ? error.message : "未能准备听写材料。" };
+      if (generation === this.generation && this.snapshot.phase === "connected" && !call.abort.signal.aborted) this.update({ message: String(output.message) });
+    } finally {
+      clearTimeout(timer);
+      if (generation === this.generation && this.snapshot.phase === "connected") {
+        this.send({ type: "response.item.create", item: { type: "function_call_output", call_id: call.callId, output: JSON.stringify(output) } });
+        call.done = true; this.continueLearningTools();
+      }
+    }
   }
   mute(muted: boolean) {
     if (this.snapshot.phase !== "connected") return;

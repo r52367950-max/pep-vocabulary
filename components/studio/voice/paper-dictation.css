@@ -1,0 +1,14 @@
+.paper-dictation { margin-top: 24px; text-align: left; }
+.paper-heading, .paper-actions { display: flex; align-items: center; gap: 16px; }
+.paper-heading { justify-content: space-between; }
+.paper-dictation p { margin: 12px 0; line-height: 1.6; }
+.paper-preview { display: block; max-width: 100%; max-height: 260px; margin: 14px auto; object-fit: contain; border-radius: var(--radius-control); }
+.paper-rows { display: grid; gap: 14px; margin: 18px 0; }
+.paper-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .45fr); align-items: end; gap: 12px; padding: 16px; border-radius: var(--radius-card); background: var(--grouped); }
+.paper-row label { display: grid; min-width: 0; gap: 8px; font-size: .875rem; }
+.paper-row textarea, .paper-row select { width: 100%; min-height: 44px; padding: 10px; border-radius: var(--radius-control); background: var(--surface); font-size: 1rem; }
+.paper-row textarea { resize: vertical; }
+.paper-results { display: grid; gap: 14px; padding: 0; list-style: none; }
+.paper-results li { display: grid; gap: 7px; overflow-wrap: anywhere; }
+.paper-dictation button { min-height: 44px; }
+@media (max-width: 600px) { .paper-row { grid-template-columns: minmax(0, 1fr); } }

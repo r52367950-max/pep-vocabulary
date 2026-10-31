@@ -7,15 +7,26 @@ import { compareDictation, DICTATION_SENTENCES, readLocalDictationHistory, saveL
 import { localPracticeGeneration, practiceGenerationCurrent, type PracticeGeneration } from "@/lib/local-practice-generation";
 import { DictationLiveInput, dictationVoiceCommand, canSubmitDictation, newDictationAttempt, reduceDictationAttempt, spellingDraft, type DictationAttemptEvent, type DictationLearningPreferences, type SpellingCaptureAdapter, type DictationVoiceCommand } from "@/lib/voice/dictation-session";
 import { learningContextStore, refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
-import type { VoiceSnapshot } from "@/lib/voice/client";
+import { voiceRequest, type VoiceSnapshot } from "@/lib/voice/client";
+import { recordLearningActivity } from "@/lib/learning-journal-client";
+import { PaperDictation } from "./paper-dictation";
 import "./dictation.css";
+export type PreparedDictationPlan = { items: DictationItem[]; reason: string; clarification: string };
 
 type Playback = "idle" | "loading" | "playing";
-export function DictationPanel({ entries, active = true, temporary = false, learningPreferences, spellingCapture: suppliedCapture, accountScope, contextEpoch = 0, onLiveActiveChange, onLiveUnconfirmedChange }: {
-  entries: LexiconIndexEntry[]; active?: boolean; temporary?: boolean;
+export function DictationPanel({ entries, active = true, temporary = false, learningPreferences, spellingCapture: suppliedCapture, accountScope, contextEpoch = 0, onLiveActiveChange, onLiveUnconfirmedChange, preparedPlan, conversationContext = "" }: {
+  entries: LexiconIndexEntry[]; active?: boolean; temporary?: boolean; preparedPlan?: PreparedDictationPlan | null; conversationContext?: string;
   learningPreferences?: DictationLearningPreferences; spellingCapture?: SpellingCaptureAdapter;
   accountScope?: string; contextEpoch?: number; onLiveActiveChange?: (active: boolean) => void; onLiveUnconfirmedChange?: (unconfirmed: boolean) => void;
 }) {
+  const [suggestion, setSuggestion] = useState<PreparedDictationPlan | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planError, setPlanError] = useState("");
+  const [requestText, setRequestText] = useState("");
+  const [paperMode, setPaperMode] = useState(false);
+  const [heardItemIds, setHeardItemIds] = useState<string[]>([]);
+  const planAbort = useRef<AbortController | null>(null);
+  const planAttempted = useRef("");
   const live = useRef<DictationLiveInput | null>(null);
   const [liveSnapshot, setLiveSnapshot] = useState<VoiceSnapshot | null>(null);
   const [liveUnconfirmed, setLiveUnconfirmed] = useState(false);
@@ -32,7 +43,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   const attemptRef = useRef(attempt);
   const apply = useCallback((event: DictationAttemptEvent) => {
     const next = reduceDictationAttempt(attemptRef.current, event);
-    if (next !== attemptRef.current) { attemptRef.current = next; setAttempt(next); }
+    if (next !== attemptRef.current) { attemptRef.current = next; setAttempt(next); if (event.type === "heard" && next.heard) setHeardItemIds((ids) => ids.includes(next.itemId) ? ids : [...ids, next.itemId]); }
     return next;
   }, []);
   const { answer, heard } = attempt;
@@ -109,10 +120,10 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   useEffect(() => {
     let mounted = true;
     const sequence = ++historySequence.current;
-    stopMedia(); void live.current?.close(); cache.current.clear(); roundGeneration.current = null;
+    stopMedia(); void live.current?.close(); planAbort.current?.abort(); planAttempted.current = ""; cache.current.clear(); roundGeneration.current = null;
     Promise.resolve().then(() => {
       if (!mounted) return;
-      setQueue([]); setPosition(0); setHistory([]); setHistoryOpen(false); setStorageError(false); setHintVisible(false); setRoundResults({}); exposed.current.clear(); setCommandDraft(null); setCommandListening(false); setPlayback("idle");
+      setQueue([]); setHeardItemIds([]); setSuggestion(null); setPosition(0); setHistory([]); setHistoryOpen(false); setStorageError(false); setHintVisible(false); setRoundResults({}); exposed.current.clear(); setCommandDraft(null); setCommandListening(false); setPlayback("idle");
       const fresh = newDictationAttempt(crypto.randomUUID(), ""); attemptRef.current = fresh; setAttempt(fresh);
       if (temporary || !accountScope) return;
       void readLocalDictationHistory(accountScope).then((snapshot) => {
@@ -160,8 +171,29 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     }
     if (sequence !== historySequence.current) return;
     roundGeneration.current = generation;
-    stop(); setSlow(learningPreferences?.preferredSpeed === "slow"); exposed.current.clear(); setRoundResults({}); setQueue(items); setPosition(0); resetAnswer(items[0]); setHistoryOpen(false);
+    stop(); setHeardItemIds([]); setSlow(learningPreferences?.preferredSpeed === "slow"); exposed.current.clear(); setRoundResults({}); setQueue(items); setPosition(0); resetAnswer(items[0]); setHistoryOpen(false);
   };
+  const prepare = async () => {
+    planAbort.current?.abort(); const abort = new AbortController(); planAbort.current = abort;
+    setPlanBusy(true); setPlanError("");
+    try {
+      const context = await refreshLearningContext(abort.signal);
+      const plan = await voiceRequest<PreparedDictationPlan>("/api/voice/dictation-plan", { operationId: crypto.randomUUID(), text: [conversationContext, requestText].filter(Boolean).join("\n").slice(-2000), accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion, temporary }, abort.signal);
+      await refreshLearningContext(abort.signal);
+      if (!abort.signal.aborted && contextStillCurrent(context, temporary)) setSuggestion(plan);
+    } catch (error) { if (!abort.signal.aborted) setPlanError(error instanceof Error ? error.message : "推荐暂时未完成，请重试。"); }
+    finally { if (planAbort.current === abort) setPlanBusy(false); }
+  };
+  useEffect(() => {
+    if (preparedPlan && !queue.length) { setSuggestion(preparedPlan); planAttempted.current = `${accountScope}:${contextEpoch}`; }
+  }, [preparedPlan, accountScope, contextEpoch, queue.length]);
+  useEffect(() => {
+    const key = `${accountScope}:${contextEpoch}`;
+    if (!active || !accountScope || queue.length || planBusy || preparedPlan || planAttempted.current === key) return;
+    planAttempted.current = key;
+    void prepare();
+  }, [active, accountScope, contextEpoch, queue.length]);
+  useEffect(() => () => { planAbort.current?.abort(); }, []);
   const changeMode = (next: DictationMode) => { setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
   const deviceSpeak = (text: string, rate: number, id: number, attemptId: string, commandId: string) => {
     if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
@@ -229,6 +261,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     if (accepted.phase !== "submitted" || accepted === current) return;
     stop();
     const correct = compareDictation(item.text, accepted.answer).correct;
+    if (!temporary && accountScope) void recordLearningActivity({ eventId: `dictation-${accepted.id}`, kind: "dictation", title: `听写练习 · ${item.text}`.slice(0, 160), summary: accepted.assisted ? "使用过提示，作为辅助练习" : correct ? "独立答对" : "需要再练", refIds: [item.wordId || item.id], counts: { total: 1, correct: correct && !accepted.assisted ? 1 : 0, assisted: accepted.assisted ? 1 : 0 } }, { accountScope });
     setRoundResults((previous) => ({ ...previous, [item.id]: correct && !accepted.assisted }));
     // Assisted answers can be reviewed, but never resolve a mistake or count as independent mastery.
     if (accepted.assisted || temporary || !accountScope) return;
@@ -321,18 +354,14 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
 
 
   return <section className="dictation-panel" aria-label="听写练习" hidden={!active}>
-    <div className="dictation-toolbar">
-      <div className="segmented" aria-label="听写内容">
-        <button type="button" aria-pressed={!historyOpen && mode === "words"} onClick={() => changeMode("words")}>词与短语</button>
-        <button type="button" aria-pressed={!historyOpen && mode === "sentences"} onClick={() => changeMode("sentences")}>句子精听</button>
-        {!temporary && <button type="button" aria-pressed={historyOpen} onClick={() => { stop(); setHistoryOpen(!historyOpen); }}>错题{mistakes.length ? ` · ${mistakes.length}` : ""}</button>}
-      </div>
+    <div className="dictation-toolbar dictation-toolbar-simple">
+      <span>{queue.length ? `本组 ${queue.length} 项` : "对话与学习路径推荐"}</span>
+      <details className="dictation-adjust"><summary>调整</summary><div>
+        <label>练习内容 <select value={mode} onChange={(event) => changeMode(event.target.value as DictationMode)}><option value="words">词与短语</option><option value="sentences">句子精听</option></select></label>
+        <button type="button" className="text-button" onClick={() => { stop(); setHistoryOpen(!historyOpen); }}>查看错题{mistakes.length ? ` · ${mistakes.length}` : ""}</button>
+        <button type="button" className="text-button" onClick={() => void start(mode === "words" ? selectDictationRound(words, 12) : selectDictationRound(DICTATION_SENTENCES, 6))}>直接练一组</button>
+      </div></details>
     </div>
-    {(liveSnapshot || liveUnconfirmed) && <section className="dictation-live-status" aria-label="Live 连接与关闭">
-      {liveSnapshot && <p className="dictation-note" role="status">{liveSnapshot.phase === "connected" ? `Live 输入已连接 · ${liveSnapshot.seconds} / ${liveSnapshot.maxSeconds} 秒（等待与静音仍计时）` : liveSnapshot.message}</p>}
-      {liveActive && <button className="secondary" type="button" disabled={liveSnapshot?.phase === "closing"} onClick={() => { stop(); void live.current?.close(); }}>{liveSnapshot?.phase === "closing" ? "正在关闭 Live…" : "结束 Live 语音输入"}</button>}
-      {liveUnconfirmed && !liveActive && <p className="dictation-notice">本机输入已停止，服务器尚未确认关闭。<button className="secondary" type="button" onClick={() => void live.current?.retryClose()}>重试关闭</button></p>}
-    </section>}
     {temporary && <p className="dictation-note">临时练习 · 不读取或保存听写历史</p>}
     {storageError && <p className="dictation-notice" role="status">浏览器未能保存记录；本次仍可练习，离开页面后可能丢失。</p>}
     <div ref={stage} className="dictation-stage">
@@ -342,15 +371,16 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
         <ul>{mistakes.map((row) => <li key={row.item.id}><div><strong lang="en">{row.item.text}</strong><small>{row.mistakes}次出错 · {row.resolved ? "最近一次已答对" : "待再练"} · {new Date(row.lastAt).toLocaleDateString("zh-CN")}</small></div><button type="button" className="secondary" onClick={() => start([row.item])}>再练</button></li>)}</ul></> : <p className="empty">还没有错题，先完成一组听写。</p>}
     </div> : !queue.length ? <div className="dictation-intro">
       <span className="dictation-emblem"><Headphones size={28} aria-hidden="true" /></span>
-      <h2>{mode === "words" ? "从耳朵，到笔尖。" : "听清一句话。"}</h2>
-      <p>{mode === "words" ? "听一遍，写下来，再看看哪里需要练习。本组12项。" : "日常与校园主题的原创短句，每组6句。"}</p>
-      <button type="button" className="primary" disabled={mode === "words" && !words.length} onClick={() => start(mode === "words" ? selectDictationRound(words, 12) : selectDictationRound(DICTATION_SENTENCES, 6))}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
-      {mode === "words" && !words.length && <p role="status">当前范围没有可听写的词，请换一个教材范围。</p>}
-      <p className="dictation-note">无需麦克风 · 默认使用设备英语声音</p>
+      <h2>听一组，记下来。</h2>
+      <p>{planBusy ? "Terra 正在结合对话与学习记录安排听写…" : suggestion?.items.length ? `已从学习材料中准备 ${suggestion.items.length} 项。` : suggestion?.clarification || "告诉我最近学了什么，或想练哪一课。"}</p>
+      <form className="dictation-request" onSubmit={(event) => { event.preventDefault(); void prepare(); }}><label htmlFor="dictation-request">想调整内容？</label><div><input id="dictation-request" value={requestText} maxLength={1000} placeholder="例如：练刚才聊到的旅行词汇" onChange={(event) => setRequestText(event.target.value)} /><button className="text-button" disabled={planBusy || !requestText.trim()}>发送</button></div></form>
+      {planError && <p className="dictation-notice" role="alert">{planError} <button className="text-button" onClick={() => void prepare()}>重试推荐</button><button className="text-button" onClick={() => void start(selectDictationRound(words, 12))}>使用词库直接练</button></p>}
+      <button type="button" className="primary" disabled={planBusy || !suggestion?.items.length} onClick={() => suggestion && void start(suggestion.items)}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
+      <p className="dictation-note">可以用键盘，也可以写在纸上拍照批改</p>
     </div> : !item ? <div className="dictation-intro">
       <span className="dictation-emblem"><Check size={28} aria-hidden="true" /></span><h2>这一组，听完了。</h2>
-      <p>{queue.length}项练习 · {roundErrors.length ? `${roundErrors.length}项还可以再练` : "本组已独立答对"}</p>
-      <div className="dictation-actions">{roundErrors.length > 0 && <button type="button" className="primary" onClick={() => start(roundErrors)}>再练本轮错题</button>}<button type="button" className="secondary" onClick={() => { stop(); void live.current?.close(); setQueue([]); resetAnswer(); }}>返回选题</button></div>
+      <p>{queue.length}项练习 · {roundErrors.length ? `${roundErrors.length}项待批改或再练` : "本组已独立答对"}</p>
+      <div className="dictation-actions">{roundErrors.length > 0 && <button type="button" className="primary" onClick={() => start(roundErrors)}>继续练习</button>}<button type="button" className="secondary" onClick={() => { stop(); void live.current?.close(); setQueue([]); resetAnswer(); }}>返回选题</button></div>
     </div> : <div className="dictation-exercise">
       <div className="dictation-meta"><span>{item.mode === "words" ? "词与短语" : "句子精听"} · {position + 1} / {queue.length}</span><button type="button" onClick={() => { stop(); void live.current?.close(); setQueue([]); resetAnswer(); }}>结束本组</button></div>
       <div className={`dictation-audio is-${playback}`}>
@@ -375,22 +405,23 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       {notice && <p className="dictation-notice" role="alert">{notice}</p>}
       {!submitted && !revealed && <div className="dictation-answer-mode">
         <div className="segmented" aria-label="作答方式">
-          <button type="button" aria-pressed={attempt.answerMode === "typed"} onClick={() => { stop(); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "typed" }); }}>键盘作答</button>
-          <button type="button" aria-pressed={attempt.answerMode === "spelled"} disabled={item.mode !== "words" || liveUnconfirmed} onClick={() => { stop(); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "spelled" }); }}>逐字母拼读</button>
+          <button type="button" aria-pressed={paperMode} onClick={() => { stop(); setPaperMode(!paperMode); }}>纸上作答</button>
+          <button type="button" aria-pressed={!paperMode && attempt.answerMode === "typed"} onClick={() => { stop(); setPaperMode(false); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "typed" }); }}>键盘作答</button>
+          <button type="button" aria-pressed={!paperMode && attempt.answerMode === "spelled"} disabled={item.mode !== "words" || liveUnconfirmed} onClick={() => { stop(); setPaperMode(false); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "spelled" }); }}>逐字母拼读</button>
         </div>
-        {attempt.answerMode === "spelled" && <>
+        {!paperMode && attempt.answerMode === "spelled" && <>
           <p className="dictation-note">{captureLabel} · 点按钮后才开启麦克风。逐个说出字母，词间说“空格”；识别后先确认文字。</p>
           {attempt.phase === "capturing" ? <button className="secondary" type="button" disabled={captureFinishing || liveSnapshot?.phase === "connecting"} onClick={() => void finishSpelling()}><Square size={16} />{captureFinishing ? "正在整理拼读…" : liveSnapshot?.phase === "connecting" ? "正在连接…" : "结束拼读"}</button> : <button className="secondary" type="button" disabled={!heard || liveUnconfirmed} onClick={() => void beginSpelling()}><Mic size={16} />{liveSnapshot?.phase === "connected" ? "开始拼读" : "开启 Live 并开始拼读"}</button>}
           {attempt.phase === "capturing" && <button type="button" className="secondary" onClick={stop}>取消拼读</button>}
         </>}
       </div>}
       {hintVisible && <p className="dictation-notice">提示：{item.hint || "当前题目没有额外提示。"} · 本题作为辅助练习，不计入独立掌握。</p>}
-      <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
+      {paperMode ? <div className="dictation-paper-progress"><p className="dictation-note">在纸上写下第 {position + 1} 题。听完后可拍照，核对识别文字再批改。</p><button type="button" className="primary" disabled={!heard} onClick={() => { stop(); if (position + 1 >= queue.length) void live.current?.close(); setPosition(position + 1); resetAnswer(queue[position + 1]); }}>写好了，下一题</button></div> : <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
         <label htmlFor="voice-dictation-answer">{item.mode === "words" ? "写下听到的词或短语" : "写下听到的句子"}</label>
         <textarea ref={input} id="voice-dictation-answer" lang="en" autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} rows={item.mode === "words" ? 2 : 3} maxLength={3000} value={answer} disabled={submitted || attempt.phase === "capturing"} placeholder="Type what you hear…" onChange={(event) => apply({ type: "edit", attemptId: attemptRef.current.id, answer: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
         {attempt.answerMode === "spelled" && attempt.phase === "confirming" && <button className="secondary" type="button" disabled={!answer.trim()} onClick={() => apply({ type: "confirm", attemptId: attemptRef.current.id })}>确认这些字母</button>}
         {!submitted && !revealed && <div className="dictation-actions"><button className="primary" type="submit" disabled={!canSubmitDictation(attempt)}>核对答案</button><button className="secondary" type="button" onClick={showHint}>给我提示</button><button className="secondary" type="button" onClick={reveal}>显示答案</button></div>}
-      </form>
+      </form>}
       {(revealed || submitted) && <div className="dictation-feedback">
         {result && <h3>{result.correct ? "听写正确" : `匹配 ${result.matched} / ${result.total} 词`}</h3>}
         <p className="dictation-target" lang="en">{item.text}</p><p className="dictation-note">{item.hint} · {item.source}</p>
@@ -402,6 +433,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       </div>}
     </div>}
     </div>
+    {queue.length > 0 && <PaperDictation items={queue} heardItemIds={heardItemIds} temporary={temporary} accountScope={accountScope} contextEpoch={contextEpoch} onGraded={({ correct, total }) => { if (!temporary && accountScope) void recordLearningActivity({ eventId: `paper-${attemptRef.current.id}`, kind: "dictation", title: "纸上听写批改", summary: "识字经你确认；纸上批改作为辅助练习", refIds: queue.filter((row) => heardItemIds.includes(row.id)).map((row) => row.wordId || row.id), counts: { total, correct, assisted: total } }, { accountScope }); }} />}
   </section>;
 }
 export default DictationPanel;

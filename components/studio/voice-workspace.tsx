@@ -7,7 +7,8 @@ import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { NativeLiveSession, appendTranscript, feedbackTranscript, readLocalVoiceHistory, saveLocalVoiceRecord, deleteLocalVoiceRecord, voiceRequest, type LocalVoiceHistory, type TranscriptTurn, type VoiceFeedback, type VoiceRecord, type VoiceSnapshot, type VoiceStatus } from "@/lib/voice/client";
 import { localPracticeGeneration, practiceGenerationCurrent, type PracticeGeneration } from "@/lib/local-practice-generation";
 import { VOICE_LEVELS, VOICE_TOPICS, getVoiceTopic, type VoiceLevel } from "@/lib/voice/curriculum";
-import { DictationPanel } from "./voice/dictation-panel";
+import { recordLearningActivity } from "@/lib/learning-journal-client";
+import { DictationPanel, type PreparedDictationPlan } from "./voice/dictation-panel";
 import { LearningMemoryPanel, useLearningMemory } from "./voice/learning-memory";
 import { PracticeDiscussion, type DiscussionMessage } from "./voice/practice-discussion";
 import { VoiceDialog } from "./voice/voice-dialog";
@@ -20,6 +21,7 @@ type RecordMeta = Pick<VoiceRecord, "id" | "createdAt" | "topicId" | "level" | "
 
 export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initialTab = "speaking" }: { entries: LexiconIndexEntry[]; onClose: () => void; onOpenSettings: () => void; initialTab?: "speaking" | "dictation" }) {
   const privacy = useSyncExternalStore(learningContextStore.subscribe, learningContextStore.get, learningContextStore.getServerSnapshot);
+  const [preparedDictation, setPreparedDictation] = useState<PreparedDictationPlan | null>(null);
   const [dictationLive, setDictationLive] = useState(false);
   const [dictationUnconfirmed, setDictationUnconfirmed] = useState(false);
   const [closeBusy, setCloseBusy] = useState(false);
@@ -83,7 +85,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   }, []);
   useEffect(() => {
     mounted.current = true;
-    const transport = new NativeLiveSession({ onState: (state) => { if (mounted.current) { setSnapshot(state); setHasPendingClose(transport.hasPendingClose); } }, onTranscript: (turn) => { if (mounted.current) setTranscript((current) => appendTranscript(current, turn)); } });
+    const transport = new NativeLiveSession({ onDictationPlan: (plan) => { if (mounted.current) setPreparedDictation(plan); }, onState: (state) => { if (mounted.current) { setSnapshot(state); setHasPendingClose(transport.hasPendingClose); } }, onTranscript: (turn) => { if (mounted.current) setTranscript((current) => appendTranscript(current, turn)); } });
     client.current = transport;
     queueMicrotask(() => { if (mounted.current) { try { setCaptions(localStorage.getItem(CAPTIONS_KEY) !== "hidden"); } catch { setStorageError("当前浏览器不允许保存本机记录。"); } void refreshStatus(); } });
     let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
@@ -100,6 +102,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     if (!policy || policy.temporary || privacy.temporary || !privacy.memory || policy.scope !== privacy.memory.accountScope || !["ended", "error"].includes(snapshot.phase) || !recordMeta || !transcript.length || saved) return;
     const record: VoiceRecord = { ...recordMeta, contextRevision: policy.revision, seconds: snapshot.seconds, transcript, discussion, ...(feedback ? { feedback } : {}) };
     setSaved(true);
+    void recordLearningActivity({ eventId: `voice-${record.id}`, kind: "voice", title: record.customTopic || getVoiceTopic(record.topicId).title, summary: [record.goal, ...record.transcript.filter((turn) => turn.role === "user").slice(-3).map((turn) => turn.text.slice(0, 100))].filter(Boolean).join(" · ").slice(0, 400), refIds: [], counts: { seconds: record.seconds, turns: record.transcript.filter((turn) => turn.role === "user").length } }, { accountScope: policy.scope });
     void saveLocalVoiceRecord(policy, record, () => {
       const current = learningContextStore.get();
       return sessionPolicy.current === policy && !current.temporary && current.memory?.accountScope === policy.scope;
@@ -129,7 +132,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
       if (previous && (previous.epoch !== current.epoch || previous.generation !== current.generation)) {
         void client.current?.end("学习记忆或隐私设置已改变，本机语音已停止。请确认关闭后重新开始。");
         feedbackAbort.current?.abort(); planAbort.current?.abort(); planPending.current = false;
-        setFeedbackBusy(false); setPlanBusy(false); setPlans([]); setFeedback(null); setDiscussion([]); setSaved(true);
+        setFeedbackBusy(false); setPlanBusy(false); setPlans([]); setPreparedDictation(null); setFeedback(null); setDiscussion([]); setSaved(true);
         if (previous.scope !== current.scope || previous.temporary !== current.temporary || previous.generation !== current.generation) {
           setRecordMeta(null); sessionPolicy.current = null;
           setTranscript([]); setRecordId(null); setHistory([]); setDeletedRecord(null);
@@ -371,9 +374,10 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
               {storageError && <p role="alert" className="voice-inline-error">{storageError}</p>}
             </div>
           )}
+          {preparedDictation?.items.length ? <div className="voice-prepared-dictation" role="status"><span>已根据对话准备 {preparedDictation.items.length} 项听写</span><button className="primary" onClick={async () => { await client.current?.end("准备进入听写，本次口语已停止。"); if (client.current?.hasPendingClose) return; setTab("dictation"); }}>进入听写 <ArrowRight size={16} /></button></div> : null}
         </section>
         <section className="voice-dictation-stage" hidden={tab !== "dictation"} aria-label="词句听写">
-          <DictationPanel entries={entries} active={tab === "dictation"} temporary={privacy.temporary} accountScope={privacy.memory?.accountScope} contextEpoch={privacy.epoch} learningPreferences={{ preferredSpeed: privacy.memory?.enabled && !privacy.temporary ? (privacy.memory.notes.find((note) => note.id === "dictation-speed")?.text === "听写默认使用慢速朗读。" ? "slow" : "normal") : undefined }} onLiveActiveChange={setDictationLive} onLiveUnconfirmedChange={setDictationUnconfirmed} />
+          <DictationPanel preparedPlan={preparedDictation} conversationContext={[...transcript.filter((turn) => turn.role === "user").slice(-6).map((turn) => turn.text), ...discussion.filter((turn) => turn.role === "user").slice(-3).map((turn) => turn.text)].join("\n").slice(-1800)} entries={entries} active={tab === "dictation"} temporary={privacy.temporary} accountScope={privacy.memory?.accountScope} contextEpoch={privacy.epoch} learningPreferences={{ preferredSpeed: privacy.memory?.enabled && !privacy.temporary ? (privacy.memory.notes.find((note) => note.id === "dictation-speed")?.text === "听写默认使用慢速朗读。" ? "slow" : "normal") : undefined }} onLiveActiveChange={setDictationLive} onLiveUnconfirmedChange={setDictationUnconfirmed} />
         </section>
       </main>
 

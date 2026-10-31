@@ -22,9 +22,9 @@ function setup() {
   requestHeaders.set('oai-authenticated-user-email', 'voice-owner@example.test');
   return db;
 }
-async function configure() {
+async function configure(model = 'gpt-6.1-terra') {
   const { POST } = await import('../app/api/ai/config/route.ts');
-  const response = await POST(json({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: fakeKey, timeoutSeconds: 25, dailyLimit: 100, dailyTokenBudget: 200000 }, { 'x-vocab-action': 'settings' }));
+  const response = await POST(json({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model, apiKey: fakeKey, timeoutSeconds: 25, dailyLimit: 100, dailyTokenBudget: 200000 }, { 'x-vocab-action': 'settings' }));
   assert.equal(response.status, 200, await response.clone().text());
 }
 function wav() { const bytes = new Uint8Array(44); bytes.set(new TextEncoder().encode('RIFF')); bytes.set(new TextEncoder().encode('WAVE'), 8); return Buffer.from(bytes).toString('base64'); }
@@ -122,6 +122,9 @@ test('Live uses BYOK fixed host, single active session, durable ownership and id
   assert.equal(calls[0].body.session.store, false);
   assert.equal(calls[0].body.transport.sdp, voiceInput().sdp, 'browser SDP, including its final CRLF, must reach OpenAI unchanged');
   assert.equal(calls[0].body.session.delegation.responses.model, 'gpt-6.1-terra');
+  assert.equal(calls[0].body.session.delegation.responses.tools[0].name, 'prepare_dictation');
+  assert.equal(calls[0].body.session.delegation.responses.parallel_tool_calls, false);
+  assert.match(calls[0].body.session.instructions, /SpawnThinking/);
   assert.equal(JSON.stringify(session).includes(fakeKey), false);
   assert.equal((await createVoiceSession(json(voiceInput()))).status, 409);
   assert.equal(calls.length, 1, 'single-active admission happens before paid API');
@@ -275,4 +278,18 @@ test('cancellation after session persistence closes the known upstream session',
   assert.equal(finalized, true);
   const userKey = await authenticatedUserKey();
   assert.equal(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key = ?').get(`voice-session:${userKey}:live_cancelled_test`).request_count, 0);
+});
+
+
+test('Live always uses Terra independently of the general text-model setting', async t => {
+  setup(); await configure('gpt-6.1-sol');
+  const originalFetch = globalThis.fetch; t.after(() => { globalThis.fetch = originalFetch; });
+  let upstream;
+  globalThis.fetch = async (_url, init) => { upstream = JSON.parse(init.body); return Response.json({ session: { id: 'live_terra_bound' }, transport: { type: 'webrtc', sdp: 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111' } }); };
+  const status = await (await voiceStatus(new Request('https://app.test/api/voice/status'))).json();
+  assert.equal(status.models.text, 'gpt-6.1-terra');
+  const result = await createVoiceSession(json(voiceInput()));
+  assert.equal(result.status, 200, await result.clone().text());
+  assert.equal(upstream.session.delegation.responses.model, 'gpt-6.1-terra');
+  assert.equal(upstream.session.delegation.responses.tools[0].name, 'prepare_dictation');
 });

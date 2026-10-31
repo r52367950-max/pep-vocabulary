@@ -18,6 +18,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { refreshLearningContext } from "@/lib/learning-context-client";
 import { useBackGuard } from "@/hooks/use-back-guard";
 import { useVocabulary } from "@/hooks/use-vocabulary";
 import { notify, useToastMessage } from "@/hooks/toast-store";
@@ -109,6 +110,7 @@ const Toaster = memo(function Toaster() {
 
 export default function VocabApp() {
   const data = useVocabulary();
+  useEffect(() => { void refreshLearningContext().catch(() => undefined); }, []);
   const [view, setView] = useState<View>("today");
   // Views stay mounted once visited (hidden with <Activity>), keeping search, page and open article.
   const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set(["today"]));
