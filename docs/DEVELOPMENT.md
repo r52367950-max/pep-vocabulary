@@ -8,6 +8,7 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | --- | --- |
 | 类型检查 | `npm run typecheck` |
 | 静态检查 | `npm run lint` |
+| 生产依赖安全审计 | `npm run audit:prod`；high/critical 漏洞使命令失败 |
 | 全部单元/回归测试 | `npm run test:unit` |
 | 指定回归测试 | `node --import ./tests/register.mjs --test tests/sync.test.mjs`，替换为受影响的测试文件 |
 | 生产构建及产物校验 | `npm run build` |
@@ -22,6 +23,8 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 `test:runtime` 使用本地临时 D1 和测试凭据，不调用真实 AI 服务；不验证生产认证网关、真实服务商或物理设备行为。
 
 `npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
+
+`.npmrc` 的 `audit=false` 只关闭安装时的自动审计；安全检查显式运行 `npm run audit:prod`。依赖升级使用已审核的精确版本和锁文件，并验证生产构建与 Worker smoke；审计通过不能代替运行兼容性验证。
 
 ## 按影响选择验证
 

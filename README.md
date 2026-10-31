@@ -1,8 +1,10 @@
-# 词迹 2.8.0
+# 词迹 2.8.2
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
 [打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+
+2.8.2 修复 Live 单活锁的异常恢复：关闭未确认时仍限制并发，超过有界宽限期才回收；不可恢复的错误清理凭据，临时错误采用有上限的退避重试。清空本机数据包含 AI 回答缓存，并阻止进行中的请求写回；云端备份按 D1 单行限制检查 UTF-8 大小。同步修正身份网关部署说明，升级 Next、sharp 和 source-map-js 安全补丁，并新增 `npm run audit:prod`。本次仓库修复不包含部署。
 
 2.8.0 加入语音练习、听写、跨 AI 功能共享的账号学习记忆，以及需要确认的 Live 听写输入；保留本地优先、临时练习与账号隔离。详见 [共享学习记忆](docs/SHARED-LEARNING-MEMORY.md)、[语音接口](docs/VOICE_API.md)及[语音设计](docs/VOICE_DESIGN.md)。本分支同时纳入下述 2.5.1/2.5.2 修复；GitHub 更新不代表站点已重新部署。
 
@@ -46,6 +48,7 @@ npm run dev
 | `npm test` | 完整验收入口；日常按[改动影响选择检查](docs/DEVELOPMENT.md) |
 | `npm run typecheck` / `npm run test:unit` | 类型检查 / 单元与回归测试 |
 | `npm run lint` | ESLint 检查 |
+| `npm run audit:prod` | 显式审计生产依赖；存在 high/critical 漏洞时失败，不受安装时关闭自动审计的设置影响 |
 | `npm run benchmark -- <baseline-ref>` | 对照指定历史提交；本地需已取得该提交 |
 | `npm run build` | 有超时限制的生产构建与产物验证 |
 | `npm run data:audit` | 审核发布词库与来源字段 |

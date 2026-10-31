@@ -6,7 +6,7 @@ import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { sqliteD1 } from './sqlite-d1.mjs';
 import { deadlineNamespace } from './voice-deadline-env.mjs';
-import { armVoiceDeadline, VOICE_PENDING_EXPIRY } from '../lib/voice/deadline.ts';
+import { armVoiceDeadline, voicePendingExpiry } from '../lib/voice/deadline.ts';
 import { createVoiceSession, closeVoiceSession, voiceStatus } from '../lib/voice/server.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
 
@@ -56,7 +56,7 @@ test('one-second server deadline closes after eviction without any browser code 
   const now = Date.now(), oldNow = Date.now; t.after(() => { Date.now = oldNow; });
   Date.now = () => now;
   const until = now + 61_000, id = 'live_one_second';
-  for (const bucket of [`voice-active:${userKey}`, `voice-session:${userKey}:${id}`]) db.prepare('INSERT INTO ai_rate_limits VALUES (?, ?, ?)').run(bucket, until, VOICE_PENDING_EXPIRY);
+  for (const bucket of [`voice-active:${userKey}`, `voice-session:${userKey}:${id}`]) db.prepare('INSERT INTO ai_rate_limits VALUES (?, ?, ?)').run(bucket, until, voicePendingExpiry(until));
   await armVoiceDeadline(userKey, id, until, key);
   let entry = env.VOICE_DEADLINES.entries.get(`${userKey}:${id}`);
   assert.equal(entry.state.storage.alarm, now + 1000);
@@ -72,7 +72,7 @@ test('one-second server deadline closes after eviction without any browser code 
   assert.deepEqual(await entry.state.storage.get('session'), { closed: true });
   assert.equal(entry.state.storage.alarm, null);
 });
-test('failed deadline closure retains nonexpiring admission and durably retries after restart', async t => {
+test('failed deadline closure retains bounded admission and durably retries after restart', async t => {
   const { db, userKey } = await setup(); const calls = mockProvider(t);
   const response = await createVoiceSession(post({ ...input, diagnostic: true }));
   assert.equal(response.status, 200, await response.clone().text());
@@ -84,10 +84,11 @@ test('failed deadline closure retains nonexpiring admission and durably retries 
   globalThis.fetch = async () => new Response(null, { status: 503 });
   await assert.rejects(entry.object.alarm());
   assert.equal(entry.state.storage.alarm, Date.now() + 15_000);
-  assert.equal(db.prepare('SELECT expires_at FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).expires_at, VOICE_PENDING_EXPIRY);
+  assert.equal(db.prepare('SELECT expires_at FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).expires_at, voicePendingExpiry(record.until));
   assert.equal((await createVoiceSession(post(input))).status, 409);
   assert.equal((await entry.state.storage.get('session')).until, record.until);
-  globalThis.fetch = goodProvider; entry = env.VOICE_DEADLINES.restart(name);
+  const retryAt = entry.state.storage.alarm;
+  globalThis.fetch = goodProvider; Date.now = () => retryAt; entry = env.VOICE_DEADLINES.restart(name);
   await entry.object.alarm();
   assert.equal(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count, 0);
   assert.equal(calls.length, 2);
@@ -176,7 +177,7 @@ test('finalized D1 row fences stale cleanup when a new session has an identical 
   assert.equal((await closeVoiceSession(post({ sessionId }))).status, 503);
   assert.equal(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count, 0);
   db.prepare('UPDATE ai_rate_limits SET request_count=? WHERE bucket_key=?').run(record.until, `voice-active:${userKey}`);
-  db.prepare('INSERT INTO ai_rate_limits VALUES (?, ?, ?)').run(`voice-session:${userKey}:live_new_collision`, record.until, VOICE_PENDING_EXPIRY);
+  db.prepare('INSERT INTO ai_rate_limits VALUES (?, ?, ?)').run(`voice-session:${userKey}:live_new_collision`, record.until, voicePendingExpiry(record.until));
   entry.state.storage.transaction = originalTransaction;
   const oldNow = Date.now; t.after(() => { Date.now = oldNow; }); Date.now = () => record.until;
   await entry.object.alarm();

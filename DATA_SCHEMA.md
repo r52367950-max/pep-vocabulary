@@ -68,13 +68,13 @@ IndexedDB：`pep-vocab-studio`，版本 4；用户数据 schema `1.2.0`。
 
 备份根对象、词卡、FSRS、复习事件、scheduler log、设置及作文记录的固定字段拒绝未知键；旧版可缺少 `learning_steps`，scheduler log 只保留已知的日期和数值字段。尚无具体词单格式的 `lists` 与作文批改结果的扩展字段保持兼容，但整份备份在迁移及递归比较前限制为最多 16 层、200 万个成员、单字符串 20 万字符和累计 2,500 万字符（包含对象键）。超过限制会在打开恢复事务前拒绝。
 
-AI 回答缓存在另一个 IndexedDB `pep-vocab-ai-cache`（`results` 表，按“任务 + 输入”作键，最多约 600 条），不属于学习数据，不进入备份或同步。
+AI 回答缓存在另一个 IndexedDB `pep-vocab-ai-cache`，不进入学习备份或同步。数据库自动从版本 1 升级到版本 2：保留 `results` 表与账号、学习记忆版本、任务和输入绑定的缓存键（最多约 600 条），新增 `metadata` 表保存清除代次。清空缓存会在一个事务内更换代次并删除结果；进行中的旧请求无法写回。全局清空本机数据也等待此缓存清空；仅清除 AI 缓存不会删除口语记录或改变画像授权。已有页面若阻止数据库升级，需要关闭旧页面后重试。
 
 个人文章保存在独立 IndexedDB `pep-vocab-personal-readings`（版本 1）的 `index` 与 `articles` 表，可逐篇导出 Markdown；不包含在学习备份与 D1 快照中。
 
 ## D1 同步
 
-`sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是站点身份邮箱的 SHA-256；payload 上限 5 MB；服务端同时校验请求与备份 payload 的 schema。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
+`sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是受信任网关注入身份邮箱的 SHA-256；规范化 JSON payload 上限为 1,900,000 个 UTF-8 字节（1.9 MB）。[D1 的字符串、BLOB 及整行上限为 2,000,000 字节](https://developers.cloudflare.com/d1/platform/limits/)（2026-10-31 核对）；请求封装另限 4096 字节，持久化文本合计限制为 1,950,000 字节，给整数、行编码及元数据留出空间。服务端同时校验请求与备份 payload 的 schema。超限返回清楚的 413，建议导出本机文件；已有较大快照仍可完整读取。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
 
 ## AI 接口配置
 

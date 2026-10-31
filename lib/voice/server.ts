@@ -8,7 +8,7 @@ import { reserveTokens, settleTokens } from "@/lib/assistant/usage";
 import { buildTutorInstructions, VOICE_TOPICS, type VoiceLevel } from "./curriculum";
 import { SPEECH_MODEL, VOICE_MODEL, closeOpenAISession, estimatedSpeechSeconds, speechAudio, speechDurationSeconds, voiceOpenAI } from "./openai";
 import { liveLearningContext, voiceCustomContext } from "./coach-server";
-import { armVoiceDeadline, closeVoiceDeadline, requireVoiceDeadlines, VOICE_PENDING_EXPIRY } from "./deadline";
+import { armVoiceDeadline, closeVoiceDeadline, requireVoiceDeadlines, finalizeVoiceLease, irrecoverableVoiceClose, voicePendingExpiry, voiceLeaseExpired, VOICE_CLOSE_GRACE_MS, VOICE_FINALIZED_TTL_MS } from "./deadline";
 
 export const VOICE_DAILY_SECONDS = 3600;
 const SESSION_ID = /^[A-Za-z0-9_-]{4,200}$/;
@@ -70,13 +70,15 @@ async function claimActive(userKey: string, seconds: number, now = Date.now()) {
   try {
     const row = await database().prepare(`INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, ?, ?)
       ON CONFLICT(bucket_key) DO UPDATE SET request_count = excluded.request_count, expires_at = excluded.expires_at
-      WHERE request_count = 0 RETURNING request_count`).bind(activeKey(userKey), until, VOICE_PENDING_EXPIRY).first();
+      WHERE request_count = 0 OR request_count <= ? RETURNING request_count`)
+      .bind(activeKey(userKey), until, voicePendingExpiry(until), now - VOICE_CLOSE_GRACE_MS).first();
     if (!row) throw new AssistantInputError("voice_session_active", "已有一个口语会话，请先结束后再开始。", 409);
     return until;
   } catch (error) { if (error instanceof AssistantInputError) throw error; throw unavailable(); }
 }
 async function releaseActive(userKey: string, until: number) {
-  await database().prepare("UPDATE ai_rate_limits SET request_count = 0 WHERE bucket_key = ? AND request_count = ?").bind(activeKey(userKey), until).run();
+  await database().prepare("UPDATE ai_rate_limits SET request_count = 0, expires_at = ? WHERE bucket_key = ? AND request_count = ?")
+    .bind(Date.now() + VOICE_FINALIZED_TTL_MS, activeKey(userKey), until).run();
 }
 
 export async function voiceStatus(request: Request) {
@@ -92,15 +94,21 @@ export async function voiceStatus(request: Request) {
     // Production D1 limits LIKE/GLOB patterns; a hashed account prefix exceeds it.
     // All permitted session-ID characters sort below '~'; ownership stays exact.
     const prefix = `voice-session:${userKey}:`;
-    const active = await database().prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key >= ? AND bucket_key < ? AND request_count > 0 ORDER BY expires_at DESC LIMIT 1")
-      .bind(prefix, `${prefix}~`).first<{ bucket_key: string; request_count: number }>();
+    const active = await database().prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key >= ? AND bucket_key < ? AND request_count > 0 AND request_count > ? ORDER BY expires_at DESC LIMIT 1")
+      .bind(prefix, `${prefix}~`, Date.now() - VOICE_CLOSE_GRACE_MS).first<{ bucket_key: string; request_count: number }>();
+    const lease = await readBucket(database(), activeKey(userKey));
+    const pendingUntil = lease > 0 && !voiceLeaseExpired(lease) ? lease : null;
     const activeSession = active ? { sessionId: active.bucket_key.slice(`voice-session:${userKey}:`.length), expiresAt: new Date(active.request_count - 60_000).toISOString() } : null;
-    const common = { models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: "gpt-6.1-terra" }, readiness: "configuration-only", activeSession, dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。到时由服务端持久化闹钟请求关闭；关闭未确认时保留单活限制并持续重试。" };
+    const common = { models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: "gpt-6.1-terra" }, readiness: "configuration-only", activeSession,
+      recoveryAt: pendingUntil ? new Date(voicePendingExpiry(pendingUntil)).toISOString() : null,
+      dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。服务端到期关闭，未确认时有上限地重试；不可恢复错误或最长一小时宽限期后终止本地会话管理，不代表服务商已确认关闭。" };
     try {
       stage = "configuration-read";
       const config = await officialConfig(request);
       requireVoiceDeadlines();
-      return privateJson({ configured: true, ready: usedSeconds < VOICE_DAILY_SECONDS, ...common, models: { ...common.models, text: config.model }, ...(usedSeconds >= VOICE_DAILY_SECONDS ? { reason: "今天的语音时长预算已用完，次日北京时间 0 点重置。", reasonCode: "voice_budget_exhausted" } : {}) });
+      return privateJson({ configured: true, ready: usedSeconds < VOICE_DAILY_SECONDS && !pendingUntil, ...common, models: { ...common.models, text: config.model },
+        ...(pendingUntil ? { reason: "上次口语仍在关闭或恢复中，宽限期结束前不能开始新会话。", reasonCode: "voice_session_active" } :
+          usedSeconds >= VOICE_DAILY_SECONDS ? { reason: "今天的语音时长预算已用完，次日北京时间 0 点重置。", reasonCode: "voice_budget_exhausted" } : {}) });
     } catch (error) {
       if (error instanceof Error && "code" in error) return privateJson({ configured: error.code !== "assistant_not_configured", ready: false, ...common, reason: error.message, reasonCode: error.code });
       throw error;
@@ -116,6 +124,7 @@ export async function createVoiceSession(request: Request) {
   let createdId: string | null = null;
   let config: UserRuntimeConfig | null = null;
   let deadlineArmed = false;
+  let creationAttempted = false;
   try {
     await voiceIdentity(request);
     const body = await readJsonRequest(request) as Record<string, unknown>;
@@ -139,6 +148,7 @@ export async function createVoiceSession(request: Request) {
     const instructions = body.diagnostic === true ? "This is a brief voice connection test. Say one short English greeting when prompted, then remain silent. Do not ask questions or continue talking." : purpose === "dictation" ? "This is a dictation control session. Listen only to the learner spelling words or saying operation commands such as repeat, next or stop. Do not start a free conversation, ask questions, read or guess a target answer, grade spelling, or save memories. Target text is intentionally unavailable. The app handles exact playback and grading separately. Do not claim that a command has executed." : `${buildTutorInstructions(input)}\n${liveLearningContext(context!.memory, custom)}`;
     // Text delegation is metered independently from audio. Unknown final usage retains this estimate.
     await reserveTokens(config.userKey, config.dailyTokenBudget, instructions, Math.min(30_000, maxSeconds * 24));
+    creationAttempted = true;
     const payload = await voiceOpenAI(request, config.apiKey, "/v1/live/sessions", {
       session: { model: VOICE_MODEL, instructions, store: false, audio: { output: { voice: "marin" } },
         delegation: { type: "responses", responses: { model: config.model, instructions, max_output_tokens: 1024 } } },
@@ -151,12 +161,17 @@ export async function createVoiceSession(request: Request) {
     await armVoiceDeadline(config.userKey, createdId, lock.until, config.apiKey);
     deadlineArmed = true;
     await database().prepare("INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, ?, ?)")
-      .bind(sessionKey(config.userKey, createdId), lock.until, VOICE_PENDING_EXPIRY).run();
+      .bind(sessionKey(config.userKey, createdId), lock.until, voicePendingExpiry(lock.until)).run();
     if (request.signal.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
     return privateJson({ ...(context ? contextMetadata(context) : {}), sessionId: createdId, sdp: transport.sdp, model: VOICE_MODEL, maxSeconds, expiresAt: new Date(lock.until - 60_000).toISOString() });
   } catch (error) {
     // A successfully created upstream session must not be orphaned when persistence fails.
-    let closed = !createdId;
+    // A timeout, cancellation, 5xx or malformed successful reply can hide an
+    // upstream-created session ID. Keep its finite lease just like a Worker
+    // interrupted before arm; only a definitive rejection proves no admission.
+    const rejected = error instanceof AssistantUpstreamError && error.providerStatus !== null &&
+      error.providerStatus >= 400 && error.providerStatus < 500 && error.providerStatus !== 408;
+    let closed = !createdId && (!creationAttempted || rejected);
     if (createdId && config) {
       if (!deadlineArmed && lock) {
         try { await armVoiceDeadline(config.userKey, createdId, lock.until, config.apiKey); deadlineArmed = true; }
@@ -167,11 +182,11 @@ export async function createVoiceSession(request: Request) {
           await closeOpenAISession(new Request(request.url), config.apiKey, createdId, 8_000);
         }
         closed = true;
-      } catch { /* Retain the lock and durable retry until termination is confirmed. */ }
+      } catch (closeError) { if (irrecoverableVoiceClose(closeError)) closed = true; /* Otherwise retain the bounded recovery lease. */ }
     }
     if (lock && closed) {
-      if (createdId) await database().prepare("UPDATE ai_rate_limits SET request_count = 0 WHERE bucket_key = ?").bind(sessionKey(lock.userKey, createdId)).run().catch(() => undefined);
-      await releaseActive(lock.userKey, lock.until).catch(() => undefined);
+      if (createdId) await finalizeVoiceLease(database(), lock.userKey, createdId, lock.until).catch(() => undefined);
+      else await releaseActive(lock.userKey, lock.until).catch(() => undefined);
     }
     return assistantErrorResponse(error);
   }
@@ -186,17 +201,27 @@ export async function closeVoiceSession(request: Request) {
     await voiceLimit(userKey, "close", 12);
     const row = await database().prepare("SELECT request_count FROM ai_rate_limits WHERE bucket_key = ?").bind(sessionKey(userKey, id)).first<{ request_count: number }>();
     if (!row) throw new AssistantInputError("voice_session_not_found", "当前账号没有这个口语会话。", 404);
+    if (env.VOICE_DEADLINES) {
+      const result = await closeVoiceDeadline(userKey, id);
+      if (result) return privateJson(result);
+    }
     if (row.request_count === 0) return privateJson({ ok: true });
-    if (env.VOICE_DEADLINES && await closeVoiceDeadline(userKey, id)) return privateJson({ ok: true });
+    if (voiceLeaseExpired(row.request_count)) {
+      await finalizeVoiceLease(database(), userKey, id, row.request_count);
+      return privateJson({ ok: true, confirmed: false, terminal: true, reason: "grace_expired" });
+    }
     // Existing sessions from before durable deadlines still support owned close.
     const config = await officialConfig(request);
+    let confirmed = true;
     try { await closeOpenAISession(request, config.apiKey, id); }
-    catch (error) { if (!(error instanceof AssistantUpstreamError) || error.providerStatus !== 404) throw error; }
-    await database().batch([
-      database().prepare("UPDATE ai_rate_limits SET request_count = 0 WHERE bucket_key = ?").bind(sessionKey(config.userKey, id)),
-      database().prepare("UPDATE ai_rate_limits SET request_count = 0 WHERE bucket_key = ? AND request_count = ?").bind(activeKey(config.userKey), row.request_count),
-    ]);
-    return privateJson({ ok: true });
+    catch (error) {
+      if (!(error instanceof AssistantUpstreamError) || error.providerStatus !== 404) {
+        if (!irrecoverableVoiceClose(error)) throw error;
+        confirmed = false;
+      }
+    }
+    await finalizeVoiceLease(database(), userKey, id, row.request_count);
+    return privateJson({ ok: true, confirmed, terminal: !confirmed, ...(!confirmed ? { reason: "provider_rejected_close" } : {}) });
   } catch (error) { return assistantErrorResponse(error); }
 }
 

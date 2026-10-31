@@ -1,6 +1,6 @@
 # 安全加固：已实施项与待确认方案
 
-2026-09-24，基于 2.2.1（`58ac110`）。第一部分是本次已经实施并验证的加固；第二部分是需要所有者确认后才实施的方案。**服务端会话只有方案，没有实现；密钥版本化与轮换（B）、`public/_headers`（C.4）、Service Worker 来源检查（D）和依赖版本锁定（E）已在 2026-09-29 实施。**涉及线上身份、访问范围或生产数据的步骤，都要先征得所有者同意。
+初版于 2026-09-24，基于 2.2.1（`58ac110`）；下文同步容量与身份信任边界已按 2026-10-31 的现有代码更新。第一部分记录已实施的加固；第二部分保留后续方案。**应用仍没有独立验证登录的服务端会话；身份完全依赖部署网关。** 密钥版本化与轮换（B）、`public/_headers`（C.4）、Service Worker 来源检查（D）和依赖版本锁定（E）已在 2026-09-29 实施。涉及线上身份、访问范围或生产数据的操作按当前会话授权处理。
 
 ## 一、本次已实施
 
@@ -50,9 +50,9 @@ upgrade-insecure-requests   （仅 HTTPS）
 ### 2. 同步接口独立限流与错误规范化
 
 - 限流计数移到 `lib/http.ts` 的 `consumeRateLimit()`，AI 和同步共用。它复用已有的 `ai_rate_limits` 表，靠键前缀区分（`sync:minute:*`、`sync:write-day:*`），**不需要新迁移**。
-- `/api/sync`：同一身份每分钟最多 30 次请求（GET 与 POST 合计），每个 UTC 日最多 200 次写入。超限返回 `429`，带 `Retry-After`（秒）和 `{error:"云端同步请求过于频繁…", code:"rate_limited"}`。检查顺序：同源 → 身份 → 限流 → 读取请求体，超限时不读取 5 MB 请求体。
+- `/api/sync`：同一身份每分钟最多 30 次请求（GET 与 POST 合计），每个 UTC 日最多 200 次写入。超限返回 `429`，带 `Retry-After`（秒）和 `{error:"云端同步请求过于频繁…", code:"rate_limited"}`。检查顺序：同源 → 身份 → 限流 → 读取请求体，超限时不读取大请求体。
 - 限流存储不可用时返回 `503 storage_unavailable`（fail closed）。同步本来就依赖同一个 D1，这不会增加新的不可用场景；本地学习不受影响。
-- 同步错误的形状统一为 `{error: string, code: string}`，保留 `no-store` 和 `nosniff`。备份界面直接显示 `error`，所以它仍是字符串。`409` 的 `error` 保持 `identity-conflict`/`revision-conflict`；原有英文提示没有改动，其中含 `5 MB private-sync limit` 的文案受契约测试约束。
+- 同步错误的形状统一为 `{error: string, code: string}`，保留 `no-store` 和 `nosniff`。备份界面直接显示 `error`，所以它仍是字符串。`409` 的 `error` 保持 `identity-conflict`/`revision-conflict`。D1 的字符串、BLOB 和整行上限均为 [2,000,000 字节](https://developers.cloudflare.com/d1/platform/limits/)（2026-10-31 核对）；快照按序列化后的 UTF-8 限制为 1,900,000 字节，请求封装另有 4096 字节余量，所有持久化文本合计再限制为 1,950,000 字节，为行编码、整数及元数据留出空间。超出返回 `413 payload_too_large`，明确提示导出 JSON、本机记录保留；客户端也在上传前检查。此前已保存的较大快照仍可完整读取。
 - AI 路由保持原来的 `{ok:false, error:{code,message,retryable}}`，客户端依赖这个形状。AI 配置路由保持 `{error}`。统一两者需要同时改前端（`components/`），不在本次范围内。
 
 ### 3. 身份头信任边界（`app/chatgpt-auth.ts`）
@@ -60,7 +60,8 @@ upgrade-insecure-requests   （仅 HTTPS）
 - 邮箱格式校验：先去掉首尾空白，长度 3–254，只能有一个 `@` 且两侧非空；不得含空白、逗号、分号、`<>"\`、控制字符。逗号能识别出 `Headers.get()` 把重复头拼接后的值。网关不会发出这类值，所以对网关放行的用户没有影响。
 - 显示名：编码值最长 1024，解码后最长 200 且不含控制字符，否则回退为邮箱。
 - **用户键推导不变**：仍是 `sha256(email.trim().toLowerCase())`，没有加入 Unicode 规范化或别名折叠，已有快照和加密配置仍能找到（有测试证明）。
-- 可选开关 `IDENTITY_TRUSTED_HOSTS`（逗号分隔的主机名），**默认不设置，线上行为不变**。设置后，只有这些 Host 上的身份头有效。同一个 Worker 若在没有网关的域名（例如 `*.workers.dev`、预览域名）上被访问，伪造的身份头不会通过认证。启用前要先在线上确认网关转发给 Worker 的 `Host` 值，否则可能把所有者也挡在外面。
+- `IDENTITY_TRUSTED_HOSTS` 是**必须配置**的部署防护：逗号分隔的精确网关主机名，不含协议、路径、端口或通配符。缺失、空值或非法配置时拒绝全部私有 API 身份；没有 localhost 自动放行。上线前必须核对网关实际传入的 `Host`，避免拒绝合法用户。
+- **身份完全依赖网关剥离外部同名头，再注入已认证的 `oai-authenticated-user-email`。** 应用只检查邮箱格式与 Host 列表，不验证邮箱头的签名、密码或独立登录会话。`Host` 可以由直连客户端指定；允许列表不能证明请求来自网关。若部署入口不剥离这个头，攻击者在允许的 Host 上提供格式合法的任意邮箱即可伪造身份，访问该邮箱对应的云端备份和 AI 配置。因此必须关闭或保护绕过网关的 Worker / preview / 源站入口；其他托管环境必须先接入可信网关或服务端验证的会话/签名断言，不能仅配置域名就开放私有接口。
 
 ### 4. 复核结论：全部私有接口
 
@@ -68,7 +69,7 @@ upgrade-insecure-requests   （仅 HTTPS）
 
 | 防护 | 覆盖范围 | 证据 |
 | --- | --- | --- |
-| 缺失或伪造身份头 → 401 | 8 个路由、11 个方法，9 种异常身份值 | 单元测试；运行时（workerd）抽测 `/api/sync` |
+| 缺失、格式非法身份头或不受信任 Host → 401 | 私有路由；格式合法且 Host 匹配的邮箱仍依赖网关认证 | 单元测试；运行时（workerd）抽测 `/api/sync` |
 | 跨站 `Origin`、`Origin: null`、`Sec-Fetch-Site: cross-site` → 403 | 所有写方法 | 单元测试；运行时抽测 |
 | 超大请求体 → 413（声明的 `Content-Length` 和无长度的分块流） | 所有 POST，确认读取被中止 | 单元测试；运行时 20 MB 分块流 |
 | 同步超限 → 429 + `Retry-After` | GET/POST 每分钟上限，POST 每日上限 | 单元测试；运行时第 31 次请求 |
@@ -148,6 +149,8 @@ upgrade-insecure-requests   （仅 HTTPS）
 
 ### E. 依赖审计与版本锁定
 
+**2026-10-31，2.8.2 修复**：将 Next 与 ESLint 配置升级到审计建议的 `16.4.3`，sharp 升到 `0.35.5`，source-map-js 升到 `1.2.2`。sharp 覆盖项同时替换 Miniflare 工具链里固定的旧补丁版本，不新增运行时依赖。`npm run audit:prod` 显式执行 `npm audit --omit=dev --audit-level=high`，本次结果为 **0 个漏洞**；`.npmrc` 的 `audit=false` 不会跳过这个显式入口。框架仍为 Vinext `0.0.50`，兼容性以本轮类型检查、构建和 Worker smoke 为准；下述旧日期记录只说明当时状态。
+
 2026-09-24 的 `npm audit --omit=dev` 和 `npm audit` 都是 **0 个漏洞**（生产依赖 24 个，总计 636 个）。本次没有升级任何依赖，也没有改动 `package-lock.json`。
 
 `npm outdated` 显示的补丁或小版本更新（仅记录，是否升级由所有者决定）：`next` 16.3.5→16.3.6、`drizzle-orm` 0.45.2→0.45.3、`react`/`react-dom`/`react-server-dom-webpack` 19.2.8→19.3.0、`wrangler` 4.131.2→4.137.0、`@cloudflare/vite-plugin` 1.54.9→1.58.0、`@vitejs/plugin-rsc` 0.5.26→0.5.35。`vinext` 已有 1.0.0-beta，属于大版本，需单独评估 nonce 与缓存行为。
@@ -180,4 +183,4 @@ upgrade-insecure-requests   （仅 HTTPS）
    并加一项：`PUT /api/sync` 返回 405，响应带 `allow`。
 2. **`public/_headers`**：已实施，见 C.4。
 3. **`public/sw.js`、`lib/offline.ts`**：缓存范围不需要修改；`message` 来源检查已实施，见 D。
-4. **线上核实**：托管层是否已经添加 HSTS 等头部（避免重复或冲突）；网关转发的 `Host` 值（启用 `IDENTITY_TRUSTED_HOSTS` 之前必须确认）。
+4. **线上核实**：托管层是否已经添加 HSTS 等头部（避免重复或冲突）；必需的 `IDENTITY_TRUSTED_HOSTS` 是否与网关实际 `Host` 一致；外部 `oai-authenticated-user-email` 是否被剥离后重新注入；Worker / preview / 源站是否存在绕过网关的入口。
