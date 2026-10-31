@@ -49,6 +49,46 @@ export function normalizedSpeechText(text: string) {
   return (text.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) ?? []).map((token) => token.replace(/’/g, "'")).join(" ");
 }
 
+/** Use the same token boundaries as transcript verification, with a floor for
+ * long words, digit strings and unspaced non-ASCII prose. This is an admission
+ * estimate; validated audio duration can only increase its charge. */
+export function estimatedSpeechSeconds(text: string, rate: number) {
+  const normalized = normalizedSpeechText(text);
+  const tokens = normalized ? normalized.split(" ").length : 0;
+  const characters = [...normalized.replace(/[\s']/g, "")].length;
+  const expanded = (normalized.match(/\p{N}|[^\x00-\x7f]/gu) ?? []).length;
+  return Math.max(4, Math.ceil(Math.max(tokens, Math.ceil(characters / 5), expanded) * 0.8 / rate));
+}
+
+/** Parse complete PCM/IEEE-float RIFF WAVs, including ancillary chunks. Unknown
+ * or inconsistent formats retain the pre-request estimate; never guess a rate
+ * from an untrusted header or let a truncated data chunk reduce accounting. */
+export function speechDurationSeconds(bytes: Uint8Array): number | null {
+  if (bytes.length < 44) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tag = (offset: number) => String.fromCharCode(...bytes.subarray(offset, offset + 4));
+  if (tag(0) !== "RIFF" || tag(8) !== "WAVE" || view.getUint32(4, true) + 8 !== bytes.length) return null;
+  let byteRate = 0, blockAlign = 0, dataBytes = 0, chunks = 0;
+  for (let offset = 12; offset < bytes.length;) {
+    if (offset + 8 > bytes.length || ++chunks > 1000) return null;
+    const kind = tag(offset), size = view.getUint32(offset + 4, true), start = offset + 8;
+    const end = start + size, next = end + (size % 2);
+    if (end > bytes.length || next > bytes.length) return null;
+    if (kind === "fmt ") {
+      if (byteRate || size < 16) return null;
+      const format = view.getUint16(start, true), channels = view.getUint16(start + 2, true);
+      const sampleRate = view.getUint32(start + 4, true), bits = view.getUint16(start + 14, true);
+      byteRate = view.getUint32(start + 8, true); blockAlign = view.getUint16(start + 12, true);
+      if (![1, 3].includes(format) || channels < 1 || channels > 8 || sampleRate < 8000 || sampleRate > 384000 ||
+          !(format === 1 ? [8, 16, 24, 32] : [32, 64]).includes(bits) ||
+          blockAlign !== channels * bits / 8 || byteRate !== sampleRate * blockAlign) return null;
+    } else if (kind === "data") dataBytes += size;
+    offset = next;
+  }
+  if (!byteRate || !dataBytes || dataBytes % blockAlign) return null;
+  return Math.ceil(dataBytes / byteRate);
+}
+
 /** Never mark a different sentence as the requested dictation. */
 export function speechAudio(payload: Record<string, unknown>, expected: string): Uint8Array {
   const choices = payload.choices as Array<{ message?: { audio?: { data?: unknown; transcript?: unknown } }; finish_reason?: unknown }> | undefined;

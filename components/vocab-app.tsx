@@ -28,6 +28,7 @@ import {
   type StudySessionState,
 } from "@/lib/session";
 import { clearUserData, createLocalId } from "@/lib/storage";
+import { clearLocalPracticeData } from "@/lib/local-practice-data";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import type { LearnMode } from "@/lib/learn";
 import Today from "./studio/today";
@@ -423,9 +424,7 @@ export default function VocabApp() {
       sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem("pep-vocab-cloud-link-v2");
       localStorage.removeItem("pep-vocab-sync-revision");
-      localStorage.removeItem("pep-vocab-voice-history-v1");
-      localStorage.removeItem("pep-vocab-voice-captions-v1");
-      localStorage.removeItem("vocab-studio:voice-dictation:v1");
+      await clearLocalPracticeData();
       onReplaced();
       await data.reload();
       data.notify("本机学习数据已清空。");

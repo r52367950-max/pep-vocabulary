@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Headphones, Mic, RotateCcw, Square, Volume2 } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
-import { compareDictation, DICTATION_HISTORY_KEY, DICTATION_SENTENCES, parseDictationHistory, recordDictationAttempt, selectDictationRound, wordDictationItems, type DictationHistory, type DictationItem, type DictationMode } from "@/lib/voice/dictation";
+import { compareDictation, DICTATION_SENTENCES, readLocalDictationHistory, saveLocalDictationAttempt, selectDictationRound, wordDictationItems, type DictationHistory, type DictationItem, type DictationMode } from "@/lib/voice/dictation";
+import { localPracticeGeneration, practiceGenerationCurrent, type PracticeGeneration } from "@/lib/local-practice-generation";
 import { DictationLiveInput, dictationVoiceCommand, canSubmitDictation, newDictationAttempt, reduceDictationAttempt, spellingDraft, type DictationAttemptEvent, type DictationLearningPreferences, type SpellingCaptureAdapter, type DictationVoiceCommand } from "@/lib/voice/dictation-session";
-import { refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
+import { learningContextStore, refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
 import type { VoiceSnapshot } from "@/lib/voice/client";
 import "./dictation.css";
 
@@ -24,7 +25,6 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   const [commandListening, setCommandListening] = useState(false);
   const commandCapture = useRef<{ handle: Awaited<ReturnType<SpellingCaptureAdapter["start"]>>; abort: AbortController; attemptId: string } | null>(null);
   const liveActive = !!liveSnapshot && ["connecting", "connected", "closing"].includes(liveSnapshot.phase);
-  const historyKey = accountScope ? `${DICTATION_HISTORY_KEY}:account:${encodeURIComponent(accountScope)}` : null;
   const [mode, setMode] = useState<DictationMode>("words");
   const [queue, setQueue] = useState<DictationItem[]>([]);
   const [position, setPosition] = useState(0);
@@ -42,7 +42,8 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   const exposed = useRef(new Set<string>());
   const [roundResults, setRoundResults] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<DictationHistory[]>([]);
-  const historyRef = useRef<DictationHistory[]>([]);
+  const roundGeneration = useRef<PracticeGeneration>(null);
+  const historySequence = useRef(0);
   const captureAbort = useRef<AbortController | null>(null);
   const captureHandle = useRef<Awaited<ReturnType<SpellingCaptureAdapter["start"]>> | null>(null);
   const [captureFinishing, setCaptureFinishing] = useState(false);
@@ -107,17 +108,19 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   }), [suppliedCapture, temporary, accountScope]);
   useEffect(() => {
     let mounted = true;
-    stopMedia(); void live.current?.close(); cache.current.clear(); historyRef.current = [];
+    const sequence = ++historySequence.current;
+    stopMedia(); void live.current?.close(); cache.current.clear(); roundGeneration.current = null;
     Promise.resolve().then(() => {
       if (!mounted) return;
       setQueue([]); setPosition(0); setHistory([]); setHistoryOpen(false); setStorageError(false); setHintVisible(false); setRoundResults({}); exposed.current.clear(); setCommandDraft(null); setCommandListening(false); setPlayback("idle");
       const fresh = newDictationAttempt(crypto.randomUUID(), ""); attemptRef.current = fresh; setAttempt(fresh);
-      if (temporary || !historyKey) return;
-      try { const rows = parseDictationHistory(localStorage.getItem(historyKey)); historyRef.current = rows; setHistory(rows); }
-      catch { setStorageError(true); }
+      if (temporary || !accountScope) return;
+      void readLocalDictationHistory(accountScope).then((snapshot) => {
+        if (mounted && sequence === historySequence.current && practiceGenerationCurrent(snapshot.generation)) setHistory(snapshot.value);
+      }).catch(() => { if (mounted && sequence === historySequence.current) setStorageError(true); });
     });
     return () => { mounted = false; stopMedia(); };
-  }, [stopMedia, temporary, historyKey, contextEpoch]);
+  }, [stopMedia, temporary, accountScope, contextEpoch]);
   useEffect(() => {
     if (!active) { stopMedia(); void live.current?.close(); }
     // Reset the visible status on entry without delaying cancellation on exit.
@@ -144,7 +147,19 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     const next = newDictationAttempt(crypto.randomUUID(), nextItem?.id ?? "", attemptRef.current.answerMode, exposed.current.has(nextItem?.id ?? ""));
     attemptRef.current = next; setAttempt(next); setHintVisible(false); setNotice(""); setSource("");
   };
-  const start = (items: DictationItem[]) => {
+  const start = async (items: DictationItem[]) => {
+    const sequence = ++historySequence.current;
+    let generation = localPracticeGeneration();
+    setHistory([]);
+    if (!temporary && accountScope) {
+      try {
+        const snapshot = await readLocalDictationHistory(accountScope);
+        if (sequence !== historySequence.current || !practiceGenerationCurrent(snapshot.generation)) return;
+        generation = snapshot.generation; setHistory(snapshot.value);
+      } catch { setStorageError(true); }
+    }
+    if (sequence !== historySequence.current) return;
+    roundGeneration.current = generation;
     stop(); setSlow(learningPreferences?.preferredSpeed === "slow"); exposed.current.clear(); setRoundResults({}); setQueue(items); setPosition(0); resetAnswer(items[0]); setHistoryOpen(false);
   };
   const changeMode = (next: DictationMode) => { setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
@@ -207,7 +222,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       setNotice(error instanceof DOMException && error.name === "NotAllowedError" ? "浏览器暂时阻止了声音播放。请再次点播放；音频已缓存，不会重复请求。" : error instanceof Error ? error.message : "语音暂时不可用，可改用设备朗读。");
     }
   };
-  const submit = () => {
+  const submit = async () => {
     const current = attemptRef.current;
     if (!item || current.itemId !== item.id || !canSubmitDictation(current)) return;
     const accepted = apply({ type: "submit", attemptId: current.id });
@@ -216,10 +231,15 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     const correct = compareDictation(item.text, accepted.answer).correct;
     setRoundResults((previous) => ({ ...previous, [item.id]: correct && !accepted.assisted }));
     // Assisted answers can be reviewed, but never resolve a mistake or count as independent mastery.
-    if (accepted.assisted || temporary || !historyKey) return;
-    const next = recordDictationAttempt(historyRef.current, item, accepted.answer);
-    historyRef.current = next; setHistory(next);
-    try { localStorage.setItem(historyKey, JSON.stringify(next)); }
+    if (accepted.assisted || temporary || !accountScope) return;
+    const generation = roundGeneration.current, sequence = historySequence.current;
+    try {
+      const next = await saveLocalDictationAttempt(accountScope, generation, item, accepted.answer, () => {
+        const current = learningContextStore.get();
+        return sequence === historySequence.current && !current.temporary && current.memory?.accountScope === accountScope;
+      });
+      if (sequence === historySequence.current && practiceGenerationCurrent(generation)) setHistory(next);
+    }
     catch { setStorageError(true); }
   };
   const beginSpelling = async () => {

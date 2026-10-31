@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { ArrowLeft, ArrowRight, Check, Menu, Mic, MicOff, Play, Settings2, Sparkles, Trash2, X } from "lucide-react";
 import { learningContextStore, refreshLearningContext, contextStillCurrent } from "@/lib/learning-context-client";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
-import { NativeLiveSession, appendTranscript, feedbackTranscript, readVoiceHistory, saveVoiceRecord, voiceRequest, VOICE_HISTORY_KEY, type TranscriptTurn, type VoiceFeedback, type VoiceRecord, type VoiceSnapshot, type VoiceStatus } from "@/lib/voice/client";
+import { NativeLiveSession, appendTranscript, feedbackTranscript, readLocalVoiceHistory, saveLocalVoiceRecord, deleteLocalVoiceRecord, voiceRequest, type LocalVoiceHistory, type TranscriptTurn, type VoiceFeedback, type VoiceRecord, type VoiceSnapshot, type VoiceStatus } from "@/lib/voice/client";
+import { localPracticeGeneration, practiceGenerationCurrent, type PracticeGeneration } from "@/lib/local-practice-generation";
 import { VOICE_LEVELS, VOICE_TOPICS, getVoiceTopic, type VoiceLevel } from "@/lib/voice/curriculum";
 import { DictationPanel } from "./voice/dictation-panel";
 import { LearningMemoryPanel, useLearningMemory } from "./voice/learning-memory";
@@ -16,7 +17,6 @@ const CAPTIONS_KEY = "pep-vocab-voice-captions-v1";
 const time = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
 type Plan = { topicId: string; level: VoiceLevel; minutes: number; title: string; goal: string; openingPrompt: string; reason: string };
 type RecordMeta = Pick<VoiceRecord, "id" | "createdAt" | "topicId" | "level" | "customTopic" | "goal" | "openingPrompt">;
-const historyStorage = (scope: string) => ({ getItem: (key: string) => localStorage.getItem(`${key}:${scope}`), setItem: (key: string, value: string) => localStorage.setItem(`${key}:${scope}`, value) });
 
 export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initialTab = "speaking" }: { entries: LexiconIndexEntry[]; onClose: () => void; onOpenSettings: () => void; initialTab?: "speaking" | "dictation" }) {
   const privacy = useSyncExternalStore(learningContextStore.subscribe, learningContextStore.get, learningContextStore.getServerSnapshot);
@@ -25,8 +25,10 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   const [closeBusy, setCloseBusy] = useState(false);
   const closePending = useRef(false);
   const startPending = useRef(false);
-  const sessionPolicy = useRef<{ scope: string; temporary: boolean; revision: number } | null>(null);
-  const previousPolicy = useRef<{ scope: string; temporary: boolean; epoch: number } | null>(null);
+  const sessionPolicy = useRef<{ scope: string; temporary: boolean; revision: number; generation: PracticeGeneration } | null>(null);
+  const previousPolicy = useRef<{ scope: string; temporary: boolean; epoch: number; generation: PracticeGeneration } | null>(null);
+  const historySnapshot = useRef<LocalVoiceHistory | null>(null);
+  const historyLoadSequence = useRef(0);
   const [tab, setTab] = useState<"speaking" | "dictation">(initialTab);
   const [status, setStatus] = useState<VoiceStatus | null>(null);
   const [statusError, setStatusError] = useState("");
@@ -54,7 +56,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   const [saved, setSaved] = useState(false);
   const [storageError, setStorageError] = useState("");
   const [recordId, setRecordId] = useState<string | null>(null);
-  const [deletedRecord, setDeletedRecord] = useState<VoiceRecord | null>(null);
+  const [deletedRecord, setDeletedRecord] = useState<{ record: VoiceRecord; scope: string; generation: PracticeGeneration } | null>(null);
   const memory = useLearningMemory();
   const { memory: learningMemory, busy: memoryBusy, rememberTopic } = memory;
   const rememberedTopics = useRef(new Set<string>());
@@ -97,8 +99,13 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     const policy = sessionPolicy.current;
     if (!policy || policy.temporary || privacy.temporary || !privacy.memory || policy.scope !== privacy.memory.accountScope || !["ended", "error"].includes(snapshot.phase) || !recordMeta || !transcript.length || saved) return;
     const record: VoiceRecord = { ...recordMeta, contextRevision: policy.revision, seconds: snapshot.seconds, transcript, discussion, ...(feedback ? { feedback } : {}) };
-    try { setHistory(saveVoiceRecord(historyStorage(policy.scope), record)); setSaved(true); setStorageError(""); }
-    catch { setStorageError("此浏览器暂时无法保存记录，请在离开前复制需要的文字。"); }
+    setSaved(true);
+    void saveLocalVoiceRecord(policy, record, () => {
+      const current = learningContextStore.get();
+      return sessionPolicy.current === policy && !current.temporary && current.memory?.accountScope === policy.scope;
+    }).then((rows) => {
+      if (mounted.current && sessionPolicy.current === policy && practiceGenerationCurrent(policy.generation)) { historyLoadSequence.current++; historySnapshot.current = { scope: policy.scope, generation: policy.generation, rows }; setHistory(rows); setStorageError(""); }
+    }).catch((error) => { if (mounted.current) setStorageError(error instanceof Error ? error.message : "此浏览器暂时无法保存记录，请在离开前复制需要的文字。"); });
   }, [snapshot.phase, snapshot.seconds, transcript, saved, feedback, discussion, privacy.temporary, privacy.memory, recordMeta]);
   useEffect(() => {
     const meta = recordMeta;
@@ -116,22 +123,25 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     // state in its notification, before a stale practice can be persisted.
     const updatePolicy = () => {
       const policy = learningContextStore.get();
-      const current = { scope: policy.memory?.accountScope || "", temporary: policy.temporary, epoch: policy.epoch };
+      const current = { scope: policy.memory?.accountScope || "", temporary: policy.temporary, epoch: policy.epoch, generation: localPracticeGeneration() };
       const previous = previousPolicy.current;
       previousPolicy.current = current;
-      if (previous && previous.epoch !== current.epoch) {
+      if (previous && (previous.epoch !== current.epoch || previous.generation !== current.generation)) {
         void client.current?.end("学习记忆或隐私设置已改变，本机语音已停止。请确认关闭后重新开始。");
         feedbackAbort.current?.abort(); planAbort.current?.abort(); planPending.current = false;
         setFeedbackBusy(false); setPlanBusy(false); setPlans([]); setFeedback(null); setDiscussion([]); setSaved(true);
-        if (previous.scope !== current.scope || previous.temporary !== current.temporary) {
+        if (previous.scope !== current.scope || previous.temporary !== current.temporary || previous.generation !== current.generation) {
           setRecordMeta(null); sessionPolicy.current = null;
           setTranscript([]); setRecordId(null); setHistory([]); setDeletedRecord(null);
           setCustomTopic(""); setGoal(""); setOpeningPrompt(""); setTargets([]);
         }
       }
+      const sequence = ++historyLoadSequence.current;
       if (current.scope && !current.temporary) {
-        try { setHistory(readVoiceHistory(historyStorage(current.scope))); } catch { setStorageError("无法读取本机练习记录。"); }
-      } else setHistory([]);
+        void readLocalVoiceHistory(current.scope).then((snapshot) => {
+          if (mounted.current && sequence === historyLoadSequence.current && practiceGenerationCurrent(snapshot.generation)) { historySnapshot.current = snapshot; setHistory(snapshot.rows); }
+        }).catch(() => { if (mounted.current && sequence === historyLoadSequence.current) { historySnapshot.current = null; setHistory([]); setStorageError("无法读取本机练习记录。"); } });
+      } else { historySnapshot.current = null; setHistory([]); }
     };
     const unsubscribe = learningContextStore.subscribe(updatePolicy);
     queueMicrotask(() => { if (mounted.current) updatePolicy(); });
@@ -167,7 +177,14 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     const temporary = learningContextStore.get().temporary;
     try { context = await refreshLearningContext(); } catch { return; }
     if (!contextStillCurrent(context, temporary)) return;
-    sessionPolicy.current = { scope: context.accountScope, temporary, revision: context.revision };
+    let snapshot: LocalVoiceHistory = { scope: context.accountScope, generation: localPracticeGeneration(), rows: [] };
+    if (!temporary) {
+      try { snapshot = await readLocalVoiceHistory(context.accountScope); }
+      catch { setStorageError("无法读取本机练习记录，本次练习可能无法保存。"); }
+    }
+    if (!contextStillCurrent(context, temporary) || !practiceGenerationCurrent(snapshot.generation)) return;
+    historySnapshot.current = snapshot; setHistory(snapshot.rows); setDeletedRecord(null);
+    sessionPolicy.current = { scope: context.accountScope, temporary, revision: context.revision, generation: snapshot.generation };
     setTab("speaking");
     setPanel(null);
     followCaptions.current = true;
@@ -194,10 +211,12 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   const applyPlan = (plan: Plan) => { if (active) return; setTopicId(plan.topicId); setLevel(plan.level); setMinutes(plan.minutes); setCustomTopic(plan.title); setGoal(plan.goal); setOpeningPrompt(plan.openingPrompt); setPlans([]); setPlanNotice(`已选：${plan.title}。仍可修改设置，准备好再开始。`); };
   const requestFeedback = async () => {
     if (!hasPractice || feedbackBusy) return;
+    if (!sessionPolicy.current || !practiceGenerationCurrent(sessionPolicy.current.generation)) { setFeedbackError("本机练习数据已清空，请重新开始练习。"); return; }
     feedbackAbort.current?.abort(); const abort = new AbortController(); feedbackAbort.current = abort;
     setFeedbackBusy(true); setFeedbackError("");
     try {
       const context = await refreshLearningContext(abort.signal); const temporary = learningContextStore.get().temporary;
+      if (!sessionPolicy.current || !practiceGenerationCurrent(sessionPolicy.current.generation)) return;
       const result = await voiceRequest<VoiceFeedback>("/api/voice/feedback", { topicId: recordMeta?.topicId || topicId, level: recordMeta?.level || level, transcript: feedbackTranscript(transcript), temporary, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion }, abort.signal);
       await refreshLearningContext(abort.signal);
       if (!mounted.current || abort.signal.aborted || !contextStillCurrent(context, temporary)) return;
@@ -207,7 +226,9 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   };
   const openRecord = (record: VoiceRecord) => {
     if (active || dictationLive || privacy.temporary || !privacy.memory) return;
-    sessionPolicy.current = { scope: privacy.memory.accountScope, temporary: false, revision: privacy.memory.revision };
+    const snapshot = historySnapshot.current;
+    if (!snapshot || snapshot.scope !== privacy.memory.accountScope || !snapshot.rows.includes(record) || !practiceGenerationCurrent(snapshot.generation)) { setStorageError("本机记录已改变，请重新打开练习记录。"); return; }
+    sessionPolicy.current = { scope: privacy.memory.accountScope, temporary: false, revision: privacy.memory.revision, generation: snapshot.generation };
     setIsDiagnostic(false);
     setTab("speaking"); setPanel(null);
     feedbackAbort.current?.abort(); planAbort.current?.abort(); planPending.current = false; setPlanBusy(false); setFeedbackBusy(false); setFeedbackError(""); setRecordId(record.id); setRecordMeta({ id: record.id, createdAt: record.createdAt, topicId: record.topicId, level: record.level, customTopic: record.customTopic, goal: record.goal, openingPrompt: record.openingPrompt });
@@ -226,13 +247,21 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     setTab(next);
     setPanel(null);
   };
-  const deleteRecord = (record: VoiceRecord) => {
+  const deleteRecord = async (record: VoiceRecord) => {
     if (active || privacy.temporary || !privacy.memory) return;
-    const next = history.filter((row) => row.id !== record.id);
+    const snapshot = historySnapshot.current;
+    if (!snapshot || snapshot.scope !== privacy.memory.accountScope || !snapshot.rows.includes(record)) return;
     try {
-      historyStorage(privacy.memory.accountScope).setItem(VOICE_HISTORY_KEY, JSON.stringify(next));
+      const next = await deleteLocalVoiceRecord(snapshot, record.id, () => {
+        const current = learningContextStore.get();
+        return !current.temporary && current.memory?.accountScope === snapshot.scope;
+      });
+      const policy = learningContextStore.get();
+      if (!practiceGenerationCurrent(snapshot.generation) || policy.temporary || policy.memory?.accountScope !== snapshot.scope) return;
+      historyLoadSequence.current++;
+      historySnapshot.current = { ...snapshot, rows: next };
       setHistory(next);
-      setDeletedRecord(record);
+      setDeletedRecord({ record, scope: snapshot.scope, generation: snapshot.generation });
       if (recordId === record.id) {
         feedbackAbort.current?.abort();
         setRecordMeta(null);
@@ -243,9 +272,20 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
       }
     } catch { setStorageError("删除未完成，请重试。"); }
   };
-  const restoreRecord = () => {
+  const restoreRecord = async () => {
     if (active || !deletedRecord || privacy.temporary || !privacy.memory) return;
-    try { setHistory(saveVoiceRecord(historyStorage(privacy.memory.accountScope), deletedRecord)); setDeletedRecord(null); }
+    if (deletedRecord.scope !== privacy.memory.accountScope) return;
+    try {
+      const rows = await saveLocalVoiceRecord(deletedRecord, deletedRecord.record, () => {
+        const current = learningContextStore.get();
+        return !current.temporary && current.memory?.accountScope === deletedRecord.scope;
+      });
+      const policy = learningContextStore.get();
+      if (!practiceGenerationCurrent(deletedRecord.generation) || policy.temporary || policy.memory?.accountScope !== deletedRecord.scope) return;
+      historyLoadSequence.current++;
+      historySnapshot.current = { scope: deletedRecord.scope, generation: deletedRecord.generation, rows };
+      setHistory(rows); setDeletedRecord(null);
+    }
     catch { setStorageError("恢复未完成，请重试。"); }
   };
   const openAISettings = () => {
@@ -255,6 +295,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   };
   const retryPractice = () => {
     if (active || !feedback || !canStart) return;
+    if (!sessionPolicy.current || !practiceGenerationCurrent(sessionPolicy.current.generation)) { setStorageError("本机练习数据已清空，请重新开始练习。"); return; }
     void start(false, {
       customTopic: recordMeta?.customTopic || topic.title,
       goal: `练习刚才的表达改进：${feedback.improvements.map((item) => item.suggestion).join("；")}`.slice(0, 600),

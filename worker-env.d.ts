@@ -4,5 +4,6 @@ declare module "cloudflare:workers" {
     DB?: import("@cloudflare/workers-types").D1Database;
     ASSETS?: { fetch: typeof fetch };
     AI_ALLOWED_PROVIDER_ORIGINS?: string;
+    VOICE_DEADLINES?: import("@cloudflare/workers-types").DurableObjectNamespace;
   };
 }

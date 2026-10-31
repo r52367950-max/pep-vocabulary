@@ -15,6 +15,7 @@
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache` | 按任务与输入缓存；可在设置中清空；不进入备份 |
 | 可选云端学习备份 | D1 `sync_states` | 每个身份一份完整快照，以 revision 比较并更新；上传前仅查询元数据 |
 | AI 服务商、模型、密钥密文 | D1 `ai_configs` | 同源设置请求；密钥仅在服务器解密 |
+| AI 配置删除代次 | D1 `ai_config_generations` | 迁移 0007；删除时与密文删除一并原子更换代次，阻止迟到的首次保存恢复密钥；不含密钥 |
 | AI 调用计数与 token 用量 | D1 `ai_rate_limits` | SQL 原子递增；请求按分钟与 UTC 日，token 按北京时间日 |
 | AI 预算与输出上限 | D1 `ai_preferences` | 设置页与加密配置一并原子保存；配置或预算读取失败时拒绝生成 |
 

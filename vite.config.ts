@@ -14,6 +14,8 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  durable_objects: { bindings: [{ name: "VOICE_DEADLINES", class_name: "VoiceDeadline" }] },
+  migrations: [{ tag: "voice-deadline-v1", new_sqlite_classes: ["VoiceDeadline"] }],
   d1_databases: d1
     ? [
         {

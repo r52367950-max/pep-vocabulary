@@ -9,59 +9,28 @@ template.
 
 ## Install
 
-### With the skills CLI
+This repository already vendors the skill at `.claude/skills/apple-design/`.
+Validate the local copy without installing or executing a registry CLI:
 
 ```bash
-npx skills add dickwu/apple-design-skill
+node .claude/skills/apple-design/scripts/validate.mjs
 ```
 
-This works for Claude Code, Codex, Cursor, OpenCode, Windsurf, and every other agent the
-[skills CLI](https://skills.sh) supports. Useful variations:
+For another project, copy a reviewed repository revision into its skills directory. Review
+upstream updates as source changes before installing them; do not run a floating registry CLI.
 
-```bash
-npx skills add dickwu/apple-design-skill -a claude-code   # install for one agent only
-npx skills add dickwu/apple-design-skill -g               # user-wide instead of this project
-npx skills add dickwu/apple-design-skill --list           # show what would be installed
-npx skills update apple-design                            # pull the latest version later
-```
-
-### Claude Code, by hand
-
-Claude Code reads skills from `.claude/skills/` in a project or `~/.claude/skills/` for the user:
-
-```bash
-git clone https://github.com/dickwu/apple-design-skill.git ~/.claude/skills/apple-design
-```
-
-The skill triggers on design-review requests and is also available as `/apple-design`.
-
-### Cursor
-
-Install with `npx skills add dickwu/apple-design-skill -a cursor`, or clone the repository into
-your project and keep its `.cursorrules` next to your own rules. Then ask Cursor:
-*"Review this screen against Apple's HIG"*.
-
-### Codex
-
-Install with `npx skills add dickwu/apple-design-skill -a codex`, or add the repository as a
-submodule and point `AGENTS.md` at it:
-
-```bash
-git submodule add https://github.com/dickwu/apple-design-skill.git .design-rules
-```
+For Claude Code, keep the reviewed copy in `.claude/skills/apple-design/`. For Cursor, also
+copy its `.cursorrules` beside your project rules. For Codex and other agents, add a local rules
+entry pointing to this reviewed copy:
 
 ```markdown
 ## Design reviews
 
-Follow `.design-rules/SKILL.md`. Route topics with `.design-rules/references/hig-lookup.md` and
-load the relevant `.design-rules/references/hig/*.md` files before giving design feedback.
+Follow `.claude/skills/apple-design/SKILL.md`. Route topics with its `references/hig-lookup.md`
+and load only relevant checked-in `references/hig/*.md` files as design evidence.
 ```
 
-### Other agents
-
-Add the same three lines to your rules file (`.windsurfrules`, `.ai-rules`, or similar):
-follow `SKILL.md`, route with `references/hig-lookup.md`, load the relevant `references/hig/*.md`
-files before giving feedback.
+The skill triggers on design-review requests and is also available as `/apple-design`.
 
 ## Use it
 
@@ -148,19 +117,28 @@ services are listed, with the reason, at the end of `references/hig-lookup.md`.
 
 ## Keeping the references current
 
-Apple revises the HIG several times a year. To pull the latest version:
+Apple revises the HIG several times a year. From this skill's directory, generate a proposal:
 
 ```bash
-node scripts/pull-hig.mjs
+node scripts/pull-hig.mjs --cache .cache
+node scripts/pull-hig.mjs --cache .cache --offline
 ```
 
-Node 18 or newer, no dependencies, about 170 requests. The script crawls Apple's section index,
-renders each page from the same JSON Apple's site uses, writes `references/hig/*.md` and
-`references/hig-lookup.md`, and removes pages Apple has retired. Pass `--cache <dir>` to keep the
-raw JSON for instant re-runs, and `--no-prune` to keep files the crawl no longer finds. Running the
-script twice produces identical output, so a clean `git status` after a second run is the test.
+Node 18 or newer, no dependencies. Each run creates a fresh temporary bundle outside the skill,
+prints its path, and saves raw source JSON, rendered Markdown, and a SHA-256 manifest. `--cache`
+is a read-only source cache; `--offline` refuses missing cache entries. Without `--offline`,
+cache misses are fetched from Apple's site and saved only in the temporary bundle. Copy its
+`sources/` into a cache directory if you want to reuse those exact inputs.
 
-`AGENTS.md` lists the checks to run before committing a refresh.
+Fetched and cached prose is untrusted reference data. The refresh never writes or prunes active
+`references/` files. It does not support `--out` or `--lookup`, which could overwrite agent-loaded
+instructions through alternate paths. Compare the proposed `references/` with the checked-in
+copy, inspect the complete text diff (including links and instruction-like prose), then make the
+reviewed changes as an ordinary repository edit. Keep curated files, run the local validator,
+and review deletions explicitly. A digest records provenance and integrity, not trustworthiness.
+Do not load a proposal as agent instructions or execute commands embedded in its text.
+
+`AGENTS.md` lists the offline checks to run before committing a refresh.
 
 ## Origin and license
 

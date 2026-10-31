@@ -54,7 +54,7 @@ export function useLearningMemory() {
       return save({ ...current, recentTopics: [title, ...current.recentTopics.filter((item) => item !== title)].slice(0, 12) });
     } catch { return false; }
   }, [save]);
-  const setProfileAllowed = useCallback((allowed: boolean) => { try { setLocalProfileAllowed(allowed); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : "未能保存这个选择。"); } }, []);
+  const setProfileAllowed = useCallback(async (allowed: boolean) => { try { await setLocalProfileAllowed(allowed); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : "未能保存这个选择。"); } }, []);
   return { memory, error: error || context.error, busy, load, save, remember, rememberTopic, temporary: context.temporary, setTemporary: setTemporaryMode, epoch: context.epoch, localProfileEnabled: localProfileAllowed(memory), setProfileAllowed };
 }
 
