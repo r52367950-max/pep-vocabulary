@@ -1,28 +1,19 @@
 "use client";
 
-import { ChevronRight, Play } from "lucide-react";
+import { ChevronRight, Mic, Play } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { StudyMode } from "@/lib/study";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
-import type { LearnMode } from "@/lib/learn";
-import type { StudyStats } from "@/lib/progress";
 import { timeOfDay } from "@/lib/art";
 import { CoursePicker } from "./shared";
-import { StudioSymbol, type SymbolName } from "./symbol";
+import { StudioSymbol } from "./symbol";
 import { Artwork, useDarkAppearance } from "./art";
-import WritingCard from "./writing/writing-card";
 
-const ways: Array<{ id: LearnMode; symbol: SymbolName; title: string; detail: string }> = [
-  { id: "cards", symbol: "cards", title: "词卡速记", detail: "滑动翻看，先熟悉新词" },
-  { id: "match", symbol: "match", title: "配对消除", detail: "英文和中文，一对一对消掉" },
-  { id: "quiz", symbol: "quiz", title: "单元自测", detail: "测一遍，找出薄弱词" },
-];
-
-export default function Today({ data, stats, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onLearn, onWords, onReading, onActivity, resume, resumeLabel, onWrite, onVoice }: {
-  data: Vocabulary; stats: StudyStats; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
+export default function Today({ data, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onPractice, onWords, resume, resumeLabel, onWrite, onVoice }: {
+  data: Vocabulary; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
   due: number; newCount: number; weak: number; total: number; learned: number;
-  queue: LexiconIndexEntry[]; onStart: (mode: StudyMode) => void; onLearn: (mode: LearnMode) => void; onWords: () => void;
-  onReading: () => void; onActivity: () => void; resume: (() => void) | null; resumeLabel: string | null;
+  queue: LexiconIndexEntry[]; onStart: (mode: StudyMode) => void; onPractice: () => void; onWords: () => void;
+  resume: (() => void) | null; resumeLabel: string | null;
   onWrite: (options: { targets?: string[]; openId?: string | null }) => void;
   onVoice: (tab?: "speaking" | "dictation") => void;
 }) {
@@ -67,41 +58,31 @@ export default function Today({ data, stats, bookId, unit, onCourse, due, newCou
           {resume && queue.length > 0 && <button className="fresh-plan" onClick={() => onStart("daily")}>开始今日计划<ChevronRight size={14} aria-hidden="true" /></button>}
         </div>
       </section>
-      <section className="voice-entry-card" aria-labelledby="voice-entry-title">
-        <div className="voice-entry-symbol"><StudioSymbol name="listen" size={32} /></div>
-        <div><h2 id="voice-entry-title">口语与听写</h2><p>聊一个话题，或听写一组词句。</p></div>
-        <div className="voice-entry-actions"><button className="primary" onClick={() => onVoice("speaking")}>开始口语 <ChevronRight size={16} aria-hidden="true" /></button><button className="text-button" onClick={() => onVoice("dictation")}>词句听写</button></div>
-      </section>
-      <section className="practice-section" aria-labelledby="practice-title">
-        <div className="section-heading"><h2 id="practice-title">记单词</h2></div>
+      <section className="practice-section home-practice" aria-labelledby="practice-title">
+        <div className="section-heading"><h2 id="practice-title">自主练习</h2></div>
         <div className="practice-grid">
-          {ways.map((way) => (
-            <button key={way.id} className="practice-option" onClick={() => onLearn(way.id)}>
-              <StudioSymbol name={way.symbol} size={28} />
-              <span><strong>{way.title}</strong><small>{way.detail}</small></span>
-              <ChevronRight size={17} aria-hidden="true" />
-            </button>
-          ))}
+          <button className="practice-option" onClick={onPractice}>
+            <StudioSymbol name="cards" size={26} />
+            <span><strong>词汇练习</strong><small>{weak ? `词卡、配对、自测 · ${weak} 词待巩固` : "词卡、配对、自测"}</small></span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </button>
+          <button className="practice-option" onClick={() => onVoice("speaking")}>
+            <span className="practice-entry-symbol"><Mic size={26} strokeWidth={1.6} aria-hidden="true" /></span>
+            <span><strong>口语对话</strong><small>用学过的词聊一聊</small></span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </button>
+          <button className="practice-option" onClick={() => onVoice("dictation")}>
+            <StudioSymbol name="listen" size={26} />
+            <span><strong>单词听写</strong><small>听单词，也听句子</small></span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </button>
+          <button className="practice-option" onClick={() => onWrite({ targets: [] })}>
+            <StudioSymbol name="write" size={26} />
+            <span><strong>写作练习</strong><small>用学过的词写一段</small></span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </button>
         </div>
       </section>
-      <WritingCard data={data} onWrite={onWrite} />
-      <div className="today-footnotes">
-        <button onClick={() => onStart("mistakes")}>
-          <StudioSymbol name="review" size={24} />
-          <span><strong>错词重练</strong><small>{weak ? `${weak} 个词待巩固` : "暂无待巩固词"}</small></span>
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-        <button onClick={onReading}>
-          <StudioSymbol name="reading" size={24} />
-          <span><strong>阅读</strong><small>在文章里遇见学过的词</small></span>
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-        <button onClick={onActivity}>
-          <StudioSymbol name="activity" size={24} />
-          <span><strong>学习记录</strong><small>{stats.streak ? `连续 ${stats.streak} 天，今日已学 ${stats.todayWords} 词` : `今日已学 ${stats.todayWords} 词`}</small></span>
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-      </div>
     </div>
   );
 }
