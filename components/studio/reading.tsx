@@ -160,13 +160,9 @@ export default function Reading({ data, onDetail, onPractice }: {
       {articleError ? <LoadError message={articleError} retry={() => { setArticleError(""); setArticleRetry(n => n + 1); }} /> : !article ? <div className="reading-loading" role="status"><span className="reading-skeleton line-wide" /><span className="reading-skeleton line-short" /><p>正在载入正文…</p></div> :
       <div className="reader-column">
         <header className="reader-title">
-          <Artwork kind={readingArtKind(article.category)} seed={article.id} className="reader-art" eager />
-          <div className="reader-meta"><span>{READING_CATEGORIES[article.category]}</span><span>{article.difficulty}</span><span>{READING_FORMS[article.form]}</span></div>
           <h1 ref={titleRef} tabIndex={-1} lang="en">{article.title}</h1>
           {article.titleZh && article.titleZh !== article.title && <p className="reader-title-zh">{article.titleZh}</p>}
-          <p className="reader-byline">{article.author}</p>
-          <p className="reader-duration">{article.wordCount.toLocaleString("zh-CN")} 词<span aria-hidden="true" />约 {Math.max(1, Math.ceil(article.wordCount / 150))} 分钟</p>
-
+          <p className="reader-byline"><span>{article.author}</span><span className="reader-duration">{article.wordCount.toLocaleString("zh-CN")} 词 · 约 {Math.max(1, Math.ceil(article.wordCount / 150))} 分钟</span></p>
         </header>
         {lookupEnabled && targets.length > 0 && <p className="reader-lookup-hint"><BookOpen size={15} aria-hidden="true" />点按带下划线的单词，查看释义。</p>}
         <article className="reader-prose" lang="en" translate="no" aria-label={article.title} style={{ fontSize: `${fontSize / 16}rem` }}>
@@ -195,7 +191,7 @@ export default function Reading({ data, onDetail, onPractice }: {
         <p className="reader-font-preview" lang="en" style={{ fontSize: `${fontSize / 16}rem` }}>{article?.paragraphs[0]?.en.slice(0, 180) || "Choose a comfortable text size for reading."}</p>
       </StudioDialog>}
       {readerPanel === "source" && article && <StudioDialog title="作品信息" onClose={() => setReaderPanel(null)}>
-        <div className="reader-source-dialog"><p><strong>{READING_FORMS[article.form]} · {article.author}</strong></p>
+        <div className="reader-source-dialog"><p><strong>{READING_FORMS[article.form]} · {article.author}</strong></p><p>{READING_CATEGORIES[article.category]} · {article.difficulty} · {article.wordCount} 词</p>
           {article.form !== "original-writing" && <p>{article.rights.basis}</p>}
           <div className="reader-source-links">{article.form !== "imported" && <><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14} aria-hidden="true" /></a><a href={article.rights.url} target="_blank" rel="noopener noreferrer">{article.rights.label}<ExternalLink size={14} aria-hidden="true" /></a></>}</div>
         </div>

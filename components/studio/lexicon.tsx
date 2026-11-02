@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   Check,
@@ -44,6 +44,12 @@ export default function Lexicon({
   const [status, setStatus] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const changePage = (next: number) => {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: "instant" });
+    heading.current?.focus({ preventScroll: true });
+  };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selecting, setSelecting] = useState(false);
   const rows = useMemo(
@@ -99,7 +105,7 @@ export default function Lexicon({
     <div className="lexicon-view">
       <div className="page-heading">
         <div>
-          <h1>词库</h1>
+          <h1 ref={heading} tabIndex={-1}>词库</h1>
           <p className="lexicon-caption">{scope === "book" ? `${BOOKS.find(book => book.id === bookId)?.label ?? "当前教材"}${unit !== "all" ? `，${unit}` : ""}` : "全部词库"}</p>
         </div>
         <div className="lexicon-actions">
@@ -305,13 +311,13 @@ export default function Lexicon({
             })}
           </div>
           <div className="pagination">
-            <span>
+            <span aria-live="polite">
               第 {currentPage + 1} / {Math.ceil(rows.length / 40)} 页
             </span>
             <button
               className="secondary"
               disabled={currentPage === 0}
-              onClick={() => setPage(currentPage - 1)}
+              onClick={() => changePage(currentPage - 1)}
             >
               <ChevronLeft size={16} aria-hidden="true" />
               上一页
@@ -319,7 +325,7 @@ export default function Lexicon({
             <button
               className="secondary"
               disabled={(currentPage + 1) * 40 >= rows.length}
-              onClick={() => setPage(currentPage + 1)}
+              onClick={() => changePage(currentPage + 1)}
             >
               下一页
               <ChevronRight size={16} aria-hidden="true" />

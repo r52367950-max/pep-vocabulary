@@ -71,12 +71,15 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   const cache = useRef(new Map<string, Blob>());
   const input = useRef<HTMLTextAreaElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const adjustment = useRef<HTMLDetailsElement>(null);
   const [slow, setSlow] = useState(learningPreferences?.preferredSpeed === "slow");
   const words = useMemo(() => wordDictationItems(entries), [entries]);
   const item = queue[position];
   const result = submitted && item ? compareDictation(item.text, answer) : null;
   const roundErrors = queue.filter((entry) => roundResults[entry.id] !== true);
   const mistakes = history.filter((row) => row.mistakes > 0);
+  const directItems = mode === "words" ? words : DICTATION_SENTENCES;
+  const directCount = Math.min(mode === "words" ? 12 : 6, directItems.length);
 
   const stopMedia = useCallback(() => {
     requestId.current++;
@@ -159,6 +162,10 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     attemptRef.current = next; setAttempt(next); setHintVisible(false); setNotice(""); setSource("");
   };
   const start = async (items: DictationItem[]) => {
+    if (!items.length) return;
+    planAbort.current?.abort();
+    setPlanBusy(false); setPlanError("");
+    adjustment.current?.removeAttribute("open");
     const sequence = ++historySequence.current;
     let generation = localPracticeGeneration();
     setHistory([]);
@@ -189,10 +196,10 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   }, [preparedPlan, accountScope, contextEpoch, queue.length]);
   useEffect(() => {
     const key = `${accountScope}:${contextEpoch}`;
-    if (!active || !accountScope || queue.length || planBusy || preparedPlan || planAttempted.current === key) return;
+    if (!active || !accountScope || !conversationContext.trim() || queue.length || planBusy || preparedPlan || planAttempted.current === key) return;
     planAttempted.current = key;
     void prepare();
-  }, [active, accountScope, contextEpoch, queue.length]);
+  }, [active, accountScope, contextEpoch, queue.length, conversationContext]);
   useEffect(() => () => { planAbort.current?.abort(); }, []);
   const changeMode = (next: DictationMode) => { setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
   const deviceSpeak = (text: string, rate: number, id: number, attemptId: string, commandId: string) => {
@@ -355,11 +362,11 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
 
   return <section className="dictation-panel" aria-label="听写练习" hidden={!active}>
     <div className="dictation-toolbar dictation-toolbar-simple">
-      <span>{queue.length ? `本组 ${queue.length} 项` : "对话与学习路径推荐"}</span>
-      <details className="dictation-adjust"><summary>调整</summary><div>
+      <span>{queue.length ? `本组 ${queue.length} 项` : mode === "words" ? "当前教材 · 词与短语" : "句子精听"}</span>
+      <details ref={adjustment} className="dictation-adjust"><summary>调整</summary><div>
         <label>练习内容 <select value={mode} onChange={(event) => changeMode(event.target.value as DictationMode)}><option value="words">词与短语</option><option value="sentences">句子精听</option></select></label>
-        <button type="button" className="text-button" onClick={() => { stop(); setHistoryOpen(!historyOpen); }}>查看错题{mistakes.length ? ` · ${mistakes.length}` : ""}</button>
-        <button type="button" className="text-button" onClick={() => void start(mode === "words" ? selectDictationRound(words, 12) : selectDictationRound(DICTATION_SENTENCES, 6))}>直接练一组</button>
+        <button type="button" className="text-button" onClick={() => { stop(); setHistoryOpen(!historyOpen); adjustment.current?.removeAttribute("open"); }}>{historyOpen ? "返回听写" : "查看错题"}{!historyOpen && mistakes.length ? ` · ${mistakes.length}` : ""}</button>
+        {queue.length > 0 && <button type="button" className="text-button" onClick={() => void start(selectDictationRound(directItems, directCount))}>换一组</button>}
       </div></details>
     </div>
     {temporary && <p className="dictation-note">临时练习 · 不读取或保存听写历史</p>}
@@ -372,11 +379,16 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     </div> : !queue.length ? <div className="dictation-intro">
       <span className="dictation-emblem"><Headphones size={28} aria-hidden="true" /></span>
       <h2>听一组，记下来。</h2>
-      <p>{planBusy ? "Terra 正在结合对话与学习记录安排听写…" : suggestion?.items.length ? `已从学习材料中准备 ${suggestion.items.length} 项。` : suggestion?.clarification || "告诉我最近学了什么，或想练哪一课。"}</p>
-      <form className="dictation-request" onSubmit={(event) => { event.preventDefault(); void prepare(); }}><label htmlFor="dictation-request">想调整内容？</label><div><input id="dictation-request" value={requestText} maxLength={1000} placeholder="例如：练刚才聊到的旅行词汇" onChange={(event) => setRequestText(event.target.value)} /><button className="text-button" disabled={planBusy || !requestText.trim()}>发送</button></div></form>
-      {planError && <p className="dictation-notice" role="alert">{planError} <button className="text-button" onClick={() => void prepare()}>重试推荐</button><button className="text-button" onClick={() => void start(selectDictationRound(words, 12))}>使用词库直接练</button></p>}
-      <button type="button" className="primary" disabled={planBusy || !suggestion?.items.length} onClick={() => suggestion && void start(suggestion.items)}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
-      <p className="dictation-note">可以用键盘，也可以写在纸上拍照批改</p>
+      <p>{suggestion?.items.length ? `已从学习材料中准备 ${suggestion.items.length} 项。` : directCount ? `练习${mode === "words" ? "当前教材中的" : "一组"} ${directCount} ${mode === "words" ? "个词与短语" : "个短句"}。` : "当前范围没有可听写的词，请换个教材或单元。"}</p>
+      <button type="button" className="primary" disabled={!suggestion?.items.length && !directCount} onClick={() => void start(suggestion?.items.length ? suggestion.items : selectDictationRound(directItems, directCount))}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
+      <p className="dictation-note">可以用键盘，也可以写在纸上</p>
+      <details className="dictation-plan-options">
+        <summary>按学习内容推荐</summary>
+        <form className="dictation-request" onSubmit={(event) => { event.preventDefault(); void prepare(); }}><label htmlFor="dictation-request">想练习什么？</label><div><input id="dictation-request" value={requestText} maxLength={1000} placeholder="例如：刚才聊到的旅行词汇" onChange={(event) => setRequestText(event.target.value)} /><button className="text-button" disabled={planBusy || !requestText.trim()}>{planBusy ? "准备中…" : "推荐"}</button></div></form>
+        {planBusy && <p className="dictation-note" role="status">正在结合学习内容准备推荐，可先练当前词库。</p>}
+        {planError && <p className="dictation-notice" role="alert">{planError} <button className="text-button" onClick={() => void prepare()}>重试</button></p>}
+        {!planBusy && !planError && suggestion?.clarification && <p className="dictation-note">{suggestion.clarification}</p>}
+      </details>
     </div> : !item ? <div className="dictation-intro">
       <span className="dictation-emblem"><Check size={28} aria-hidden="true" /></span><h2>这一组，听完了。</h2>
       <p>{queue.length}项练习 · {roundErrors.length ? `${roundErrors.length}项待批改或再练` : "本组已独立答对"}</p>

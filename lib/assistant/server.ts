@@ -435,8 +435,16 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
     assertSameOrigin(request);
     const body = await readJsonRequest(request) as Record<string, unknown>;
     const parsed = parseAssistantRequest(task, body);
+    // Warm public evidence while private configuration and rate checks run.
+    // Catch here so authentication errors keep priority over an asset failure.
+    const evidenceRead = releaseIndex(request).then(
+      rows => ({ ok: true as const, rows }),
+      error => ({ ok: false as const, error }),
+    );
     const config = await authenticatedRuntime(request);
-    const rows = await releaseIndex(request);
+    const release = await evidenceRead;
+    if (!release.ok) throw release.error;
+    const rows = release.rows;
     const evidence = resolveLexiconEvidence(rows, parsed.wordIds);
     const context = await resolveLearningContext(config.userKey, body);
     let profile;

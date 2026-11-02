@@ -133,8 +133,12 @@ export async function createVoiceSession(request: Request) {
     const maxSeconds = body.diagnostic === true ? 20 : Number(body.minutes) * 60;
     config = await officialConfig(request, true);
     requireVoiceDeadlines();
-    await voiceLimit(config.userKey, "session", 3);
-    const context = body.diagnostic === true ? null : await resolveLearningContext(config.userKey, body);
+    // Both checks must succeed before reserving time or opening a paid session.
+    // They read independent state, so avoid an extra database round trip of wait.
+    const [, context] = await Promise.all([
+      voiceLimit(config.userKey, "session", 3),
+      body.diagnostic === true ? Promise.resolve(null) : resolveLearningContext(config.userKey, body),
+    ]);
     lock = { userKey: config.userKey, until: await claimActive(config.userKey, maxSeconds) };
     await reserveVoiceSeconds(config.userKey, maxSeconds);
     const baseInstructions = body.diagnostic === true ? "This is a brief voice connection test. Say one short English greeting when prompted, then remain silent. Do not ask questions or continue talking." : purpose === "dictation" ? "This is a dictation control session. Listen only to the learner spelling words or saying operation commands such as repeat, next or stop. Do not start a free conversation, ask questions, read or guess a target answer, grade spelling, or save memories. Target text is intentionally unavailable. The app handles exact playback and grading separately. Do not claim that a command has executed." : `${buildTutorInstructions(input)}\n${liveLearningContext(context!.memory, custom)}`;

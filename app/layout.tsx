@@ -35,6 +35,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        <link rel="preload" href="/data/v1/index.json" as="fetch" crossOrigin="anonymous" />
+        <link rel="preload" href="/data/v1/manifest.json" as="fetch" crossOrigin="anonymous" />
+      </head>
       <body>{children}</body>
     </html>
   );

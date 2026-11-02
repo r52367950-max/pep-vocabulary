@@ -9,6 +9,12 @@ import { CoursePicker } from "./shared";
 import { StudioSymbol } from "./symbol";
 import { Artwork, useDarkAppearance } from "./art";
 
+function preparePractice(target: "vocabulary" | "voice" | "writing") {
+  const loading = target === "voice" ? import("./voice-workspace")
+    : target === "writing" ? import("./writing/writing-workspace") : import("./vocabulary-practice");
+  void loading.catch(() => undefined);
+}
+
 export default function Today({ data, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onPractice, onWords, resume, resumeLabel, onWrite, onVoice }: {
   data: Vocabulary; bookId: string; unit: string; onCourse: (book: string, unit: string) => void;
   due: number; newCount: number; weak: number; total: number; learned: number;
@@ -61,22 +67,22 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
       <section className="practice-section home-practice" aria-labelledby="practice-title">
         <div className="section-heading"><h2 id="practice-title">自主练习</h2></div>
         <div className="practice-grid">
-          <button className="practice-option" onClick={onPractice}>
+          <button className="practice-option" onClick={onPractice} onPointerEnter={() => preparePractice("vocabulary")} onFocus={() => preparePractice("vocabulary")}>
             <StudioSymbol name="cards" size={26} />
             <span><strong>词汇练习</strong><small>{weak ? `词卡、配对、自测 · ${weak} 词待巩固` : "词卡、配对、自测"}</small></span>
             <ChevronRight size={17} aria-hidden="true" />
           </button>
-          <button className="practice-option" onClick={() => onVoice("speaking")}>
+          <button className="practice-option" onClick={() => onVoice("speaking")} onPointerEnter={() => preparePractice("voice")} onFocus={() => preparePractice("voice")}>
             <span className="practice-entry-symbol"><Mic size={26} strokeWidth={1.6} aria-hidden="true" /></span>
             <span><strong>口语对话</strong><small>用学过的词聊一聊</small></span>
             <ChevronRight size={17} aria-hidden="true" />
           </button>
-          <button className="practice-option" onClick={() => onVoice("dictation")}>
+          <button className="practice-option" onClick={() => onVoice("dictation")} onPointerEnter={() => preparePractice("voice")} onFocus={() => preparePractice("voice")}>
             <StudioSymbol name="listen" size={26} />
             <span><strong>单词听写</strong><small>听单词，也听句子</small></span>
             <ChevronRight size={17} aria-hidden="true" />
           </button>
-          <button className="practice-option" onClick={() => onWrite({ targets: [] })}>
+          <button className="practice-option" onClick={() => onWrite({ targets: [] })} onPointerEnter={() => preparePractice("writing")} onFocus={() => preparePractice("writing")}>
             <StudioSymbol name="write" size={26} />
             <span><strong>写作练习</strong><small>用学过的词写一段</small></span>
             <ChevronRight size={17} aria-hidden="true" />
