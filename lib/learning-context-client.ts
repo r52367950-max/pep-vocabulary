@@ -1,7 +1,7 @@
 import { localPracticeGeneration, localPracticeWritesSupported, practiceGenerationCurrent, writeLocalPracticeData, type PracticeGeneration } from "./local-practice-generation";
 /** One browser-tab privacy policy. Only an opaque opt-in scope is stored; never notes or chat. */
 export type LearningNote = { id: string; text: string; source?: "manual" | "confirmed_suggestion" | "legacy"; kind?: "preference" | "expression" | "learning_note"; confirmedAt?: string; updatedAt?: string };
-export type LearningMemory = { accountScope: string; revision: number; enabled: boolean; notes: LearningNote[]; recentTopics: string[]; model?: string; contextVersion?: string };
+export type LearningMemory = { accountScope: string; revision: number; enabled: boolean; notes: LearningNote[]; recentTopics: string[]; model?: string; contextVersion?: string; journalRevision?: number };
 export type LearningContextState = { memory: LearningMemory | null; temporary: boolean; epoch: number; error: string };
 const INITIAL: LearningContextState = { memory: null, temporary: false, epoch: 0, error: "" };
 let state = INITIAL;

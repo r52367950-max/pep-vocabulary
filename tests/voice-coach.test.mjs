@@ -140,7 +140,8 @@ test('memory is durable and isolated, needs no AI key, and supports disable and 
   assert.equal(first.headers.get('cache-control'), 'no-store, max-age=0');
   const firstBody = await first.json();
   assert.match(firstBody.accountScope, /^[a-f0-9]{64}$/);
-  const { accountScope, contextVersion, ...firstMemory } = firstBody;
+  const { accountScope, contextVersion, journalRevision, ...firstMemory } = firstBody;
+  assert.equal(journalRevision,0);
   assert.equal(typeof contextVersion, 'string');
   assert.ok(contextVersion.length > 0);
   assert.deepEqual(firstMemory, empty);

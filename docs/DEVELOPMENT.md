@@ -43,6 +43,6 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 
 发布包保留 `dist/server` 入口、源 `drizzle/` 及其 journal，并按生成的 Wrangler 路径提供根 `migrations/`。打包使用普通文件，避免 tar 硬链接被发布器拒绝。同一提交已保存的 Sites 版本会复用原部署包；修正打包流程后应提交修正并发布新版本。发布完成后核对实际数据库迁移，不能仅以发布器返回成功代替迁移验收。
 
-## 指引维护依据
+## 指引维护
 
-2026-09-24 查阅：[GPT-6 Astra 技能与提示词指导](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)、[Claude Code 最佳实践](https://code.claude.com/docs/en/best-practices)、[Claude Code 项目指令加载](https://code.claude.com/docs/en/memory)。只保留必要项目约束，专题按需阅读；`CLAUDE.md` 导入 `AGENTS.md`，避免维护两套规则。开发代理模型与应用内 AI 服务配置相互独立。
+项目规则集中在根 `AGENTS.md`；`CLAUDE.md` 仅导入它。模型提示指南及维护原则见 [prompt-guidance.md](prompt-guidance.md)。已有设计技能与 HIG 参考仍按界面任务需要查阅，历史设计报告不覆盖当前用户要求。

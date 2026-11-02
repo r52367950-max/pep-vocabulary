@@ -1,0 +1,25 @@
+.handwriting-upload { padding: 0 0 14px; display: grid; gap: 12px; }
+.handwriting-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.handwriting-heading strong { font-size: .9375rem; font-weight: 600; }
+.handwriting-preview { width: 100%; max-height: 320px; object-fit: contain; background: var(--grouped); border-radius: var(--radius-card, 28px); }
+.handwriting-actions { display: flex; gap: 16px; align-items: center; }
+.handwriting-confirm { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; font-size: .875rem; }
+.handwriting-confirm input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; accent-color: var(--blue); }
+.handwriting-assessment { display: grid; gap: 8px; padding: 16px; background: var(--grouped); border-radius: var(--radius-card, 28px); font-size: .875rem; line-height: 1.6; }
+.handwriting-assessment summary { cursor: pointer; min-height: 32px; padding-top: 4px; }
+.handwriting-assessment dl { display: grid; gap: 12px; padding-top: 10px; }
+.handwriting-assessment dt { font-weight: 500; }
+.handwriting-assessment dd { color: var(--muted-strong); margin: 3px 0 0; }
+.essay-review > .handwriting-assessment { margin: 20px 0; }
+.writing-topic-card { background: var(--grouped); border-radius: var(--radius-card, 28px); padding: 20px; display: grid; gap: 12px; }
+.writing-topic-card h2 { font-size: 1.125rem; font-weight: 600; }
+.writing-topic-meta { display: flex; gap: 8px 16px; flex-wrap: wrap; font-size: .8125rem; color: var(--muted); }
+.writing-topic-text { white-space: pre-wrap; font-size: .9375rem; line-height: 1.7; max-height: 360px; overflow-y: auto; }
+.writing-topic-actions { display: flex; flex-wrap: wrap; gap: 6px 20px; padding-top: 10px; }
+.writing-topic-library > summary, .writing-custom-prompt > summary, .writing-topic-sources > summary { cursor: pointer; padding: 10px 0; color: var(--muted-strong); font-size: .875rem; }
+.writing-topic-library select { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius-control, 20px); background: var(--bg); padding: 8px; color: var(--ink); font-size: .9375rem; }
+.writing-custom-prompt .ai-field { margin-top: 8px; }
+
+.writing-topic-sources a { display: block; color: var(--blue); font-size: .8125rem; line-height: 1.6; padding: 5px 0; }
+
+.writing-editor.is-uploading .writing-textarea, .writing-editor.is-uploading .writing-count, .writing-editor.is-uploading .writing-rail { display: none; }

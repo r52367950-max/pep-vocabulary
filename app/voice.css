@@ -236,6 +236,7 @@
 .voice-memory-switch small { display: block; color: var(--muted-strong); font-size: 12px; line-height: 1.7; margin-top: 4px; }
 .voice-memory-list { list-style: none; padding: 0; margin: 0; }
 .voice-memory-list li { border-bottom: 0; padding: 12px 0; }
+.voice-memory-list li > small { display: block; margin: 5px 0 8px; color: var(--muted-strong); font-size: 12px; line-height: 1.6; }
 .voice-memory-list textarea { width: 100%; min-height: 70px; padding: 10px 12px; }
 .voice-memory-list li > div { display: flex; justify-content: flex-end; gap: 16px; padding-top: 3px; }
 .voice-memory-add { display: grid; gap: 8px; margin-top: 20px; }

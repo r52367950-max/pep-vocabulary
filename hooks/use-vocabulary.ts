@@ -1,5 +1,8 @@
 "use client";
 
+import { learningContextStore } from "@/lib/learning-context-client";
+import { recordLearningActivity } from "@/lib/learning-journal-client";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadLexicon,
@@ -144,7 +147,10 @@ export function useVocabulary() {
   }, [generation]);
 
   const saveReview = useCallback(async (event: ReviewEvent, expectedGeneration = generation) => {
+    const activityScope = learningContextStore.get().memory?.accountScope;
+    const learnedEntry = index.find((entry) => entry.id === event.cardId);
     await commitReview(event, expectedGeneration);
+    if (activityScope) void recordLearningActivity({ eventId: event.eventId, kind: "vocabulary", title: `${event.eventType === "undo" ? "撤销词汇作答" : "词汇复习"} · ${learnedEntry?.headword || event.cardId}`.slice(0, 160), summary: `${event.questionType} · ${event.eventType === "undo" ? "已撤销" : event.hints ? "使用提示" : event.correct ? "独立答对" : "待再练"}`, refIds: [event.cardId], counts: { reviewed: event.eventType === "undo" ? 0 : 1, correct: event.correct && !event.hints && event.eventType !== "undo" ? 1 : 0, assisted: event.hints ? 1 : 0 }, occurredAt: event.timestampUtc, timezone: event.timezone }, { accountScope: activityScope });
     setCards((previous) => {
       const next = new Map(previous);
       if (event.eventType === "undo") {
@@ -160,7 +166,7 @@ export function useVocabulary() {
       persistAsked.current = true;
       void requestPersistentStorage();
     }
-  }, [generation]);
+  }, [generation, index]);
 
   const metadata = useCallback(
     async (id: string, patch: { note?: string; toggleFavorite?: boolean }, expectedGeneration = generation) => {

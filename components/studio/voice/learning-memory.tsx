@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useId }
 import { Check, Plus, Trash2 } from "lucide-react";
 
 import { learningContextStore, localProfileAllowed, setLocalProfileAllowed, refreshLearningContext, saveLearningMemory, setTemporaryMode, type LearningMemory, type LearningNote } from "@/lib/learning-context-client";
+import { learningJournalStore, refreshLearningJournal, updateLearningJournal, deleteLearningJournal } from "@/lib/learning-journal-client";
 export type { LearningMemory } from "@/lib/learning-context-client";
 
 export function useLearningMemory() {
@@ -63,7 +64,9 @@ export function LearningMemoryPanel(props: { controls: MemoryControls; disabled?
   // Account/mode changes unmount the draft state before any new account can see
   // or submit it. A revision update for the same account retains unfinished edits.
   const { memory, temporary } = props.controls;
-  return <LearningMemoryForm key={`${memory?.accountScope ?? "unloaded"}:${temporary}`} {...props} />;
+  const [scope, setScope] = useState(memory?.accountScope ?? "unloaded");
+  if (memory && memory.accountScope !== scope) setScope(memory.accountScope);
+  return <LearningMemoryForm key={`${scope}:${temporary}`} {...props} />;
 }
 
 function LearningMemoryForm({ controls, disabled = false }: { controls: MemoryControls; disabled?: boolean }) {
@@ -76,12 +79,13 @@ function LearningMemoryForm({ controls, disabled = false }: { controls: MemoryCo
   return <details className="voice-memory voice-disclosure">
     <summary><span>学习记忆</span><span>{temporary ? "临时练习" : memory ? `${memory.enabled ? "正在使用" : "已暂停"} · ${memory.notes.length} 条` : "查看与管理"}</span></summary>
     <div className="voice-memory-content">
-      <p className="voice-muted">本站的文本 AI、口语和听写共用你确认的学习偏好与待练表达。聊天记录与记忆分开，不会自动上传全部聊天，也不读取 ChatGPT 的记忆。</p>
-      <label className="voice-memory-switch"><span>临时练习<small>本标签页的 AI、口语、听写和写作不读历史个性化内容，也不保存新记录。已开始的语音会停止，需重新开始。</small></span><input type="checkbox" checked={temporary} disabled={disabled || busy} onChange={(event) => setTemporary(event.target.checked)} /></label>
+      <p className="voice-muted">文本 AI、口语和听写共用账户学习路径、每日日志与学习偏好。完成练习后自动整理学习内容与进展；手动笔记仍可补充。不会保存原始音频、照片或自动上传全部聊天。</p>
+      <label className="voice-memory-switch"><span>临时练习<small>本标签页的 AI、口语、听写和写作不读历史个性化内容，也不保存新记录。已开始的语音会停止，需重新开始。普通词卡的复习进度照常保存。</small></span><input type="checkbox" checked={temporary} disabled={disabled || busy} onChange={(event) => setTemporary(event.target.checked)} /></label>
       {error && <div className="voice-notice" role="alert">{error} <button className="text-button" disabled={blocked} onClick={() => void load()}>重新读取</button></div>}
+      {!temporary && <LearningJournalPanel disabled={blocked || !memory} />}
       {temporary ? <p className="voice-muted">当前只使用这次任务的内容。退出临时练习后可继续管理账户记忆。</p> : !memory ? <button className="secondary" disabled={blocked} onClick={() => void load()}>读取学习记忆</button> : <>
         <label className="voice-memory-switch"><span>使用学习个性化<small>关闭后保留记忆，但新的 AI 请求不读取长期记忆或历史学习画像。</small></span><input type="checkbox" checked={memory.enabled} disabled={blocked} onChange={(event) => void save({ ...memory, enabled: event.target.checked })} /></label>
-        <label className="voice-memory-switch"><span>使用此浏览器的学习记录<small>仅你确认后，当前账户的 AI 才可参考这台设备的词汇笔记、复习与写作摘要；不会上传完整记录。</small></span><input type="checkbox" checked={localProfileEnabled} disabled={blocked || !memory.enabled} onChange={(event) => setProfileAllowed(event.target.checked)} /></label>
+        <details className="voice-disclosure"><summary>旧设备记录</summary><label className="voice-memory-switch"><span>使用此浏览器的旧学习记录<small>仅你确认后，当前账户的 AI 才可参考这台设备的词汇笔记、复习与写作摘要；不会上传完整记录。</small></span><input type="checkbox" checked={localProfileEnabled} disabled={blocked || !memory.enabled} onChange={(event) => setProfileAllowed(event.target.checked)} /></label></details>
         <label className="voice-memory-switch"><span>听写默认语速<small>作为你确认的偏好保存；不会改写题目。暂停个性化或临时练习时不使用。</small></span><select aria-label="听写默认语速" disabled={blocked} value={memory.notes.find((note) => note.id === "dictation-speed")?.text === "听写默认使用慢速朗读。" ? "slow" : memory.notes.find((note) => note.id === "dictation-speed")?.text === "听写默认使用正常语速朗读。" ? "normal" : "default"} onChange={(event) => {
           const value = event.target.value;
           const other = memory.notes.filter((note) => note.id !== "dictation-speed");
@@ -99,4 +103,38 @@ function LearningMemoryForm({ controls, disabled = false }: { controls: MemoryCo
       </>}
     </div>
   </details>;
+}
+
+
+function LearningJournalPanel({ disabled }: { disabled: boolean }) {
+  const [daysOpen, setDaysOpen] = useState(false);
+  const context = useSyncExternalStore(learningContextStore.subscribe, learningContextStore.get, learningContextStore.getServerSnapshot);
+  const { journal, error: syncError, pending } = useSyncExternalStore(learningJournalStore.subscribe, learningJournalStore.get, learningJournalStore.getServerSnapshot);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; void refreshLearningJournal().catch((cause) => { if (mounted.current) setError(cause.message); }); return () => { mounted.current = false; }; }, [context.epoch]);
+  async function action(run: () => Promise<unknown>) {
+    if (disabled || busy) return;
+    setBusy(true); setError("");
+    try { await run(); } catch (cause) { if (mounted.current) setError(cause instanceof Error ? cause.message : "未能更新日志，请重试。"); }
+    finally { if (mounted.current) setBusy(false); }
+  }
+  const blocked = disabled || busy;
+  return <section aria-label="自动学习日志">
+    <label className="voice-memory-switch"><span>自动整理学习记录<small>按账户保存练习内容、次数与进展，供各学习功能参考。一次答错不会成为长期弱点；关闭后停止新增日志；是否参考已有日志由「使用学习个性化」决定。</small></span><input type="checkbox" checked={journal?.enabled ?? false} disabled={blocked || !journal} onChange={(event) => void action(() => updateLearningJournal({ enabled: event.target.checked }))} /></label>
+    {(error || syncError) && <p className="voice-notice" role="alert">{error || syncError} <button className="text-button" disabled={blocked} onClick={() => void action(refreshLearningJournal)}>重试</button></p>}
+    {pending > 0 && <p className="voice-muted" role="status">{pending} 条记录待同步，请保持页面打开。</p>}
+    {!journal && !error && <p className="voice-muted">正在读取学习日志…</p>}
+    {journal && <details className="voice-disclosure" open={daysOpen} onToggle={(event) => setDaysOpen(event.currentTarget.open)}><summary>每日日志 · {journal.days.length} 天</summary>
+      {!journal.days.length && <p className="voice-empty-note">完成练习后，这里会自动整理当天学习内容。</p>}
+      <ul className="voice-memory-list">{journal.days.map((day) => <li key={day.date}>
+        <strong>{day.date}</strong><small>{day.summarySource === "edited" ? "你编辑的摘要" : "根据学习活动自动整理"}</small>
+        <textarea aria-label={`${day.date} 学习摘要`} rows={3} maxLength={1200} value={drafts[day.date] ?? day.summary} disabled={blocked} onChange={(event) => setDrafts((current) => ({ ...current, [day.date]: event.target.value }))} />
+        <div><button className="text-button" disabled={blocked || drafts[day.date] === undefined || drafts[day.date] === day.summary} onClick={() => void action(async () => { await updateLearningJournal({ date: day.date, summary: drafts[day.date] }); setDrafts((current) => { const next = { ...current }; delete next[day.date]; return next; }); })}>保存摘要</button><button className="text-button" disabled={blocked} onClick={() => void action(() => deleteLearningJournal({ date: day.date }))}>删除当天日志</button></div>
+        <details><summary>查看学习活动</summary><ul>{day.events.map((event) => <li key={event.eventId}><span>{event.title}</span>{event.summary && <p>{event.summary}</p>}<button className="text-button" aria-label={`删除活动：${event.title}`} disabled={blocked} onClick={() => void action(() => deleteLearningJournal({ eventId: event.eventId }))}>删除</button></li>)}</ul></details>
+      </li>)}</ul>
+    </details>}
+  </section>;
 }

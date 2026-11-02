@@ -76,5 +76,5 @@ test('curriculum spans six topics and levels, supporting concise goal-oriented d
     assert.match(prompt, /Transcription is fallible/);
   }
   assert.equal(getVoiceTopic('unknown').id, 'everyday');
-  assert.ok(DICTATION_SENTENCES.every((item) => item.source === '词迹原创练习句'));
+  assert.ok(DICTATION_SENTENCES.every((item) => item.source === '词迹例句'));
 });

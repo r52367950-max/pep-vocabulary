@@ -1,3 +1,4 @@
+import { validWritingHandwritingAssessment, type WritingHandwritingAssessment } from "./writing-recognition";
 import { validWritingReview } from "./writing-review";
 import { MAX_REVIEW_TIME_MS } from "./scheduler-limits";
 import { stableJson } from "./stable-json";
@@ -65,6 +66,7 @@ export type AppSettings = {
 
 export type WritingGenre = "practical" | "continuation" | "free";
 export type WritingVersion = {
+  handwriting?: WritingHandwritingAssessment;
   id: string;
   text: string;
   savedAt: string;
@@ -215,8 +217,9 @@ export function validWriting(value: unknown): value is WritingRecord {
   if (!Array.isArray(value.versions) || value.versions.length < 1 || value.versions.length > 30) return false;
   const ids = new Set<string>();
   return value.versions.every((version) => {
-    if (!isRecord(version) || !onlyKeys(version, ["id", "text", "savedAt", "review"]) || !textId(version.id) || ids.has(version.id) || typeof version.text !== "string" || version.text.length > 20_000 || !validDate(version.savedAt)) return false;
+    if (!isRecord(version) || !onlyKeys(version, ["id", "text", "savedAt", "review", "handwriting"]) || !textId(version.id) || ids.has(version.id) || typeof version.text !== "string" || version.text.length > 20_000 || !validDate(version.savedAt)) return false;
     ids.add(version.id);
+    if (version.handwriting !== undefined && !validWritingHandwritingAssessment(version.handwriting)) return false;
     const review = version.review;
     return review === undefined || review === null || (isRecord(review) && onlyKeys(review, ["reviewedAt", "model", "result"]) && validDate(review.reviewedAt) && typeof review.model === "string" &&
       review.model.length <= 200 && validWritingReview(review.result) && JSON.stringify(review.result).length <= 200_000);

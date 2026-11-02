@@ -1,3 +1,4 @@
+import { recordLearningActivity } from "./learning-journal-client";
 import type { AssistantTask } from "./assistant/prompt";
 import type { LearnerProfile } from "./assistant/profile";
 import { stableJson } from "./stable-json";
@@ -62,7 +63,7 @@ export const cacheKey = (task: AssistantTask, input: Record<string, unknown>) =>
 async function scopedKey(task: AssistantTask, input: Record<string, unknown>, memory: LearningMemory, profile: LearnerProfile | null) {
   const bytes = new TextEncoder().encode(stableJson({ input, profile }));
   const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `context-v2:${memory.accountScope}:${memory.revision}:${memory.enabled}:${memory.contextVersion || "learning-memory-v1"}:${task}:${digest}`;
+  return `context-v2:${memory.accountScope}:${memory.revision}:${memory.enabled}:${memory.contextVersion || "learning-memory-v1"}:${memory.journalRevision || 0}:${task}:${digest}`;
 }
 async function cachedByKey<T>(key: string): Promise<AssistantResult<T> | null> {
   try {
@@ -118,7 +119,7 @@ export const usageStore = {
 
 /** Validate account and privacy policy before every cache read and before displaying a response. */
 export async function runAssistant<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>, options: {
-  profile?: LearnerProfile | null; refresh?: boolean; signal?: AbortSignal; cache?: boolean;
+  profile?: LearnerProfile | null; refresh?: boolean; signal?: AbortSignal; cache?: boolean; activity?: boolean;
 } = {}): Promise<AssistantResult<T>> {
   if (options.signal?.aborted) throw new AssistantError("已取消。", "aborted", true);
   let memory: LearningMemory;
@@ -162,6 +163,11 @@ export async function runAssistant<T = Record<string, unknown>>(task: AssistantT
     if (payload.usage) usageStore.set(payload.usage);
     if (useCache) await writeCached({ key, task, createdAt: new Date().toISOString(), model, result: payload.result as Record<string, unknown> });
     checkCurrent();
+    if (!temporary && options.activity !== false && task !== "diagnose" && typeof window !== "undefined") {
+      const labels: Partial<Record<AssistantTask, string>> = { explain: "词汇讲解", "check-sentence": "造句反馈", "generate-practice": "生成练习", "contrast-words": "词汇辨析", mnemonic: "记忆方法", story: "词汇故事", "review-essay": "写作反馈" };
+      const refIds = [input.wordId, ...(Array.isArray(input.wordIds) ? input.wordIds : [])].filter((id): id is string => typeof id === "string").slice(0, 20);
+      void recordLearningActivity({ eventId: `assistant-${crypto.randomUUID()}`, kind: "assistant", title: labels[task] || "文本学习", summary: `完成${labels[task] || "文本学习"}任务。`, refIds, counts: { tasks: 1 } }, { accountScope: memory.accountScope });
+    }
     return { result: payload.result, model, cachedAt: null, usage: payload.usage || null };
   } catch (error) {
     if (error instanceof AssistantError) throw error;

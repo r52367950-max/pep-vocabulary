@@ -5,6 +5,8 @@ import { Check, CircleHelp, X } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { validWritingReview } from "@/lib/writing-review";
 import { locateIssues } from "@/lib/writing";
+import type { WritingHandwritingAssessment } from "@/lib/writing-recognition";
+import { HandwritingAssessment } from "./handwriting-upload";
 import { AiProvenance } from "../ai/ai-provenance";
 
 type Issue = { quote: string; type: string; suggestion: string; reason: string };
@@ -36,13 +38,14 @@ function Annotated({ essay, issues }: { essay: string; issues: Issue[] }) {
   return <div className="essay-annotated english" lang="en">{parts}</div>;
 }
 
-export default function EssayReview({ essay, result, previous, targets, words, reviewedAt, onPractice, onWord }: {
+export default function EssayReview({ essay, result, previous, targets, words, reviewedAt, handwriting, onPractice, onWord }: {
   essay: string;
   result: Record<string, unknown>;
   previous: Record<string, unknown> | null;
   targets: LexiconIndexEntry[];
   words: ReadonlyMap<string, LexiconIndexEntry>;
   reviewedAt: string;
+  handwriting?: WritingHandwritingAssessment;
   onPractice: (wordIds: string[]) => void;
   onWord: (entry: LexiconIndexEntry) => void;
 }) {
@@ -55,6 +58,8 @@ export default function EssayReview({ essay, result, previous, targets, words, r
   const score = Number(result.estimatedScore), outOf = Number(result.outOf);
   const before = previous ? Number(previous.estimatedScore) : null;
   const needsWork = verdicts.filter((item) => item.status === "issue").map((item) => item.wordId);
+  // Keep the server's concrete omission notice without repeating generic caveats.
+  const omittedAnnotations = list<string>(result.limitations).filter((item) => /^已略去 \d+ 条无法在原文中定位的批注。$/.test(item));
   // Target words the model did not mention are listed too, as not yet judged.
   const judged = new Set(verdicts.map((item) => item.wordId));
   const band = result.band as Band | null | undefined;
@@ -67,13 +72,14 @@ export default function EssayReview({ essay, result, previous, targets, words, r
       <header className="essay-score">
         <div>
           <h1 id="review-title" tabIndex={-1}>批改结果</h1>
-          <p className="ai-note">{new Date(reviewedAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · AI 估分，仅供参考</p>
+          <p className="ai-note">{new Date(reviewedAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · AI 评分</p>
         </div>
-        <p className="essay-total" aria-label={`估计得分 ${score} 分，满分 ${outOf} 分`}>
+        <p className="essay-total" aria-label={`得分 ${score} 分，满分 ${outOf} 分`}>
           <strong className="learn-tabular">{Number.isFinite(score) ? score : "—"}</strong><span>/ {outOf}</span>
           {before !== null && Number.isFinite(before) && <small data-trend={score > before ? "up" : score < before ? "down" : "same"}>上一版 {before}</small>}
         </p>
       </header>
+      {handwriting && <HandwritingAssessment assessment={handwriting} />}
       <dl className="essay-dimensions">
         {DIMENSIONS.map(([key, label]) => (
           <div key={key}>
@@ -213,7 +219,7 @@ export default function EssayReview({ essay, result, previous, targets, words, r
           {showRevised && <div className="essay-revised english" lang="en">{result.revised}</div>}
         </section>
       )}
-      {list<string>(result.limitations).length > 0 && <p className="ai-limits">{list<string>(result.limitations).join(" ")}</p>}
+      {omittedAnnotations.length > 0 && <p className="ai-note" role="status">{omittedAnnotations.join(" ")}</p>}
     </article>
   );
 }

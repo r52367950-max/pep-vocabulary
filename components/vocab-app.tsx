@@ -18,6 +18,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { refreshLearningContext } from "@/lib/learning-context-client";
 import { useBackGuard } from "@/hooks/use-back-guard";
 import { useVocabulary } from "@/hooks/use-vocabulary";
 import { notify, useToastMessage } from "@/hooks/toast-store";
@@ -38,6 +39,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 // Memoized: once visited, these stay mounted behind <Activity> and skip unrelated shell renders.
 const TodayView = memo(Today);
+const VocabularyPractice = lazy(() => import("./studio/vocabulary-practice"));
 const Lexicon = lazy(() => import("./studio/lexicon").then((m) => ({ default: memo(m.default) })));
 const Reading = lazy(() => import("./studio/reading").then((m) => ({ default: memo(m.default) })));
 const ActivityView = lazy(() => import("./studio/activity").then((m) => ({ default: memo(m.default) })));
@@ -47,7 +49,7 @@ const WordDetail = lazy(() => import("./studio/word-detail"));
 const LearnActivity = lazy(() => import("./studio/learn/learn-activity"));
 const WritingWorkspace = lazy(() => import("./studio/writing/writing-workspace"));
 const VoiceWorkspace = lazy(() => import("./studio/voice-workspace"));
-type View = "today" | "lexicon" | "reading" | "activity";
+type View = "today" | "practice" | "lexicon" | "reading" | "activity";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
   { id: "lexicon", label: "词库", short: "词库", symbol: "lexicon" },
@@ -109,7 +111,9 @@ const Toaster = memo(function Toaster() {
 
 export default function VocabApp() {
   const data = useVocabulary();
+  useEffect(() => { void refreshLearningContext().catch(() => undefined); }, []);
   const [view, setView] = useState<View>("today");
+  const navigationView = view === "practice" ? "today" : view;
   // Views stay mounted once visited (hidden with <Activity>), keeping search, page and open article.
   const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set(["today"]));
   if (!visited.has(view)) setVisited(new Set(visited).add(view));
@@ -255,9 +259,10 @@ export default function VocabApp() {
     if (previous !== null && previous !== data.generation) discardReplacedSession();
   }, [data.loading, data.generation]);
   useEffect(() => {
+    if (offscreen) return;
     window.scrollTo(0, 0);
     heading.current?.focus({ preventScroll: true });
-  }, [view]);
+  }, [view, offscreen]);
   // Reads the latest state when a key arrives, so practice checkpoints do not rebind the listener.
   const onSearchKey = useEffectEvent((event: KeyboardEvent) => {
     const editing = (event.target as HTMLElement)?.closest(
@@ -368,8 +373,8 @@ export default function VocabApp() {
     setWriting(options);
   }, []);
   const showLexicon = useCallback(() => setView("lexicon"), []);
-  const showReading = useCallback(() => setView("reading"), []);
-  const showActivity = useCallback(() => setView("activity"), []);
+  const showPractice = useCallback(() => setView("practice"), []);
+  const showToday = useCallback(() => setView("today"), []);
   const showVoice = useCallback((tab: "speaking" | "dictation" = "speaking") => { setVoiceInitialTab(tab); setVoiceOpen(true); }, []);
   const resumeSession = useMemo(
     () =>
@@ -391,7 +396,7 @@ export default function VocabApp() {
     if (session && session.position < session.queue.length) setResume(session);
     else setResume(null);
     setSession(null);
-    setView("today");
+    setView(current => current === "practice" ? "practice" : "today");
   };
   const onReplaced = () => {
     setResume(null);
@@ -554,7 +559,7 @@ export default function VocabApp() {
               aria-label={label}
               title={label}
               aria-current={
-                view === id
+                navigationView === id
                   ? "page"
                   : undefined
               }
@@ -590,7 +595,7 @@ export default function VocabApp() {
                 aria-label={label}
                 title={label}
                 aria-current={
-                  view === id
+                  navigationView === id
                     ? "page"
                     : undefined
                 }
@@ -622,7 +627,7 @@ export default function VocabApp() {
       <div className="studio-workspace">
         <main
           id="main-content"
-          className="main-content"
+          className={`main-content${view === "today" ? " home-content" : ""}`}
           ref={heading}
           tabIndex={-1}
         >
@@ -635,7 +640,6 @@ export default function VocabApp() {
           <ViewPane active={view === "today"}>
             <TodayView
               data={data}
-              stats={stats}
               bookId={bookId}
               unit={unit}
               onCourse={onCourse}
@@ -646,10 +650,8 @@ export default function VocabApp() {
               learned={summary.learned}
               queue={dailyQueue}
               onStart={startSession}
-              onLearn={onLearn}
+              onPractice={showPractice}
               onWords={showLexicon}
-              onReading={showReading}
-              onActivity={showActivity}
               resumeLabel={
                 resume
                   ? `${resume.title} · 第 ${resume.position + 1} / ${resume.queue.length} 词`
@@ -660,6 +662,20 @@ export default function VocabApp() {
               onVoice={showVoice}
             />
           </ViewPane>
+          {visited.has("practice") && (
+            <ViewPane active={view === "practice"}>
+              <VocabularyPractice
+                data={data}
+                bookId={bookId}
+                unit={unit}
+                weak={summary.weak}
+                onCourse={onCourse}
+                onLearn={onLearn}
+                onMistakes={() => startSession("mistakes")}
+                onBack={showToday}
+              />
+            </ViewPane>
+          )}
           {visited.has("lexicon") && (
             <ViewPane active={view === "lexicon"}>
               <Lexicon
@@ -690,13 +706,13 @@ export default function VocabApp() {
           )}
         </main>
       </div>
-      <nav className="mobile-nav" aria-label="移动导航" style={{ "--nav-index": navigation.findIndex(item => item.id === view) } as CSSProperties}>
+      <nav className="mobile-nav" aria-label="移动导航" style={{ "--nav-index": navigation.findIndex(item => item.id === navigationView) } as CSSProperties}>
         <span className="nav-selection" aria-hidden="true" />
         {navigation.map(({ id, short, symbol }) => (
           <button
             key={id}
             aria-current={
-              view === id
+              navigationView === id
                 ? "page"
                 : undefined
             }

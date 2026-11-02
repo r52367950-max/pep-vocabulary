@@ -172,7 +172,7 @@ test("sentence length hints do not pretend to verify grammar or correctness", ()
   assert.equal(localSentenceCheck("He, however, preferred the other book.", "he").hasTarget, true);
   const question = buildQuestion(entry("apple"), undefined, "sentence-output", []);
   assert.equal(gradeQuestion(question, "Apple apple apple apple apple."), null);
-  assert.match(localSentenceCheck("Apple apple apple apple apple.", "apple").message, /仍需自行核对/);
+  assert.equal(localSentenceCheck("Apple apple apple apple apple.", "apple").message, "已找到目标词，句子长度合适。");
 });
 
 test("six original readings have translations, supported target words and answer explanations", async () => {
