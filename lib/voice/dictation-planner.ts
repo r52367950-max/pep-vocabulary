@@ -1,4 +1,4 @@
-import type { LexiconIndexEntry } from '../lexicon';
+import { normalizeEntry, type LexiconIndexEntry } from '../lexicon';
 import type { DictationItem } from './dictation';
 import { AssistantInputError } from '../assistant/core';
 const invalid = (message: string): never => { throw new AssistantInputError('invalid_request', message); };
@@ -15,8 +15,10 @@ export type DictationPlanInput = {
   text: string; topic: string; path: string;
   messages: { role: 'user' | 'assistant'; text: string }[];
   articleCandidates: DictationItem[];
+  allowTopicWords: boolean;
 };
 export function parsePlanInput(body: Record<string, unknown>): DictationPlanInput {
+  if (body.allowTopicWords !== undefined && typeof body.allowTopicWords !== 'boolean') return invalid('主题选词设置无效。');
   const messages = body.messages ?? [];
   if (!Array.isArray(messages) || messages.length > 12) return invalid('最近对话最多 12 条。');
   const parsed = messages.map(row => {
@@ -32,7 +34,7 @@ export function parsePlanInput(body: Record<string, unknown>): DictationPlanInpu
     seen.add(id);
     return { id, mode: 'sentences' as const, text: boundedText(row.text, 700), hint: '', source: `用户提供文章 · ${boundedText(row.source, 150)}` };
   });
-  return { text: boundedText(body.text, 2000, true), topic: boundedText(body.topic, 500, true), path: boundedText(body.path, 500, true), messages: parsed, articleCandidates };
+  return { text: boundedText(body.text, 2000, true), topic: boundedText(body.topic, 500, true), path: boundedText(body.path, 500, true), messages: parsed, articleCandidates, allowTopicWords: body.allowTopicWords === true };
 }
 const numerals: Record<string, string> = { 一:'1',二:'2',三:'3',四:'4',五:'5',六:'6',七:'7',八:'8',九:'9',十:'10' };
 function normalizedQuery(text: string) {
@@ -44,11 +46,25 @@ function normalizedQuery(text: string) {
 function genericRequest(text: string) {
   return !text.trim() || /^(?:开始|开始听写|听写|听写练习|推荐听写|给我推荐听写|帮我安排听写|自动推荐|按学习记录推荐|start|dictation)[。！!\s]*$/i.test(text.trim());
 }
+function explicitRequest(input: DictationPlanInput) {
+  const latest = input.messages.filter(m => m.role === 'user').at(-1)?.text ?? '';
+  return !genericRequest(input.text) ? input.text : !genericRequest(latest) ? latest : '';
+}
+/** Theme expansion is opt-in; a specified textbook or supplied article stays source-bound. */
+export function allowsTopicWords(input: DictationPlanInput) {
+  const query = explicitRequest(input);
+  return input.allowTopicWords && !!query && !input.articleCandidates.length
+    && !/教材|课本|课标|单元|必修|人教版|[上下]册|第[一二三四五六七八九十0-9]+册|\b(?:hs-[rs][0-9]+|jh-?[0-9]+[ab]?|std-hs|pep|unit\s*[0-9]+|textbook|curriculum|book\s*[0-9]+|volume\s*[0-9]+)\b/i.test(query);
+}
+function textbookWord(row: LexiconIndexEntry): DictationItem {
+  const entry = normalizeEntry(row);
+  return { id: `word:${entry.id}`, wordId: entry.id, mode: 'words', text: entry.headword, hint: entry.chineseCore, source: entry.sources.map(s => `${s.volume} ${s.unit}`).join('；').slice(0, 500) };
+}
+const canonicalWord = (value: string) => value.normalize('NFKC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
 export type DictationRetrievalContext = { recentRefs?: string[]; recentSummaries?: string[]; allowDefault?: boolean };
 /** Trusted history is supplied separately by the server, never taken from body.path. */
 export function retrieveDictationCandidates(rows: LexiconIndexEntry[], input: DictationPlanInput, context: DictationRetrievalContext = {}): DictationItem[] {
-  const latest = input.messages.filter(m => m.role === 'user').at(-1)?.text ?? '';
-  const explicit = !genericRequest(input.text) ? input.text : !genericRequest(latest) ? latest : '';
+  const explicit = explicitRequest(input);
   const query = normalizedQuery(explicit || [input.topic, ...(context.recentRefs ?? []), ...(context.recentSummaries ?? [])].join(' '));
   const terms = [...new Set(query.match(/[a-z0-9]+(?:[-'][a-z0-9]+)*|[\u4e00-\u9fff]{2,}/g) ?? [])];
   const books = explicit ? query.match(/hs-[rs][0-9]+/g) ?? [] : [];
@@ -69,17 +85,34 @@ export function retrieveDictationCandidates(rows: LexiconIndexEntry[], input: Di
     const count = Math.min(120, eligible.length);
     selected = Array.from({ length: count }, (_, i) => eligible[Math.floor(i * eligible.length / count)]);
   }
-  return [...input.articleCandidates, ...selected.map(row => ({ id: `word:${row.id}`, wordId: row.id, mode: 'words' as const, text: row.headword, hint: row.chineseCore, source: row.sources.map(s => `${s.volume} ${s.unit}`).join('；').slice(0, 500) }))];
+  return [...input.articleCandidates, ...selected.map(textbookWord)];
 }
-export function parseDictationPlan(content: string, candidates: DictationItem[]) {
+export function parseDictationPlan(content: string, candidates: DictationItem[], options: { allowTopicWords?: boolean; rows?: LexiconIndexEntry[] } = {}) {
   const raw = JSON.parse(content);
   if (!raw || !Array.isArray(raw.itemIds) || raw.itemIds.length > 20) return invalid('推荐题单格式无效。');
   const byId = new Map(candidates.map(item => [item.id, item]));
   const ids = raw.itemIds as unknown[];
   if (new Set(ids).size !== ids.length || ids.some(id => typeof id !== 'string' || !byId.has(id))) return invalid('推荐包含未经检索的题目。');
+  const words = raw.words ?? [];
+  if (!Array.isArray(words) || words.length + ids.length > 20 || (words.length && !options.allowTopicWords)) return invalid('推荐词汇格式无效。');
+  const items = ids.map(id => byId.get(id as string)!);
+  const seen = new Set(items.map(item => canonicalWord(item.text)));
+  const known = new Map<string, LexiconIndexEntry>();
+  for (const row of options.rows ?? []) if (row.flags?.formalReleaseEligible && typeof row.headword === 'string' && !known.has(canonicalWord(row.headword))) known.set(canonicalWord(row.headword), row);
+  for (const word of words) {
+    const text = boundedText(word?.word, 80).normalize('NFKC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
+    const hint = boundedText(word?.meaning, 140);
+    if (!/^[A-Za-z]+(?:['-][A-Za-z]+)*(?: [A-Za-z]+(?:['-][A-Za-z]+)*){0,5}$/.test(text)) return invalid('主题选词只支持英文单词或短语。');
+    const key = canonicalWord(text);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const row = known.get(key);
+    // IDs, textbook meanings and sources come exclusively from our published lexicon.
+    items.push(row ? textbookWord(row) : { id: `ai-word:${key.replace(/ /g, '_')}`, mode: 'words', text, hint, source: 'AI 主题选词' });
+  }
   const clarification = boundedText(raw.clarification, 400, true);
-  if (!ids.length && !clarification) return invalid('推荐题单为空。');
-  return { items: ids.map(id => byId.get(id as string)!), reason: boundedText(raw.reason, 500, true), clarification };
+  if (!items.length && !clarification) return invalid('推荐题单为空。');
+  return { items, reason: boundedText(raw.reason, 500, true), clarification };
 }
 export type RecognizedDictationRow = { label: string; text: string; uncertain: boolean };
 export function parseRecognizedRows(content: string): { rows: RecognizedDictationRow[]; requiresConfirmation: true } {

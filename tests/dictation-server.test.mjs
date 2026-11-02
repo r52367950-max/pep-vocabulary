@@ -37,3 +37,23 @@ test('article request retrieves real library sentences and unavailable article n
  const missing=await planDictation(json({operationId:'article-test-missing',text:'听写文章《This Article Definitely Does Not Exist 938294》'}));assert.equal(missing.status,200,await missing.clone().text());assert.deepEqual((await missing.json()).items,[]);assert.equal(calls,1);
  }finally{globalThis.fetch=original;}
 });
+test('winter imagery uses one bounded Terra call without literal matches and retains truthful sources and reasoning low',async()=>{
+ setup();await configure();
+ env.ASSETS={fetch:async(request)=>new URL(request.url).pathname.startsWith('/readings/') ? new Response(readFileSync(new URL('../public'+new URL(request.url).pathname,import.meta.url),'utf8'),{headers:{'content-type':'application/json'}}) : Response.json([{id:'pep-1',headword:'frost',chineseCore:'霜',sources:[{bookId:'HS-R1',volume:'必修第一册',unit:'Unit 1'}],flags:{formalReleaseEligible:true}}])};
+ const original=globalThis.fetch;let calls=0;
+ globalThis.fetch=async(_url,init)=>{calls++;const payload=JSON.parse(init.body);assert.equal(payload.model,'gpt-6.1-terra');assert.equal(payload.reasoning.effort,'low');assert.equal(payload.store,false);assert.ok(payload.max_output_tokens<=1600);const supplied=JSON.parse(payload.input[1].content);assert.equal(supplied.allowTopicWords,true);assert.deepEqual(supplied.candidates,[]);return Response.json({id:'resp_theme',object:'response',status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({itemIds:[],words:[{word:'frost',meaning:'伪造词义'},{word:'snowdrift',meaning:'风吹成的雪堆',source:'伪造教材'}],reason:'围绕冬天的景象与感受选词。'})}]}],usage:{input_tokens:100,output_tokens:70,total_tokens:170}});};
+ try{
+  const body={operationId:'winter-theme-test-1234',text:'和冬天（与冬天的意象）有关的单词',allowTopicWords:true};
+  const response=await planDictation(json(body));assert.equal(response.status,200,await response.clone().text());const result=await response.json();
+  assert.equal(result.selection,'theme');assert.equal(result.items[0].wordId,'pep-1');assert.equal(result.items[0].hint,'霜');assert.match(result.items[0].source,/必修第一册/);
+  assert.deepEqual(result.items[1],{id:'ai-word:snowdrift',mode:'words',text:'snowdrift',hint:'风吹成的雪堆',source:'AI 主题选词'});
+  assert.equal((await planDictation(json(body))).status,409);assert.equal(calls,1);
+ }finally{globalThis.fetch=original;}
+});
+test('unavailable explicit textbooks and articles still clarify without a paid call even with theme expansion enabled',async()=>{
+ setup();await configure();env.ASSETS={fetch:async(request)=>new URL(request.url).pathname.startsWith('/readings/') ? new Response(readFileSync(new URL('../public'+new URL(request.url).pathname,import.meta.url),'utf8'),{headers:{'content-type':'application/json'}}) : Response.json([{id:'pep-1',headword:'apple',chineseCore:'苹果',sources:[{bookId:'HS-R1',volume:'必修第一册',unit:'Unit 1'}],flags:{formalReleaseEligible:true}}])};
+ const original=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error('must not contact a provider');};
+ try{for(const [i,text] of ['未知教材第九册','听写文章《No Such Article 938294》','和冬天意象有关的单词'].entries()){
+  const response=await planDictation(json({operationId:`unavailable-scope-${i}`,text,allowTopicWords:i!==2}));assert.equal(response.status,200,await response.clone().text());const result=await response.json();assert.deepEqual(result.items,[]);assert.ok(result.clarification);
+ }assert.equal(calls,0);}finally{globalThis.fetch=original;}
+});

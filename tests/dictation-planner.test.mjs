@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePlanInput, retrieveDictationCandidates, parseDictationPlan, parseRecognizedRows, parseDictationImage, operationId } from '../lib/voice/dictation-planner.ts';
+import { parsePlanInput, allowsTopicWords, retrieveDictationCandidates, parseDictationPlan, parseRecognizedRows, parseDictationImage, operationId } from '../lib/voice/dictation-planner.ts';
 const row = { id:'pep-1',headword:'apple',chineseCore:'苹果',flags:{formalReleaseEligible:true},sources:[{bookId:'HS-R1',volume:'必修第一册',unit:'Unit 1'}] };
 const input = text => parsePlanInput({text});
 test('retrieval uses real release IDs and sources; blank metadata never matches',()=>{
@@ -47,4 +47,30 @@ test('common Chinese book/unit aliases match exact source, latest correction rep
  const unit10={...row,id:'pep-3',headword:'pear',sources:[{bookId:'HS-R1',volume:'必修第一册',unit:'Unit 10'}]};
  for(const text of ['必修一第一单元','第一册 Unit1','必修第一册 Unit 1']) assert.deepEqual(retrieveDictationCandidates([row,other,unit10],input(text)).map(i=>i.wordId),['pep-1']);
  assert.deepEqual(retrieveDictationCandidates([row,other],parsePlanInput({messages:[{role:'user',text:'必修一'},{role:'user',text:'改成必修二'}]})).map(i=>i.wordId),['pep-2']);
+});
+test('semantic expansion is opt-in and never overrides a textbook scope or supplied article',()=>{
+ assert.equal(allowsTopicWords(parsePlanInput({text:'和冬天（与冬天的意象）有关的单词',allowTopicWords:true})),true);
+ assert.equal(allowsTopicWords(input('冬天意象')),false);
+ for(const text of ['开始听写','未知教材第九册','必修一冬天的词','Unit 2 winter','HS-R9','JH-7A','textbook winter']) assert.equal(allowsTopicWords(parsePlanInput({text,allowTopicWords:true})),false,text);
+ assert.equal(allowsTopicWords(parsePlanInput({text:'与冬天意象有关的词，适合高中水平',allowTopicWords:true})),true);
+ assert.equal(allowsTopicWords(parsePlanInput({text:'冬天',allowTopicWords:true,articleCandidates:[{id:'article:one',text:'The winter sun.',source:'用户片段'}]})),false);
+ assert.throws(()=>parsePlanInput({allowTopicWords:'true'}));
+});
+test('theme words reuse trusted textbook records and mark additional words as AI instead of inventing provenance',()=>{
+ const content=JSON.stringify({itemIds:[],words:[{word:' Apple ',meaning:'FAKE',source:'伪造出处',wordId:'fake'},{word:'frost',meaning:'霜',source:'伪造教材',id:'word:fake'}]});
+ const result=parseDictationPlan(content,[],{allowTopicWords:true,rows:[row]});
+ assert.deepEqual(result.items[0],{id:'word:pep-1',wordId:'pep-1',mode:'words',text:'apple',hint:'苹果',source:'必修第一册 Unit 1'});
+ assert.deepEqual(result.items[1],{id:'ai-word:frost',mode:'words',text:'frost',hint:'霜',source:'AI 主题选词'});
+ assert.throws(()=>parseDictationPlan(content,[]),'strict callers cannot create new targets');
+ assert.throws(()=>parseDictationPlan('{"itemIds":["fake"],"words":[]}',[],{allowTopicWords:true,rows:[row]}));
+});
+test('theme parsing bounds and deduplicates English targets, excluding unreleased lexicon records',()=>{
+ const candidates=retrieveDictationCandidates([row],input('apple'));
+ const result=parseDictationPlan(JSON.stringify({itemIds:['word:pep-1'],words:[{word:'APPLE',meaning:'苹果'},{word:'snow  covered',meaning:'被雪覆盖的'},{word:'snow covered',meaning:'被雪覆盖的'},{word:'frost',meaning:'霜'}]}),candidates,{allowTopicWords:true,rows:[{...row,headword:'frost',flags:{formalReleaseEligible:false}}]});
+ assert.deepEqual(result.items.map(item=>item.id),['word:pep-1','ai-word:snow_covered','ai-word:frost']);
+ const parse=words=>parseDictationPlan(JSON.stringify({itemIds:[],words}),[],{allowTopicWords:true});
+ for(const word of ['雪','<script>','one two three four five six seven','x'.repeat(81),'https://bad.test']) assert.throws(()=>parse([{word,meaning:'词义'}]),word);
+ assert.throws(()=>parse([{word:'frost',meaning:''}]));
+ assert.throws(()=>parse([{word:'frost',meaning:'长'.repeat(141)}]));
+ assert.throws(()=>parse(Array.from({length:21},()=>({word:'frost',meaning:'霜'}))));
 });

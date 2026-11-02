@@ -11,7 +11,7 @@ import { voiceRequest, type VoiceSnapshot } from "@/lib/voice/client";
 import { recordLearningActivity } from "@/lib/learning-journal-client";
 import { PaperDictation } from "./paper-dictation";
 import "./dictation.css";
-export type PreparedDictationPlan = { items: DictationItem[]; reason: string; clarification: string };
+export type PreparedDictationPlan = { items: DictationItem[]; reason: string; clarification: string; selection?: 'theme' | 'grounded' };
 
 type Playback = "idle" | "loading" | "playing";
 export function DictationPanel({ entries, active = true, temporary = false, learningPreferences, spellingCapture: suppliedCapture, accountScope, contextEpoch = 0, onLiveActiveChange, onLiveUnconfirmedChange, preparedPlan, conversationContext = "" }: {
@@ -185,12 +185,13 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     setPlanBusy(true); setPlanError("");
     try {
       const context = await refreshLearningContext(abort.signal);
-      const plan = await voiceRequest<PreparedDictationPlan>("/api/voice/dictation-plan", { operationId: crypto.randomUUID(), text: [conversationContext, requestText].filter(Boolean).join("\n").slice(-2000), accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion, temporary }, abort.signal);
+      const plan = await voiceRequest<PreparedDictationPlan>("/api/voice/dictation-plan", { operationId: crypto.randomUUID(), text: (requestText.trim() || conversationContext).slice(-2000), allowTopicWords: mode === "words", accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion, temporary }, abort.signal);
       await refreshLearningContext(abort.signal);
       if (!abort.signal.aborted && contextStillCurrent(context, temporary)) setSuggestion(plan);
     } catch (error) { if (!abort.signal.aborted) setPlanError(error instanceof Error ? error.message : "推荐暂时未完成，请重试。"); }
     finally { if (planAbort.current === abort) setPlanBusy(false); }
   };
+  const cancelPlan = () => { planAbort.current?.abort(); planAbort.current = null; setPlanBusy(false); };
   useEffect(() => {
     if (preparedPlan && !queue.length) { setSuggestion(preparedPlan); planAttempted.current = `${accountScope}:${contextEpoch}`; }
   }, [preparedPlan, accountScope, contextEpoch, queue.length]);
@@ -201,7 +202,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     void prepare();
   }, [active, accountScope, contextEpoch, queue.length, conversationContext]);
   useEffect(() => () => { planAbort.current?.abort(); }, []);
-  const changeMode = (next: DictationMode) => { setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
+  const changeMode = (next: DictationMode) => { cancelPlan(); setSuggestion(null); setPlanError(""); setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
   const deviceSpeak = (text: string, rate: number, id: number, attemptId: string, commandId: string) => {
     if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
       setNotice("此浏览器没有可用的设备朗读。可切换 AI 语音，或在 Safari 中重试。"); return;
@@ -379,13 +380,20 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     </div> : !queue.length ? <div className="dictation-intro">
       <span className="dictation-emblem"><Headphones size={28} aria-hidden="true" /></span>
       <h2>听一组，记下来。</h2>
-      <p>{suggestion?.items.length ? `已从学习材料中准备 ${suggestion.items.length} 项。` : directCount ? `练习${mode === "words" ? "当前教材中的" : "一组"} ${directCount} ${mode === "words" ? "个词与短语" : "个短句"}。` : "当前范围没有可听写的词，请换个教材或单元。"}</p>
+      <p aria-live="polite">{suggestion?.items.length ? suggestion.selection === "theme" ? `已按主题选好 ${suggestion.items.length} 个词与短语。` : `已从学习材料中准备 ${suggestion.items.length} 项。` : directCount ? `练习${mode === "words" ? "当前教材中的" : "一组"} ${directCount} ${mode === "words" ? "个词与短语" : "个短句"}。` : "当前范围没有可听写的词，请换个教材或单元。"}</p>
       <button type="button" className="primary" disabled={!suggestion?.items.length && !directCount} onClick={() => void start(suggestion?.items.length ? suggestion.items : selectDictationRound(directItems, directCount))}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
       <p className="dictation-note">可以用键盘，也可以写在纸上</p>
       <details className="dictation-plan-options">
-        <summary>按学习内容推荐</summary>
-        <form className="dictation-request" onSubmit={(event) => { event.preventDefault(); void prepare(); }}><label htmlFor="dictation-request">想练习什么？</label><div><input id="dictation-request" value={requestText} maxLength={1000} placeholder="例如：刚才聊到的旅行词汇" onChange={(event) => setRequestText(event.target.value)} /><button className="text-button" disabled={planBusy || !requestText.trim()}>{planBusy ? "准备中…" : "推荐"}</button></div></form>
-        {planBusy && <p className="dictation-note" role="status">正在结合学习内容准备推荐，可先练当前词库。</p>}
+        <summary>{mode === "words" ? "让 AI 按主题找词" : "按学习内容推荐"}</summary>
+        <form className="dictation-request" onSubmit={(event) => { event.preventDefault(); if (planBusy) cancelPlan(); else if (requestText.trim()) void prepare(); }}>
+          <label htmlFor="dictation-request">{mode === "words" ? "想找什么词？" : "想练习什么？"}</label>
+          <div>
+            <textarea id="dictation-request" value={requestText} rows={2} maxLength={1000} readOnly={planBusy} aria-describedby="dictation-request-help" placeholder={mode === "words" ? "例如：与冬天意象有关的词，适合高中水平" : "例如：必修一第一单元，或某篇文章的标题"} onChange={(event) => setRequestText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && (event.metaKey || event.ctrlKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+            <button className="text-button" disabled={!planBusy && !requestText.trim()}>{planBusy ? "取消" : mode === "words" ? "找词" : "推荐"}</button>
+          </div>
+          <p id="dictation-request-help" className="dictation-note">{mode === "words" ? "可按主题、意境或教材选词，沿用已配置的 AI。" : "文章听写请提供标题或在阅读页选中片段。"}</p>
+        </form>
+        {planBusy && <p className="dictation-note" role="status">{mode === "words" ? "AI 正在选词…" : "正在准备推荐…"}</p>}
         {planError && <p className="dictation-notice" role="alert">{planError} <button className="text-button" onClick={() => void prepare()}>重试</button></p>}
         {!planBusy && !planError && suggestion?.clarification && <p className="dictation-note">{suggestion.clarification}</p>}
       </details>
