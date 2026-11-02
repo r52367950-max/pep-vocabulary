@@ -7,6 +7,7 @@ import "./settings-dialog.css";
 import "./learn.css";
 import "./ai-writing.css";
 import "./voice.css";
+import "./secondary-ui.css";
 
 export const metadata: Metadata = {
   title: "词迹 · 人教版英语词汇学习",
@@ -34,6 +35,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        <link rel="preload" href="/data/v1/index.json" as="fetch" crossOrigin="anonymous" />
+        <link rel="preload" href="/data/v1/manifest.json" as="fetch" crossOrigin="anonymous" />
+      </head>
       <body>{children}</body>
     </html>
   );

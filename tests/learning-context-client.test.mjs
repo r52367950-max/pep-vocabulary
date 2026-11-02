@@ -44,6 +44,11 @@ test('cache isolates accounts, revisions and model context versions; unknown pol
   f.memory={...f.memory,accountScope:'account-b'};
   assert.equal((await runAssistant('explain',input)).cachedAt,null);
   assert.equal(f.modelCalls.length,4);
+  const epoch=learningContextStore.get().epoch;
+  f.memory={...f.memory,journalRevision:1};
+  assert.equal((await runAssistant('explain',input)).cachedAt,null);
+  assert.equal(learningContextStore.get().epoch,epoch);
+  assert.equal(f.modelCalls.length,5);
   globalThis.fetch=async()=>{ throw new Error('offline'); };
   assert.equal(await readCached('explain',input),null);
   await assert.rejects(runAssistant('explain',input),e=>e.code==='context_unavailable');

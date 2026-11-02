@@ -8,6 +8,10 @@ import { READING_CATEGORIES, READING_FORMS, LENGTHS, lengthBand, loadReadingCata
 import { readingArtKind } from "@/lib/art";
 import { Artwork } from "./art";
 import { listPersonalReadings, readPersonalArticle, removePersonalArticle, exportPersonalArticle } from "@/lib/personal-readings";
+import { contextStillCurrent, learningContextStore, refreshLearningContext } from "@/lib/learning-context-client";
+import { recordLearningActivity } from "@/lib/learning-journal-client";
+import { ActionMenu } from "./action-menu";
+import { StudioDialog } from "./studio-dialog";
 const ReadingImport = lazy(() => import("./reading-import"));
 
 function Cover({ category, articleId, eager = false }: { category: ReadingCategory; articleId: string; eager?: boolean }) {
@@ -35,8 +39,11 @@ export default function Reading({ data, onDetail, onPractice }: {
   const [translation, setTranslation] = useState(false);
   const [lookupEnabled, setLookupEnabled] = useState(false);
   const [fontSize, setFontSize] = useState(21);
+  const [readerPanel, setReaderPanel] = useState<"appearance" | "source" | "lookup" | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterButton = useRef<HTMLButtonElement>(null);
   const [category, setCategory] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
   const [length, setLength] = useState(0);
@@ -49,6 +56,7 @@ export default function Reading({ data, onDetail, onPractice }: {
   const returning = useRef(false);
   // The article already on screen, so showing the reading tab again does not reload or refocus it.
   const loadedArticle = useRef("");
+  const journaledOpenings = useRef(new Set<string>());
 
   // Hidden tabs re-run effects when shown again; lists already loaded are kept rather than refetched.
   const personalLoaded = useRef(false);
@@ -77,8 +85,21 @@ export default function Reading({ data, onDetail, onPractice }: {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort("timeout"), 15000);
     let active = true;
+    const openingContext = learningContextStore.get();
+    const account = openingContext.temporary ? Promise.resolve(null) : refreshLearningContext(controller.signal).catch(() => null);
     (articleId.startsWith("personal-") ? readPersonalArticle(articleId) : loadLibraryArticle(articleId, controller.signal)).then(value => {
-      if (active) { loadedArticle.current = key; setArticle(value); requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true })); }
+      if (active) {
+        loadedArticle.current = key; setArticle(value); requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
+        // Record only this visible article opening, not completion or the local library's contents.
+        void account.then(context => {
+          if (!active || !context || !contextStillCurrent(context, false) || (openingContext.memory && openingContext.memory.accountScope !== context.accountScope) || learningContextStore.get().epoch > openingContext.epoch + 1) return;
+          const now = new Date(), date = new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+          const eventId = `reading-${value.id}-${date}`, openingKey = `${context.accountScope}:${eventId}`;
+          if (journaledOpenings.current.has(openingKey)) return;
+          journaledOpenings.current.add(openingKey);
+          void recordLearningActivity({ eventId, kind: "reading", title: value.title.slice(0, 160), summary: "阅读文章（已打开正文）", refIds: [value.id], occurredAt: now.toISOString() }, { accountScope: context.accountScope });
+        });
+      }
     }).catch(() => { if (active) setArticleError("这篇文章尚未载入。请检查网络后重试。"); }).finally(() => clearTimeout(timeout));
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [articleId, articleRetry]);
@@ -112,9 +133,9 @@ export default function Reading({ data, onDetail, onPractice }: {
   const displayed = filtered.slice((currentPage - 1) * 12, currentPage * 12);
   const open = (id: string) => {
     listPosition.current = window.scrollY; lastArticle.current = id; loadedArticle.current = "";
-    setArticle(null); setArticleError(""); setArticleId(id); setTranslation(false); setAnswers({});
+    setArticle(null); setArticleError(""); setArticleId(id); setTranslation(false); setAnswers({}); setReaderPanel(null);
   };
-  const back = () => { returning.current = true; setArticleId(null); };
+  const back = () => { returning.current = true; setArticleId(null); setReaderPanel(null); };
   const resetFilters = () => { setQuery(""); setCategory("all"); setDifficulty("all"); setLength(0); setPage(1); };
 
   if (articleId) {
@@ -126,21 +147,22 @@ export default function Reading({ data, onDetail, onPractice }: {
         <div className="reader-tools">
           {targets.length > 0 && <button className="reader-translation-toggle" aria-pressed={lookupEnabled} onClick={() => setLookupEnabled(!lookupEnabled)}><BookOpen size={17} aria-hidden="true" /><span>查词</span></button>}
           {hasTranslation && <button aria-pressed={translation} className="reader-translation-toggle" onClick={() => setTranslation(!translation)}><Languages size={18} aria-hidden="true" /><span>{translation ? "收起译文" : "译文"}</span></button>}
-          <div className="reader-type-size" role="group" aria-label="正文字号">
-            <button aria-label="缩小字号" disabled={fontSize <= 18} onClick={() => setFontSize(n => n - 1)}><Minus size={15} aria-hidden="true" /></button><span aria-hidden="true">Aa</span><button aria-label="放大字号" disabled={fontSize >= 27} onClick={() => setFontSize(n => n + 1)}><Plus size={15} aria-hidden="true" /></button>
-          </div>
+          <ActionMenu label="阅读选项" items={[
+            { label: "调整字号…", icon: <span aria-hidden="true">Aa</span>, onSelect: () => setReaderPanel("appearance") },
+            { label: "作品信息…", icon: <BookOpen size={17} aria-hidden="true" />, onSelect: () => setReaderPanel("source"), disabled: !article },
+            ...(article?.form === "imported" ? [
+              { label: "导出文章", icon: <Download size={17} aria-hidden="true" />, separator: true, onSelect: () => exportPersonalArticle(article) },
+              { label: "移除文章", icon: <Trash2 size={17} aria-hidden="true" />, danger: true, onSelect: () => { if (!confirm("从本机移除这篇文章？已保存的单词学习记录会保留。")) return; void removePersonalArticle(article.id).then(() => listPersonalReadings()).then(rows => { setPersonal(rows); back(); }).catch(() => data.notify("移除未完成，请重试。")); } },
+            ] : []),
+          ]} />
         </div>
       </div>
       {articleError ? <LoadError message={articleError} retry={() => { setArticleError(""); setArticleRetry(n => n + 1); }} /> : !article ? <div className="reading-loading" role="status"><span className="reading-skeleton line-wide" /><span className="reading-skeleton line-short" /><p>正在载入正文…</p></div> :
       <div className="reader-column">
         <header className="reader-title">
-          <Artwork kind={readingArtKind(article.category)} seed={article.id} className="reader-art" eager />
-          <div className="reader-meta"><span>{READING_CATEGORIES[article.category]}</span><span>{article.difficulty} · 估计难度</span><span>{READING_FORMS[article.form]}</span></div>
           <h1 ref={titleRef} tabIndex={-1} lang="en">{article.title}</h1>
           {article.titleZh && article.titleZh !== article.title && <p className="reader-title-zh">{article.titleZh}</p>}
-          <p className="reader-byline">{article.author}</p>
-          <p className="reader-duration">{article.wordCount.toLocaleString("zh-CN")} 词<span aria-hidden="true" />约 {Math.max(1, Math.ceil(article.wordCount / 150))} 分钟</p>
-
+          <p className="reader-byline"><span>{article.author}</span><span className="reader-duration">{article.wordCount.toLocaleString("zh-CN")} 词 · 约 {Math.max(1, Math.ceil(article.wordCount / 150))} 分钟</span></p>
         </header>
         {lookupEnabled && targets.length > 0 && <p className="reader-lookup-hint"><BookOpen size={15} aria-hidden="true" />点按带下划线的单词，查看释义。</p>}
         <article className="reader-prose" lang="en" translate="no" aria-label={article.title} style={{ fontSize: `${fontSize / 16}rem` }}>
@@ -150,12 +172,6 @@ export default function Reading({ data, onDetail, onPractice }: {
           </div>)}
         </article>
         <aside className="reader-endnote" aria-label="作品简介"><p>{article.background}</p>{article.backgroundEn && <p lang="en">{article.backgroundEn}</p>}</aside>
-        <details className="reader-source-details"><summary>来源与阅读提示<ChevronDown size={17} aria-hidden="true" /></summary><div>
-          <p><strong>{READING_FORMS[article.form]} · {article.author}</strong></p>
-          <p>{article.difficultyNote} 难度为编辑估计，与篇幅分别标注。</p>
-          <p>{article.rights.basis}</p>
-          <div className="reader-source-links">{article.form !== "imported" && <><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14} aria-hidden="true" /></a><a href={article.rights.url} target="_blank" rel="noopener noreferrer">{article.rights.label}<ExternalLink size={14} aria-hidden="true" /></a></>}</div>
-        </div></details>
         <details className="reader-words">
           <summary><BookOpen size={19} aria-hidden="true" /><span>文中的课内词</span><span className="reader-count">{targets.length}</span><ChevronDown className="reader-disclosure" size={17} aria-hidden="true" /></summary>
           <div className="reader-words-body">{targets.length ? <><div className="reader-word-list">{targets.map(entry => <button key={entry.id} onClick={() => onDetail(entry)}><span lang="en">{entry.headword}</span><span>{entry.chineseCore}</span><ChevronRight size={16} aria-hidden="true" /></button>)}</div><button className="reader-primary" onClick={() => onPractice(targets)}>练习这 {targets.length} 个词</button></> : <p className="reader-muted">当前词库暂未匹配到本文词汇。</p>}</div>
@@ -166,24 +182,41 @@ export default function Reading({ data, onDetail, onPractice }: {
             return <fieldset className="reader-question" key={question.id}><legend><span className="reader-question-number">{i + 1}</span><span lang="en">{question.prompt}</span></legend><div className="reader-choices">{question.options.map((option, j) => <button key={option} lang="en" className={answered && j === question.answerIndex ? "is-correct" : chosen === j ? "is-incorrect" : ""} aria-disabled={answered} aria-pressed={chosen === j} onClick={() => { if (!answered) setAnswers(previous => ({ ...previous, [question.id]: j })); }}><span className="reader-choice-letter">{String.fromCharCode(65 + j)}</span><span>{option}</span>{answered && j === question.answerIndex && <Check size={17} aria-label="正确答案" />}{chosen === j && j !== question.answerIndex && <X size={17} aria-label="回答错误" />}</button>)}</div>{answered && <p className="reader-explanation"><strong>{chosen === question.answerIndex ? "答对了。" : "再读一读。"}</strong>{question.explanation}</p>}<p className="sr-only" aria-live="polite">{answered ? (chosen === question.answerIndex ? "答对了" : `答错了，正确答案是 ${String.fromCharCode(65 + question.answerIndex)}`) : ""}</p></fieldset>;
           })}
         </section>}
-        {article.form === "imported" && <div className="reader-personal-actions"><button onClick={() => exportPersonalArticle(article)}><Download size={16} aria-hidden="true" />导出文章</button><button onClick={async () => { if (!confirm("从本机移除这篇文章？已保存的单词学习记录会保留。")) return; try { await removePersonalArticle(article.id); setPersonal(await listPersonalReadings()); back(); } catch { data.notify("移除未完成，请重试。"); } }}><Trash2 size={16} aria-hidden="true" />移除文章</button></div>}
         <div className="reader-finish"><button className="reader-text-button" onClick={back}><ArrowLeft size={17} aria-hidden="true" />返回阅读</button>{targets.length > 0 && <button className="reader-primary" onClick={() => onPractice(targets)}>练习文中单词<ArrowRight size={16} aria-hidden="true" /></button>}</div>
       </div>}
+      {readerPanel === "appearance" && <StudioDialog title="调整字号" onClose={() => setReaderPanel(null)}>
+        <div className="reader-settings-row"><span>正文字号</span><div className="reader-type-size" role="group" aria-label="正文字号">
+          <button className="icon-button" aria-label="缩小字号" disabled={fontSize <= 18} onClick={() => setFontSize(n => n - 1)}><Minus size={17} aria-hidden="true" /></button><span role="status" aria-live="polite">{fontSize}</span><button className="icon-button" aria-label="放大字号" disabled={fontSize >= 27} onClick={() => setFontSize(n => n + 1)}><Plus size={17} aria-hidden="true" /></button>
+        </div></div>
+        <p className="reader-font-preview" lang="en" style={{ fontSize: `${fontSize / 16}rem` }}>{article?.paragraphs[0]?.en.slice(0, 180) || "Choose a comfortable text size for reading."}</p>
+      </StudioDialog>}
+      {readerPanel === "source" && article && <StudioDialog title="作品信息" onClose={() => setReaderPanel(null)}>
+        <div className="reader-source-dialog"><p><strong>{READING_FORMS[article.form]} · {article.author}</strong></p><p>{READING_CATEGORIES[article.category]} · {article.difficulty} · {article.wordCount} 词</p>
+          {article.form !== "original-writing" && <p>{article.rights.basis}</p>}
+          <div className="reader-source-links">{article.form !== "imported" && <><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14} aria-hidden="true" /></a><a href={article.rights.url} target="_blank" rel="noopener noreferrer">{article.rights.label}<ExternalLink size={14} aria-hidden="true" /></a></>}</div>
+        </div>
+      </StudioDialog>}
     </div>;
   }
+  const activeFilters = Number(category !== "all") + Number(difficulty !== "all") + Number(length !== 0);
   return <div className="reading-shelf">
-    <header className="page-heading reading-shelf-heading"><div><h1>阅读</h1><p>经典散文、故事与科学阅读</p></div><div className="reading-header-actions"><button className="reading-import-button" onClick={() => setImportOpen(true)}><Plus size={18} aria-hidden="true" />导入文章</button></div></header>
-    <div className="reading-shelves" role="group" aria-label="阅读来源"><button aria-pressed={shelf === "library"} onClick={() => { setShelf("library"); setPage(1); }}>文章精选<span>{catalog?.length ?? ""}</span></button><button aria-pressed={shelf === "personal"} onClick={() => { setShelf("personal"); setPage(1); }}>我的文章<span>{personal.length}</span></button></div>
+    <header className="page-heading reading-shelf-heading"><div><h1>阅读</h1><p>经典散文、故事与科学阅读</p></div><ActionMenu label="阅读工具" items={[{ label: "快速查找课内词…", icon: <Search size={17} aria-hidden="true" />, onSelect: () => setReaderPanel("lookup") }]} /></header>
+    <div className="reading-source-toolbar">
+      <div className="reading-shelves" role="group" aria-label="阅读来源"><button aria-pressed={shelf === "library"} onClick={() => { setShelf("library"); setPage(1); }}>文章精选<span>{catalog?.length ?? ""}</span></button><button aria-pressed={shelf === "personal"} onClick={() => { setShelf("personal"); setPage(1); }}>我的文章<span>{personal.length}</span></button></div>
+      <button className="reading-import-button" onClick={() => setImportOpen(true)}><Plus size={18} aria-hidden="true" />导入文章</button>
+    </div>
     <div className="reading-browser-controls">
       <label className="reading-search"><Search size={18} aria-hidden="true" /><input type="search" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="搜索作品或作者…" aria-label="搜索作品或作者" name="reading-search" autoComplete="off" spellCheck={false} maxLength={200} />{query && <button aria-label="清空阅读搜索" onClick={event => { setQuery(""); setPage(1); event.currentTarget.parentElement?.querySelector("input")?.focus(); }}><X size={17} aria-hidden="true" /></button>}</label>
-      <div className="reading-filters">
-        <select aria-label="阅读类别" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}><option value="all">全部类别</option>{Object.entries(READING_CATEGORIES).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select>
-        <select aria-label="语言难度" value={difficulty} onChange={e => { setDifficulty(e.target.value); setPage(1); }}><option value="all">全部难度</option>{["A2", "B1", "B2", "C1"].map(value => <option value={value} key={value}>{value} · 估计</option>)}</select>
-        <select aria-label="文章篇幅" value={length} onChange={e => { setLength(Number(e.target.value)); setPage(1); }}>{LENGTHS.map((label, i) => <option value={i} key={i}>{label}</option>)}</select>
+      <button ref={filterButton} type="button" className="reading-filter-toggle" aria-expanded={filtersOpen} aria-controls="reading-filter-options" onClick={() => setFiltersOpen(open => !open)}>筛选{activeFilters > 0 && <span> · {activeFilters}</span>}<ChevronDown size={16} aria-hidden="true" /></button>
+      <div id="reading-filter-options" className="reading-filters" hidden={!filtersOpen} role="group" aria-label="文章筛选" onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); setFiltersOpen(false); filterButton.current?.focus(); } }}>
+        <label><span>阅读类别</span><select aria-label="阅读类别" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}><option value="all">全部类别</option>{Object.entries(READING_CATEGORIES).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
+        <label><span>语言难度</span><select aria-label="语言难度" value={difficulty} onChange={e => { setDifficulty(e.target.value); setPage(1); }}><option value="all">全部难度</option>{["A2", "B1", "B2", "C1"].map(value => <option value={value} key={value}>{value}</option>)}</select></label>
+        <label><span>文章篇幅</span><select aria-label="文章篇幅" value={length} onChange={e => { setLength(Number(e.target.value)); setPage(1); }}>{LENGTHS.map((label, i) => <option value={i} key={i}>{label}</option>)}</select></label>
+        {activeFilters > 0 && <button type="button" className="reader-text-button reading-filter-reset" onClick={() => { setCategory("all"); setDifficulty("all"); setLength(0); setPage(1); }}>清除筛选</button>}
       </div>
     </div>
     {shelf === "personal" && personalError ? <p role="alert" className="import-error">{personalError}</p> : shelf === "library" && catalogError ? <LoadError message={catalogError} retry={() => { setCatalogError(""); setCatalogRetry(n => n + 1); }} /> : shelf === "library" && !catalog ? <div className="reading-loading" role="status"><div className="reading-skeleton" /><p>正在载入阅读目录…</p></div> : <>
-      <div className="reading-result-count" role="status">{category !== "all" || difficulty !== "all" || length || query ? `找到 ${filtered.length} 篇` : "所有文章"}<span>难度与篇幅分别标注</span></div>
+      <div className="reading-result-count" role="status">{category !== "all" || difficulty !== "all" || length || query ? `找到 ${filtered.length} 篇` : "所有文章"}</div>
       {displayed.length ? <div className="reading-grid">{displayed.map((item, i) => <button className="reading-card" key={item.id} data-reading-id={item.id} onClick={() => open(item.id)}>
         <Cover category={item.category} articleId={item.id} eager={i < 3} />
         <span className="reading-card-copy"><span className="reading-card-category">{READING_CATEGORIES[item.category]}</span><strong lang="en">{item.title}</strong><span className="reading-card-author">{item.author}</span><span className="reading-card-meta"><span>{item.difficulty}</span><span>{item.wordCount.toLocaleString("zh-CN")} 词</span><span>{READING_FORMS[item.form]}</span></span></span>
@@ -191,6 +224,8 @@ export default function Reading({ data, onDetail, onPractice }: {
       {pages > 1 && <div className="reading-pagination"><button disabled={currentPage === 1} onClick={() => { setPage(currentPage - 1); window.scrollTo(0, 0); }}><ArrowLeft size={17} aria-hidden="true" />上一页</button><span>{currentPage} / {pages}</span><button disabled={currentPage === pages} onClick={() => { setPage(currentPage + 1); window.scrollTo(0, 0); }}>下一页<ArrowRight size={17} aria-hidden="true" /></button></div>}
     </>}
     {importOpen && <Suspense fallback={null}><ReadingImport onClose={() => setImportOpen(false)} onSaved={async id => { setPersonal(await listPersonalReadings()); setImportOpen(false); resetFilters(); requestAnimationFrame(() => { setShelf("personal"); open(id); }); }} /></Suspense>}
-    <details className="reader-own"><summary><Plus size={19} aria-hidden="true" /><span>快速查找课内词</span><ChevronDown className="reader-disclosure" size={17} aria-hidden="true" /></summary><div className="reader-own-body"><p>粘贴英文，查找其中的课内词汇。</p><textarea maxLength={30000} rows={5} aria-label="粘贴自己的英文文章" value={ownText} onChange={e => { setOwnText(e.target.value); setAligned(null); }} placeholder="在这里粘贴英文文章…" /><button className="reader-primary" disabled={!ownText.trim()} onClick={() => setAligned(matchReadingWords([{ en: ownText }], data.index))}><Search size={17} aria-hidden="true" />查找课内词</button>{aligned && <div className="reader-own-result" aria-live="polite">{aligned.length ? <><p>找到 {aligned.length} 个词</p><div className="reader-own-matches">{aligned.map(e => <button key={e.id} lang="en" onClick={() => onDetail(e)}>{e.headword}</button>)}</div><button className="reader-text-button" onClick={() => onPractice(aligned)}>练习这些词<ChevronRight size={17} aria-hidden="true" /></button></> : <p>没有匹配到课内词汇。试试换一段文章。</p>}</div>}</div></details>
+    {readerPanel === "lookup" && <StudioDialog title="快速查找课内词" onClose={() => setReaderPanel(null)}>
+      <div className="reader-lookup-dialog"><div className="reader-own-body"><p>粘贴英文，查找其中的课内词汇。</p><textarea maxLength={30000} rows={5} aria-label="粘贴自己的英文文章" value={ownText} onChange={e => { setOwnText(e.target.value); setAligned(null); }} placeholder="在这里粘贴英文文章…" /><button className="reader-primary" disabled={!ownText.trim()} onClick={() => setAligned(matchReadingWords([{ en: ownText }], data.index))}><Search size={17} aria-hidden="true" />查找课内词</button>{aligned && <div className="reader-own-result" aria-live="polite">{aligned.length ? <><p>找到 {aligned.length} 个词</p><div className="reader-own-matches">{aligned.map(e => <button key={e.id} lang="en" onClick={() => { setReaderPanel(null); onDetail(e); }}>{e.headword}</button>)}</div><button className="reader-text-button" onClick={() => { setReaderPanel(null); onPractice(aligned); }}>练习这些词<ChevronRight size={17} aria-hidden="true" /></button></> : <p>没有匹配到课内词汇。试试换一段文章。</p>}</div>}</div></div>
+    </StudioDialog>}
   </div>;
 }

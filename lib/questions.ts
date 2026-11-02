@@ -329,7 +329,7 @@ export function buildQuestion(
       if (!original)
         return fallback(
           "context-gap",
-          "该例句暂无已审核的选择项，改为语境填空。",
+          "本次练习语境填空。",
         );
       const choices = [
         ...new Set([...original.distractors, entry.headword]),
@@ -358,7 +358,7 @@ export function buildQuestion(
     case "word-form":
       return fallback(
         "spelling",
-        "当前词条暂无已审核的词形变化题，改为基础拼写。",
+        "本次练习基础拼写。",
       );
     case "collocation-gap": {
       const tokens = normalizeTypography(entry.headword).split(" ");
@@ -386,11 +386,11 @@ export function buildQuestion(
     case "family-conversion":
       return fallback(
         "spelling",
-        "词族关联不等于已审核的转换题，当前改为基础拼写。",
+        "本次练习基础拼写。",
       );
     case "confusable":
       return contextFallback(
-        "当前词条暂无已审核的易混词辨析题，改练可用语境或基础拼写。",
+        "本次练习语境或基础拼写。",
       );
     case "phrase-dictation":
       if (!entry.headword.trim().includes(" "))
@@ -403,23 +403,23 @@ export function buildQuestion(
       });
     case "natural-expression":
       return contextFallback(
-        "当前词条暂无已审核的自然表达比较题，改练可用语境或基础拼写。",
+        "本次练习语境或基础拼写。",
       );
     case "textbook-context":
       return contextFallback(
-        "当前词条未提供可用的教材原文语境，练习来源见题目说明。",
+        "本次练习语境或基础拼写。",
       );
     case "sentence-output":
       return make(requested, {
         prompt: `用 ${entry.headword} 写一个完整的英文句子。`,
-        support: "完成后自行核对意思和用法。本地提示只检查目标词与长度。",
+        support: "写完后核对目标词、意思和用法。",
         inputMode: "textarea",
         hint: example?.zh || `意思：${entry.chineseCore}`,
       });
     case "paragraph-retell":
       return fallback(
         "sentence-output",
-        "当前词条没有完整短文，改为造句；阅读页另有原创短文。",
+        "本次用目标词造句。",
       );
     default:
       return fallback("meaning-recall", "未识别的题型，改为释义回忆。");
@@ -448,6 +448,6 @@ export function localSentenceCheck(sentence: string, headword: string) {
       ? "句子里还没有目标词或短语。"
       : wordCount < 5
         ? "已找到目标词；可以补充更多信息，再核对句子是否完整。"
-        : "已找到目标词，长度也足够；语法、搭配与句意仍需自行核对。",
+        : "已找到目标词，句子长度合适。",
   };
 }

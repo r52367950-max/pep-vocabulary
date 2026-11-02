@@ -65,7 +65,7 @@ export function LearnHeader({
         type="button"
         className="icon-button learn-exit"
         onClick={onExit}
-        aria-label="退出，返回今日"
+        aria-label="退出练习"
         title="退出（Esc）"
       >
         <X size={22} aria-hidden="true" />

@@ -88,6 +88,21 @@ const CLOSERS: Record<string, string> = { "）": "（", ")": "(" };
  * anything more broken is left exactly as published.
  */
 export function repairMeaning(text: string): string {
+  // Older PDF rows embedded a second pronunciation inside the Chinese field.
+  // Remove only slash-delimited phonetics containing the PDF's private font
+  // glyphs; keep distinct noun/verb senses and ordinary slash-separated text.
+  const embeddedIpa = /\/[^/\r\n\u4e00-\u9fff]*[\uE000-\uF8FF][^/\r\n\u4e00-\u9fff]*\//g;
+  const fragments = text.includes("/") && /[\uE000-\uF8FF]/.test(text) ? [...text.matchAll(embeddedIpa)] : [];
+  if (fragments.length === 1) {
+    const fragment = fragments[0];
+    const before = text.slice(0, fragment.index).trim();
+    const after = text.slice(fragment.index! + fragment[0].length).trim();
+    const withoutPos = after.replace(/^(?:v[ti]?|n|adj|adv)\.\s*/, "");
+    const comparable = (value: string) => value.replace(/[\s;；。]/g, "");
+    text = comparable(before) === comparable(withoutPos) ? before : `${before} ${after}`.trim();
+  } else if (fragments.length > 1) {
+    text = text.replace(embeddedIpa, " ").replace(/\s+/g, " ").trim();
+  }
   let depth = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
@@ -103,7 +118,11 @@ export function repairMeaning(text: string): string {
 export function normalizeEntry<T extends LexiconIndexEntry>(entry: T): T {
   const fixed = normalizePronunciations(entry);
   if (typeof fixed.chineseCore !== "string") return fixed;
-  const chineseCore = repairMeaning(fixed.chineseCore);
+  // These three old extraction rows swallowed the following glossary entry.
+  // Trim only a known corrupt boundary; the original release stays intact.
+  const adjacent = fixed.headword === "band" ? "rap" : fixed.headword === "chain" ? "café" : fixed.headword === "La Tomatina" ? "Buñol" : "";
+  const boundary = adjacent && /[\uE000-\uF8FF]/.test(fixed.chineseCore) ? fixed.chineseCore.indexOf(adjacent) : -1;
+  const chineseCore = repairMeaning(boundary > 0 ? fixed.chineseCore.slice(0, boundary).trim() : fixed.chineseCore);
   return chineseCore === fixed.chineseCore ? fixed : { ...fixed, chineseCore };
 }
 

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const syncStates = sqliteTable("sync_states", {
   userKey: text("user_key").primaryKey(),
@@ -52,3 +52,21 @@ export const voiceLearningMemories = sqliteTable("voice_learning_memories", {
   recentTopics: text("recent_topics").notNull().default("[]"),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+
+export const learningJournalSettings = sqliteTable("learning_journal_settings", {
+  userKey: text("user_key").primaryKey(), enabled: integer("enabled").notNull().default(1),
+  revision: integer("revision").notNull().default(0), privacyRevision: integer("privacy_revision").notNull().default(0),
+  suppressedBefore: text("suppressed_before").notNull().default(""), writeToken: text("write_token").notNull().default(""),
+});
+export const learningJournalEvents = sqliteTable("learning_journal_events", {
+  userKey: text("user_key").notNull(), eventId: text("event_id").notNull(), date: text("date").notNull(),
+  timezone: text("timezone").notNull(), occurredAt: text("occurred_at").notNull(), kind: text("kind").notNull(),
+  title: text("title").notNull(), summary: text("summary").notNull(), refIds: text("ref_ids").notNull().default("[]"),
+  counts: text("counts").notNull().default("{}"), contentHash: text("content_hash").notNull(),
+  deleted: integer("deleted").notNull().default(0), edited: integer("edited").notNull().default(0),
+}, table => [primaryKey({columns:[table.userKey,table.eventId]}),index("idx_learning_journal_events_day").on(table.userKey,table.date,table.deleted)]);
+export const learningJournalDays = sqliteTable("learning_journal_days", {
+  userKey: text("user_key").notNull(), date: text("date").notNull(), factsSummary: text("facts_summary").notNull().default(""),
+  editedSummary: text("edited_summary"), deletedBefore: text("deleted_before").notNull().default(""), updatedAt:text("updated_at").notNull(),
+}, table => [primaryKey({columns:[table.userKey,table.date]})]);

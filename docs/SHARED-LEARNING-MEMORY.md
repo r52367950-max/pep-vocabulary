@@ -1,4 +1,6 @@
-# Shared learning context (2.8.0)
+# Shared learning context
+
+2.9.0 adds automatic account activity journals and day summaries, separate from manual notes and raw chats. See [2.9.0 release](RELEASE_2.9.0.md) for current recording, temporary-mode and retrieval behavior. The confirmed-note design below describes the retained 2.8.x subsystem.
 
 The account memory is shared by text AI, writing review, spoken practice and dictation preferences. `lib/learning-memory` retains the existing `voice_learning_memories` D1 rows and CAS revision; no schema migration or account reassignment is performed. The legacy voice endpoint remains compatible.
 

@@ -57,6 +57,13 @@
       "when": 1793431340456,
       "tag": "0007_ai_config_generations",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793444361622,
+      "tag": "0008_learning_journal",
+      "breakpoints": true
     }
   ]
 }
