@@ -198,7 +198,7 @@
   border: 0;
   border-radius: var(--radius-control, 20px);
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
 }
 .voice-dialog textarea { resize: vertical; line-height: 1.7; }
 .voice-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 72px; padding: 8px 0 16px; }
@@ -271,9 +271,11 @@
 .voice-discussion-message.user { width: fit-content; margin-left: auto; background: var(--grouped); padding: 12px 16px; border-radius: var(--radius-card, 28px); }
 .voice-discussion-form { display: grid; gap: 8px; }
 .voice-discussion-form > label { font-size: 13px; color: var(--muted-strong); }
-.voice-discussion-form > div { display: flex; align-items: flex-end; gap: 12px; padding: 10px 12px; border: 0; border-radius: var(--radius-card, 28px); background: var(--bg); }
-.voice-discussion-form textarea { width: 100%; min-height: 50px; max-height: 240px; font: inherit; font-size: 16px; line-height: 1.7; padding: 4px 0; border: 0; color: var(--ink); background: transparent; resize: vertical; }
-.voice-discussion-form .primary { flex-shrink: 0; width: 44px; height: 44px; padding: 0; border-radius: 50%; background: var(--ink); color: var(--bg); }
+.voice-discussion-form > div { display: flex; align-items: flex-end; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--bg); }
+.voice-discussion-form > div:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-pale); }
+.voice-discussion-form textarea { display: block; flex: 1; width: 0; min-width: 0; min-height: 50px; max-height: 240px; margin: 0; font: inherit; font-size: 16px; line-height: 1.7; padding: 4px 0; border: 0; border-radius: 0; color: var(--ink); background: transparent; resize: vertical; }
+.voice-screen .voice-discussion-form textarea:focus-visible { outline: none; box-shadow: none; }
+.voice-discussion-form .primary { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border-radius: 50%; background: var(--ink); color: var(--bg); }
 .voice-memory-suggestions { margin: 26px 0; border-top: 0; padding-top: 14px; }
 .voice-memory-suggestions > p { font-size: 13px; color: var(--muted-strong); }
 .voice-memory-suggestions > .secondary { display: flex; justify-content: flex-start; gap: 10px; width: 100%; border: 0; border-bottom: 0; border-radius: 0; padding: 12px 0; text-align: left; }

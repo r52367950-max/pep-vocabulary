@@ -10,6 +10,7 @@ export function ActionMenu({ label, items }: { label: string; items: MenuItem[] 
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const anchor = useRef<{ left: number; top: number } | null>(null);
   const [open, setOpen] = useState(false);
   const close = (restore = false) => {
     menu.current?.hidePopover();
@@ -20,6 +21,7 @@ export function ActionMenu({ label, items }: { label: string; items: MenuItem[] 
     if (!node || !button) return;
     node.showPopover();
     const rect = button.getBoundingClientRect();
+    anchor.current = { left: rect.left, top: rect.top };
     const box = node.getBoundingClientRect();
     const left = Math.max(12, Math.min(rect.right - box.width, window.innerWidth - box.width - 12));
     const top = rect.bottom + box.height + 8 <= window.innerHeight - 12 ? rect.bottom + 8 : Math.max(12, rect.top - box.height - 8);
@@ -28,9 +30,20 @@ export function ActionMenu({ label, items }: { label: string; items: MenuItem[] 
     ((last ? controls[controls.length - 1] : controls[0]) || node).focus({ preventScroll: true });
   };
   useEffect(() => {
-    const resize = () => menu.current?.hidePopover();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    const dismiss = () => {
+      if (!menu.current?.matches(":popover-open")) return;
+      menu.current.hidePopover();
+      trigger.current?.focus({ preventScroll: true });
+    };
+    const scroll = (event: Event) => {
+      if (event.target instanceof Node && menu.current?.contains(event.target)) return;
+      const rect = trigger.current?.getBoundingClientRect(), origin = anchor.current;
+      // Ignore queued scroll events from bringing the trigger into view before opening.
+      if (rect && origin && (Math.abs(rect.left - origin.left) > 1 || Math.abs(rect.top - origin.top) > 1)) dismiss();
+    };
+    window.addEventListener("resize", dismiss);
+    window.addEventListener("scroll", scroll, true);
+    return () => { window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", scroll, true); };
   }, []);
   return <span className="action-menu">
     <button ref={trigger} type="button" className="action-menu-trigger" aria-haspopup="menu" aria-controls={id} aria-expanded={open}
