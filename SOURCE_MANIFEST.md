@@ -27,27 +27,6 @@
 | ECDICT-2025 | ECDICT free English-Chinese dictionary database | — | verified-primary | CSV lookup; core translation and phonetic fields only | MIT; Copyright (c) 2025 Linwei |
 | DRIVE-ARCHITECTURE-RECOMMENDATIONS | VOCAB_APP_ARCHITECTURE_AND_FEATURE_RECOMMENDATIONS.md | — | verified-user-source | Google Drive text fetch | private project material |
 | MIKIGO-MIDDLE-CROSSCHECK | english-chinese-words 人教版初中词表 | — | verified-cross-source | Markdown headings and first bold gloss only | Apache-2.0 repository; examples and expanded notes excluded because upstream provenance is not field-level |
-| UPLOAD-01 | 03_暑期滚动七周主计划.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-02 | 06_记录与复盘模板.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-03 | 04_六科学科路线图.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-04 | 2026暑期学习项目核心文件.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-05 | 08_诊断与测评蓝图.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-06 | 00_新项目启用说明.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-07 | 01_项目总指令_粘贴到项目设置.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-08 | 02_学生档案与项目状态.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-09 | 05_首周启动包.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-10 | 07_资料与来源索引.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-11 | 09_GPT-Live-1英语口语教练提示词.md | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-12 | biology_required_1.pdf | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-13 | biology_selective_1.pdf | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-14 | biology_selective_2.pdf | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-15 | biology_required_2.pdf | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-16 | chemistry_selective_1.pdf | — | verified-user-source | UTF-8 text scan | private user material; not redistributed |
-| UPLOAD-17 | 12-biology_required_1.pdf | 141 | verified-user-source | metadata scan only | private user material; not redistributed |
-| UPLOAD-18 | 13-biology_selective_1.pdf | 123 | verified-user-source | metadata scan only | private user material; not redistributed |
-| UPLOAD-19 | 14-biology_selective_2.pdf | 126 | verified-user-source | metadata scan only | private user material; not redistributed |
-| UPLOAD-20 | 15-biology_required_2.pdf | 138 | verified-user-source | metadata scan only | private user material; not redistributed |
-| UPLOAD-21 | 16-chemistry_selective_1.pdf | 148 | verified-user-source | metadata scan only | private user material; not redistributed |
 
 ## 缺失与版本结论
 
@@ -58,4 +37,4 @@
 - 教材版权页明确禁止未经许可复制；PDF、整篇课文和整页 OCR 不随应用发布。
 - ChinaTextbook 仅作为候选文件入口，公开可见不等于可再分发。
 - 两册扫描版的 OCR 不能单独形成正式字段。
-- 用户上传的生物、化学教材和学习计划已登记，但不属于本词库数据来源。
+- 私有上传材料不进入公开来源清单。

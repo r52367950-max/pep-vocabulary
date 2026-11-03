@@ -146,7 +146,7 @@ test('sync is rate limited per identity with 429 and Retry-After', async () => {
   assert.equal((await modules['/api/sync'].GET()).status, 200);
 });
 
-test('sync writes have a daily budget; no storage answers 503, a missing limiter table does not block sync', async () => {
+test('sync writes have a daily budget; no storage answers 503, a missing limiter table fails closed', async () => {
   asIdentity('daily@example.test');
   const key = await authenticatedUserKey();
   const dayStart = Math.floor(Date.now() / 86_400_000) * 86_400_000;
@@ -159,9 +159,9 @@ test('sync writes have a daily budget; no storage answers 503, a missing limiter
   const binding = env.DB;
   delete env.DB;
   try { await assertPrivateError(await modules['/api/sync'].GET(), 503); } finally { env.DB = binding; }
-  // A deployment that never applied the limiter migration keeps syncing.
+  // A missing limiter migration must block both reads and writes.
   database.exec('ALTER TABLE ai_rate_limits RENAME TO ai_rate_limits_hidden');
-  try { assert.equal((await modules['/api/sync'].GET()).status, 200); } finally { database.exec('ALTER TABLE ai_rate_limits_hidden RENAME TO ai_rate_limits'); }
+  try { assert.equal((await modules['/api/sync'].GET()).status, 503); assert.equal((await call('/api/sync', 'POST')).status, 503); } finally { database.exec('ALTER TABLE ai_rate_limits_hidden RENAME TO ai_rate_limits'); }
   await assert.rejects(consumeRateLimit({ prepare() { throw new Error('no such table: ai_rate_limits'); } }, 'k', 1, 1), error => error instanceof RateLimitStoreError && error.migrationRequired);
 });
 
@@ -169,7 +169,7 @@ test('sync keeps identity and revision conflicts after the hardening', async () 
   asIdentity('conflict@example.test');
   const first = await (await modules['/api/sync'].GET()).json();
   assert.equal((await call('/api/sync', 'POST', { body: { ...validBodies['/api/sync'], expectedIdentity: first.identity } })).status, 200);
-  const stale = await call('/api/sync', 'POST');
+  const stale = await call('/api/sync', 'POST', { body: { ...validBodies['/api/sync'], expectedIdentity: first.identity } });
   assert.deepEqual(await assertPrivateError(stale, 409), { error: 'revision-conflict', code: 'revision-conflict' });
   const moved = await call('/api/sync', 'POST', { body: { ...validBodies['/api/sync'], baseRevision: 1, expectedIdentity: 'f'.repeat(64) } });
   assert.deepEqual(await assertPrivateError(moved, 409), { error: 'identity-conflict', code: 'identity-conflict' });

@@ -8,11 +8,11 @@ import { timeOfDay } from "@/lib/art";
 import { CoursePicker } from "./shared";
 import { StudioSymbol } from "./symbol";
 import { Artwork, useDarkAppearance } from "./art";
+import { VocabularyPractice, VoiceWorkspace, WritingWorkspace } from "./surfaces";
 
 function preparePractice(target: "vocabulary" | "voice" | "writing") {
-  const loading = target === "voice" ? import("./voice-workspace")
-    : target === "writing" ? import("./writing/writing-workspace") : import("./vocabulary-practice");
-  void loading.catch(() => undefined);
+  const surface = target === "voice" ? VoiceWorkspace : target === "writing" ? WritingWorkspace : VocabularyPractice;
+  void surface.preload().catch(() => undefined);
 }
 
 export default function Today({ data, bookId, unit, onCourse, due, newCount, weak, total, learned, queue, onStart, onPractice, onWords, resume, resumeLabel, onWrite, onVoice }: {

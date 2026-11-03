@@ -33,6 +33,9 @@ import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from
 
 type Section = "general" | "learning" | "ai" | "privacy" | "about";
 type AIConfig = {
+  accountScope?: string;
+  generation?: string;
+  writeToken?: string | null;
   provider: AIProvider;
   baseUrl: string;
   model: string;
@@ -118,10 +121,14 @@ export default function ConsoleSettings({
   useEffect(() => {
     if (section !== "ai") return;
     let active = true;
+    setLoadingConfig(true);
     fetch("/api/ai/config", { cache: "no-store" })
       .then(async (response) => {
         const result = (await response.json()) as AIConfig & { error?: string };
-        if (!response.ok) throw new Error(result.error || "无法读取 API 配置");
+        if (!response.ok) {
+          if (active && result.generation) setAIConfig({ ...defaultAIConfig, ...result });
+          throw new Error(result.error || "无法读取 API 配置");
+        }
         if (active) setAIConfig(result);
       })
       .catch(
@@ -157,6 +164,11 @@ export default function ConsoleSettings({
     try {
       await work();
     } catch (error) {
+      setApiKey("");
+      try {
+        const response = await fetch("/api/ai/config", { cache: "no-store" });
+        if (response.ok) setAIConfig(await response.json() as AIConfig);
+      } catch { /* Keep the conflict visible when the network is unavailable. */ }
       setMessage({ kind: "error", text: error instanceof Error ? error.message : fallback });
     } finally {
       setBusy(false);
@@ -171,6 +183,9 @@ export default function ConsoleSettings({
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
+          accountScope: aiConfig.accountScope,
+          generation: aiConfig.generation,
+          writeToken: aiConfig.writeToken,
           provider: aiConfig.provider,
           baseUrl: aiConfig.baseUrl,
           model: aiConfig.model,
@@ -201,10 +216,10 @@ export default function ConsoleSettings({
   const removeAIConfig = () => {
     if (!window.confirm("移除服务端保存的 API Key 和接口设置？本地词库与学习记录不会受影响。")) return;
     return run(setSaving, "移除失败", async () => {
-      const response = await fetch("/api/ai/config", { method: "DELETE", headers: apiHeaders() });
-      const result = (await response.json()) as { error?: string };
+      const response = await fetch("/api/ai/config", { method: "DELETE", headers: apiHeaders(), body: JSON.stringify({ accountScope: aiConfig.accountScope, generation: aiConfig.generation, writeToken: aiConfig.writeToken }) });
+      const result = (await response.json()) as AIConfig & { error?: string };
       if (!response.ok) throw new Error(result.error || "移除失败");
-      setAIConfig(defaultAIConfig);
+      setAIConfig(result);
       setApiKey("");
       onUpdate({ aiEnabled: false });
       window.dispatchEvent(new Event("vocab-ai-config-changed"));
@@ -427,7 +442,7 @@ export default function ConsoleSettings({
               <section className="settings-card api-form">
                 <div className="openai-setup-card">
                   <div><strong>OpenAI 一次配置</strong><p>文字学习使用 GPT-6.1 Terra，口语使用 GPT-Live 1。选好推荐配置，填入你的 OpenAI API Key 并保存即可。</p></div>
-                  <button className="console-secondary" onClick={() => chooseProvider("openai-compatible")} disabled={saving || loadingConfig}>使用 OpenAI 推荐配置</button>
+                  <button className="console-secondary" onClick={() => chooseProvider("openai-compatible")} disabled={saving || loadingConfig || !aiConfig.generation}>使用 OpenAI 推荐配置</button>
                   <small>语音与听写使用同一把密钥；已有其他服务商的配置会在你点击保存后替换。</small>
                 </div>
                 {aiConfig.requiresKeyReentry && (
@@ -614,7 +629,7 @@ export default function ConsoleSettings({
                   <button
                     className="console-primary"
                     onClick={saveAIConfig}
-                    disabled={saving || loadingConfig}
+                    disabled={saving || loadingConfig || !aiConfig.generation}
                   >
                     <Save size={16} aria-hidden="true" />
                     {saving

@@ -77,9 +77,27 @@ export async function loadLibraryArticle(id: string, signal: AbortSignal): Promi
   articles.set(id, value); return value;
 }
 const common = new Set("about after again also another been before being between both came come could each even every first from have into just like made make many more most much must only other over said same shall should some such than that their them then there these they this those through under very want were what when where which while will with would your little upon once went down know back well long never away good great himself herself nothing something anything without still might until though because however always soon around".split(" "));
+const wordIndexes = new WeakMap<readonly LexiconIndexEntry[], Map<string, LexiconIndexEntry>>();
+function readingWordIndex(index: readonly LexiconIndexEntry[]) {
+  let words = wordIndexes.get(index);
+  if (!words) {
+    words = new Map();
+    for (const entry of index) {
+      const word = entry.headword.toLowerCase();
+      if (!words.has(word)) words.set(word, entry);
+    }
+    wordIndexes.set(index, words);
+  }
+  return words;
+}
 export function matchReadingWords(paragraphs: readonly { en: string }[], index: readonly LexiconIndexEntry[], preferred?: readonly string[]): LexiconIndexEntry[] {
   const wanted = new Set(preferred?.map(w => w.toLowerCase()) ?? paragraphs.flatMap(p => p.en.toLowerCase().match(/[a-z]+(?:['’][a-z]+)*/g) ?? []).filter(w => w.length > 3 && !common.has(w)));
-  const found = new Map<string, LexiconIndexEntry>();
-  for (const entry of index) { const word = entry.headword.toLowerCase(); if (wanted.has(word) && !found.has(word)) found.set(word, entry); }
-  return [...wanted].flatMap(w => found.has(w) ? [found.get(w)!] : []).slice(0, 60);
+  const words = readingWordIndex(index);
+  const found: LexiconIndexEntry[] = [];
+  for (const word of wanted) {
+    const entry = words.get(word);
+    if (entry) found.push(entry);
+    if (found.length === 60) break;
+  }
+  return found;
 }

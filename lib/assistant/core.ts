@@ -1021,7 +1021,11 @@ export function parseUsage(value: unknown): CompletionUsage | null {
   const details = (usage.prompt_tokens_details ?? usage.input_tokens_details) as Record<string, unknown> | undefined;
   const cacheHit = tokenCount(usage.prompt_cache_hit_tokens) || tokenCount(details?.cached_tokens);
   if (!prompt && !completion) return null;
-  return { prompt, completion, cacheHit: Math.min(cacheHit, prompt), total: Math.max(tokenCount(usage.total_tokens), prompt + completion), estimated: false };
+  const total = prompt + completion;
+  if (!Number.isSafeInteger(total)) return null;
+  const reportedTotal = tokenCount(usage.total_tokens);
+  if (reportedTotal > total) return null;
+  return { prompt, completion, cacheHit: Math.min(cacheHit, prompt), total, estimated: false };
 }
 
 /** A rough fallback when a provider returns no usage: about three characters per token. */

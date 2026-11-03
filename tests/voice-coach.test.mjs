@@ -6,9 +6,21 @@ import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { sqliteD1 } from './sqlite-d1.mjs';
 import { deadlineNamespace } from './voice-deadline-env.mjs';
-import { getVoiceMemory, putVoiceMemory, readVoiceMemory, recommendVoicePractice, discussVoicePractice, sanitizeRecommendations, sanitizeDiscussion } from '../lib/voice/coach-server.ts';
+import { getVoiceMemory, putVoiceMemory as rawPutVoiceMemory, readVoiceMemory, recommendVoicePractice, discussVoicePractice, sanitizeRecommendations, sanitizeDiscussion } from '../lib/voice/coach-server.ts';
 import { createVoiceSession } from '../lib/voice/server.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
+
+// Legacy fixture clients now carry the account metadata read for each request.
+async function putVoiceMemory(request) {
+  const key = await authenticatedUserKey();
+  if (!key) return rawPutVoiceMemory(request);
+  let body;
+  try { body = await request.clone().json(); } catch { return rawPutVoiceMemory(request); }
+  if (!body || typeof body !== 'object' || body.accountScope !== undefined) return rawPutVoiceMemory(request);
+  const { memoryMetadata } = await import('../lib/learning-memory/context.ts');
+  const { accountScope } = await memoryMetadata(key);
+  return rawPutVoiceMemory(new Request(request, { body: JSON.stringify({ accountScope, ...body }) }));
+}
 
 const origin = 'https://app.test';
 const req = (path, body, method = 'POST', headers = {}) => new Request(`${origin}/api/voice/${path}`, { method, headers: { 'content-type': 'application/json', ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -24,7 +36,7 @@ function setup() {
   return db;
 }
 async function configure() {
-  const { POST } = await import('../app/api/ai/config/route.ts');
+  const { POST } = await import('./config-client.mjs');
   const response = await POST(req('config', { provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: 'not-a-real-key-only-for-test', timeoutSeconds: 25, dailyLimit: 100, dailyTokenBudget: 200000 }, 'POST', { 'x-vocab-action': 'settings' }));
   assert.equal(response.status, 200, await response.clone().text());
 }

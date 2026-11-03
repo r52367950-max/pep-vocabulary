@@ -9,7 +9,7 @@ import { legacyAiCredential } from './legacy-ai-credential.mjs';
 import { getChatGPTUser, identityHostTrusted } from '../app/chatgpt-auth.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
 import { encryptApiKey, decryptApiKey, reencryptApiKey, refreshStoredCredential } from '../lib/ai-config.ts';
-import { GET as configGet, POST as configPost } from '../app/api/ai/config/route.ts';
+import { GET as configGet, POST as configPost } from './config-client.mjs';
 import { GET as syncGet } from '../app/api/sync/route.ts';
 import { POST as explain } from '../app/api/assistant/explain/route.ts';
 import { POST as classify } from '../app/api/reading/classify/route.ts';

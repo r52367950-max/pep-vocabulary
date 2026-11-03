@@ -5,8 +5,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
+import { authenticatedUserKey } from '../lib/server-user.ts';
 import { GET, POST } from '../app/api/sync/route.ts';
-import { POST as saveConfig, DELETE as deleteConfig } from '../app/api/ai/config/route.ts';
+import { POST as saveConfig, DELETE as deleteConfig } from './config-client.mjs';
 
 const database = new DatabaseSync(':memory:');
 for (const migration of ['0000_curvy_newton_destine', '0001_flawless_human_cannonball']) {
@@ -17,7 +18,8 @@ const binding = sqliteD1(database);
 env.DB = binding;
 requestHeaders.set('oai-authenticated-user-email', 'test@example.com');
 const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
-const payload = (revision = 0) => ({ schemaVersion: '1.2.0', baseRevision: revision, clientUpdatedAt: '2026-09-14T00:00:00Z', payload: backup });
+let identity = await authenticatedUserKey();
+const payload = (revision = 0) => ({ expectedIdentity: identity, schemaVersion: '1.2.0', baseRevision: revision, clientUpdatedAt: '2026-09-14T00:00:00Z', payload: backup });
 const req = body => new Request('https://app.test/api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 test('first upload race accepts exactly one writer and returns non-cacheable responses', async () => {
@@ -38,12 +40,14 @@ test('concurrent updates compare revisions in SQL and reject missing/stale revis
 });
 test('sync is partitioned by authenticated identity', async () => {
   requestHeaders.set('oai-authenticated-user-email', 'another@example.com');
+  identity = await authenticatedUserKey();
   assert.equal((await (await GET()).json()).state, null);
   assert.equal((await POST(req(payload(2)))).status, 409);
   requestHeaders.delete('oai-authenticated-user-email');
   assert.equal((await GET()).status, 401);
   assert.equal((await POST(req(payload()))).status, 401);
   requestHeaders.set('oai-authenticated-user-email', 'test@example.com');
+  identity = await authenticatedUserKey();
 });
 test('sync rejects cross-origin requests and hides storage internals', async () => {
   const request = req(payload(2));

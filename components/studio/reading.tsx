@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, ExternalLink, Download, Trash2, Languages, Minus, Plus, RotateCcw, Search, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
@@ -12,7 +12,10 @@ import { contextStillCurrent, learningContextStore, refreshLearningContext } fro
 import { recordLearningActivity } from "@/lib/learning-journal-client";
 import { ActionMenu } from "./action-menu";
 import { StudioDialog } from "./studio-dialog";
-const ReadingImport = lazy(() => import("./reading-import"));
+import { preloadable } from "./preloadable";
+
+const ReadingImport = preloadable(() => import("./reading-import"));
+const prepareImport = () => { void ReadingImport.preload().catch(() => undefined); };
 
 function Cover({ category, articleId, eager = false }: { category: ReadingCategory; articleId: string; eager?: boolean }) {
   return <span className={`reading-cover cover-${category}`} aria-hidden="true">
@@ -203,7 +206,7 @@ export default function Reading({ data, onDetail, onPractice }: {
     <header className="page-heading reading-shelf-heading"><div><h1>阅读</h1><p>经典散文、故事与科学阅读</p></div><ActionMenu label="阅读工具" items={[{ label: "快速查找课内词…", icon: <Search size={17} aria-hidden="true" />, onSelect: () => setReaderPanel("lookup") }]} /></header>
     <div className="reading-source-toolbar">
       <div className="reading-shelves" role="group" aria-label="阅读来源"><button aria-pressed={shelf === "library"} onClick={() => { setShelf("library"); setPage(1); }}>文章精选<span>{catalog?.length ?? ""}</span></button><button aria-pressed={shelf === "personal"} onClick={() => { setShelf("personal"); setPage(1); }}>我的文章<span>{personal.length}</span></button></div>
-      <button className="reading-import-button" onClick={() => setImportOpen(true)}><Plus size={18} aria-hidden="true" />导入文章</button>
+      <button className="reading-import-button" onClick={() => setImportOpen(true)} onPointerEnter={prepareImport} onFocus={prepareImport}><Plus size={18} aria-hidden="true" />导入文章</button>
     </div>
     <div className="reading-browser-controls">
       <label className="reading-search"><Search size={18} aria-hidden="true" /><input type="search" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="搜索作品或作者…" aria-label="搜索作品或作者" name="reading-search" autoComplete="off" spellCheck={false} maxLength={200} />{query && <button aria-label="清空阅读搜索" onClick={event => { setQuery(""); setPage(1); event.currentTarget.parentElement?.querySelector("input")?.focus(); }}><X size={17} aria-hidden="true" /></button>}</label>
@@ -215,12 +218,17 @@ export default function Reading({ data, onDetail, onPractice }: {
         {activeFilters > 0 && <button type="button" className="reader-text-button reading-filter-reset" onClick={() => { setCategory("all"); setDifficulty("all"); setLength(0); setPage(1); }}>清除筛选</button>}
       </div>
     </div>
+    {activeFilters > 0 && !filtersOpen && <div className="reading-active-filters" aria-label="已选筛选条件">
+      {category !== "all" && <button onClick={() => { setCategory("all"); setPage(1); }} aria-label={`移除类别筛选：${READING_CATEGORIES[category as ReadingCategory]}`}>{READING_CATEGORIES[category as ReadingCategory]}<X size={13} aria-hidden="true" /></button>}
+      {difficulty !== "all" && <button onClick={() => { setDifficulty("all"); setPage(1); }} aria-label={`移除难度筛选：${difficulty}`}>{difficulty}<X size={13} aria-hidden="true" /></button>}
+      {length !== 0 && <button onClick={() => { setLength(0); setPage(1); }} aria-label={`移除篇幅筛选：${LENGTHS[length]}`}>{LENGTHS[length]}<X size={13} aria-hidden="true" /></button>}
+    </div>}
     {shelf === "personal" && personalError ? <p role="alert" className="import-error">{personalError}</p> : shelf === "library" && catalogError ? <LoadError message={catalogError} retry={() => { setCatalogError(""); setCatalogRetry(n => n + 1); }} /> : shelf === "library" && !catalog ? <div className="reading-loading" role="status"><div className="reading-skeleton" /><p>正在载入阅读目录…</p></div> : <>
-      <div className="reading-result-count" role="status">{category !== "all" || difficulty !== "all" || length || query ? `找到 ${filtered.length} 篇` : "所有文章"}</div>
+      <div className="reading-result-count" role="status" aria-live="polite" aria-atomic="true">{category !== "all" || difficulty !== "all" || length || query ? `找到 ${filtered.length} 篇` : "所有文章"}</div>
       {displayed.length ? <div className="reading-grid">{displayed.map((item, i) => <button className="reading-card" key={item.id} data-reading-id={item.id} onClick={() => open(item.id)}>
         <Cover category={item.category} articleId={item.id} eager={i < 3} />
-        <span className="reading-card-copy"><span className="reading-card-category">{READING_CATEGORIES[item.category]}</span><strong lang="en">{item.title}</strong><span className="reading-card-author">{item.author}</span><span className="reading-card-meta"><span>{item.difficulty}</span><span>{item.wordCount.toLocaleString("zh-CN")} 词</span><span>{READING_FORMS[item.form]}</span></span></span>
-      </button>)}</div> : <div className="reading-empty"><Search size={30} aria-hidden="true" /><h2>{shelf === "personal" && !personal.length ? "保存你想读的文章" : "没有找到文章"}</h2><p>{shelf === "personal" && !personal.length ? "导入文件、扫描英文，或直接粘贴正文。" : "试试其他作品、作者或筛选条件。"}</p><button className="secondary" onClick={shelf === "personal" && !personal.length ? () => setImportOpen(true) : resetFilters}>{shelf === "personal" && !personal.length ? "导入文章" : "清除筛选"}</button></div>}
+        <span className="reading-card-copy"><span className="reading-card-category">{READING_CATEGORIES[item.category]}</span><strong lang="en">{item.title}</strong><span className="reading-card-author">{item.author}</span><span className="reading-card-meta"><span>{item.difficulty}</span><span>{item.wordCount.toLocaleString("zh-CN")} 词</span><span>约 {Math.max(1, Math.ceil(item.wordCount / 180))} 分钟</span><span>{READING_FORMS[item.form]}</span></span></span>
+      </button>)}</div> : <div className="reading-empty"><Search size={30} aria-hidden="true" /><h2>{shelf === "personal" && !personal.length ? "保存你想读的文章" : "没有找到文章"}</h2><p>{shelf === "personal" && !personal.length ? "导入文件、扫描英文，或直接粘贴正文。" : "试试其他作品、作者或筛选条件。"}</p><button className="secondary" onClick={shelf === "personal" && !personal.length ? () => setImportOpen(true) : resetFilters} onPointerEnter={shelf === "personal" ? prepareImport : undefined} onFocus={shelf === "personal" ? prepareImport : undefined}>{shelf === "personal" && !personal.length ? "导入文章" : "清除筛选"}</button></div>}
       {pages > 1 && <div className="reading-pagination"><button disabled={currentPage === 1} onClick={() => { setPage(currentPage - 1); window.scrollTo(0, 0); }}><ArrowLeft size={17} aria-hidden="true" />上一页</button><span>{currentPage} / {pages}</span><button disabled={currentPage === pages} onClick={() => { setPage(currentPage + 1); window.scrollTo(0, 0); }}>下一页<ArrowRight size={17} aria-hidden="true" /></button></div>}
     </>}
     {importOpen && <Suspense fallback={null}><ReadingImport onClose={() => setImportOpen(false)} onSaved={async id => { setPersonal(await listPersonalReadings()); setImportOpen(false); resetFilters(); requestAnimationFrame(() => { setShelf("personal"); open(id); }); }} /></Suspense>}

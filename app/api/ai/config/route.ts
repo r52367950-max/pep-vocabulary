@@ -73,15 +73,33 @@ async function usageConfig(userKey: string, model: string) {
   };
 }
 
+type ConfigView = { accountScope: string; generation: string; writeToken: string | null };
+async function configView(userKey: string, row?: typeof aiConfigs.$inferSelect): Promise<ConfigView> {
+  const binding = env.DB;
+  if (!binding) throw new Error("Configuration store unavailable");
+  await binding.prepare(`INSERT INTO ai_config_generations (user_key, generation) VALUES (?, ?)
+    ON CONFLICT(user_key) DO NOTHING`).bind(userKey, crypto.randomUUID()).run();
+  const fence = await binding.prepare("SELECT generation FROM ai_config_generations WHERE user_key=?")
+    .bind(userKey).first<{ generation: string }>();
+  if (!fence) throw new Error("Configuration fence unavailable");
+  return { accountScope: userKey, generation: fence.generation, writeToken: row?.writeToken ?? null };
+}
+const configConflict = () => json({ error: "账号或 API 配置已变化，请重新读取设置后操作。", code: "configuration_conflict" }, 409);
+function matchesView(body: Record<string, unknown>, view: ConfigView) {
+  return body.accountScope === view.accountScope && body.generation === view.generation && body.writeToken === view.writeToken;
+}
+
 export async function GET() {
   const userKey = await authenticatedUserKey();
   if (!userKey) return json({ error: "需要通过站点身份验证后管理 API 配置。" }, 401);
+  let view: (ConfigView & { hasApiKey: boolean }) | undefined;
   try {
     const [row] = await getDb().select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
+    view = { ...(await configView(userKey, row)), hasApiKey: Boolean(row?.encryptedApiKey) };
     const config = publicConfig(row);
-    return json({ ...config, ...(await usageConfig(userKey, config.model)) });
+    return json({ ...config, ...(await usageConfig(userKey, config.model)), ...view, hasApiKey: config.hasApiKey });
   } catch (error) {
-    return json({ error: error instanceof AiProviderOriginError ? error.message : "暂时无法读取 API 配置。" }, 503);
+    return json({ ...view, error: error instanceof AiProviderOriginError ? error.message : "暂时无法读取 API 配置。" }, 503);
   }
 }
 
@@ -129,15 +147,10 @@ export async function POST(request: Request) {
   try {
     const binding = env.DB;
     if (!binding) throw new Error("Configuration store unavailable");
-    // Read the durable deletion fence before the config snapshot. Deleting an
-    // absent row must also invalidate an already-admitted first save.
-    await binding.prepare(`INSERT INTO ai_config_generations (user_key, generation) VALUES (?, ?)
-      ON CONFLICT(user_key) DO NOTHING`).bind(userKey, crypto.randomUUID()).run();
-    const fence = await binding.prepare("SELECT generation FROM ai_config_generations WHERE user_key=?")
-      .bind(userKey).first<{ generation: string }>();
-    if (!fence) throw new Error("Configuration fence unavailable");
     const db = getDb();
     const [current] = await db.select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
+    const view = await configView(userKey, current);
+    if (!matchesView(body, view)) return configConflict();
     if (current && current.encryptionVersion !== 2 && current.encryptionVersion !== 3 && (body.apiKey === undefined || body.apiKey === "")) {
       return json({ error: "原有密钥的加密格式缺少账号与目标绑定，请重新填写 API Key。原配置仍保留。", code: "credential_reentry_required" }, 400);
     }
@@ -190,12 +203,12 @@ export async function POST(request: Request) {
           encrypted_api_key=?, key_iv=?, encryption_version=?, write_token=?, updated_at=CURRENT_TIMESTAMP
           WHERE user_key=? AND write_token=? AND encrypted_api_key=? AND key_iv=?
           AND EXISTS (SELECT 1 FROM ai_config_generations WHERE user_key=? AND generation=?) RETURNING user_key`)
-        .bind(...values, userKey, current.writeToken, current.encryptedApiKey, current.keyIv, userKey, fence.generation)
+        .bind(...values, userKey, current.writeToken, current.encryptedApiKey, current.keyIv, userKey, view.generation)
       : binding.prepare(`INSERT INTO ai_configs (provider, base_url, model, daily_limit, timeout_seconds,
           encrypted_api_key, key_iv, encryption_version, write_token, user_key)
           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
           WHERE EXISTS (SELECT 1 FROM ai_config_generations WHERE user_key=? AND generation=?)
-          ON CONFLICT(user_key) DO NOTHING RETURNING user_key`).bind(...values, userKey, userKey, fence.generation);
+          ON CONFLICT(user_key) DO NOTHING RETURNING user_key`).bind(...values, userKey, userKey, view.generation);
     const writes = [configWrite];
     if (dailyTokenBudget !== undefined || body.maxOutputTokens !== undefined) {
       // This write runs only if THIS batch won the config CAS. The unique token
@@ -213,7 +226,7 @@ export async function POST(request: Request) {
     if (!written.results.length) return json({ error: "API 配置已在其他页面修改或移除，请重新打开设置后再保存。", code: "configuration_conflict" }, 409);
     const [saved] = await db.select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
     const config = publicConfig(saved);
-    return json({ ...config, ...(await usageConfig(userKey, config.model)) });
+    return json({ ...config, ...(await usageConfig(userKey, config.model)), ...view, writeToken });
   } catch { return json({ error: "暂时无法保存 API 配置。" }, 503); }
 }
 
@@ -226,13 +239,22 @@ export async function DELETE(request: Request) {
   try {
     const binding = env.DB;
     if (!binding) throw new Error("Configuration store unavailable");
-    await binding.batch([
-      binding.prepare(`INSERT INTO ai_config_generations (user_key, generation) VALUES (?, ?)
-        ON CONFLICT(user_key) DO UPDATE SET generation=excluded.generation`).bind(userKey, crypto.randomUUID()),
-      binding.prepare("DELETE FROM ai_configs WHERE user_key=?").bind(userKey),
+    const body = await readJsonObject(request, 4096);
+    const [current] = await getDb().select().from(aiConfigs).where(eq(aiConfigs.userKey, userKey)).limit(1);
+    const view = await configView(userKey, current);
+    if (!matchesView(body, view)) return configConflict();
+    const generation = crypto.randomUUID();
+    const [changed] = await binding.batch([
+      binding.prepare(`UPDATE ai_config_generations SET generation=? WHERE user_key=? AND generation=?
+        AND COALESCE((SELECT write_token FROM ai_configs WHERE user_key=?), '')=? RETURNING generation`)
+        .bind(generation, userKey, view.generation, userKey, view.writeToken ?? ""),
+      binding.prepare(`DELETE FROM ai_configs WHERE user_key=?
+        AND EXISTS (SELECT 1 FROM ai_config_generations WHERE user_key=? AND generation=?)`)
+        .bind(userKey, userKey, generation),
     ]);
-    return json({ ok: true, ...publicConfig() });
-  } catch { return json({ error: "暂时无法移除 API 配置。" }, 503); }
+    if (!changed.results.length) return configConflict();
+    return json({ ok: true, ...publicConfig(), ...(await usageConfig(userKey, AI_PROVIDER_DEFAULTS["openai-compatible"].model)), accountScope: userKey, generation, writeToken: null });
+  } catch (error) { return json({ error: error instanceof RequestBodyError ? error.message : "暂时无法移除 API 配置。" }, error instanceof RequestBodyError ? error.status : 503); }
 }
 
 async function mutationRateLimit(userKey: string): Promise<Response | null> {

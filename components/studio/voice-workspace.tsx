@@ -29,6 +29,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   const startPending = useRef(false);
   const sessionPolicy = useRef<{ scope: string; temporary: boolean; revision: number; generation: PracticeGeneration } | null>(null);
   const previousPolicy = useRef<{ scope: string; temporary: boolean; epoch: number; generation: PracticeGeneration } | null>(null);
+  const persistedRecord = useRef<VoiceRecord | null>(null);
   const historySnapshot = useRef<LocalVoiceHistory | null>(null);
   const historyLoadSequence = useRef(0);
   const [tab, setTab] = useState<"speaking" | "dictation">(initialTab);
@@ -106,7 +107,8 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     void saveLocalVoiceRecord(policy, record, () => {
       const current = learningContextStore.get();
       return sessionPolicy.current === policy && !current.temporary && current.memory?.accountScope === policy.scope;
-    }).then((rows) => {
+    }, persistedRecord.current).then((rows) => {
+      persistedRecord.current = rows.find(row => row.id === record.id) ?? null;
       if (mounted.current && sessionPolicy.current === policy && practiceGenerationCurrent(policy.generation)) { historyLoadSequence.current++; historySnapshot.current = { scope: policy.scope, generation: policy.generation, rows }; setHistory(rows); setStorageError(""); }
     }).catch((error) => { if (mounted.current) setStorageError(error instanceof Error ? error.message : "此浏览器暂时无法保存记录，请在离开前复制需要的文字。"); });
   }, [snapshot.phase, snapshot.seconds, transcript, saved, feedback, discussion, privacy.temporary, privacy.memory, recordMeta]);
@@ -174,6 +176,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
   };
   const start = async (diagnostic = false, retry?: { customTopic: string; goal: string; openingPrompt: string }) => {
     if (startPending.current || active || dictationLive || dictationUnconfirmed || closePending.current || client.current?.hasPendingClose || statusError) return;
+    persistedRecord.current = null;
     startPending.current = true;
     try {
     let context;
@@ -231,6 +234,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     if (active || dictationLive || privacy.temporary || !privacy.memory) return;
     const snapshot = historySnapshot.current;
     if (!snapshot || snapshot.scope !== privacy.memory.accountScope || !snapshot.rows.includes(record) || !practiceGenerationCurrent(snapshot.generation)) { setStorageError("本机记录已改变，请重新打开练习记录。"); return; }
+    persistedRecord.current = record;
     sessionPolicy.current = { scope: privacy.memory.accountScope, temporary: false, revision: privacy.memory.revision, generation: snapshot.generation };
     setIsDiagnostic(false);
     setTab("speaking"); setPanel(null);
@@ -273,7 +277,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
         setDiscussion([]);
         setFeedback(null);
       }
-    } catch { setStorageError("删除未完成，请重试。"); }
+    } catch (error) { setStorageError(error instanceof Error ? error.message : "删除未完成，请重试。"); }
   };
   const restoreRecord = async () => {
     if (active || !deletedRecord || privacy.temporary || !privacy.memory) return;
@@ -289,7 +293,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
       historySnapshot.current = { scope: deletedRecord.scope, generation: deletedRecord.generation, rows };
       setHistory(rows); setDeletedRecord(null);
     }
-    catch { setStorageError("恢复未完成，请重试。"); }
+    catch (error) { setStorageError(error instanceof Error ? error.message : "恢复未完成，请重试。"); }
   };
   const openAISettings = () => {
     if (active) return;

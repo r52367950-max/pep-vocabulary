@@ -1,14 +1,11 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useEffectEvent } from "react";
+import { Suspense, useEffect, useEffectEvent } from "react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import type { LearnMode } from "@/lib/learn";
+import { Flashcards, Match, Quiz } from "../surfaces";
 import { LearnPending } from "./parts";
-
-const Flashcards = lazy(() => import("./flashcards"));
-const Match = lazy(() => import("./match"));
-const Quiz = lazy(() => import("./quiz"));
 
 export type LearnActivityProps = {
   data: Vocabulary;

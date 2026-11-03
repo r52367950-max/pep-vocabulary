@@ -4,7 +4,8 @@ import {
 } from "./core";
 
 export type TimeOfDay = "dawn" | "day" | "dusk" | "night";
-export type SceneOptions = { time?: TimeOfDay };
+/** `clear`: the fraction of the width, from the left, that sits under page copy. */
+export type SceneOptions = { time?: TimeOfDay; clear?: number };
 export type Scene = (ctx: Ctx, w: number, h: number, rng: Rng, options: SceneOptions) => void;
 
 const INK = "#1c1c1a";
@@ -217,7 +218,9 @@ export const blueGreen: Scene = (ctx, w, h, rng, options) => {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
   paper(ctx, w, h, null, rng, { blots: 8, fibers: !sky.night });
-  const sx = rng.range(0.15, 0.85) * w, sy = rng.range(0.12, 0.26) * h, sr = Math.min(w, h) * rng.range(0.045, 0.065);
+  // The sun or moon keeps out from under the copy; the same draw keeps every other stroke in place.
+  const left = Math.min(0.8, Math.max(0.15, options.clear ?? 0));
+  const sx = (left + (0.85 - left) * rng.range(0, 1)) * w, sy = rng.range(0.12, 0.26) * h, sr = Math.min(w, h) * rng.range(0.045, 0.065);
   if (sky.night) {
     for (let s = 0; s < 120; s++) dot(ctx, rng.range(0, w), rng.range(0, h * 0.55), rng.range(0.3, 1.1), `rgba(255,250,235,${rng.range(0.25, 0.8)})`);
     const halo = ctx.createRadialGradient(sx, sy, sr, sx, sy, sr * 5);

@@ -74,7 +74,14 @@ export async function settleTokens(reservation: TokenReservation, reported: Comp
   const db = database();
   const { keys, amount } = reservation;
   const floor = reservation.promptEstimate + tokenEstimate(content);
-  const usage = { ...reported, total: Math.max(reported.total, floor), estimated: reported.estimated || reported.total < floor };
+  // A bounded margin accommodates tokenizer differences and audio counters.
+  // Untrusted telemetry outside this per-call envelope retains the reservation.
+  const ceiling = Math.max(amount * 4, floor);
+  const valid = [reported.prompt, reported.completion, reported.cacheHit, reported.total].every(value => Number.isSafeInteger(value) && value >= 0 && value <= ceiling)
+    && reported.total === reported.prompt + reported.completion && reported.cacheHit <= reported.prompt;
+  const usage = valid
+    ? { ...reported, total: Math.max(reported.total, floor), estimated: reported.estimated || reported.total < floor }
+    : { prompt: reservation.promptEstimate, completion: tokenEstimate(content), cacheHit: 0, total: Math.max(amount, floor), estimated: true };
   const increment = (key: string, delta: number) => db.prepare(
     `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at) VALUES (?, ?, ?)
      ON CONFLICT(bucket_key) DO UPDATE SET request_count = request_count + excluded.request_count
