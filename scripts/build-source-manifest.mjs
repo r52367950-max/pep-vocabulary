@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { snapshotSourceInputs } from "./source-inputs.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const cacheRoot = process.env.PEP_VOCAB_SOURCE_CACHE || "/workspace/source-cache/pep-vocab";
-const uploads = process.env.PEP_VOCAB_UPLOADS || "/workspace/scratch/242015b76399/project_sources";
 const books = JSON.parse(readFileSync(join(root, "config/books.json"), "utf8"));
 const sourceLock = JSON.parse(readFileSync(join(root, "config/source-input-lock.json"), "utf8"));
 const sourceSnapshot = snapshotSourceInputs(cacheRoot, sourceLock, { requiredFiles: [
@@ -179,36 +178,7 @@ entries.push(
   },
 );
 
-if (existsSync(uploads)) {
-  const originalNames = [
-    "03_暑期滚动七周主计划.md", "06_记录与复盘模板.md", "04_六科学科路线图.md",
-    "2026暑期学习项目核心文件.md", "08_诊断与测评蓝图.md", "00_新项目启用说明.md",
-    "01_项目总指令_粘贴到项目设置.md", "02_学生档案与项目状态.md", "05_首周启动包.md",
-    "07_资料与来源索引.md", "09_GPT-Live-1英语口语教练提示词.md", "biology_required_1.pdf",
-    "biology_selective_1.pdf", "biology_selective_2.pdf", "biology_required_2.pdf", "chemistry_selective_1.pdf",
-  ];
-  readdirSync(uploads).sort().forEach((name, index) => {
-    const path = join(uploads, name);
-    entries.push(recordFile({
-      id: `UPLOAD-${String(index + 1).padStart(2, "0")}`,
-      title: originalNames[index] || name,
-      path,
-      kind: "user-upload-out-of-scope",
-      sourceUrl: null,
-      parsingMethod: name.endsWith(".pdf") ? "metadata scan only" : "UTF-8 text scan",
-      versionStatus: "verified-user-source",
-      rights: "private user material; not redistributed",
-      notes: ["已扫描并确认与本英语词汇应用的教材数据工程无直接关系，未进入词库。"],
-    }));
-  });
-}
-
-// Preserve prior out-of-scope user inventory when that private upload directory is unavailable.
-if (!existsSync(uploads) && existsSync(join(root, "source_manifest.json"))) {
-  const previous = JSON.parse(readFileSync(join(root, "source_manifest.json"), "utf8"));
-  entries.push(...previous.entries.filter((entry) => entry.kind === "user-upload-out-of-scope"));
-}
-
+// Public provenance contains only the declared vocabulary sources.
 const manifest = {
   schemaVersion: "1.0.0",
   generatedAt: new Date().toISOString(),
@@ -235,7 +205,7 @@ const markdown = `# 来源清单\n\n` +
   `- 教材版权页明确禁止未经许可复制；PDF、整篇课文和整页 OCR 不随应用发布。\n` +
   `- ChinaTextbook 仅作为候选文件入口，公开可见不等于可再分发。\n` +
   `- 两册扫描版的 OCR 不能单独形成正式字段。\n` +
-  `- 用户上传的生物、化学教材和学习计划已登记，但不属于本词库数据来源。\n`;
+  `- 私有上传材料不进入公开来源清单。\n`;
 writeFileSync(join(root, "SOURCE_MANIFEST.md"), markdown);
 
 console.log(`source manifest: ${entries.length} records (${books.length} textbooks)`);

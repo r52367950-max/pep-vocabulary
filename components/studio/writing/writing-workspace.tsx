@@ -92,7 +92,7 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
       </header>
       {temporary && <p className="ai-note writing-stage" style={{ paddingBottom: 8 }} role="status">临时写作：本次草稿与批改不保存，切换模式后不会补存。需要保留原文时请先复制。</p>}
       {records === null ? <div className="learn-pending" role="status">正在读取写作记录…</div>
-        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (id) => { try { await deleteWriting(id, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); } }} />
+        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (record) => { try { await deleteWriting(record, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); } }} />
           : view.kind === "setup" ? <WritingSetup key={data.generation} data={data} initialTargets={initialTargets} temporary={temporary} recentTitles={(records || []).map(item => item.title || item.prompt.slice(0, 120))} onCreate={async (created) => { const context = captureWritingContext(); await writeWritingInContext(context, () => saveWriting(created, null, generation)); if (!writingContextCurrent(context)) return; upsert(created); setView({ kind: "edit", id: created.id }); }} />
             : record ? <WritingEditor key={record.id} record={record} data={data} generation={generation} onSave={upsert} onPractice={onPractice} onWord={onWord} temporary={temporary} />
               : <div className="learn-pending">这篇写作已不存在。</div>}
@@ -100,7 +100,7 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
   );
 }
 
-function WritingList({ records, data, onOpen, onDelete }: { records: WritingRecord[]; data: Vocabulary; onOpen: (id: string) => void; onDelete: (id: string) => void }) {
+function WritingList({ records, data, onOpen, onDelete }: { records: WritingRecord[]; data: Vocabulary; onOpen: (id: string) => void; onDelete: (record: WritingRecord) => void }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   return (
@@ -126,7 +126,7 @@ function WritingList({ records, data, onOpen, onDelete }: { records: WritingReco
                   <ChevronRight size={17} aria-hidden="true" />
                 </button>
                 <button className="icon-button writing-delete" aria-label={`删除《${writingTitle(record)}》`}
-                  onClick={() => { if (window.confirm("删除这篇写作及其全部版本和批改？此操作不能撤销。")) onDelete(record.id); }}>
+                  onClick={() => { if (window.confirm("删除这篇写作及其全部版本和批改？此操作不能撤销。")) onDelete(record); }}>
                   <Trash2 size={17} aria-hidden="true" />
                 </button>
               </li>

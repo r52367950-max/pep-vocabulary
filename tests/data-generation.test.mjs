@@ -48,7 +48,7 @@ test('old writing editors cannot change or delete restored identical records', a
   await restoreBackup(await exportBackup());
   const next = { ...record, title: 'Late old editor' };
   await assert.rejects(saveWriting(next, record, stale.generation), replaced);
-  await assert.rejects(deleteWriting(record.id, stale.generation), replaced);
+  await assert.rejects(deleteWriting(record, stale.generation), replaced);
   assert.deepEqual(await getOne('writings', record.id), record);
 });
 

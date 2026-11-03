@@ -23,7 +23,7 @@ function setup() {
   return db;
 }
 async function configure(model = 'gpt-6.1-terra') {
-  const { POST } = await import('../app/api/ai/config/route.ts');
+  const { POST } = await import('./config-client.mjs');
   const response = await POST(json({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model, apiKey: fakeKey, timeoutSeconds: 25, dailyLimit: 100, dailyTokenBudget: 200000 }, { 'x-vocab-action': 'settings' }));
   assert.equal(response.status, 200, await response.clone().text());
 }
@@ -292,4 +292,29 @@ test('Live always uses Terra independently of the general text-model setting', a
   assert.equal(result.status, 200, await result.clone().text());
   assert.equal(upstream.session.delegation.responses.model, 'gpt-6.1-terra');
   assert.equal(upstream.session.delegation.responses.tools[0].name, 'prepare_dictation');
+});
+
+test('ambiguous Live submission outcomes retain admission; confirmed provider rejection releases it', async t => {
+  const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
+  for (const scenario of ['network', 'invalid-json', 'lost-body', 'server-error']) {
+    const db = setup(); await configure();
+    globalThis.fetch = async () => {
+      if (scenario === 'network') throw new TypeError('connection lost after request dispatch');
+      if (scenario === 'invalid-json') return new Response('{broken');
+      if (scenario === 'lost-body') return new Response(new ReadableStream({ start(controller) { controller.error(new Error('body lost')); } }));
+      return new Response('temporary failure', { status: 503 });
+    };
+    const response = await createVoiceSession(json({ ...voiceInput(), diagnostic: true }));
+    assert.ok(response.status >= 400);
+    const key = await authenticatedUserKey();
+    assert.ok(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${key}`).request_count > 0, scenario);
+    const status = await (await voiceStatus(new Request('https://app.test/api/voice/status'))).json();
+    assert.equal(status.ready, false); assert.equal(status.reasonCode, 'voice_creation_unconfirmed');
+    assert.equal((await createVoiceSession(json({ ...voiceInput(), diagnostic: true }))).status, 409);
+  }
+  const db = setup(); await configure();
+  globalThis.fetch = async () => Response.json({ error: { code: 'permission_denied' } }, { status: 403 });
+  await createVoiceSession(json({ ...voiceInput(), diagnostic: true }));
+  const key = await authenticatedUserKey();
+  assert.equal(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${key}`).request_count, 0);
 });

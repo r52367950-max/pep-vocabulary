@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { sqliteD1 } from './sqlite-d1.mjs';
-import { POST as configure } from '../app/api/ai/config/route.ts';
+import { POST as configure } from './config-client.mjs';
 import { authenticatedUserKey } from '../lib/server-user.ts';
 import { readTokenUsage } from '../lib/assistant/usage.ts';
 import { createVoiceSpeech } from '../lib/voice/server.ts';

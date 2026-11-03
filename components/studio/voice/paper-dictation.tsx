@@ -5,29 +5,13 @@ import { Camera } from "lucide-react";
 import { compareDictation, type DictationItem } from "@/lib/voice/dictation";
 import { contextStillCurrent, learningContextStore, refreshLearningContext, type LearningMemory } from "@/lib/learning-context-client";
 import { voiceRequest } from "@/lib/voice/client";
+import { compressDictationPhoto } from "@/lib/image-input";
 import "./paper-dictation.css";
 
 type Row = { label: string; text: string; uncertain: boolean; itemId: string };
 export type PaperDictationGrade = { correct: number; total: number; assisted: true };
 export type PaperDictationProps = { items: DictationItem[]; heardItemIds: string[]; temporary: boolean; accountScope?: string; contextEpoch: number; onGraded?: (grade: PaperDictationGrade) => void };
 
-/** Re-encode locally: discard metadata and enforce both pixel and transport budgets. */
-export async function compressDictationPhoto(file: Blob): Promise<Blob> {
-  if (file.size > 30 * 1024 * 1024) throw new Error("原图过大，请选择 30 MB 以内的照片。");
-  const bitmap = await createImageBitmap(file);
-  try {
-    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height), Math.sqrt(4_000_000 / (bitmap.width * bitmap.height)));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.floor(bitmap.width * scale)); canvas.height = Math.max(1, Math.floor(bitmap.height * scale));
-    const context = canvas.getContext("2d"); if (!context) throw new Error("浏览器无法处理这张照片。");
-    context.fillStyle = "white"; context.fillRect(0, 0, canvas.width, canvas.height); context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    for (const quality of [.88, .75, .6, .45]) {
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
-      if (blob && blob.size <= 2_000_000) return blob;
-    }
-    throw new Error("照片压缩后仍过大，请裁剪到答题区域再试。");
-  } finally { bitmap.close(); }
-}
 function dataURL(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("照片读取失败。")); reader.readAsDataURL(blob); });
 }
@@ -85,7 +69,7 @@ function PaperSession({ items, heardItemIds, temporary, accountScope, onGraded }
     gradedOnce.current = true; setResults(graded); setPhase("graded"); setPhoto(null); onGraded?.({ correct: graded.filter(row => row.correct).length, total: graded.length, assisted: true });
   };
   return <section className="paper-dictation" aria-label="纸上听写批改">
-    <input ref={input} className="sr-only" type="file" accept="image/*" aria-label="选择听写照片" onChange={event => void choose(event.target.files?.[0])} />
+    <input ref={input} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" aria-label="选择听写照片" onChange={event => void choose(event.target.files?.[0])} />
     {phase === "idle" ? <button type="button" className="text-button" disabled={!eligible.length} onClick={() => input.current?.click()}><Camera size={17} aria-hidden="true" />拍照批改</button> : <>
       <div className="paper-heading"><strong>纸上听写</strong><button type="button" className="text-button" onClick={reset}>{phase === "graded" ? "完成" : "取消"}</button></div>
       {photo && <img className="paper-preview" src={photo.url} alt="本次听写答卷预览" />}

@@ -35,7 +35,7 @@ test("unchanged AI context cannot authorize queued writing changes after backup 
   resume();
   await rejected;
   await assert.rejects(writeWritingInContext(context, () => saveWriting(newWriting("free", []), null, generation)), DataReplacedError);
-  await assert.rejects(deleteWriting(saved.id, generation), DataReplacedError);
+  await assert.rejects(deleteWriting(saved, generation), DataReplacedError);
   assert.deepEqual(await listWritings(), [saved]);
 
   setTemporaryMode(true);

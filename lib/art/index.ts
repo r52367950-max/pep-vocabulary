@@ -46,6 +46,8 @@ export function paintArtwork(canvas: HTMLCanvasElement, request: ArtRequest) {
 // Finished pictures are kept as bitmaps so revisiting a page redraws in one blit.
 const cache = new Map<string, ImageBitmap>();
 const CACHE_LIMIT = 48;
+const CACHE_PIXEL_LIMIT = 12_000_000;
+let cachedPixels = 0;
 export function cachedArtwork(key: string) {
   const bitmap = cache.get(key);
   if (bitmap) {
@@ -57,10 +59,15 @@ export function cachedArtwork(key: string) {
 export function rememberArtwork(key: string, canvas: HTMLCanvasElement) {
   if (typeof createImageBitmap !== "function") return;
   createImageBitmap(canvas).then((bitmap) => {
+    const previous = cache.get(key);
+    if (previous) { cachedPixels -= previous.width * previous.height; previous.close(); cache.delete(key); }
+    cachedPixels += bitmap.width * bitmap.height;
     cache.set(key, bitmap);
-    while (cache.size > CACHE_LIMIT) {
+    while (cache.size > CACHE_LIMIT || cachedPixels > CACHE_PIXEL_LIMIT) {
       const oldest = cache.keys().next().value as string;
-      cache.get(oldest)?.close();
+      const expired = cache.get(oldest)!;
+      cachedPixels -= expired.width * expired.height;
+      expired.close();
       cache.delete(oldest);
     }
   }).catch(() => { /* Drawing again later is fine. */ });

@@ -58,7 +58,7 @@ test('writings live in the learning database and in backups (schema 1.2.0)', asy
   assert.equal((await listWritings()).length, 0);
   await restoreBackup(backup);
   assert.deepEqual(await listWritings(), [record]);
-  await deleteWriting(record.id);
+  await deleteWriting(record);
   assert.equal((await listWritings()).length, 0);
   await assert.rejects(saveWriting({ ...record, genre: 'poem' }), /写作记录无效/);
   assert.throws(() => validateBackup({ ...backup, writings: [{ ...record, versions: [{ id: 'x', text: 1, savedAt: 'now' }] }] }), /写作记录/);

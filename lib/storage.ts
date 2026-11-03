@@ -252,9 +252,16 @@ export async function saveWriting(record: WritingRecord, expected: WritingRecord
   return record;
 }
 
-export const deleteWriting = (id: string, generation?: string) => generationTransaction<undefined>(["writings"], "readwrite", generation, (tx, result) => {
-  tx.objectStore("writings").delete(id).onsuccess = function () { result(this.result); };
-});
+export async function deleteWriting(expected: WritingRecord, generation?: string) {
+  let conflict = false;
+  await generationTransaction<void>(["writings"], "readwrite", generation, (tx) => {
+    const store = tx.objectStore("writings");
+    store.get(expected.id).onsuccess = function () {
+      if (stableJson(this.result ?? null) !== stableJson(expected)) { conflict = true; tx.abort(); return; }
+      store.delete(expected.id);
+    };
+  }).catch(error => { throw conflict ? new WritingConflictError() : error; });
+}
 
 export function emptySkills(): SkillVector {
   return { meaning: 0, listening: 0, spelling: 0, context: 0, collocation: 0, output: 0 };

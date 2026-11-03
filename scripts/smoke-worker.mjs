@@ -149,7 +149,7 @@ try {
   const initialMemory = await initialMemoryResponse.json();
   assert.equal(initialMemory.revision, 0);
   assert.deepEqual(initialMemory.notes, []);
-  const memoryDraft = { revision: 0, enabled: true, notes: [{ id: 'note_smoke_1', text: 'Practice discussing books and explaining an opinion.' }], recentTopics: ['culture'] };
+  const memoryDraft = { accountScope: initialMemory.accountScope, revision: 0, enabled: true, notes: [{ id: 'note_smoke_1', text: 'Practice discussing books and explaining an opinion.' }], recentTopics: ['culture'] };
   const memoryWrites = await Promise.all([1, 2].map(() => request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify(memoryDraft) })));
   assert.deepEqual(memoryWrites.map(r => r.status).sort(), [200, 409], 'concurrent memory edits must not silently overwrite');
   const memoryResponse = await request('/api/voice/memory', { headers });
@@ -165,12 +165,12 @@ try {
   const otherMemory = await (await request('/api/voice/memory', { headers: otherHeaders })).json();
   assert.equal(otherMemory.revision, 0);
   assert.deepEqual(otherMemory.notes, [], 'a second account must not see the first account learning memory');
-  const otherWrite = await request('/api/voice/memory', { method: 'PUT', headers: otherHeaders, body: JSON.stringify({ revision: 0, enabled: false, notes: [{ id: 'note_other_1', text: 'Practice travel conversations.' }], recentTopics: [] }) });
+  const otherWrite = await request('/api/voice/memory', { method: 'PUT', headers: otherHeaders, body: JSON.stringify({ accountScope: otherMemory.accountScope, revision: 0, enabled: false, notes: [{ id: 'note_other_1', text: 'Practice travel conversations.' }], recentTopics: [] }) });
   assert.equal(otherWrite.status, 200, await otherWrite.clone().text());
   assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, savedMemory.notes);
   await bootstrap(db);
   assert.deepEqual(await (await request('/api/voice/memory', { headers })).json(), savedMemory, 'bootstrap replay preserves saved memory');
-  const clearMemory = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ revision: savedMemory.revision, enabled: false, notes: [], recentTopics: [] }) });
+  const clearMemory = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ accountScope: savedMemory.accountScope, revision: savedMemory.revision, enabled: false, notes: [], recentTopics: [] }) });
   assert.equal(clearMemory.status, 200, await clearMemory.clone().text());
   const clearedMemory = await (await request('/api/voice/memory', { headers })).json();
   assert.equal(clearedMemory.revision, 2);
@@ -191,7 +191,7 @@ try {
   assert.equal(unifiedSaved.notes[0].source, unifiedNote.source);
   assert.ok(unifiedSaved.notes[0].updatedAt);
   assert.deepEqual((await (await request('/api/voice/memory', { headers })).json()).notes, unifiedSaved.notes);
-  const legacyKeepMetadata = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ revision: unifiedSaved.revision, enabled: true, notes: [{ id: unifiedNote.id, text: unifiedNote.text }], recentTopics: [] }) });
+  const legacyKeepMetadata = await request('/api/voice/memory', { method: 'PUT', headers, body: JSON.stringify({ accountScope: unifiedSaved.accountScope, revision: unifiedSaved.revision, enabled: true, notes: [{ id: unifiedNote.id, text: unifiedNote.text }], recentTopics: [] }) });
   assert.equal(legacyKeepMetadata.status, 200);
   const preserved = await legacyKeepMetadata.json();
   assert.deepEqual(preserved.notes, unifiedSaved.notes, 'legacy id/text writes retain provenance and timestamps');
@@ -245,8 +245,12 @@ try {
   assert.equal(unconfiguredBody.configured, false);
   assert.equal(unconfiguredBody.ready, false);
   results.push({ path: '/api/voice/status authenticated without key', status: 200 });
+  const configMutation = async (body, method = 'POST') => {
+    const { accountScope, generation, writeToken } = await (await request('/api/ai/config', { headers })).json();
+    return request('/api/ai/config', { method, headers, body: JSON.stringify({ ...body, accountScope, generation, writeToken }) });
+  };
   const testConfig = { provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 };
-  const config = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify(testConfig) });
+  const config = await configMutation(testConfig);
   assert.equal(config.status, 200, await config.clone().text());
   const publicConfig = await config.text();
   assert.equal(JSON.parse(publicConfig).hasApiKey, true);
@@ -258,7 +262,7 @@ try {
   assert.equal(compatibilityVoiceBody.configured, true);
   assert.equal(compatibilityVoiceBody.ready, false, 'voice must not send OpenAI audio to arbitrary compatible providers');
   results.push({ path: '/api/voice/status compatible provider remains unavailable', status: compatibilityVoice.status });
-  const officialConfig = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 }) });
+  const officialConfig = await configMutation({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: 'test-key-for-local-smoke-only-012345', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 50000, maxOutputTokens: 2000 });
   assert.equal(officialConfig.status, 200, await officialConfig.clone().text());
   const configuredVoice = await request('/api/voice/status', { headers });
   assert.equal(configuredVoice.status, 200, await configuredVoice.clone().text());
@@ -276,17 +280,17 @@ try {
   const legacyPublic = await (await request('/api/ai/config', { headers })).json();
   assert.equal(legacyPublic.hasApiKey, false);
   assert.equal(legacyPublic.requiresKeyReentry, true);
-  const refused = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify({ ...testConfig, apiKey: '' }) });
+  const refused = await configMutation({ ...testConfig, apiKey: '' });
   assert.equal(refused.status, 400, await refused.clone().text());
   assert.equal((await refused.json()).code, 'credential_reentry_required');
   assert.deepEqual(await db.prepare('SELECT * FROM ai_configs').first(), legacyBefore);
   results.push({ path: '/api/ai/config legacy key refuses blank save and preserves original row', status: 'passed' });
-  const reentered = await request('/api/ai/config', { method: 'POST', headers, body: JSON.stringify(testConfig) });
+  const reentered = await configMutation(testConfig);
   assert.equal(reentered.status, 200, await reentered.clone().text());
   assert.equal((await reentered.json()).requiresKeyReentry, false);
   assert.equal((await db.prepare('SELECT * FROM ai_configs').first()).encryption_version, 2);
   results.push({ path: '/api/ai/config owner key reentry restores scoped credential', status: 'passed' });
-  const body = JSON.stringify({ schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
+  const body = JSON.stringify({ expectedIdentity: (await (await request('/api/sync', { headers })).json()).identity, schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
   const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);
   assert.deepEqual(writes.map(r => r.status).sort(), [200, 409]);
   results.push({ path: '/api/sync concurrent first upload', statuses: [200, 409] });
@@ -304,6 +308,6 @@ try {
   assert.equal(persistedConfig.status, 200);
   assert.equal((await persistedConfig.json()).hasApiKey, true);
   results.push({ path: 'database bootstrap replay preserves snapshots and encrypted configuration', status: 'passed' });
-  assert.equal((await request('/api/ai/config', { method: 'DELETE', headers })).status, 200);
+  assert.equal((await configMutation({}, 'DELETE')).status, 200);
   console.log(JSON.stringify({ runtime: 'workerd via Miniflare, local ephemeral D1', results }, null, 2));
 } finally { await mf.dispose(); }

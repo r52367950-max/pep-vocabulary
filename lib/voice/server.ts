@@ -96,12 +96,13 @@ export async function voiceStatus(request: Request) {
     const active = await database().prepare("SELECT bucket_key, request_count FROM ai_rate_limits WHERE bucket_key >= ? AND bucket_key < ? AND request_count > 0 ORDER BY expires_at DESC LIMIT 1")
       .bind(prefix, `${prefix}~`).first<{ bucket_key: string; request_count: number }>();
     const activeSession = active ? { sessionId: active.bucket_key.slice(`voice-session:${userKey}:`.length), expiresAt: new Date(active.request_count - 60_000).toISOString() } : null;
-    const common = { models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: VOICE_REASONING_MODEL }, readiness: "configuration-only", activeSession, dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。到时由服务端持久化闹钟请求关闭；关闭未确认时保留单活限制并持续重试。" };
+    const pendingCreation = !active && await readBucket(database(), activeKey(userKey)) > 0;
+    const common = { pendingCreation: Boolean(pendingCreation), models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: VOICE_REASONING_MODEL }, readiness: "configuration-only", activeSession, dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。到时由服务端持久化闹钟请求关闭；关闭未确认时保留单活限制并持续重试。" };
     try {
       stage = "configuration-read";
       await officialConfig(request);
       requireVoiceDeadlines();
-      return privateJson({ configured: true, ready: usedSeconds < VOICE_DAILY_SECONDS, ...common, models: { ...common.models, text: VOICE_REASONING_MODEL }, ...(usedSeconds >= VOICE_DAILY_SECONDS ? { reason: "今天的语音时长预算已用完，次日北京时间 0 点重置。", reasonCode: "voice_budget_exhausted" } : {}) });
+      return privateJson({ configured: true, ready: usedSeconds < VOICE_DAILY_SECONDS && !pendingCreation, ...common, models: { ...common.models, text: VOICE_REASONING_MODEL }, ...(pendingCreation ? { reason: "上次语音连接的创建结果尚未确认，已暂停新会话。请联系站点管理员核查服务商会话。", reasonCode: "voice_creation_unconfirmed" } : usedSeconds >= VOICE_DAILY_SECONDS ? { reason: "今天的语音时长预算已用完，次日北京时间 0 点重置。", reasonCode: "voice_budget_exhausted" } : {}) });
     } catch (error) {
       if (error instanceof Error && "code" in error) return privateJson({ configured: error.code !== "assistant_not_configured", ready: false, ...common, reason: error.message, reasonCode: error.code });
       throw error;
@@ -117,6 +118,7 @@ export async function createVoiceSession(request: Request) {
   let createdId: string | null = null;
   let config: UserRuntimeConfig | null = null;
   let deadlineArmed = false;
+  const creation = { submitted: false, rejected: false };
   try {
     await voiceIdentity(request);
     const body = await readJsonRequest(request) as Record<string, unknown>;
@@ -151,7 +153,7 @@ export async function createVoiceSession(request: Request) {
       session: { model: VOICE_MODEL, instructions, store: false, audio: { output: { voice: "marin" } },
         delegation: { type: "responses", responses: { model: VOICE_REASONING_MODEL, instructions: backendInstructions, max_output_tokens: 1024, ...(learningTools ? { tools: [PREPARE_DICTATION_TOOL], tool_choice: "auto", parallel_tool_calls: false } : {}) } } },
       transport: { type: "webrtc", sdp },
-    });
+    }, 300_000, 35_000, creation);
     const session = payload.session as { id?: unknown } | undefined;
     const transport = payload.transport as { type?: unknown; sdp?: unknown } | undefined;
     if (typeof session?.id === "string" && SESSION_ID.test(session.id)) createdId = session.id;
@@ -164,7 +166,7 @@ export async function createVoiceSession(request: Request) {
     return privateJson({ ...(context ? contextMetadata(context) : {}), sessionId: createdId, sdp: transport.sdp, model: VOICE_MODEL, maxSeconds, expiresAt: new Date(lock.until - 60_000).toISOString() });
   } catch (error) {
     // A successfully created upstream session must not be orphaned when persistence fails.
-    let closed = !createdId;
+    let closed = !creation.submitted || creation.rejected;
     if (createdId && config) {
       if (!deadlineArmed && lock) {
         try { await armVoiceDeadline(config.userKey, createdId, lock.until, config.apiKey); deadlineArmed = true; }

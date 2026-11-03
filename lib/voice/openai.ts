@@ -5,7 +5,7 @@ export const SPEECH_MODEL = "gpt-audio-1.5";
 const OPENAI_ORIGIN = "https://api.openai.com";
 
 /** A fixed-host, bounded paid request. The timeout covers headers and the complete body. */
-export async function voiceOpenAI(request: Request, apiKey: string, path: string, body: unknown, maximumBytes = 300_000, timeoutMs = 35_000): Promise<Record<string, unknown>> {
+export async function voiceOpenAI(request: Request, apiKey: string, path: string, body: unknown, maximumBytes = 300_000, timeoutMs = 35_000, outcome?: { submitted: boolean; rejected: boolean }): Promise<Record<string, unknown>> {
   if (!/^\/v1\/(?:live\/sessions(?:\/[A-Za-z0-9_-]+\/hangup)?|chat\/completions)$/.test(path)) throw new Error("Unsupported voice endpoint");
   const controller = new AbortController();
   const cancel = () => controller.abort();
@@ -14,12 +14,14 @@ export async function voiceOpenAI(request: Request, apiKey: string, path: string
   const timer = setTimeout(cancel, timeoutMs);
   try {
     controller.signal.throwIfAborted();
+    if (outcome) outcome.submitted = true;
     const response = await fetch(`${OPENAI_ORIGIN}${path}`, {
       method: "POST", redirect: "manual", signal: controller.signal,
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     if (!response.ok) {
+      if (outcome && response.status >= 400 && response.status < 500 && response.status !== 408) outcome.rejected = true;
       let code: string | undefined, param: string | undefined;
       try {
         const failure = JSON.parse(await readBoundedResponseText(response, 4096, controller.signal));

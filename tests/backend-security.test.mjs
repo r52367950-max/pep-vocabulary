@@ -12,7 +12,7 @@ import { encryptApiKey, decryptApiKey } from '../lib/ai-config.ts';
 import { legacyAiCredential } from './legacy-ai-credential.mjs';
 import { fetchChatCompletionWithTimeout, readChatCompletion } from '../lib/assistant/core.ts';
 import { POST as syncPost, GET as syncGet } from '../app/api/sync/route.ts';
-import { POST as configPost, GET as configGet } from '../app/api/ai/config/route.ts';
+import { POST as configPost, GET as configGet } from './config-client.mjs';
 import { authenticatedUserKey } from '../lib/server-user.ts';
 import { scheduleReview } from '../lib/scheduler.ts';
 import { clearUserData, commitReview, exportBackup, restoreBackup, validateBackup } from '../lib/storage.ts';

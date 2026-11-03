@@ -21,7 +21,8 @@ test('concurrent edits of one writing accept one version and preserve reviewed h
   const [saved] = await listWritings();
   assert.equal(saved.versions.length, 2);
   assert.deepEqual(saved.versions[0], base.versions[0]);
-  await deleteWriting(base.id);
+  await assert.rejects(deleteWriting(base), WritingConflictError);
+  await deleteWriting(saved);
   await assert.rejects(saveWriting(edit('Stale queued save'), saved), WritingConflictError);
   assert.equal((await listWritings()).length, 0, 'deleted records stay deleted');
 });
