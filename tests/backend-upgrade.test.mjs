@@ -9,7 +9,7 @@ import { reserveTokens, settleTokens, readTokenUsage, TokenBudgetError } from '.
 import { budgetDay } from '../lib/http.ts';
 import { fetchCompletion, parseUsage, readChatCompletionStream, connectionTestPayload } from '../lib/assistant/core.ts';
 import { GET as syncGet, POST as syncPost } from '../app/api/sync/route.ts';
-import { POST as configPost, GET as configGet } from '../app/api/ai/config/route.ts';
+import { POST as configPost, GET as configGet } from './config-client.mjs';
 import { POST as explain } from '../app/api/assistant/explain/route.ts';
 import { POST as testConnection } from '../app/api/ai/test/route.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
@@ -143,7 +143,7 @@ test('a stale settings save cannot recreate a deleted API credential', async () 
 
 test('metadata sync reads do not select or return the old backup body', async () => {
   const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
-  assert.equal((await syncPost(request('/api/sync', { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: backup }))).status, 200);
+  assert.equal((await syncPost(request('/api/sync', { expectedIdentity: (await (await syncGet()).json()).identity, schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: backup }))).status, 200);
   const queries = [];
   env.DB = { ...binding, prepare(sql) { queries.push(sql); return binding.prepare(sql); } };
   const metaResponse = await syncGet(new Request('https://app.test/api/sync?metadata=1'));

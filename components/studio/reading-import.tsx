@@ -6,10 +6,11 @@ import { useModal } from "@/hooks/use-modal";
 import { createLocalId } from "@/lib/storage";
 import { countReadingWords, READING_CATEGORIES, type Difficulty, type ReadingCategory } from "@/lib/reading-library";
 import { extractReadingFile, parseClassification, validateImportedText } from "@/lib/reading-import";
-import { savePersonalArticle } from "@/lib/personal-readings";
+import { personalReadingsGeneration, savePersonalArticle } from "@/lib/personal-readings";
 
 export default function ReadingImport({ onClose, onSaved }: { onClose: () => void; onSaved: (id: string) => void }) {
   const { dialog: dialogRef, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(onClose);
+  const [libraryGeneration] = useState(() => personalReadingsGeneration().catch(() => null));
   const [title, setTitle] = useState(""); const [author, setAuthor] = useState("");
   const [body, setBody] = useState(""); const deferredBody = useDeferredValue(body); const words = useMemo(() => countReadingWords(deferredBody), [deferredBody]); const [category, setCategory] = useState<ReadingCategory>("essay"); const [difficulty, setDifficulty] = useState<Difficulty>("B1");
   const [useAI, setUseAI] = useState(false); const [busy, setBusy] = useState(false); const [progress, setProgress] = useState(""); const [error, setError] = useState("");
@@ -33,6 +34,8 @@ export default function ReadingImport({ onClose, onSaved }: { onClose: () => voi
     const controller = new AbortController(); job.current = controller; setBusy(true); setError("");
     const timer = setTimeout(() => { controller.abort(); setError("分类或保存超时，请关闭 AI 分类后重试。"); }, 65_000);
     try {
+      const generation = await libraryGeneration;
+      if (generation === null) throw new Error("无法读取本机文章状态，请重新打开导入窗口。");
       const text = validateImportedText(body);
       if (!title.trim()) throw new Error("请填写文章标题。");
       let selected = { category, difficulty };
@@ -45,7 +48,7 @@ export default function ReadingImport({ onClose, onSaved }: { onClose: () => voi
       }
       if (controller.signal.aborted) return;
       setProgress("正在保存文章…");
-      const id = await savePersonalArticle({ id: `personal-${createLocalId()}`, title: title.trim(), author: author.trim() || "作者未注明", sourceUrl: "", rights: { label: "个人导入", basis: "由你导入并保存在本机，版权归原作者。个人文章可在阅读器中单独导出。", url: "" }, ...selected, wordCount: countReadingWords(text), difficultyNote: useAI ? "由你配置的 AI 根据正文样本估计，未经过编辑审定。" : "导入时手动选择，可用于按难度筛选。", form: "imported", background: "由你保存到词迹的阅读材料。", addedIn: "2.1.0", paragraphs: text.split(/\n\s*\n/).map(en => ({ en })) }, controller.signal);
+      const id = await savePersonalArticle({ id: `personal-${createLocalId()}`, title: title.trim(), author: author.trim() || "作者未注明", sourceUrl: "", rights: { label: "个人导入", basis: "由你导入并保存在本机，版权归原作者。个人文章可在阅读器中单独导出。", url: "" }, ...selected, wordCount: countReadingWords(text), difficultyNote: useAI ? "由你配置的 AI 根据正文样本估计，未经过编辑审定。" : "导入时手动选择，可用于按难度筛选。", form: "imported", background: "由你保存到词迹的阅读材料。", addedIn: "2.1.0", paragraphs: text.split(/\n\s*\n/).map(en => ({ en })) }, controller.signal, generation);
       onSaved(id);
     } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "导入失败，请重试。"); }
     finally { clearTimeout(timer); if (job.current === controller) { job.current = null; setBusy(false); setProgress(""); } }

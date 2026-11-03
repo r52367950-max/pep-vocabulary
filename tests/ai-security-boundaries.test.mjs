@@ -1,3 +1,4 @@
+import { POST as rawConfigPost, DELETE as rawConfigDelete } from '../app/api/ai/config/route.ts';
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -9,7 +10,7 @@ import { decryptApiKey, fetchAiProvider, normalizeConfiguredBaseUrl } from '../l
 import { fetchCompletion } from '../lib/assistant/core.ts';
 import { readTokenUsage, reserveTokens, settleTokens } from '../lib/assistant/usage.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
-import { GET as configGet, POST as configPost, DELETE as configDelete } from '../app/api/ai/config/route.ts';
+import { GET as configGet, POST as configPost, DELETE as configDelete } from './config-client.mjs';
 import { POST as explain } from '../app/api/assistant/explain/route.ts';
 import { POST as testConnection } from '../app/api/ai/test/route.ts';
 import { POST as classify } from '../app/api/reading/classify/route.ts';
@@ -137,7 +138,7 @@ test('POST and DELETE share a mutation limit before encryption or configuration 
   const queries = [];
   env.DB = { ...binding, prepare(sql) { queries.push(sql); return binding.prepare(sql); } };
   for (const method of ['POST', 'DELETE']) {
-    const response = method === 'POST' ? await configPost(request()) : await configDelete(request(undefined, 'DELETE'));
+    const response = method === 'POST' ? await rawConfigPost(request()) : await rawConfigDelete(request(undefined, 'DELETE'));
     assert.equal(response.status, 429);
     assert.ok(Number(response.headers.get('retry-after')) >= 1);
   }

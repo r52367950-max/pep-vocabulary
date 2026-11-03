@@ -4,7 +4,7 @@ import { setImmediate as nextTurn } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fetchCompletion, upstreamPayload } from '../lib/assistant/core.ts';
-import { POST as configPost } from '../app/api/ai/config/route.ts';
+import { POST as configPost } from './config-client.mjs';
 import { POST as classify } from '../app/api/reading/classify/route.ts';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';

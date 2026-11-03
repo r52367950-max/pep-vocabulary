@@ -1,3 +1,4 @@
+import { imageDimensions } from "./image-input";
 import { countReadingWords } from "./reading-library";
 import { extractDocxXml } from "./docx-import";
 import { PDF_DECODE_LIMITS, PdfTextBudget, readBoundedPdfText, type PdfTextItem, type PdfTextPage } from "./pdf-import";
@@ -77,35 +78,7 @@ function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
     promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
   });
 }
-/** Inspect dimensions before asking the browser to allocate decoded pixels. */
-export function imageDimensions(bytes: Uint8Array): [number, number] | null {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (bytes.length < 30) return null;
-  if (view.getUint32(0) === 0x89504e47 && view.getUint32(4) === 0x0d0a1a0a) return [view.getUint32(16), view.getUint32(20)];
-  if (bytes[0] === 0x42 && bytes[1] === 0x4d) return view.getUint32(14, true) === 12 ? [view.getUint16(18, true), view.getUint16(20, true)] : [Math.abs(view.getInt32(18, true)), Math.abs(view.getInt32(22, true))];
-  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
-    let offset = 2;
-    while (offset + 9 < bytes.length) {
-      if (bytes[offset++] !== 0xff) return null;
-      while (bytes[offset] === 0xff) offset++;
-      const marker = bytes[offset++];
-      if (marker === 0xd9 || marker === 0xda) return null;
-      if (marker === 0x01 || marker >= 0xd0 && marker <= 0xd8) continue;
-      if (offset + 2 > bytes.length) return null;
-      const length = view.getUint16(offset);
-      if (length < 2 || offset + length > bytes.length) return null;
-      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) return [view.getUint16(offset + 5), view.getUint16(offset + 3)];
-      offset += length;
-    }
-  }
-  if (view.getUint32(0) === 0x52494646 && view.getUint32(8) === 0x57454250) {
-    const chunk = view.getUint32(12);
-    if (chunk === 0x56503858) return [1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16), 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16)];
-    if (chunk === 0x5650384c && bytes[20] === 0x2f) { const bits = view.getUint32(21, true); return [1 + (bits & 0x3fff), 1 + ((bits >>> 14) & 0x3fff)]; }
-    if (chunk === 0x56503820 && bytes[23] === 0x9d && bytes[24] === 1 && bytes[25] === 0x2a) return [view.getUint16(26, true) & 0x3fff, view.getUint16(28, true) & 0x3fff];
-  }
-  return null;
-}
+export { imageDimensions } from "./image-input";
 type OcrWorker = { recognize: (image: HTMLCanvasElement) => Promise<{ data: { text: string } }>; terminate: () => Promise<void> };
 type PdfPage = PdfTextPage & { getViewport: (a: { scale: number }) => { width: number; height: number }; render: (a: unknown) => { promise: Promise<void>; cancel: () => void }; cleanup: () => void };
 type PdfTask = { promise: Promise<{ numPages: number; getPage: (n: number) => Promise<PdfPage>; checkResourceBudget: () => Promise<void> }>; destroy: () => Promise<void> };

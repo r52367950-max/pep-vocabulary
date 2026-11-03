@@ -19,7 +19,7 @@ async function setup() {
   env.DB = sqliteD1(db); env.VOICE_DEADLINES = deadlineNamespace(env);
   env.AI_CONFIG_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
   requestHeaders.set('oai-authenticated-user-email', 'deadline-owner@example.test');
-  const { POST } = await import('../app/api/ai/config/route.ts');
+  const { POST } = await import('./config-client.mjs');
   const response = await POST(post({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: key, timeoutSeconds: 25, dailyLimit: 100, dailyTokenBudget: 200000 }, { 'x-vocab-action': 'settings' }));
   assert.equal(response.status, 200, await response.clone().text());
   const { VOICE_TOPICS } = await import('../lib/voice/curriculum.ts'); input.topicId = VOICE_TOPICS[0].id;

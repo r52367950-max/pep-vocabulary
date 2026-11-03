@@ -16,7 +16,7 @@ async function setup() {
   env.DB = sqliteD1(db);
   env.AI_CONFIG_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
   requestHeaders.set('oai-authenticated-user-email', 'speech-accounting@example.test');
-  const { POST } = await import('../app/api/ai/config/route.ts');
+  const { POST } = await import('./config-client.mjs');
   const response = await POST(json({ provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-terra', apiKey: 'not-a-real-key-only-for-offline-test', timeoutSeconds: 25, dailyLimit: 100, dailyTokenBudget: 200000 }));
   assert.equal(response.status, 200, await response.clone().text());
   return db;

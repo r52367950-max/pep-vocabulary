@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { sqliteD1 } from './sqlite-d1.mjs';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
-import { POST, DELETE, GET } from '../app/api/ai/config/route.ts';
+import { POST, DELETE, GET } from './config-client.mjs';
 
 const db = new DatabaseSync(':memory:');
 for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter((file) => file.endsWith('.sql')).sort()) {

@@ -19,6 +19,24 @@ selections = json.loads((DATA / "curation.json").read_text())
 catalog = json.loads((OUT / "index.json").read_text())
 catalog = [a for a in catalog if a["addedIn"] != "2.1.0"]
 evidence = []
+articles = {}
+supplemental = [json.loads(file.read_text()) for file in sorted((DATA / "supplemental").glob("*.json"))]
+seen = set()
+
+def article_path(article_id):
+    if not isinstance(article_id, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", article_id) or len(article_id) > 91:
+        raise ValueError("Invalid reading ID")
+    target = (OUT / "articles" / f"{article_id}.json").resolve()
+    target.relative_to((OUT / "articles").resolve())
+    return target
+
+# Check every output before source extraction or any writes.
+for item in [*catalog, *selections, *supplemental]:
+    article_id = item["id"]
+    article_path(article_id)
+    if article_id in seen:
+        raise ValueError(f"Duplicate reading ID: {article_id}")
+    seen.add(article_id)
 
 for selection in selections:
     spec = dict(selection)
@@ -40,19 +58,22 @@ for selection in selections:
         "addedIn": "2.1.0",
     })
     article = {**spec, "paragraphs": [{"en": p} for p in paragraphs]}
-    (OUT / "articles" / f"{spec['id']}.json").write_text(json.dumps(article, ensure_ascii=False, indent=2) + "\n")
+    articles[spec["id"]] = article
     catalog.append(spec)
     evidence.append({"id": spec["id"], "source": source["file"], "sourceSha256": source["sha256"], "startBlock": start, "endBlockExclusive": end, "excludedCaptionBlocks": excluded, "opening": paragraphs[0][:100], "ending": paragraphs[-1][-100:], "bodySha256": hashlib.sha256("\n\n".join(paragraphs).encode()).hexdigest()})
 
 # Other collections contain exact NOAA extracts and clearly labelled originals.
-for file in sorted((DATA / "supplemental").glob("*.json")) if (DATA / "supplemental").exists() else []:
-    article = json.loads(file.read_text())
-    (OUT / "articles" / f"{article['id']}.json").write_text(json.dumps(article, ensure_ascii=False, indent=2) + "\n")
+for article in supplemental:
+    articles[article["id"]] = article
     catalog.append({k: v for k, v in article.items() if k not in ("paragraphs", "targets", "questions")})
 
 # Mix categories and lengths in the first page; curated order remains deterministic.
 priority = ["andersen-real-princess", "stevenson-walking-tours", "noaa-estuaries", "sewell-my-early-home", "cather-art-fiction", "noaa-tides", "carroll-rabbit-hole", "thoreau-winter-walk", "noaa-ocean-formation"]
 catalog.sort(key=lambda a: (priority.index(a["id"]) if a["id"] in priority else len(priority), a["id"]))
+# Serialize every article before writing any generated content.
+serialized = {article_path(key): json.dumps(value, ensure_ascii=False, indent=2) + "\n" for key, value in articles.items()}
+for target, content in serialized.items():
+    target.write_text(content)
 (OUT / "index.json").write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n")
 (DATA / "extraction-evidence.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
 print(f"Built {len(selections)} literary readings; {len(catalog)} total articles.")

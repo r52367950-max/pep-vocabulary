@@ -1,0 +1,19 @@
+{
+  "baseline": "0b8610b",
+  "node": "v24.19.0",
+  "entries": 4681,
+  "articles": 60,
+  "callsPerSample": 240,
+  "method": "4 warmups; median of 9 samples, 4 full reading-corpus passes per sample; same Node process, no network or provider latency",
+  "sameResults": true,
+  "matchingMs": {
+    "before": 116.994,
+    "after": 31.158
+  },
+  "reductionPercent": 73.4,
+  "illustrationCache": {
+    "maxEntries": 48,
+    "maxPixels": 12000000,
+    "rgbaBytesAtPixelBudget": 48000000
+  }
+}

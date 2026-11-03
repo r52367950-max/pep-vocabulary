@@ -157,3 +157,13 @@
   .reader-finish { gap: 10px; flex-wrap: wrap; }
   .reader-own textarea { font-size: 1rem; }
 }
+
+/* Visible selections stay actionable when the filter panel is folded away. */
+.reading-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.reading-active-filters button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 9px 13px; border-radius: 999px; background: var(--blue-pale); color: var(--blue-ink); font-size: .8125rem; }
+.reading-card-copy { position: relative; }
+.reading-card-meta { padding-top: 12px; border-top: 1px solid var(--line); }
+.reading-card-meta > span:last-child { margin-left: auto; }
+.reading-card .reading-cover { transition: box-shadow 180ms ease; }
+@media (hover: hover) and (pointer: fine) { .reading-card:hover .reading-cover { box-shadow: 0 6px 22px #00000012; } }
+@media (prefers-reduced-motion: reduce) { .reading-card .reading-cover { transition: none; } }

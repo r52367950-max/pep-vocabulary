@@ -219,7 +219,7 @@ test('assistant requests count tokens against a daily budget and place the profi
   env.DB = sqliteD1(database);
   env.ASSETS = { fetch: async () => Response.json(rows) };
   requestHeaders.set('oai-authenticated-user-email', 'owner@example.test');
-  const { POST: saveConfig, GET: readConfig } = await import('../app/api/ai/config/route.ts');
+  const { POST: saveConfig, GET: readConfig } = await import('./config-client.mjs');
   const { POST: explain } = await import('../app/api/assistant/explain/route.ts');
   const json = (path, body, action) => new Request(`https://app.test${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(action ? { 'x-vocab-action': action } : {}) }, body: JSON.stringify(body) });
   const saved = await saveConfig(json('/api/ai/config', { provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-flash', apiKey: 'test-only-not-a-real-key-000000', dailyLimit: 30, timeoutSeconds: 25, dailyTokenBudget: 10_000 }, 'settings'));

@@ -1,3 +1,4 @@
+import { stableJson } from "../stable-json";
 import type { DictationItem } from "./dictation";
 import { readLocalPracticeData, writeLocalPracticeData, type PracticeGeneration } from "../local-practice-generation";
 
@@ -340,18 +341,21 @@ export function readVoiceHistory(storage: Pick<Storage, "getItem">): VoiceRecord
     if (!Array.isArray(rows)) return [];
     return rows.filter((row): row is VoiceRecord => row && typeof row.id === "string" && typeof row.topicId === "string" && Array.isArray(row.transcript) && row.transcript.every((turn: TranscriptTurn) => turn && ["user", "assistant"].includes(turn.role) && typeof turn.text === "string")).slice(0, 12).map((row) => ({
       ...row,
-      customTopic: typeof row.customTopic === "string" ? row.customTopic.slice(0, 500) : undefined,
-      goal: typeof row.goal === "string" ? row.goal.slice(0, 500) : undefined,
-      openingPrompt: typeof row.openingPrompt === "string" ? row.openingPrompt.slice(0, 500) : undefined,
+      customTopic: typeof row.customTopic === "string" ? row.customTopic.slice(0, 600) : undefined,
+      goal: typeof row.goal === "string" ? row.goal.slice(0, 600) : undefined,
+      openingPrompt: typeof row.openingPrompt === "string" ? row.openingPrompt.slice(0, 600) : undefined,
       discussion: Array.isArray(row.discussion) ? row.discussion.filter((turn) => turn && ["user", "assistant"].includes(turn.role) && typeof turn.text === "string").slice(-20).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 4000) })) : [],
     }));
   } catch { return []; }
 }
 export function saveVoiceRecord(storage: Pick<Storage, "getItem" | "setItem">, record: VoiceRecord) {
   const rows = [record, ...readVoiceHistory(storage).filter((item) => item.id !== record.id)].slice(0, 12);
-  storage.setItem(VOICE_HISTORY_KEY, JSON.stringify(rows)); return rows;
+  storage.setItem(VOICE_HISTORY_KEY, JSON.stringify(rows)); return readVoiceHistory(storage);
 }
 
+function voiceRecordSnapshot(record: VoiceRecord | null) {
+  return stableJson(record ? readVoiceHistory({ getItem: () => JSON.stringify([record]) })[0] ?? null : null);
+}
 export type LocalVoiceHistory = { scope: string; generation: PracticeGeneration; rows: VoiceRecord[] };
 function scopedHistoryStorage(storage: Storage, scope: string) {
   return { getItem: (key: string) => storage.getItem(`${key}:${scope}`), setItem: (key: string, value: string) => storage.setItem(`${key}:${scope}`, value) };
@@ -360,17 +364,23 @@ export async function readLocalVoiceHistory(scope: string): Promise<LocalVoiceHi
   const snapshot = await readLocalPracticeData((storage) => readVoiceHistory(scopedHistoryStorage(storage, scope)));
   return { scope, generation: snapshot.generation, rows: snapshot.value };
 }
-export function saveLocalVoiceRecord(snapshot: Pick<LocalVoiceHistory, "scope" | "generation">, record: VoiceRecord, allowed = () => true) {
+export function saveLocalVoiceRecord(snapshot: Pick<LocalVoiceHistory, "scope" | "generation"> & Partial<Pick<LocalVoiceHistory, "rows">>, record: VoiceRecord, allowed = () => true, expected: VoiceRecord | null = snapshot.rows?.find(row => row.id === record.id) ?? null) {
   return writeLocalPracticeData(snapshot.generation, (storage) => {
     if (!allowed()) throw new Error("账户或学习模式已改变，请重新开始练习。");
-    return saveVoiceRecord(scopedHistoryStorage(storage, snapshot.scope), record);
+    const scoped = scopedHistoryStorage(storage, snapshot.scope);
+    const current = readVoiceHistory(scoped).find(row => row.id === record.id) ?? null;
+    if (voiceRecordSnapshot(current) !== voiceRecordSnapshot(expected)) throw new Error("这条练习记录已在其他页面修改或删除。请复制保留当前文字，再重新打开记录。");
+    return saveVoiceRecord(scoped, record);
   });
 }
-export function deleteLocalVoiceRecord(snapshot: Pick<LocalVoiceHistory, "scope" | "generation">, recordId: string, allowed = () => true) {
+export function deleteLocalVoiceRecord(snapshot: Pick<LocalVoiceHistory, "scope" | "generation"> & Partial<Pick<LocalVoiceHistory, "rows">>, recordId: string, allowed = () => true) {
   return writeLocalPracticeData(snapshot.generation, (storage) => {
     if (!allowed()) throw new Error("账户或学习模式已改变，请重新打开练习记录。");
     const scoped = scopedHistoryStorage(storage, snapshot.scope);
-    const rows = readVoiceHistory(scoped).filter((row) => row.id !== recordId);
+    const current = readVoiceHistory(scoped);
+    const expected = snapshot.rows?.find(row => row.id === recordId) ?? null;
+    if (voiceRecordSnapshot(current.find(row => row.id === recordId) ?? null) !== voiceRecordSnapshot(expected)) throw new Error("这条练习记录已在其他页面修改，请重新打开后再删除。");
+    const rows = current.filter((row) => row.id !== recordId);
     scoped.setItem(VOICE_HISTORY_KEY, JSON.stringify(rows));
     return rows;
   });

@@ -5,7 +5,7 @@ import { Camera } from "lucide-react";
 import { contextStillCurrent, learningContextStore, refreshLearningContext, type LearningMemory } from "@/lib/learning-context-client";
 import { captureWritingContext, writingContextCurrent, type WritingContext } from "@/lib/writing-context";
 import { validWritingHandwritingAssessment, type WritingHandwritingAssessment } from "@/lib/writing-recognition";
-import { compressDictationPhoto } from "../voice/paper-dictation";
+import { compressDictationPhoto } from "@/lib/image-input";
 import "./handwriting-upload.css";
 
 type Recognition = { operationId: string; text: string; uncertainSpans: { text: string; reason: string }[]; requiresConfirmation: true; handwriting: WritingHandwritingAssessment };
@@ -60,7 +60,7 @@ export default function HandwritingUpload({ temporary, disabled, hasText, onBusy
     finally { clearTimeout(timeout); if (request === sequence.current) controller.current = null; }
   };
   return <section className="handwriting-upload" aria-label="手写作文上传">
-    <input ref={input} className="sr-only" type="file" accept="image/*" aria-label="选择手写作文照片" onChange={event => void choose(event.target.files?.[0])} />
+    <input ref={input} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" aria-label="选择手写作文照片" onChange={event => void choose(event.target.files?.[0])} />
     {phase === "idle" ? <button className="text-button" disabled={disabled} onClick={() => input.current?.click()}><Camera size={17} aria-hidden="true" />上传手写作文</button> : <>
       <div className="handwriting-heading"><strong>手写作文</strong><button className="text-button" onClick={reset}>取消</button></div>
       {/* Local object URL preview; no remote image optimization. */}

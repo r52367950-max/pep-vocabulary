@@ -218,9 +218,10 @@ test('cloud sync rejects inconsistent event chains without advancing the saved r
   const previousEmail = requestHeaders.get('oai-authenticated-user-email');
   env.DB = sqliteD1(database);
   requestHeaders.set('oai-authenticated-user-email', 'backup-chain@example.test');
+  const identity = (await (await GET()).json()).identity;
   const request = (backup, baseRevision) => new Request('https://app.test/api/sync', { method: 'POST',
     headers: { 'content-type': 'application/json', origin: 'https://app.test' },
-    body: JSON.stringify({ schemaVersion: '1.2.0', baseRevision,
+    body: JSON.stringify({ expectedIdentity: identity, schemaVersion: '1.2.0', baseRevision,
       clientUpdatedAt: clock.toISOString(), payload: backup }),
   });
   try {
