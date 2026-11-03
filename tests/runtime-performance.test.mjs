@@ -71,5 +71,26 @@ test("main views stay mounted behind Activity instead of remounting per tab", ()
   const app = source("components/vocab-app.tsx");
   assert.match(app, /<Activity mode=\{active \? "visible" : "hidden"\}>/);
   assert.doesNotMatch(app, /key=\{view\}/);
-  assert.match(app, /const ActivityView = lazy\(/, "the record view is not shadowing React's Activity");
+  assert.match(app, /\bActivityView,[^}]*\} from "\.\/studio\/surfaces";/, "the record view is not shadowing React's Activity");
+  assert.match(source("components/studio/surfaces.ts"), /export const ActivityView = preloadable\(/);
+});
+
+test("code-split surfaces open without a loading step and keep their styles out of the first paint", () => {
+  const app = source("components/vocab-app.tsx");
+  const surfaces = source("components/studio/surfaces.ts");
+  const layout = source("app/layout.tsx");
+  const styles = source("components/studio/surface-styles.ts");
+  // Every split surface comes from the registry, so each can be warmed before its first render.
+  for (const path of ["components/vocab-app.tsx", "components/studio/today.tsx", "components/studio/study-session.tsx", "components/studio/word-detail.tsx", "components/studio/learn/learn-activity.tsx"]) {
+    assert.doesNotMatch(source(path), /\blazy\(/, `${path} declares its own lazy surface`);
+  }
+  assert.doesNotMatch(surfaces, /\blazy\(/);
+  assert.equal(surfaces.match(/= preloadable\(styled\(/g).length, surfaces.match(/^export const /gm).length, "each surface loads with its stylesheet");
+  assert.match(app, /preloadWhenIdle\(\[/, "the shell warms the next steps in idle time");
+  assert.match(app, /onPointerEnter=\{\(\) => prepareSurface\(id\)\}/, "tab intent warms the tab");
+  // Surface-only stylesheets load with the first surface instead of blocking the first paint.
+  for (const sheet of ["settings-dialog", "learn", "ai-writing", "voice", "secondary-ui"]) {
+    assert.match(styles, new RegExp(`import "@/app/${sheet}\\.css";`), sheet);
+    assert.doesNotMatch(layout, new RegExp(`/${sheet}\\.css`), `${sheet}.css is back in the render-blocking layout`);
+  }
 });

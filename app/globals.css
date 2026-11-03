@@ -332,7 +332,10 @@ a:hover {
   display: grid;
   place-items: center;
   color: var(--muted);
+  animation: loading-in 200ms ease 400ms both;
 }
+/* A short wait shows no loading line at all; a longer one fades it in. */
+@keyframes loading-in { from { opacity: 0; } }
 
 .search-field {
   background: var(--grouped);
@@ -399,10 +402,7 @@ a:hover {
   border: 0;
   border-radius: 0;
   background: none;
-  padding: 0 25px;
-}
-.activity-metrics > div:first-child {
-  padding-left: 0;
+  padding: 0 25px 0 0;
 }
 .activity-metrics > div + div {
   border-left: 0;
@@ -876,11 +876,7 @@ html[data-theme="dark"] {
     gap: 25px 0;
   }
   .activity-metrics > div {
-    padding: 0 16px;
-  }
-  .activity-metrics > div:nth-child(3) {
-    padding-left: 0;
-    border-left: 0;
+    padding: 0 16px 0 0;
   }
   .settings-layout {
     gap: 18px;

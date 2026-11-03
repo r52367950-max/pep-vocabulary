@@ -67,9 +67,34 @@ test("the Today landscape follows the local hour", () => {
   assert.equal(at(23), "night");
 });
 
-test("cache keys separate size, pixel ratio and time of day", () => {
+test("cache keys separate size, pixel ratio, time of day and the copy's clear area", () => {
   const base = { kind: "shanshui", seed: "2026-09-24", time: "day", width: 620, height: 320, ratio: 2 };
   assert.notEqual(artKey(base), artKey({ ...base, ratio: 1 }));
   assert.notEqual(artKey(base), artKey({ ...base, time: "night" }));
   assert.notEqual(artKey(base), artKey({ ...base, width: 621 }));
+  assert.notEqual(artKey(base), artKey({ ...base, clear: 0.72 }));
+});
+
+test("the Today moon keeps out from under the copy and leaves the rest of the picture in place", () => {
+  // Counts each draw from the generator, so two paintings can be compared draw for draw.
+  const counted = (seed) => {
+    const rng = makeRng(seed), draws = [];
+    return { draws, rng: new Proxy(rng, { get: (target, key) => typeof target[key] === "function" ? (...args) => { draws.push(key); return target[key](...args); } : target[key] }), next: () => rng.next() };
+  };
+  const paint = (seed, clear) => {
+    const { ctx, log } = recordingContext();
+    const counter = counted(`shanshui:${seed}`);
+    blueGreen(ctx, 350, 210, counter.rng, { time: "night", clear });
+    // The halo is centred on the moon. Paper blots start their gradients at radius 0; the halo starts at the moon's rim.
+    return { moonX: log.find((entry) => entry[0] === "createRadialGradient" && entry[3] > 0)[1], draws: counter.draws, after: counter.next() };
+  };
+  const free = [];
+  for (let seed = 0; seed < 24; seed++) {
+    const open = paint(seed), kept = paint(seed, 0.72);
+    free.push(open.moonX);
+    assert.ok(kept.moonX >= 0.72 * 350 - 1 && kept.moonX <= 0.85 * 350 + 1, `seed ${seed} put the moon at ${kept.moonX}`);
+    assert.deepEqual(kept.draws, open.draws, `seed ${seed} drew a different sequence`);
+    assert.equal(kept.after, open.after, `seed ${seed} left the generator elsewhere`);
+  }
+  assert.ok(Math.min(...free) < 0.4 * 350, "without a clear area the moon still roams the whole sky");
 });

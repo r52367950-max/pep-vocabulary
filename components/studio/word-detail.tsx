@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Bookmark, Check, ChevronRight, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import {
@@ -11,8 +11,8 @@ import {
 import { getEntryExample } from "@/lib/questions";
 import { useModal } from "@/hooks/use-modal";
 import { Pronounce } from "./shared";
+import { WordAi } from "./surfaces";
 
-const WordAi = lazy(() => import("./ai/word-ai"));
 
 export default function WordDetail({
   entry,

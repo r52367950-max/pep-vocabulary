@@ -27,19 +27,19 @@ export function timeOfDay(date: Date): TimeOfDay {
   return "night";
 }
 
-export type ArtRequest = { kind: ArtKind; seed: string; time?: TimeOfDay; width: number; height: number; ratio: number };
-export const artKey = (r: ArtRequest) => `${r.kind}|${r.seed}|${r.time ?? ""}|${r.width}x${r.height}@${r.ratio}`;
+export type ArtRequest = { kind: ArtKind; seed: string; time?: TimeOfDay; width: number; height: number; ratio: number; clear?: number };
+export const artKey = (r: ArtRequest) => `${r.kind}|${r.seed}|${r.time ?? ""}|${r.width}x${r.height}@${r.ratio}|${r.clear ?? 0}`;
 
 /** Paints one illustration synchronously. The same request always yields the same picture. */
 export function paintArtwork(canvas: HTMLCanvasElement, request: ArtRequest) {
-  const { kind, seed, time, width, height, ratio } = request;
+  const { kind, seed, time, width, height, ratio, clear } = request;
   const spec = SCENES[kind];
   canvas.width = Math.round(width * ratio);
   canvas.height = Math.round(height * ratio);
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  spec.scene(ctx, width, height, makeRng(`${kind}:${seed}`), { time });
+  spec.scene(ctx, width, height, makeRng(`${kind}:${seed}`), { time, clear });
   grain(ctx, spec.grain);
 }
 

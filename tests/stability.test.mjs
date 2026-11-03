@@ -5,7 +5,8 @@ import { IDBObjectStore } from 'fake-indexeddb';
 import { buildQuestion, gradeQuestion, normalizeAnswer, localSentenceCheck } from '../lib/questions.ts';
 import { newStoredCard, scheduleReview, forecastDueLoad, isDue } from '../lib/scheduler.ts';
 import { clearUserData, updateCardMetadata, putOne, getOne, getAll, commitReview, exportBackup, restoreBackup, validateBackup, defaultSettings, loadSettings } from '../lib/storage.ts';
-import { matchesLexiconQuery } from '../lib/lexicon.ts';
+import { readFileSync } from 'node:fs';
+import { lexiconQueryMatcher, normalizeEntry } from '../lib/lexicon.ts';
 import { readJsonObject, sameOriginRequest } from '../lib/http.ts';
 import { delimitedCell } from '../lib/export.ts';
 import { normalizeBaseUrl } from '../lib/assistant/core.ts';
@@ -30,10 +31,28 @@ test('choices contain one correct option and no duplicate Chinese meanings', () 
   assert.equal(new Set(q.choices).size, 4);
 });
 test('Chinese and punctuation searches cannot turn into an empty Latin prefix', () => {
-  assert.equal(matchesLexiconQuery(apple, '苹果'), true);
-  assert.equal(matchesLexiconQuery(apple, '学校'), false);
-  assert.equal(matchesLexiconQuery(apple, '!!!'), false);
-  assert.equal(matchesLexiconQuery(apple, 'ＡＰＰ'), true);
+  const matches = (entry, query) => lexiconQueryMatcher(query)(entry);
+  assert.equal(matches(apple, '苹果'), true);
+  assert.equal(matches(apple, '学校'), false);
+  assert.equal(matches(apple, '!!!'), false);
+  assert.equal(matches(apple, 'ＡＰＰ'), true);
+});
+test('the cached search matcher finds exactly the rows a per-entry scan finds', () => {
+  const index = JSON.parse(readFileSync(new URL('../public/data/v1/index.json', import.meta.url), 'utf8')).map(normalizeEntry);
+  // The pre-2.14 matcher, which rebuilt and lower-cased every entry's text for each query.
+  const scan = (entry, query) => {
+    const normalized = query.normalize('NFKC').trim().toLowerCase();
+    const prefix = normalized.replace(/[^a-z]/g, '');
+    return !normalized || `${entry.headword} ${entry.lookup} ${entry.chineseCore}`.toLowerCase().includes(normalized) ||
+      (Boolean(prefix) && entry.headword.toLowerCase().startsWith(prefix));
+  };
+  for (const query of ['', ' ', 'a', 'acc', 'Accommodation', ' run ', 'ＡＰＰ', "o'clock", 'p.e.', '!!!', '学', '交换', 'Unit']) {
+    const matches = lexiconQueryMatcher(query);
+    // Twice: the second pass reads the cached text.
+    for (let pass = 0; pass < 2; pass++) {
+      assert.deepEqual(index.filter(matches).map((entry) => entry.id), index.filter((entry) => scan(entry, query)).map((entry) => entry.id), `query ${JSON.stringify(query)}`);
+    }
+  }
 });
 test('sentence target check uses word boundaries', () => {
   assert.equal(localSentenceCheck('I went to the theater yesterday.', 'he').hasTarget, false);

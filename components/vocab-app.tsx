@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  lazy,
   memo,
   Suspense,
   useCallback,
@@ -35,20 +34,23 @@ import type { LearnMode } from "@/lib/learn";
 import Today from "./studio/today";
 import { Brand } from "./studio/shared";
 import { StudioSymbol } from "./studio/symbol";
+import { preloadWhenIdle } from "./studio/preloadable";
+import {
+  ActivityView,
+  LearnActivity,
+  Lexicon,
+  Reading,
+  SettingsDialog,
+  StudySession,
+  VocabularyPractice,
+  VoiceWorkspace,
+  WordDetail,
+  WritingWorkspace,
+} from "./studio/surfaces";
 import type { CSSProperties, ReactNode } from "react";
 
 // Memoized: once visited, these stay mounted behind <Activity> and skip unrelated shell renders.
 const TodayView = memo(Today);
-const VocabularyPractice = lazy(() => import("./studio/vocabulary-practice"));
-const Lexicon = lazy(() => import("./studio/lexicon").then((m) => ({ default: memo(m.default) })));
-const Reading = lazy(() => import("./studio/reading").then((m) => ({ default: memo(m.default) })));
-const ActivityView = lazy(() => import("./studio/activity").then((m) => ({ default: memo(m.default) })));
-const SettingsDialog = lazy(() => import("./studio/settings-dialog"));
-const StudySession = lazy(() => import("./studio/study-session"));
-const WordDetail = lazy(() => import("./studio/word-detail"));
-const LearnActivity = lazy(() => import("./studio/learn/learn-activity"));
-const WritingWorkspace = lazy(() => import("./studio/writing/writing-workspace"));
-const VoiceWorkspace = lazy(() => import("./studio/voice-workspace"));
 type View = "today" | "practice" | "lexicon" | "reading" | "activity";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
@@ -57,6 +59,11 @@ const navigation = [
   { id: "activity", label: "学习记录", short: "记录", symbol: "activity" },
   { id: "settings", label: "设置", short: "设置", symbol: "settings" },
 ] as const;
+const surfaceOf = { lexicon: Lexicon, reading: Reading, activity: ActivityView, settings: SettingsDialog } as const;
+// Pointer or focus intent on a tab starts its chunk a moment before the tap lands.
+function prepareSurface(id: (typeof navigation)[number]["id"]) {
+  if (id !== "today") void surfaceOf[id].preload().catch(() => undefined);
+}
 const modeTitle: Record<StudyMode, string> = {
   daily: "今日学习",
   review: "到期复习",
@@ -213,18 +220,22 @@ export default function VocabApp() {
   }, []);
   useEffect(() => {
     if (data.loading) return;
-    // Warm the practice and word-detail chunks so the first tap opens without a loading step.
-    const warm = () => {
-      void import("./studio/study-session");
-      void import("./studio/word-detail");
-    };
-    if (typeof requestIdleCallback === "function") {
-      const id = requestIdleCallback(warm, { timeout: 3000 });
-      return () => cancelIdleCallback(id);
-    }
-    const id = setTimeout(warm, 1500);
-    return () => clearTimeout(id);
+    // Let the first screen settle before warming likely next steps, one per idle slice.
+    return preloadWhenIdle([
+      StudySession.preload,
+      WordDetail.preload,
+      Lexicon.preload,
+      VocabularyPractice.preload,
+      ActivityView.preload,
+      Reading.preload,
+      SettingsDialog.preload,
+      VoiceWorkspace.preload,
+      WritingWorkspace.preload,
+    ], 1500);
   }, [data.loading]);
+  useEffect(() => {
+    if (view === "practice") return preloadWhenIdle([LearnActivity.preload]);
+  }, [view]);
   useEffect(() => {
     if (data.loading || initialized.current) return;
     initialized.current = true;
@@ -564,6 +575,8 @@ export default function VocabApp() {
                   : undefined
               }
               onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
+              onPointerEnter={() => prepareSurface(id)}
+              onFocus={() => prepareSurface(id)}
             >
               <StudioSymbol name={symbol} size={21} />
               {label}
@@ -600,6 +613,8 @@ export default function VocabApp() {
                     : undefined
                 }
                 onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
+                onPointerEnter={() => prepareSurface(id)}
+                onFocus={() => prepareSurface(id)}
               >
                 <StudioSymbol name={symbol} size={21} />
                 {label}
@@ -717,6 +732,8 @@ export default function VocabApp() {
                 : undefined
             }
             onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
+            onPointerEnter={() => prepareSurface(id)}
+            onFocus={() => prepareSurface(id)}
           >
             <StudioSymbol name={symbol} size={25} />
             <span>{short}</span>

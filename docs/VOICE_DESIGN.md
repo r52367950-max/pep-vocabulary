@@ -45,7 +45,7 @@ CEFR 强调[可理解度与声音、韵律](https://www.coe.int/en/web/common-eu
 
 ### 语音纹理
 
-路径：`public/art/voice-mist.png`。使用内置 image_gen 生成并复制入项目，CSS 圆形遮罩与漂移动画使用同一素材；没有引用或复制品牌徽标。
+路径：`public/art/voice-mist.webp`。使用内置 image_gen 生成并复制入项目，CSS 圆形遮罩与漂移动画使用同一素材；没有引用或复制品牌徽标。2.14.0 起由 1254×1254 PNG（1.8 MB）缩为 768×768 WebP（质量 82，约 29 KB）：语音球最大显示约 317 CSS 像素，2 倍屏需要约 634 像素，768 像素仍有余量。
 
 生成提示词：Use case: stylized-concept. Asset type: square flowing texture for a minimalist voice companion orb inside a web app. Primary request: OpenAI-inspired calm abstract fluid, pale mint, sea-glass teal and soft azure blue, ethereal translucent cloud-like folds and light diffusing through water. Full-bleed square texture, no spherical boundary, no exterior background, suitable for masking to a circle in CSS and slow drifting animation. Organic soft detail, subtle depth, mostly light, balanced blue/green, refined smooth gradients with a few wispy streaks. No text, no logos, no symbols, no UI, no border, no frame, no starfield, no hard outlines. Generate a texture image not a screenshot.
 

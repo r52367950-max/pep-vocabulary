@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Volume2 } from "lucide-react";
 import { speakSystem, type LexiconIndexEntry } from "@/lib/lexicon";
 import { StudioSymbol } from "./symbol";
@@ -125,4 +125,17 @@ export function sourceLabel(entry: LexiconIndexEntry) {
   return source
     ? `${source.volume} · ${source.unit}${source.printedPage ? ` · p.${source.printedPage}` : ""}`
     : "课程词汇";
+}
+/** The source label for narrow rows: it wraps only after a separator, never inside "Welcome Unit" or "p.112". */
+export function SourceLine({ entry, className }: { entry: LexiconIndexEntry; className?: string }) {
+  return (
+    <span className={`source-line${className ? ` ${className}` : ""}`}>
+      {sourceLabel(entry).split(" · ").map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 && "\u00a0· "}
+          <span>{part}</span>
+        </Fragment>
+      ))}
+    </span>
+  );
 }

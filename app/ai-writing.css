@@ -226,6 +226,8 @@
 
 /* --- Record page: mistakes and AI tools ------------------------------------------------------ */
 .insights { margin-top: 36px; }
+.insights h2 { font-size: 1rem; }
+.insights .section-heading { margin-bottom: 14px; }
 .insight-rows { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .insight-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; min-height: 64px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
 .insight-rows strong { display: block; font-weight: 500; font-size: .9375rem; }

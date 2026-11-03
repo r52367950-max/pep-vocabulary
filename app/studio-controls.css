@@ -251,7 +251,7 @@
 .detail-sources > span {
   font-size: 0.8125rem;
   display: inline-block;
-  background: var(--bg);
+  background: var(--grouped);
   border-radius: var(--radius-control);
   padding: 4px 8px;
   margin: 0 6px 6px 0;
@@ -275,7 +275,7 @@
 }
 .activity-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   background: var(--surface);
   padding: 26px;
   border: 1px solid var(--line);
@@ -448,6 +448,12 @@
 .study-meta > span:last-child {
   max-width: 50%;
   text-align: right;
+}
+.source-line {
+  text-wrap: balance;
+}
+.source-line > span {
+  white-space: nowrap;
 }
 .study-question {
   text-align: center;
