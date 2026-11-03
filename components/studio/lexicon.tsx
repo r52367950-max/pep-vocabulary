@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
-import { matchesLexiconQuery, type LexiconIndexEntry } from "@/lib/lexicon";
+import { lexiconQueryMatcher, type LexiconIndexEntry } from "@/lib/lexicon";
 import { BOOKS, selectEntries, type StudyMode } from "@/lib/study";
 import { delimitedCell } from "@/lib/export";
 import { StudioSymbol } from "./symbol";
@@ -52,25 +52,26 @@ export default function Lexicon({
   };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selecting, setSelecting] = useState(false);
-  const rows = useMemo(
-    () =>
-      selectEntries(
-        data.index,
-        scope === "book" ? { bookId, unit } : {},
-      ).filter((entry) => {
-        const card = data.cards.get(entry.id);
-        return (
-          matchesLexiconQuery(entry, search) &&
-          (status === "all" ||
-            (status === "favorite"
-              ? card?.favorite
-              : status === "unseen"
-                ? !card?.lastReviewed && card?.status !== "paused"
-                : card?.status === status))
-        );
-      }),
-    [data.index, data.cards, scope, bookId, unit, search, status],
+  // The book selection does not change while typing, so each keystroke filters the scoped list only.
+  const scoped = useMemo(
+    () => selectEntries(data.index, scope === "book" ? { bookId, unit } : {}),
+    [data.index, scope, bookId, unit],
   );
+  const rows = useMemo(() => {
+    const matches = lexiconQueryMatcher(search);
+    return scoped.filter((entry) => {
+      const card = data.cards.get(entry.id);
+      return (
+        matches(entry) &&
+        (status === "all" ||
+          (status === "favorite"
+            ? card?.favorite
+            : status === "unseen"
+              ? !card?.lastReviewed && card?.status !== "paused"
+              : card?.status === status))
+      );
+    });
+  }, [scoped, data.cards, search, status]);
   const currentPage = Math.min(
     page,
     Math.max(0, Math.ceil(rows.length / 40) - 1),

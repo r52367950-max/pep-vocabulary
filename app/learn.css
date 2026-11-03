@@ -35,6 +35,7 @@
   display: grid;
   place-items: center;
   color: var(--muted);
+  animation: loading-in 200ms ease 400ms both;
 }
 .learn-screen h1[tabindex="-1"]:focus {
   outline: none;

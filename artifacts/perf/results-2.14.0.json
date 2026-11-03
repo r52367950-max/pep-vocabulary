@@ -1,0 +1,666 @@
+{
+  "firstOpen": {
+    "summary": {
+      "base": {
+        "lexiconTab": {
+          "medianMs": 401,
+          "pendingShown": "3/3"
+        },
+        "readingTab": {
+          "medianMs": 419,
+          "pendingShown": "3/3"
+        },
+        "activityTab": {
+          "medianMs": 365,
+          "pendingShown": "3/3"
+        },
+        "startStudy": {
+          "medianMs": 501,
+          "pendingShown": "3/3"
+        },
+        "settings": {
+          "medianMs": 400,
+          "pendingShown": "0/3"
+        },
+        "wordDetail": {
+          "medianMs": 407,
+          "pendingShown": "0/3"
+        },
+        "vocabPractice": {
+          "medianMs": 352,
+          "pendingShown": "3/3"
+        },
+        "voice": {
+          "medianMs": 421,
+          "pendingShown": "3/3"
+        },
+        "writing": {
+          "medianMs": 378,
+          "pendingShown": "3/3"
+        }
+      },
+      "new": {
+        "lexiconTab": {
+          "medianMs": 196,
+          "pendingShown": "0/3"
+        },
+        "readingTab": {
+          "medianMs": 222,
+          "pendingShown": "0/3"
+        },
+        "activityTab": {
+          "medianMs": 187,
+          "pendingShown": "0/3"
+        },
+        "startStudy": {
+          "medianMs": 219,
+          "pendingShown": "0/3"
+        },
+        "settings": {
+          "medianMs": 116,
+          "pendingShown": "0/3"
+        },
+        "wordDetail": {
+          "medianMs": 160,
+          "pendingShown": "0/3"
+        },
+        "vocabPractice": {
+          "medianMs": 115,
+          "pendingShown": "0/3"
+        },
+        "voice": {
+          "medianMs": 240,
+          "pendingShown": "0/3"
+        },
+        "writing": {
+          "medianMs": 79,
+          "pendingShown": "3/3"
+        }
+      }
+    },
+    "raw": {
+      "base": {
+        "lexiconTab": [
+          {
+            "ms": 387.9000000001397,
+            "pending": true
+          },
+          {
+            "ms": 400.5,
+            "pending": true
+          },
+          {
+            "ms": 402.8000000002794,
+            "pending": true
+          }
+        ],
+        "readingTab": [
+          {
+            "ms": 418.69999999995343,
+            "pending": true
+          },
+          {
+            "ms": 484.9000000001397,
+            "pending": true
+          },
+          {
+            "ms": 407.20000000018626,
+            "pending": true
+          }
+        ],
+        "activityTab": [
+          {
+            "ms": 355.39999999990687,
+            "pending": true
+          },
+          {
+            "ms": 364.5999999998603,
+            "pending": true
+          },
+          {
+            "ms": 370,
+            "pending": true
+          }
+        ],
+        "startStudy": [
+          {
+            "ms": 490.69999999995343,
+            "pending": true
+          },
+          {
+            "ms": 530.7000000001863,
+            "pending": true
+          },
+          {
+            "ms": 500.5,
+            "pending": true
+          }
+        ],
+        "settings": [
+          {
+            "ms": 380.69999999995343,
+            "pending": false
+          },
+          {
+            "ms": 425.4000000001397,
+            "pending": false
+          },
+          {
+            "ms": 399.79999999981374,
+            "pending": false
+          }
+        ],
+        "wordDetail": [
+          {
+            "ms": 386.5,
+            "pending": false
+          },
+          {
+            "ms": 452.30000000004657,
+            "pending": false
+          },
+          {
+            "ms": 406.5,
+            "pending": false
+          }
+        ],
+        "vocabPractice": [
+          {
+            "ms": 351.69999999995343,
+            "pending": true
+          },
+          {
+            "ms": 355,
+            "pending": true
+          },
+          {
+            "ms": 349.20000000018626,
+            "pending": true
+          }
+        ],
+        "voice": [
+          {
+            "ms": 429.5999999998603,
+            "pending": true
+          },
+          {
+            "ms": 419.30000000004657,
+            "pending": true
+          },
+          {
+            "ms": 421.09999999962747,
+            "pending": true
+          }
+        ],
+        "writing": [
+          {
+            "ms": 377.89999999990687,
+            "pending": true
+          },
+          {
+            "ms": 399.5999999998603,
+            "pending": true
+          },
+          {
+            "ms": 377.90000000037253,
+            "pending": true
+          }
+        ]
+      },
+      "new": {
+        "lexiconTab": [
+          {
+            "ms": 236.10000000009313,
+            "pending": false
+          },
+          {
+            "ms": 196,
+            "pending": false
+          },
+          {
+            "ms": 180.20000000018626,
+            "pending": false
+          }
+        ],
+        "readingTab": [
+          {
+            "ms": 161,
+            "pending": false
+          },
+          {
+            "ms": 259.19999999995343,
+            "pending": false
+          },
+          {
+            "ms": 222.39999999990687,
+            "pending": false
+          }
+        ],
+        "activityTab": [
+          {
+            "ms": 169.10000000009313,
+            "pending": false
+          },
+          {
+            "ms": 187,
+            "pending": false
+          },
+          {
+            "ms": 246.89999999990687,
+            "pending": false
+          }
+        ],
+        "startStudy": [
+          {
+            "ms": 205.80000000004657,
+            "pending": false
+          },
+          {
+            "ms": 218.69999999995343,
+            "pending": false
+          },
+          {
+            "ms": 241.59999999962747,
+            "pending": false
+          }
+        ],
+        "settings": [
+          {
+            "ms": 109.79999999981374,
+            "pending": false
+          },
+          {
+            "ms": 116.39999999990687,
+            "pending": false
+          },
+          {
+            "ms": 126.39999999990687,
+            "pending": false
+          }
+        ],
+        "wordDetail": [
+          {
+            "ms": 146.5,
+            "pending": false
+          },
+          {
+            "ms": 160.1999999997206,
+            "pending": false
+          },
+          {
+            "ms": 179.10000000009313,
+            "pending": false
+          }
+        ],
+        "vocabPractice": [
+          {
+            "ms": 114.60000000009313,
+            "pending": false
+          },
+          {
+            "ms": 84.39999999990687,
+            "pending": false
+          },
+          {
+            "ms": 130.5,
+            "pending": false
+          }
+        ],
+        "voice": [
+          {
+            "ms": 205.19999999995343,
+            "pending": false
+          },
+          {
+            "ms": 240.10000000009313,
+            "pending": false
+          },
+          {
+            "ms": 257,
+            "pending": false
+          }
+        ],
+        "writing": [
+          {
+            "ms": 110.0999999998603,
+            "pending": true
+          },
+          {
+            "ms": 79.39999999990687,
+            "pending": true
+          },
+          {
+            "ms": 76.3000000002794,
+            "pending": true
+          }
+        ]
+      }
+    }
+  },
+  "runtime": {
+    "summary": {
+      "throttle": "4x CPU",
+      "runs": 3,
+      "results": {
+        "base": {
+          "load": {
+            "fcpMs": 344,
+            "lcpMs": 344,
+            "appReadyMs": 1394.2000000001863,
+            "heroPaintedMs": 1413.8999999999069,
+            "ttiMs": 1394.2000000001863,
+            "tbtMs": 211,
+            "longTasks": 5,
+            "cls": 0,
+            "jsBytes": 173235,
+            "cssBytes": 31621,
+            "dataBytes": 295129,
+            "requests": 25,
+            "htmlBytes": 2119
+          },
+          "tabs": {
+            "firstVisitMedianMs": 345.5999999998603,
+            "firstVisitMaxMs": 381.1999999997206,
+            "warmMedianMs": 34.300000000046566,
+            "warmMaxMs": 48.5
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 34,
+            "keyToPaintMaxMs": 73,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 13,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 46.49999999976717,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "errors": []
+        },
+        "new": {
+          "load": {
+            "fcpMs": 380,
+            "lcpMs": 380,
+            "appReadyMs": 1249.3999999999069,
+            "heroPaintedMs": 1285.3999999999069,
+            "ttiMs": 1249.3999999999069,
+            "tbtMs": 187,
+            "longTasks": 6,
+            "cls": 0,
+            "jsBytes": 463598,
+            "cssBytes": 112080,
+            "dataBytes": 295129,
+            "requests": 55,
+            "htmlBytes": 2132
+          },
+          "tabs": {
+            "firstVisitMedianMs": 72.4000000001397,
+            "firstVisitMaxMs": 117.40000000037253,
+            "warmMedianMs": 31.550000000046566,
+            "warmMaxMs": 49.89999999990687
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 27,
+            "keyToPaintMaxMs": 66,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 13,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 46.89999999990687,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "errors": []
+        }
+      }
+    },
+    "raw": {
+      "base": [
+        {
+          "load": {
+            "fcpMs": 344,
+            "lcpMs": 344,
+            "appReadyMs": 1394.2000000001863,
+            "heroPaintedMs": 1413.8999999999069,
+            "ttiMs": 1394.2000000001863,
+            "tbtMs": 211,
+            "longTasks": 7,
+            "cls": 0,
+            "jsBytes": 173235,
+            "cssBytes": 31621,
+            "dataBytes": 295129,
+            "requests": 25,
+            "htmlBytes": 2118
+          },
+          "tabs": {
+            "firstVisitMedianMs": 357.44999999995343,
+            "firstVisitMaxMs": 380.89999999990687,
+            "warmMedianMs": 34.300000000046566,
+            "warmMaxMs": 63.60000000009313
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 49,
+            "keyToPaintMaxMs": 107,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 40,
+            "slowInteractions": 14,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 72.35000000009313,
+            "longTasks": 5,
+            "tbtMs": 51
+          },
+          "errors": []
+        },
+        {
+          "load": {
+            "fcpMs": 376,
+            "lcpMs": 376,
+            "appReadyMs": 1637.7000000001863,
+            "heroPaintedMs": 1652.7000000001863,
+            "ttiMs": 1637.7000000001863,
+            "tbtMs": 308,
+            "longTasks": 5,
+            "cls": 0,
+            "jsBytes": 173235,
+            "cssBytes": 31621,
+            "dataBytes": 295129,
+            "requests": 25,
+            "htmlBytes": 2120
+          },
+          "tabs": {
+            "firstVisitMedianMs": 338.8499999998603,
+            "firstVisitMaxMs": 391.79999999981374,
+            "warmMedianMs": 39.60000000009313,
+            "warmMaxMs": 48.5
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 34,
+            "keyToPaintMaxMs": 73,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 13,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 46.49999999976717,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "errors": []
+        },
+        {
+          "load": {
+            "fcpMs": 320,
+            "lcpMs": 320,
+            "appReadyMs": 1121.7999999998137,
+            "heroPaintedMs": 1219,
+            "ttiMs": 1182.5,
+            "tbtMs": 159,
+            "longTasks": 5,
+            "cls": 0,
+            "jsBytes": 173235,
+            "cssBytes": 31621,
+            "dataBytes": 295129,
+            "requests": 25,
+            "htmlBytes": 2119
+          },
+          "tabs": {
+            "firstVisitMedianMs": 345.5999999998603,
+            "firstVisitMaxMs": 381.1999999997206,
+            "warmMedianMs": 33.199999999953434,
+            "warmMaxMs": 40.8000000002794
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 32,
+            "keyToPaintMaxMs": 62,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 13,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 44.89999999967404,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "errors": []
+        }
+      ],
+      "new": [
+        {
+          "load": {
+            "fcpMs": 380,
+            "lcpMs": 380,
+            "appReadyMs": 1217.1999999997206,
+            "heroPaintedMs": 1259.1999999997206,
+            "ttiMs": 1217.1999999997206,
+            "tbtMs": 226,
+            "longTasks": 6,
+            "cls": 0,
+            "jsBytes": 463598,
+            "cssBytes": 112080,
+            "dataBytes": 295129,
+            "requests": 55,
+            "htmlBytes": 2131
+          },
+          "tabs": {
+            "firstVisitMedianMs": 72.4000000001397,
+            "firstVisitMaxMs": 122.89999999990687,
+            "warmMedianMs": 29.550000000046566,
+            "warmMaxMs": 40.90000000037253
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 34,
+            "keyToPaintMaxMs": 66,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 13,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 46.89999999990687,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "errors": []
+        },
+        {
+          "load": {
+            "fcpMs": 432,
+            "lcpMs": 432,
+            "appReadyMs": 1249.3999999999069,
+            "heroPaintedMs": 1285.3999999999069,
+            "ttiMs": 1249.3999999999069,
+            "tbtMs": 167,
+            "longTasks": 6,
+            "cls": 0,
+            "jsBytes": 463598,
+            "cssBytes": 112080,
+            "dataBytes": 295129,
+            "requests": 55,
+            "htmlBytes": 2132
+          },
+          "tabs": {
+            "firstVisitMedianMs": 73.25,
+            "firstVisitMaxMs": 117.40000000037253,
+            "warmMedianMs": 31.75,
+            "warmMaxMs": 50.40000000037253
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 27,
+            "keyToPaintMaxMs": 55,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 12,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 45.49999999976717,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "errors": []
+        },
+        {
+          "load": {
+            "fcpMs": 348,
+            "lcpMs": 348,
+            "appReadyMs": 1455.5999999996275,
+            "heroPaintedMs": 1477.5,
+            "ttiMs": 1455.5999999996275,
+            "tbtMs": 187,
+            "longTasks": 6,
+            "cls": 0,
+            "jsBytes": 463598,
+            "cssBytes": 112080,
+            "dataBytes": 295129,
+            "requests": 55,
+            "htmlBytes": 2134
+          },
+          "tabs": {
+            "firstVisitMedianMs": 68.80000000004657,
+            "firstVisitMaxMs": 96.60000000009313,
+            "warmMedianMs": 31.550000000046566,
+            "warmMaxMs": 49.89999999990687
+          },
+          "search": {
+            "keys": 13,
+            "keyToPaintMedianMs": 23,
+            "keyToPaintMaxMs": 80,
+            "interactionMedianMs": 16,
+            "interactionMaxMs": 32,
+            "slowInteractions": 13,
+            "longTasks": 0,
+            "tbtMs": 0
+          },
+          "paging": {
+            "clickToPaintMedianMs": 48.300000000046566,
+            "longTasks": 2,
+            "tbtMs": 21
+          },
+          "errors": []
+        }
+      ]
+    }
+  }
+}

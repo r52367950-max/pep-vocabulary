@@ -358,7 +358,7 @@
 .voice-icon-button { transition: background .2s, transform .2s; }
 .voice-icon-button:hover { background: var(--grouped); }
 .voice-orb { position: relative; isolation: isolate; overflow: hidden; animation: voice-float 8s ease-in-out infinite; }
-.voice-orb::before { content: ""; position: absolute; inset: -18%; background: url("/art/voice-mist.png") center / cover; opacity: .92; animation: voice-mist-flow 24s ease-in-out infinite alternate; }
+.voice-orb::before { content: ""; position: absolute; inset: -18%; background: url("/art/voice-mist.webp") center / cover; opacity: .92; animation: voice-mist-flow 24s ease-in-out infinite alternate; }
 .voice-orb i { position: absolute; inset: -24%; border-radius: 44% 56% 62% 38%; filter: blur(13px); opacity: .52; background: radial-gradient(ellipse at 42% 32%, var(--surface) 0%, transparent 60%); animation: voice-flow 16s linear infinite; }
 .voice-orb i:nth-child(2) { background: radial-gradient(ellipse at 70% 50%, color-mix(in srgb, var(--blue-ink) 42%, transparent), transparent 62%); animation-duration: 22s; animation-direction: reverse; }
 .voice-orb i:nth-child(3) { background: radial-gradient(ellipse at 35% 80%, color-mix(in srgb, var(--green) 44%, transparent), transparent 58%); animation-duration: 19s; }

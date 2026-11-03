@@ -172,11 +172,26 @@ export async function loadDetails(ids: string[]) {
   return ids.map((id) => detailCache.get(id)).filter((row): row is LexiconDetail => Boolean(row));
 }
 
-export function matchesLexiconQuery(entry: LexiconIndexEntry, query: string) {
+// Lower-cased search text, built once per entry: loaded entries are never mutated.
+const searchFields = new WeakMap<LexiconIndexEntry, { text: string; headword: string }>();
+function searchFieldsOf(entry: LexiconIndexEntry) {
+  let fields = searchFields.get(entry);
+  if (!fields) {
+    fields = { text: `${entry.headword} ${entry.lookup} ${entry.chineseCore}`.toLowerCase(), headword: entry.headword.toLowerCase() };
+    searchFields.set(entry, fields);
+  }
+  return fields;
+}
+
+/** A predicate for one search query, normalised once instead of once per entry. */
+export function lexiconQueryMatcher(query: string): (entry: LexiconIndexEntry) => boolean {
   const normalized = query.normalize("NFKC").trim().toLowerCase();
+  if (!normalized) return () => true;
   const prefix = normalized.replace(/[^a-z]/g, "");
-  return !normalized || `${entry.headword} ${entry.lookup} ${entry.chineseCore}`.toLowerCase().includes(normalized) ||
-    (Boolean(prefix) && entry.headword.toLowerCase().startsWith(prefix));
+  return (entry) => {
+    const fields = searchFieldsOf(entry);
+    return fields.text.includes(normalized) || (Boolean(prefix) && fields.headword.startsWith(prefix));
+  };
 }
 
 /** Speaks with a British voice when the device has one, matching the British IPA shown and the dictation voice. */

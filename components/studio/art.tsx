@@ -7,6 +7,7 @@ import { artKey, cachedArtwork, paintArtwork, rememberArtwork, scheduleArtwork, 
  * A generated illustration that fills its box. It paints once when it nears the viewport,
  * in an idle slice, and repaints only when the box changes size noticeably.
  * Size the element with CSS through className; without a label it is decorative.
+ * A `--art-clear` fraction in CSS keeps the focal point out from under copy laid over the picture.
  */
 export function Artwork({ kind, seed, time, className, label, eager = false }: {
   kind: ArtKind; seed: string; time?: TimeOfDay; className?: string; label?: string; eager?: boolean;
@@ -22,7 +23,8 @@ export function Artwork({ kind, seed, time, className, label, eager = false }: {
     let width = 0;
     const draw = () => {
       const box = canvas.getBoundingClientRect();
-      const request: ArtRequest = { kind, seed, time, width: Math.round(box.width), height: Math.round(box.height), ratio: Math.min(2, window.devicePixelRatio || 1) };
+      const clear = Number.parseFloat(getComputedStyle(canvas).getPropertyValue("--art-clear")) || 0;
+      const request: ArtRequest = { kind, seed, time, width: Math.round(box.width), height: Math.round(box.height), ratio: Math.min(2, window.devicePixelRatio || 1), clear };
       if (request.width < 8 || request.height < 8) return;
       const key = artKey(request);
       if (key === painted || key === pending) return;

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  lazy,
   Suspense,
   useCallback,
   useEffect,
@@ -40,10 +39,10 @@ import {
   sessionEventId,
   type StudySessionState,
 } from "@/lib/session";
-import { sourceLabel } from "./shared";
+import { SourceLine, sourceLabel } from "./shared";
 import { Artwork } from "./art";
+import { SentenceOutput } from "./surfaces";
 
-const SentenceOutput = lazy(() => import("./ai/sentence-output"));
 
 const labels = { 1: "忘记了", 2: "有些费力", 3: "记得", 4: "很熟悉" };
 export default function StudySession({
@@ -476,7 +475,7 @@ export default function StudySession({
             {retrying ? "本轮巩固" : card?.lastReviewed ? "复习" : "新词"} ·{" "}
             {question.label}
           </span>
-          <span>{sourceLabel(entry)}</span>
+          <SourceLine entry={entry} />
         </div>
         <section
           key={stepId}
