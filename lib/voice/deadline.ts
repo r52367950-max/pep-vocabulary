@@ -34,6 +34,11 @@ export async function armVoiceDeadline(userKey: string, sessionId: string, until
 export async function closeVoiceDeadline(userKey: string, sessionId: string) {
   const response = await deadlineStub(userKey, sessionId).fetch("https://voice-deadline/close", { method: "POST" });
   if (response.status === 404) return false;
-  if (!response.ok) throw new AssistantInputError("voice_close_unconfirmed", "会话结束状态尚未确认，服务端会继续重试。", 503);
+  if (!response.ok) {
+    const result = await response.json().catch(() => null) as { terminal?: boolean } | null;
+    throw new AssistantInputError("voice_close_unconfirmed", result?.terminal
+      ? "自动关闭已停止重试，新会话仍被锁定。请联系管理员核查服务商并确认结束。"
+      : "会话结束状态尚未确认，服务端会按退避间隔重试。", 503);
+  }
   return true;
 }

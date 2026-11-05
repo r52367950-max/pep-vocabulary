@@ -81,7 +81,7 @@
   - `sameOriginRequest` 检查 `Origin` 和 `Sec-Fetch-Site`。
   - `readJsonObject` 边读边限制体积，也覆盖无 `Content-Length` 的分块请求，并有读取超时。
   - AI 配置要求同源请求加上设置操作头。
-- **同步**：整份快照上限 5 MB；`user_key + revision` 条件更新；身份变化时返回 `409 identity-conflict`；私有接口统一 `no-store`。
+- **同步**：规范化 JSON 快照上限 1,900,000 个 UTF-8 字节（1.9 MB），为 D1 的 2,000,000 字节整行上限留余量；超限返回 413 并提示导出文件；`user_key + revision` 条件更新；身份变化时返回 `409 identity-conflict`；私有接口统一 `no-store`。
 - **AI**：
   - 密钥用 AES-GCM v2 加密，附加验证数据绑定账号、服务商和目标 URL；v1 密文在下次保存时升级。
   - 出站只允许 HTTPS，拒绝私网地址，不跟随重定向，响应读取上限 300 KB。

@@ -1,0 +1,29 @@
+{
+  "baseline": "3eb187535a9d5c678d9a4116d5012fd4c87f9007",
+  "date": "2026-11-05",
+  "fullAcceptance": {
+    "command": "npm test",
+    "exitCode": 0,
+    "unitTests": 545,
+    "build": "passed",
+    "workerD1": "passed"
+  },
+  "focused": {
+    "cache": 6,
+    "sync": 6,
+    "voiceDeadline": 17,
+    "voiceClient": 17
+  },
+  "productionAudit": {
+    "command": "npm run audit:prod",
+    "vulnerabilities": 0
+  },
+  "baselineReproductions": {
+    "cache": "2 entries remain after reset; expected 0",
+    "sync": "one byte above proposed safe payload cap accepted with 200; expected 413"
+  },
+  "independentReview": "completed; final-retry terminal guidance corrected and regression tested",
+  "finalAffectedChecks": ["typecheck", "production build", "worker/D1 runtime", "voice deadline regressions"],
+  "browser": "not run; browser preview tooling unavailable",
+  "providerCalls": "offline mocks only"
+}

@@ -32,15 +32,15 @@ export async function writeLocalPracticeData<T>(generation: PracticeGeneration, 
 }
 
 /** No writer can pass a stale generation check between the reset and its removals. */
-export async function resetLocalPracticeData(reset: (storage: Storage) => void) {
+export async function resetLocalPracticeData(reset: (storage: Storage) => void | Promise<void>) {
   const storage = localStorage;
-  const operation = () => {
+  const operation = async () => {
     storage.setItem(LOCAL_PRACTICE_GENERATION_KEY, crypto.randomUUID());
-    reset(storage);
+    await reset(storage);
   };
   const manager = locks();
   // Browsers without locks cannot persist sensitive practice data through our
   // writer, but must still be able to erase data saved by earlier versions.
   if (manager) await manager.request(LOCK, operation);
-  else operation();
+  else await operation();
 }
