@@ -17,6 +17,6 @@ test("review event schema preserves learning evidence and supports 1.0 migration
   assert.match(scheduler, /intervalAfterDays/);
   assert.match(scheduler, /forecastDueLoad/);
   assert.match(api, /USER_DATA_SCHEMA_VERSION/);
-  assert.match(api, /5 MB private-sync limit/);
+  assert.match(api, /MAX_SYNC_PAYLOAD_BYTES/);
   assert.doesNotMatch(layout, /@fontsource|fonts\.css/);
 });

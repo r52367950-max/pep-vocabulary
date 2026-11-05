@@ -780,6 +780,7 @@ export default function ConsoleSettings({
 /** Today's token use against the budget, and the answers kept on this device. */
 function AiUsageCard({ config }: { config: AIConfig }) {
   const [cached, setCached] = useState<number | null>(null);
+  const [cacheError, setCacheError] = useState("");
   useEffect(() => { void assistantCacheSize().then(setCached); }, []);
   const usage = config.usageToday;
   const used = usage?.total ?? 0;
@@ -803,10 +804,12 @@ function AiUsageCard({ config }: { config: AIConfig }) {
           本机保存了 {cached ?? "…"} 条 AI 回答。
           <button className="text-button" disabled={!cached} onClick={async () => {
             if (!window.confirm("清空本机保存的 AI 回答？学习记录和作文批改不受影响。")) return;
-            await clearAssistantCache().catch(() => undefined);
-            setCached(await assistantCacheSize());
+            setCacheError("");
+            try { await clearAssistantCache(); setCached(await assistantCacheSize()); }
+            catch { setCacheError("缓存清空失败，请关闭其他旧页面后重试。"); }
           }}>清空</button>
         </p>
+        {cacheError && <p role="alert" className="ai-note">{cacheError}</p>}
       </div>
     </section>
   );

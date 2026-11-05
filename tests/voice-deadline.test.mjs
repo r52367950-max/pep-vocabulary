@@ -6,7 +6,7 @@ import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { sqliteD1 } from './sqlite-d1.mjs';
 import { deadlineNamespace } from './voice-deadline-env.mjs';
-import { armVoiceDeadline, VOICE_PENDING_EXPIRY } from '../lib/voice/deadline.ts';
+import { armVoiceDeadline, closeVoiceDeadline, VOICE_PENDING_EXPIRY } from '../lib/voice/deadline.ts';
 import { createVoiceSession, closeVoiceSession, voiceStatus } from '../lib/voice/server.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
 
@@ -88,6 +88,7 @@ test('failed deadline closure retains nonexpiring admission and durably retries 
   assert.equal((await createVoiceSession(post(input))).status, 409);
   assert.equal((await entry.state.storage.get('session')).until, record.until);
   globalThis.fetch = goodProvider; entry = env.VOICE_DEADLINES.restart(name);
+  const retryAt = entry.state.storage.alarm; Date.now = () => retryAt;
   await entry.object.alarm();
   assert.equal(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count, 0);
   assert.equal(calls.length, 2);
@@ -215,4 +216,79 @@ test('an early explicit-close failure retries after fifteen seconds instead of w
   await env.VOICE_DEADLINES.restart(`${userKey}:${sessionId}`).object.alarm();
   assert.equal(calls.length, 2, 'server retries before original deadline without browser participation');
   assert.deepEqual(await entry.state.storage.get('session'), { closed: true });
+});
+
+for (const failure of [401, 403, 'decrypt']) test(`terminal ${failure} erases credential and retains admission across restart`, async t => {
+  const { db, userKey } = await setup(); mockProvider(t);
+  const response = await createVoiceSession(post({ ...input, diagnostic: true }));
+  const { sessionId } = await response.json(), name = `${userKey}:${sessionId}`;
+  let entry = env.VOICE_DEADLINES.entries.get(name), calls = 0;
+  if (failure === 'decrypt') { const record = await entry.state.storage.get('session'); record.credential.keyIv = 'broken'; await entry.state.storage.put('session', record); }
+  globalThis.fetch = async () => { calls++; return new Response(null, { status: failure === 'decrypt' ? 503 : failure }); };
+  const close = await closeVoiceSession(post({ sessionId }));
+  assert.equal(close.status, 503);
+  assert.match((await close.json()).error.message, /管理员/);
+  assert.deepEqual(await entry.state.storage.get('session'), { terminal: true, reason: failure === 'decrypt' ? 'credential_unavailable' : 'provider_rejected_close' });
+  assert.equal(entry.state.storage.alarm, null);
+  entry = env.VOICE_DEADLINES.restart(name); await entry.object.alarm();
+  assert.equal((await closeVoiceSession(post({ sessionId }))).status, 503);
+  assert.equal(calls, failure === 'decrypt' ? 0 : 1);
+  assert.ok(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count > 0);
+  assert.equal(db.prepare('SELECT expires_at FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).expires_at, VOICE_PENDING_EXPIRY);
+  assert.equal((await createVoiceSession(post({ ...input, diagnostic: true }))).status, 409);
+});
+
+test('retry budget and backoff survive restarts and manual close never bypasses them', async t => {
+  const { db, userKey } = await setup(); mockProvider(t);
+  const { sessionId } = await (await createVoiceSession(post({ ...input, diagnostic: true }))).json();
+  const name = `${userKey}:${sessionId}`; let entry = env.VOICE_DEADLINES.entries.get(name), calls = 0;
+  let now = Date.now(); const originalNow = Date.now; t.after(() => { Date.now = originalNow; }); Date.now = () => now;
+  globalThis.fetch = async () => { calls++; return new Response(null, { status: 503 }); };
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    await assert.rejects(closeVoiceDeadline(userKey, sessionId), attempt === 8 ? /管理员/ : /按退避间隔重试/);
+    assert.equal(calls, attempt);
+    if (attempt < 8) {
+      assert.equal(entry.state.storage.alarm, now + Math.min(15000 * 2 ** (attempt - 1), 300000));
+      assert.equal((await entry.object.fetch(new Request('https://voice-deadline/close', { method: 'POST' }))).status, 503);
+      assert.equal(calls, attempt);
+      now = entry.state.storage.alarm; entry = env.VOICE_DEADLINES.restart(name);
+    }
+  }
+  assert.deepEqual(await entry.state.storage.get('session'), { terminal: true, reason: 'retry_exhausted' });
+  assert.equal(entry.state.storage.alarm, null);
+  now += 86400000; await entry.object.alarm(); assert.equal(calls, 8);
+  assert.ok(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count > 0);
+  assert.equal((await createVoiceSession(post({ ...input, diagnostic: true }))).status, 409);
+});
+
+test('cleanup exhaustion immediately reports terminal guidance without another provider call', async t => {
+  const { db, userKey } = await setup(); const calls = mockProvider(t);
+  const { sessionId } = await (await createVoiceSession(post({ ...input, diagnostic: true }))).json();
+  const name = `${userKey}:${sessionId}`; let entry = env.VOICE_DEADLINES.entries.get(name);
+  const originalNow = Date.now; let now = Date.now(); t.after(() => { Date.now = originalNow; }); Date.now = () => now;
+  delete env.DB;
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    await assert.rejects(closeVoiceDeadline(userKey, sessionId), attempt === 8 ? /管理员/ : /按退避间隔重试/);
+    if (attempt < 8) { now = entry.state.storage.alarm; entry = env.VOICE_DEADLINES.restart(name); }
+  }
+  assert.deepEqual(await entry.state.storage.get('session'), { terminal: true, reason: 'cleanup_unavailable' });
+  assert.equal(entry.state.storage.alarm, null);
+  assert.equal(calls.length, 2, 'only create and the confirmed close reach the provider');
+  assert.ok(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count > 0);
+});
+
+test('confirmed provider close erases credential before D1 failure and cleanup never recalls provider', async t => {
+  const { db, userKey } = await setup(); const calls = mockProvider(t);
+  const { sessionId } = await (await createVoiceSession(post({ ...input, diagnostic: true }))).json();
+  const entry = env.VOICE_DEADLINES.entries.get(`${userKey}:${sessionId}`), binding = env.DB;
+  delete env.DB;
+  assert.equal((await entry.object.fetch(new Request('https://voice-deadline/close', { method: 'POST' }))).status, 503);
+  const record = await entry.state.storage.get('session');
+  assert.equal(record.finalizing, true); assert.equal(record.credential, undefined);
+  env.DB = binding;
+  const retryAt = entry.state.storage.alarm, originalNow = Date.now; t.after(() => { Date.now = originalNow; }); Date.now = () => retryAt;
+  await entry.object.alarm();
+  assert.equal(calls.length, 2); // create + confirmed close, no repeated close
+  assert.deepEqual(await entry.state.storage.get('session'), { closed: true });
+  assert.equal(db.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key=?').get(`voice-active:${userKey}`).request_count, 0);
 });

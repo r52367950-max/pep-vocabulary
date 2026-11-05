@@ -91,13 +91,24 @@ function readingWordIndex(index: readonly LexiconIndexEntry[]) {
   return words;
 }
 export function matchReadingWords(paragraphs: readonly { en: string }[], index: readonly LexiconIndexEntry[], preferred?: readonly string[]): LexiconIndexEntry[] {
-  const wanted = new Set(preferred?.map(w => w.toLowerCase()) ?? paragraphs.flatMap(p => p.en.toLowerCase().match(/[a-z]+(?:['’][a-z]+)*/g) ?? []).filter(w => w.length > 3 && !common.has(w)));
   const words = readingWordIndex(index);
+  const seen = new Set<string>();
   const found: LexiconIndexEntry[] = [];
-  for (const word of wanted) {
+  const add = (word: string) => {
+    if (seen.has(word)) return;
+    seen.add(word);
     const entry = words.get(word);
     if (entry) found.push(entry);
-    if (found.length === 60) break;
+  };
+  if (preferred) {
+    for (const word of preferred) { add(word.toLowerCase()); if (found.length === 60) break; }
+  } else {
+    for (const paragraph of paragraphs) {
+      for (const [word] of paragraph.en.toLowerCase().matchAll(/[a-z]+(?:['’][a-z]+)*/g)) {
+        if (word.length > 3 && !common.has(word)) add(word);
+        if (found.length === 60) return found;
+      }
+    }
   }
   return found;
 }

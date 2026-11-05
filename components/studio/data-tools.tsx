@@ -25,6 +25,7 @@ import {
   USER_DATA_SCHEMA_VERSION,
 } from "@/lib/storage";
 import { SESSION_KEY } from "@/lib/session";
+import { assertSyncPayloadFits } from "@/lib/sync-limits";
 
 const megabytes = (bytes: number) => (bytes / 1_048_576).toLocaleString("zh-CN", { maximumFractionDigits: bytes < 10_485_760 ? 1 : 0 });
 const LINK_KEY = "pep-vocab-cloud-link-v2";
@@ -163,6 +164,7 @@ export default function DataTools({
         link = { identity: remote.identity, revision: 0 };
       }
       const payload = await exportBackup(data.generation);
+      assertSyncPayloadFits(JSON.stringify(payload));
       const response = await fetch("/api/sync", {
         method: "POST",
         headers: {

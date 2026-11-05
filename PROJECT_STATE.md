@@ -1,10 +1,10 @@
 # 项目状态入口
 
-核对日期：2026-11-03；2.15.0 基于 GitHub 2.14.0 与同提交的最新 Codex Security Cloud 扫描修复 11 项现行代码问题，补齐账号/配置版本前置条件、记录 CAS、个人文章清除代次、图片预解码预算和 Live 不确定创建保护；阅读匹配复用索引，插画缓存增加像素预算，并细化阅读筛选与时长信息。验证及限制见 [2.15.0 报告](docs/OPTIMIZATION_REPORT_2.15.0.md)。
+核对日期：2026-11-05；2.16.0 补齐 AI 缓存删除代次、D1 同步容量和依赖修复；Live 关闭采用有界退避并擦除终态凭据，未确认关闭继续保锁。阅读匹配按顺序扫描并在达到 60 项后停止，缓存淘汰只读取索引键。详见 [2.16.0 发布说明](docs/RELEASE_2.16.0.md)。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.15.0 | `package.json` |
+| 应用版本 | 2.16.0 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0 | `public/data/v1/manifest.json` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |

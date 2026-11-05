@@ -63,7 +63,7 @@ HARNESS_API_KEY=... node --import ./tests/register.mjs scripts/ai-harness.mjs --
 首次通过设置界面保存配置前：
 
 1. 设置 `IDENTITY_TRUSTED_HOSTS` 为经过身份网关的精确域名（多个域名逗号分隔，不含协议、路径、端口或通配符）。缺失、空或非法配置会拒绝私有 API 身份；本地学习不受影响。本地测试需显式配置自己的测试域名，没有 localhost 自动绕过。
-2. 确认这些域名的网关移除用户伪造的身份头，并禁用或保护绕过网关的 Worker / preview 入口。域名列表不替代经过验证的身份会话或签名断言。
+2. 确认这些域名的网关验证登录、剥离所有外部 `oai-authenticated-user-email`，再注入认证邮箱，并禁用或保护绕过网关的 Worker / preview / 源站入口。**应用的身份完全依赖这个邮箱头，没有独立验证它的签名或登录会话。** `IDENTITY_TRUSTED_HOSTS` 只检查 Host，不是身份认证；如果部署入口不剥离同名头，客户端就能在允许的域名上提供任意格式合法邮箱，伪造该邮箱的身份。其他托管环境应先接入可信网关或服务端验证的会话/签名断言，再开放私有 API。
 3. 部署 `drizzle/` 中的最新 D1 迁移。
 4. 生成一个随机 32-byte 值并以 base64 保存为 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`。
 5. 如需自定义兼容服务，由管理员设置 `AI_ALLOWED_PROVIDER_ORIGINS`：逗号分隔的精确 HTTPS origin，例如 `https://llm.example.com,https://gateway.example.com:8443`，不含路径、通配符、凭据、查询参数或片段。官方 `https://api.deepseek.com` 与 `https://api.openai.com` 默认允许，空值仅允许这两项；非法列表关闭 AI 出站请求。管理员只应批准自己控制或信任的服务及其 DNS、实际出站目标；此策略把目标选择权交给管理员，并非 DNS 预检或 IP 固定。用户不能通过设置添加新 origin。
