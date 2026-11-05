@@ -3,6 +3,7 @@ import type { AssistantTask } from "./assistant/prompt";
 import type { LearnerProfile } from "./assistant/profile";
 import { stableJson } from "./stable-json";
 import { contextStillCurrent, localProfileAllowed, learningContextStore, refreshLearningContext, type LearningMemory } from "./learning-context-client";
+import { localPracticeGeneration, practiceGenerationCurrent } from "./local-practice-generation";
 
 /**
  * Browser side of the assistant. Results are cached in their own IndexedDB database, never in
@@ -11,6 +12,9 @@ import { contextStillCurrent, localProfileAllowed, learningContextStore, refresh
  */
 const DB_NAME = "pep-vocab-ai-cache";
 const STORE = "results";
+const META = "metadata";
+const GENERATION_KEY = "generation";
+const INITIAL_GENERATION = "initial";
 const MAX_ENTRIES = 600;
 const CLIENT_TIMEOUT_MS = 310_000;
 
@@ -33,10 +37,13 @@ export class AssistantError extends Error {
 function openCache() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === "undefined") return reject(new Error("IndexedDB unavailable"));
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, 2);
     request.onupgradeneeded = () => {
-      const store = request.result.createObjectStore(STORE, { keyPath: "key" });
-      store.createIndex("createdAt", "createdAt");
+      if (!request.result.objectStoreNames.contains(STORE)) {
+        const store = request.result.createObjectStore(STORE, { keyPath: "key" });
+        store.createIndex("createdAt", "createdAt");
+      }
+      if (!request.result.objectStoreNames.contains(META)) request.result.createObjectStore(META, { keyPath: "key" });
     };
     request.onblocked = () => reject(new Error("请关闭其他词迹页面后重试缓存操作。"));
     request.onsuccess = () => { request.result.onversionchange = () => request.result.close(); resolve(request.result); };
@@ -44,18 +51,25 @@ function openCache() {
   });
 }
 
-async function cacheRequest<T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T> | void): Promise<T | undefined> {
+async function cacheRequest<T>(mode: IDBTransactionMode, work: (store: IDBObjectStore, metadata: IDBObjectStore) => IDBRequest<T> | void): Promise<T | undefined> {
   const db = await openCache();
   return new Promise<T | undefined>((resolve, reject) => {
-    const tx = db.transaction(STORE, mode);
+    const tx = db.transaction([STORE, META], mode);
     let value: T | undefined;
     try {
-      const request = work(tx.objectStore(STORE));
+      const request = work(tx.objectStore(STORE), tx.objectStore(META));
       if (request) request.onsuccess = () => { value = request.result; };
     } catch (error) { tx.abort(); db.close(); reject(error); }
     tx.oncomplete = () => { db.close(); resolve(value); };
     tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || new Error("AI cache failed")); };
   });
+}
+
+async function cacheGeneration(): Promise<string | null> {
+  try {
+    const row = await cacheRequest<{ key: string; value: string }>("readonly", (_store, metadata) => metadata.get(GENERATION_KEY));
+    return row?.value ?? INITIAL_GENERATION;
+  } catch { return null; } // Cache availability must never prevent an uncached request.
 }
 
 /** Legacy helper remains deterministic; persistent keys additionally include a verified context. */
@@ -73,24 +87,31 @@ async function cachedByKey<T>(key: string): Promise<AssistantResult<T> | null> {
 }
 export async function readCached<T = Record<string, unknown>>(task: AssistantTask, input: Record<string, unknown>, options: { profile?: LearnerProfile | null; signal?: AbortSignal } = {}): Promise<AssistantResult<T> | null> {
   if (task === "diagnose" || learningContextStore.get().temporary || options.signal?.aborted) return null;
+  const generation = localPracticeGeneration();
   try {
     const memory = await refreshLearningContext(options.signal);
     const epoch = learningContextStore.get().epoch;
     const cached = await cachedByKey<T>(await scopedKey(task, input, memory, localProfileAllowed(memory) ? options.profile || null : null));
-    return !options.signal?.aborted && epoch === learningContextStore.get().epoch && contextStillCurrent(memory, false) ? cached : null;
+    return !options.signal?.aborted && practiceGenerationCurrent(generation) && epoch === learningContextStore.get().epoch && contextStillCurrent(memory, false) ? cached : null;
   } catch { return null; } // An unknown account/policy never falls back to old personalised data.
 }
 
-async function writeCached(row: CachedRow) {
+async function writeCached(row: CachedRow, generation: string | null, allowed: () => boolean) {
+  if (generation === null) return;
   try {
-    await cacheRequest("readwrite", (store) => {
-      store.put(row);
-      store.count().onsuccess = function () {
-        let excess = this.result - MAX_ENTRIES;
-        if (excess <= 0) return;
-        store.index("createdAt").openCursor().onsuccess = function () {
-          const cursor = this.result;
-          if (cursor && excess-- > 0) { cursor.delete(); cursor.continue(); }
+    await cacheRequest("readwrite", (store, metadata) => {
+      // The fence and the answer share one transaction. A clear from another tab
+      // either erases this write afterwards or makes its captured generation stale.
+      metadata.get(GENERATION_KEY).onsuccess = function () {
+        if ((this.result?.value ?? INITIAL_GENERATION) !== generation || !allowed()) return;
+        store.put(row);
+        store.count().onsuccess = function () {
+          let excess = this.result - MAX_ENTRIES;
+          if (excess <= 0) return;
+          store.index("createdAt").openKeyCursor().onsuccess = function () {
+            const cursor = this.result;
+            if (cursor && excess-- > 0) { store.delete(cursor.primaryKey); cursor.continue(); }
+          };
         };
       };
     });
@@ -100,7 +121,10 @@ async function writeCached(row: CachedRow) {
 }
 
 export async function clearAssistantCache() {
-  await cacheRequest("readwrite", (store) => { store.clear(); });
+  await cacheRequest("readwrite", (store, metadata) => {
+    metadata.put({ key: GENERATION_KEY, value: crypto.randomUUID() });
+    store.clear();
+  });
 }
 
 export async function assistantCacheSize() {
@@ -122,6 +146,11 @@ export async function runAssistant<T = Record<string, unknown>>(task: AssistantT
   profile?: LearnerProfile | null; refresh?: boolean; signal?: AbortSignal; cache?: boolean; activity?: boolean;
 } = {}): Promise<AssistantResult<T>> {
   if (options.signal?.aborted) throw new AssistantError("已取消。", "aborted", true);
+  // Capture both fences before awaiting account metadata or a model response.
+  // Cache-only clearing has its own epoch and does not stop unrelated practice.
+  const generation = localPracticeGeneration();
+  const cacheEpoch = await cacheGeneration();
+  if (options.signal?.aborted || !practiceGenerationCurrent(generation)) throw new AssistantError("本机数据已清空或请求已取消，请重新开始。", "aborted", true);
   let memory: LearningMemory;
   try { memory = await refreshLearningContext(options.signal); }
   catch (error) { throw new AssistantError(options.signal?.aborted ? "已取消。" : error instanceof Error ? error.message : "无法读取学习记忆。", options.signal?.aborted ? "aborted" : "context_unavailable", true); }
@@ -135,7 +164,7 @@ export async function runAssistant<T = Record<string, unknown>>(task: AssistantT
   const unsubscribe = learningContextStore.subscribe(() => { if (!contextStillCurrent(memory, temporary) || learningContextStore.get().epoch !== policyEpoch) abort(); });
   const timer = setTimeout(abort, CLIENT_TIMEOUT_MS);
   const checkCurrent = () => {
-    if (controller.signal.aborted || !contextStillCurrent(memory, temporary)) throw new AssistantError("请求已取消或学习记忆已更新，请重新开始。", "aborted", true);
+    if (controller.signal.aborted || !practiceGenerationCurrent(generation) || !contextStillCurrent(memory, temporary)) throw new AssistantError("请求已取消或学习记忆已更新，请重新开始。", "aborted", true);
   };
   const useCache = !temporary && options.cache !== false && task !== "diagnose";
   try {
@@ -161,7 +190,8 @@ export async function runAssistant<T = Record<string, unknown>>(task: AssistantT
     checkCurrent();
     const model = payload.model || "";
     if (payload.usage) usageStore.set(payload.usage);
-    if (useCache) await writeCached({ key, task, createdAt: new Date().toISOString(), model, result: payload.result as Record<string, unknown> });
+    if (useCache) await writeCached({ key, task, createdAt: new Date().toISOString(), model, result: payload.result as Record<string, unknown> }, cacheEpoch,
+      () => !controller.signal.aborted && practiceGenerationCurrent(generation) && contextStillCurrent(memory, temporary) && learningContextStore.get().epoch === policyEpoch);
     checkCurrent();
     if (!temporary && options.activity !== false && task !== "diagnose" && typeof window !== "undefined") {
       const labels: Partial<Record<AssistantTask, string>> = { explain: "词汇讲解", "check-sentence": "造句反馈", "generate-practice": "生成练习", "contrast-words": "词汇辨析", mnemonic: "记忆方法", story: "词汇故事", "review-essay": "写作反馈" };

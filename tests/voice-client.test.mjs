@@ -240,3 +240,19 @@ test("late cancelled startup notifies subscribers when remote close becomes pend
     assert.equal(f.client.state.phase, "ended", "background cleanup must not revive the cancelled session");
   } finally { f.client.dispose(); }
 });
+
+test('terminal close guidance retains pending state and prevents another session', async () => {
+  let sessions = 0;
+  const f = fixture({ fetch: async url => {
+    if (url.endsWith('session')) { sessions++; return Response.json(reply); }
+    return Response.json({ error: { code: 'voice_close_unconfirmed', message: '自动重试已停止，请联系管理员核查。' } }, { status: 503 });
+  } });
+  f.channel.send = () => {};
+  try {
+    await f.client.start(options); f.emit({ type: 'session.started' }); await f.client.end();
+    await f.client.retryClose();
+    assert.equal(f.client.hasPendingClose, true); assert.equal(f.client.state.closeConfirmed, false);
+    assert.match(f.client.state.message, /管理员/);
+    await f.client.start(options); assert.equal(sessions, 1);
+  } finally { f.client.dispose(); }
+});

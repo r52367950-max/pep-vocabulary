@@ -34,6 +34,7 @@ export class NativeLiveSession {
   private silentOutput = false;
   private dictation = false;
   private pendingCloseIds = new Set<string>();
+  private closeFailure = "";
   private abort?: AbortController;
   private sessionId?: string;
   private startupTimer?: ReturnType<typeof setTimeout>;
@@ -71,7 +72,7 @@ export class NativeLiveSession {
   get hasPendingClose() { return this.pendingCloseIds.size > 0; }
   async retryClose() {
     for (const id of [...this.pendingCloseIds]) await this.closeRemote(id);
-    this.update({ closeConfirmed: !this.hasPendingClose, message: this.hasPendingClose ? "服务器尚未确认结束，请再次重试关闭。" : "语音会话已关闭。" });
+    this.update({ closeConfirmed: !this.hasPendingClose, message: this.hasPendingClose ? this.closeFailure || "服务器尚未确认结束，请再次重试关闭。" : "语音会话已关闭。" });
   }
   private closeRemote(sessionId: string) {
     const previouslyPending = this.hasPendingClose;
@@ -81,9 +82,13 @@ export class NativeLiveSession {
     if (!previouslyPending) this.update({});
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 8_000);
-    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then((response) => {
+    return this.deps.fetch("/api/voice/close", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }), keepalive: true, signal: abort.signal }).then(async (response) => {
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        if (typeof body?.error?.message === "string") this.closeFailure = body.error.message;
+      }
       const previouslyPending = this.hasPendingClose;
-      if (response.ok) this.pendingCloseIds.delete(sessionId);
+      if (response.ok) { this.pendingCloseIds.delete(sessionId); if (!this.hasPendingClose) this.closeFailure = ""; }
       if (previouslyPending !== this.hasPendingClose) this.update({});
       return response.ok;
     }).catch(() => false).finally(() => clearTimeout(timer));
@@ -291,7 +296,7 @@ export class NativeLiveSession {
         if (this.generation !== finalGeneration) return;
         if (acknowledged) this.update({ closeConfirmed: true });
       }
-      this.update({ phase: failed ? "error" : "ended", message: sessionId && !this.snapshot.closeConfirmed ? `${message} 本机麦克风已停止，但服务器尚未确认结束；请重试关闭上次语音。` : message });
+      this.update({ phase: failed ? "error" : "ended", message: sessionId && !this.snapshot.closeConfirmed ? `${message} 本机麦克风已停止。${this.closeFailure || "服务器尚未确认结束；请重试关闭上次语音。"}` : message });
     })();
     return this.endPromise;
   }
