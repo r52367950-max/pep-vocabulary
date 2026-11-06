@@ -220,7 +220,7 @@ export class NativeLiveSession {
     this.seenToolCalls.add(item.call_id);
     const call: LearningToolCall = { callId: item.call_id, item, abort: new AbortController(), done: false, inputRevision: this.delegationInputs.get(delegationId) ?? this.inputRevision };
     group.calls.set(call.callId, call);
-    void this.runLearningTool(call, group);
+    void this.runLearningTool(call);
   }
   private continueLearningTools() {
     const pending = [...this.toolGroups.entries()].filter(([, group]) => !group.continued && group.calls.size > 0);
@@ -228,7 +228,7 @@ export class NativeLiveSession {
     // response.create continues the configured backend, so return every known pending call first.
     if (this.send({ type: "response.create" })) for (const [id, group] of pending) { group.continued = true; this.toolGroups.delete(id); }
   }
-  private async runLearningTool(call: LearningToolCall, group: LearningToolGroup) {
+  private async runLearningTool(call: LearningToolCall) {
     const generation = this.generation, options = this.learningOptions;
     let output: Record<string, unknown> = { status: "unavailable", message: "没有完成听写准备，请询问学习者后再试。" };
     const timer = setTimeout(() => call.abort.abort(), 15_000);

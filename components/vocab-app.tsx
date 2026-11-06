@@ -397,6 +397,11 @@ export default function VocabApp() {
         : null,
     [resume, checkpoint],
   );
+  // The record page's first-run action matches the Today feature: continue, else start today's plan.
+  const startToday = useCallback(() => {
+    if (resumeSession) resumeSession();
+    else startSession("daily");
+  }, [resumeSession, startSession]);
   const newCount = useMemo(
     () =>
       dailyQueue.filter((entry) => !data.cards.get(entry.id)?.lastReviewed)
@@ -716,7 +721,7 @@ export default function VocabApp() {
           {visited.has("activity") && (
             <ViewPane active={view === "activity"}>
               {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
-              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} />
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} onStart={startToday} />
             </ViewPane>
           )}
         </main>

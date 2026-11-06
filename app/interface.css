@@ -38,6 +38,8 @@
 .course-picker label { min-width: 0; max-width: 100%; }
 .course-picker label > span { display: none; }
 .course-picker select { font-size: .9375rem; min-height: 44px; max-width: 230px; background: transparent; border: 0; padding: 8px 4px; }
+/* Header pickers fit the chosen option, keeping the arrow beside its text. */
+.course-context .course-picker select { field-sizing: content; }
 .course-progress { display: flex; flex-direction: column; gap: 8px; width: 180px; flex-shrink: 0; text-align: left; min-height: 44px; justify-content: center; }
 .course-progress > span { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .8125rem; }
 .course-progress progress { appearance: none; width: 100%; height: 3px; border: 0; background: var(--line); border-radius: 4px; overflow: hidden; }
@@ -212,7 +214,8 @@ button:not(:disabled):active { opacity: 1; }
   .daily-feature-copy > p { font-size: .9375rem; margin-top: 10px; }
   .feature-action { width: 100%; gap: 12px; padding-top: 20px; }
   .feature-action .primary { flex: 1; min-height: 46px; }
-  .feature-action > span { font-size: .8125rem; }
+  /* The artwork spans the whole card here, so the estimate sits on the card's own colour. */
+  .feature-action > span { font-size: .8125rem; padding: 4px 10px; border-radius: 999px; background: var(--hero-bg, var(--grouped)); }
   .fresh-plan { margin-top: 10px; }
   .practice-section { margin-top: 28px; }
   .practice-section h2 { font-size: 1.3125rem; }
@@ -286,6 +289,12 @@ button:not(:disabled):active { opacity: 1; }
 }
 
 .activity-chart .bar-chart i b { background: var(--blue); }
+/* Before the first answer the record page is one invitation instead of empty charts. */
+.activity-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 8px; padding: clamp(40px, 7vw, 64px) clamp(20px, 5vw, 32px); border-radius: var(--radius-card); background: var(--grouped); text-align: center; }
+.activity-empty .studio-symbol { color: var(--blue); margin-bottom: 6px; }
+.activity-empty h2 { font-size: 1.25rem; font-weight: 600; text-wrap: balance; }
+.activity-empty p { max-width: 440px; color: var(--muted-strong); font-size: .9375rem; line-height: 1.65; text-wrap: pretty; }
+.activity-empty .primary { margin-top: 12px; min-height: 46px; padding-inline: 23px; }
 .search-field, .reading-search { border-radius: var(--radius-control); }
 .reading-filters select { border-radius: var(--radius-control); }
 .reader-endnote { margin-top: 34px; padding: 18px 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: .8125rem; line-height: 1.8; }
