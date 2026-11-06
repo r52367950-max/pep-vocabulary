@@ -1,6 +1,6 @@
 # 2.4.0 更新报告
 
-2026-09-29，基于 2.3.0（`65bd890`），分支 `claude/wizardly-faraday-yydubr`。发布摘要见 [RELEASE_2.4.0.md](RELEASE_2.4.0.md)，任务清单见 [TASKS.md](../TASKS.md)。
+2026-09-29，基于 2.3.0（`65bd890`），分支 `claude/wizardly-faraday-yydubr`。发布摘要见 [RELEASE_2.4.0.md](RELEASE_2.4.0.md)，任务清单见 [TASKS_2.4.0.md](history/TASKS_2.4.0.md)。
 
 ## 一、结论
 

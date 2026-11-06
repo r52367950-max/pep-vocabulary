@@ -3,8 +3,9 @@
 ## 当前实现
 
 - 词库版本与词条 schema：见 `public/data/v1/manifest.json`；发布资产位于 `public/data/v1/`。
-- 学习备份 schema：`lib/storage.ts` 中的 `USER_DATA_SCHEMA_VERSION`，当前为 `1.1.0`；恢复时支持 `1.0.0 → 1.1.0`，拒绝未知版本。
-- D1 迁移：保留 `drizzle/0000_curvy_newton_destine.sql`、`0001_flawless_human_cannonball.sql`、`0002_swift_cerise.sql`，顺序以迁移 journal 为准。新增结构变化使用兼容迁移，不删除已执行的记录。
+- 学习备份 schema：`lib/backup.ts` 中的 `USER_DATA_SCHEMA_VERSION`，当前为 `1.2.0`；恢复时支持 `1.0.0` / `1.1.0 → 1.2.0`，拒绝未知版本。
+- 启动索引 `index.json` 使用 `pep-lexicon-index/2` 行编码（见 [DATA_SCHEMA.md](DATA_SCHEMA.md)）；编码只改变存储形式，词条 ID 与字段值不变。
+- D1 迁移：保留 `drizzle/` 中 0000–0008 的全部迁移，顺序以迁移 journal 为准。新增结构变化使用兼容迁移，不删除已执行的记录。
 - Service Worker 使用构建生成的资源指纹；完整安装失败时保留旧 Worker，新 Worker 等待旧页面退出后接管。无需手工固定缓存版本号。
 
 词条 ID 来自规范化后的 `kind:lookup`，不依赖册次；同一词跨教材共享学习状态，册次与单元保留为多值来源。`apply` 与 `apply for` 是不同 ID。
@@ -19,4 +20,4 @@
 
 ## 同步冲突与回滚
 
-D1 快照使用 revision 乐观并发；409 后先保留本机数据，再由用户选择导出、恢复或重试，不静默覆盖。回滚应用或词库不应降级用户事件 schema；必要时新增向前兼容迁移。
+D1 快照使用 revision 乐观并发；409 后先保留本机数据，再由用户选择合并、导出、恢复或重试，不静默覆盖。合并在云端接受后才替换本机数据，规则见 [后端与数据架构](docs/BACKEND_ARCHITECTURE.md#上传时合并libsync-mergets)。回滚应用或词库不应降级用户事件 schema；必要时新增向前兼容迁移。

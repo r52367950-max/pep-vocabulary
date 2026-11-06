@@ -45,7 +45,7 @@ flowchart TD
 | `relations` | 词族、短语、易混关系；每字段有独立审核状态 |
 | `license`, `fieldStatus`, `flags` | 权利、审核证据和发布资格 |
 
-索引只包含搜索/筛选所需字段；详情按 180 条切片，避免首屏加载全部释义和关系。
+索引只包含搜索/筛选所需字段，按 `pep-lexicon-index/2` 行编码保存：`{format, books, rows}`，`books` 为 `[bookId, volume]` 表，每行依次为 ID、词头、`lookup`（与词头相同时为 `null`）、层级、范围、中文核心义、英式音标、美式音标、词性、来源 `[books 下标, 单元, 印刷页码]` 和四个发布标记组成的位字段（1 高频延续、2 高价值、4 专名、8 正式发布）。`lib/lexicon-index-codec.mjs` 是唯一的编码 / 解码实现，客户端、Worker 与发布脚本共用；解码结果与旧版对象数组逐字段相同，客户端也能读取旧版 Service Worker 缓存里的对象数组。发布校验要求行编码，并逐条与详情分片的投影比较。详情按 180 条切片，避免首屏加载全部释义和关系。
 
 ## 用户数据
 
@@ -74,7 +74,7 @@ AI 回答缓存在另一个 IndexedDB `pep-vocab-ai-cache`，不进入学习备�
 
 ## D1 同步
 
-`sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是受信任网关注入身份邮箱的 SHA-256；规范化 JSON payload 上限为 1,900,000 个 UTF-8 字节（1.9 MB）。[D1 的字符串、BLOB 及整行上限为 2,000,000 字节](https://developers.cloudflare.com/d1/platform/limits/)（2026-10-31 核对）；请求封装另限 4096 字节，持久化文本合计限制为 1,950,000 字节，给整数、行编码及元数据留出空间。服务端同时校验请求与备份 payload 的 schema。超限返回清楚的 413，建议导出本机文件；已有较大快照仍可完整读取。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖。
+`sync_states(user_key, revision, schema_version, payload, client_updated_at, server_updated_at)`。`user_key` 是受信任网关注入身份邮箱的 SHA-256；规范化 JSON payload 上限为 1,900,000 个 UTF-8 字节（1.9 MB）。[D1 的字符串、BLOB 及整行上限为 2,000,000 字节](https://developers.cloudflare.com/d1/platform/limits/)（2026-10-31 核对）；请求封装另限 4096 字节，持久化文本合计限制为 1,950,000 字节，给整数、行编码及元数据留出空间。服务端同时校验请求与备份 payload 的 schema。超限返回清楚的 413，建议导出本机文件；已有较大快照仍可完整读取。客户端提交 `baseRevision`，不一致返回 HTTP 409，禁止静默覆盖；客户端可在用户确认后合并两侧记录再上传，规则见[后端与数据架构](docs/BACKEND_ARCHITECTURE.md#上传时合并libsync-mergets)。
 
 ## AI 接口配置
 
@@ -86,7 +86,7 @@ AI 回答缓存在另一个 IndexedDB `pep-vocab-ai-cache`，不进入学习备�
 
 AES 主密钥来自 Sites Secret `AI_CONFIG_ENCRYPTION_KEY`（可选的 `AI_CONFIG_ENCRYPTION_KEYS` 与 `AI_CONFIG_ENCRYPTION_KEY_ACTIVE` 启用版本化密钥：`encryption_version=3` 时 `encrypted_api_key` 为 `kid:base64`，表结构不变，见 `AI_ASSISTANT_DEPLOYMENT.md`），不进入 D1、客户端、构建产物或 Git。GET 接口只返回 `hasApiKey` 等非敏感状态，不返回密文、IV、Key 尾号或明文。写入和删除要求同源请求、自定义动作头与已认证站点身份；更换服务商或规范化 Base URL 时必须重新提交 API Key，禁止把已保存密钥转发到新目标。
 
-`ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。八个助手接口及阅读分类接口按分钟和每日双重限流，并按北京时间日期累计 token 用量（键前缀 `tokens:`、`tokens-hit:`、`tokens-out:`），模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
+`ai_rate_limits` 只保存身份摘要与时间窗口组成的桶键、计数和过期时间。八个助手接口及阅读分类接口按分钟和北京时间日双重限流，并按北京时间日期累计 token 用量（键前缀 `tokens:`、`tokens-hit:`、`tokens-out:`），模型请求和响应正文受共同超时与增量大小限制。连通测试使用最小 Chat Completions 请求，只返回耗时、服务商和模型状态，不回显模型正文或上游错误正文。
 
 `ai_preferences`（迁移 0003）按身份保存每日 token 预算（默认 200,000）和可选的单次输出上限，不含密钥或内容。
 
