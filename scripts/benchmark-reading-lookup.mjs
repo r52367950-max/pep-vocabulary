@@ -3,11 +3,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
 import { matchReadingWords } from '../lib/reading-library.ts';
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 const baseline = process.argv[2] || '0b8610b';
 const source = execFileSync('git', ['show', `${baseline}:lib/reading-library.ts`], { encoding: 'utf8' });
 const js = ts.transpileModule(source.slice(source.indexOf('const common =')), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const before = (await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)).matchReadingWords;
-const index = JSON.parse(readFileSync('public/data/v1/index.json', 'utf8'));
+const index = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.json', 'utf8')));
 const articles = readdirSync('public/readings/v1/articles').filter(f => f.endsWith('.json')).sort().map(f => JSON.parse(readFileSync(`public/readings/v1/articles/${f}`, 'utf8')));
 for (const article of articles) {
   if (JSON.stringify(before(article.paragraphs, index, article.targets)) !== JSON.stringify(matchReadingWords(article.paragraphs, index, article.targets))) throw new Error(`Changed result: ${article.id}`);

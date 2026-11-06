@@ -5,8 +5,9 @@ import ts from 'typescript';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import '../tests/register.mjs';
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 const base = process.argv[2] || '3b12529';
-const index = JSON.parse(readFileSync('public/data/v1/index.json', 'utf8'));
+const index = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.json', 'utf8')));
 const manifest = JSON.parse(readFileSync('public/data/v1/manifest.json', 'utf8'));
 async function load(path, baseline) {
   if (!baseline) return import(pathToFileURL(resolve(path)).href);

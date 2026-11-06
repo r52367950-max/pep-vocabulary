@@ -117,11 +117,16 @@ export default function ConsoleSettings({
   } | null>(null);
   const [connectionResult, setConnectionResult] =
     useState<ConnectionTestResult | null>(null);
+  // Each visit to the AI section reads the configuration again; it shows as loading until then.
+  const [configSection, setConfigSection] = useState(section);
+  if (configSection !== section) {
+    setConfigSection(section);
+    if (section === "ai") setLoadingConfig(true);
+  }
 
   useEffect(() => {
     if (section !== "ai") return;
     let active = true;
-    setLoadingConfig(true);
     fetch("/api/ai/config", { cache: "no-store" })
       .then(async (response) => {
         const result = (await response.json()) as AIConfig & { error?: string };

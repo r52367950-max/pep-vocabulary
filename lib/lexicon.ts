@@ -1,3 +1,5 @@
+import { decodeLexiconIndex } from "./lexicon-index-codec.mjs";
+
 export type Scope =
   | "middle-core"
   | "high-required"
@@ -133,7 +135,7 @@ export function loadLexicon() {
       fetch("/data/v1/index.json"), fetch("/data/v1/manifest.json"),
     ]);
     if (!indexResponse.ok || !manifestResponse.ok) throw new Error("词库索引暂时无法读取");
-    const index = await indexResponse.json() as LexiconIndexEntry[];
+    const index = decodeLexiconIndex(await indexResponse.json()) as LexiconIndexEntry[];
     const manifest = await manifestResponse.json() as LexiconManifest;
     if (!Array.isArray(index) || !Array.isArray(manifest.chunks)) throw new Error("词库格式无效");
     let position = 0;

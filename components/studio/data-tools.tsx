@@ -19,6 +19,7 @@ import {
 } from "@/lib/persistence";
 import {
   exportBackup,
+  replaceMergedBackup,
   restoreBackup,
   readCloudLink,
   saveCloudLink,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/storage";
 import { SESSION_KEY } from "@/lib/session";
 import { assertSyncPayloadFits } from "@/lib/sync-limits";
+import { mergeBackups, type MergeSummary } from "@/lib/sync-merge";
 
 const megabytes = (bytes: number) => (bytes / 1_048_576).toLocaleString("zh-CN", { maximumFractionDigits: bytes < 10_485_760 ? 1 : 0 });
 const LINK_KEY = "pep-vocab-cloud-link-v2";
@@ -34,6 +36,14 @@ type CloudState = {
   state: { payload: string; revision: number } | null;
   error?: string;
 };
+class RevisionConflict extends Error {}
+const MERGE_EXPLANATION =
+  "两边的作答都会保留；同一个词在两台设备上都复习过时，以云端记录为准重新安排本机这几次作答的复习时间。笔记、收藏和设置采用较晚修改的一侧。";
+function mergeMessage(summary: MergeSummary) {
+  const parts = [`本机 ${summary.localAnswers} 次作答`, `云端 ${summary.cloudAnswers} 次作答`];
+  const rescheduled = summary.rescheduledWords ? `；${summary.rescheduledWords} 个两边都复习过的词已按云端记录重排复习时间` : "";
+  return `已合并并上传：${parts.join("、")}${rescheduled}。`;
+}
 export default function DataTools({
   data,
   onBack,
@@ -131,6 +141,61 @@ export default function DataTools({
       throw new Error("云端版本需要更新，暂不能安全同步。");
     return result;
   };
+  const upload = async (payload: unknown, identity: string, baseRevision: number) => {
+    const response = await fetch("/api/sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-vocab-action": "sync",
+      },
+      signal: AbortSignal.timeout(20000),
+      body: JSON.stringify({
+        schemaVersion: USER_DATA_SCHEMA_VERSION,
+        expectedIdentity: identity,
+        baseRevision,
+        clientUpdatedAt: new Date().toISOString(),
+        payload,
+      }),
+    });
+    const result = (await response.json()) as {
+      revision?: number;
+      identity?: string;
+      error?: string;
+      code?: string;
+    };
+    if (response.status === 409 && result.code === "revision-conflict") throw new RevisionConflict();
+    if (!response.ok)
+      throw new Error(
+        response.status === 409
+          ? "账号或云端数据已改变。本机记录仍然保留；请先备份，再处理云端版本。"
+          : result.error || "上传未完成。",
+      );
+    if (!Number.isSafeInteger(result.revision) || result.identity !== identity)
+      throw new Error("云端响应无法确认，请重新检查备份状态。");
+    return result.revision!;
+  };
+  // The merged snapshot is uploaded first; local data is replaced only after the
+  // cloud accepts it and only if nothing was saved on this device meanwhile.
+  const mergeAndUpload = async (identity: string) => {
+    const cloud = await readCloud();
+    if (cloud.identity !== identity || !cloud.state)
+      throw new Error("云端账号或数据已改变，本机记录没有变化。请重试。");
+    const local = await exportBackup(data.generation);
+    const { payload, summary } = mergeBackups(local, JSON.parse(cloud.state.payload));
+    assertSyncPayloadFits(JSON.stringify(payload));
+    let revision: number;
+    try {
+      revision = await upload(payload, identity, cloud.state.revision);
+    } catch (error) {
+      if (error instanceof RevisionConflict)
+        throw new Error("合并时云端又有新的上传，本机记录没有变化。请再上传一次。");
+      throw error;
+    }
+    const generation = await replaceMergedBackup(payload, local, data.generation);
+    await saveCloudLink({ identity, revision }, generation);
+    await replaced();
+    data.notify(mergeMessage(summary));
+  };
   const sync = (direction: "push" | "pull") =>
     run(async () => {
       const remote = await readCloud(direction === "push");
@@ -150,11 +215,15 @@ export default function DataTools({
         return;
       }
       let link = await readCloudLink(data.generation);
-      if (link?.identity !== remote.identity) {
-        if (remote.state)
-          throw new Error(
-            "当前设备尚未关联这个云端账号。请先导出本机备份，再选择从云端恢复，避免覆盖已有记录。",
-          );
+      const linked = link?.identity === remote.identity;
+      if (remote.state && (!linked || remote.state.revision !== link!.revision)) {
+        const question = linked
+          ? `云端有其他设备上传的新记录。合并两边的学习记录后再上传？${MERGE_EXPLANATION}`
+          : `这个账号的云端已有学习记录，本机尚未关联。确认本机记录属于你，并合并两边后上传？${MERGE_EXPLANATION}`;
+        if (window.confirm(question)) await mergeAndUpload(remote.identity);
+        return;
+      }
+      if (!linked) {
         if (
           !window.confirm(
             "将本机的学习记录关联并上传到当前登录账号？请确认这些记录属于你。",
@@ -165,38 +234,16 @@ export default function DataTools({
       }
       const payload = await exportBackup(data.generation);
       assertSyncPayloadFits(JSON.stringify(payload));
-      const response = await fetch("/api/sync", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-vocab-action": "sync",
-        },
-        signal: AbortSignal.timeout(20000),
-        body: JSON.stringify({
-          schemaVersion: USER_DATA_SCHEMA_VERSION,
-          expectedIdentity: remote.identity,
-          baseRevision: link.revision,
-          clientUpdatedAt: new Date().toISOString(),
-          payload,
-        }),
-      });
-      const result = (await response.json()) as {
-        revision?: number;
-        identity?: string;
-        error?: string;
-      };
-      if (!response.ok)
-        throw new Error(
-          response.status === 409
-            ? "账号或云端数据已改变。本机记录仍然保留；请先备份，再处理云端版本。"
-            : result.error || "上传未完成。",
-        );
-      if (
-        !Number.isSafeInteger(result.revision) ||
-        result.identity !== remote.identity
-      )
-        throw new Error("云端响应无法确认，请重新检查备份状态。");
-      await saveCloudLink({ identity: result.identity!, revision: result.revision! }, data.generation);
+      let revision: number;
+      try {
+        revision = await upload(payload, remote.identity, link!.revision);
+      } catch (error) {
+        if (!(error instanceof RevisionConflict)) throw error;
+        if (window.confirm(`上传时云端刚好有其他设备的新记录。合并两边的学习记录后再上传？${MERGE_EXPLANATION}`))
+          await mergeAndUpload(remote.identity);
+        return;
+      }
+      await saveCloudLink({ identity: remote.identity, revision }, data.generation);
       data.notify("学习记录已备份到当前账号。");
     });
   return (
@@ -268,7 +315,7 @@ export default function DataTools({
           <Cloud size={25} aria-hidden="true" />
           <h2>私有云端备份</h2>
           <p>
-            手动上传或恢复。检测到其他设备的更新时，会阻止覆盖；首次连接会确认账号关联。
+            手动上传或恢复。云端有其他设备的新记录时，可以合并两边的作答后上传，不会覆盖任何一方；首次连接会确认账号关联。
           </p>
           <div className="button-row">
             <button

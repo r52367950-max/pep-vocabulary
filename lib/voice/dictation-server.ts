@@ -9,6 +9,7 @@ import { contextMetadata, resolveLearningContext, learningContextData } from '..
 import { retrieveReadingDictationCandidates } from './reading-candidates';
 import { journalDays, journalMetadata } from '../learning-journal/store';
 import type { LexiconIndexEntry } from '../lexicon';
+import { decodeLexiconIndex } from '../lexicon-index-codec.mjs';
 import { operationId, parsePlanInput, allowsTopicWords, retrieveDictationCandidates, parseDictationPlan, parseDictationImage, parseRecognizedRows } from './dictation-planner';
 
 async function identity(request: Request) {
@@ -37,8 +38,9 @@ export async function planDictation(request: Request): Promise<Response> {
     if (!assets) throw new AssistantInputError('unavailable', '正式词库暂时不可用。', 503);
     const response = await assets.fetch(new Request(new URL('/data/v1/index.json', request.url)));
     if (!response.ok) throw new AssistantInputError('unavailable', '正式词库暂时不可用。', 503);
-    const rows = await response.json() as LexiconIndexEntry[];
-    if (!Array.isArray(rows)) throw new AssistantInputError('unavailable', '正式词库格式无效。', 503);
+    let rows: LexiconIndexEntry[];
+    try { rows = decodeLexiconIndex(await response.json()) as LexiconIndexEntry[]; }
+    catch { throw new AssistantInputError('unavailable', '正式词库格式无效。', 503); }
     const journal = context.enabled && (await journalMetadata(user)).enabled ? await journalDays(user, 7) : [];
     await resolveLearningContext(user, { ...body, ...contextMetadata(context) });
     const recentRefs = journal.flatMap(day => day.events.slice(0, 8).flatMap(event => event.refIds)).slice(0, 80);

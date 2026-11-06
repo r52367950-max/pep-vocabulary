@@ -256,12 +256,15 @@ export default function VocabApp() {
     }
   }, [data.loading, data.index, data.history, data.generation]);
   const observedGeneration = useRef<string | null>(null);
+  // Set when this page restores, merges or clears data itself; that action reports its own result.
+  const replacingHere = useRef(false);
   const discardReplacedSession = useEffectEvent(() => {
     setResume(null);
     setSession(null);
     setLearn(null);
     try { sessionStorage.removeItem(SESSION_KEY); } catch { /* Storage guards still reject old writes. */ }
-    notify("本机学习数据已替换，旧练习已结束。未保存的作文或笔记请复制保留后重新打开。");
+    if (replacingHere.current) replacingHere.current = false;
+    else notify("本机学习数据已替换，旧练习已结束。未保存的作文或笔记请复制保留后重新打开。");
   });
   useEffect(() => {
     if (data.loading) return;
@@ -397,6 +400,11 @@ export default function VocabApp() {
         : null,
     [resume, checkpoint],
   );
+  // The record page's first-run action matches the Today feature: continue, else start today's plan.
+  const startToday = useCallback(() => {
+    if (resumeSession) resumeSession();
+    else startSession("daily");
+  }, [resumeSession, startSession]);
   const newCount = useMemo(
     () =>
       dailyQueue.filter((entry) => !data.cards.get(entry.id)?.lastReviewed)
@@ -410,6 +418,7 @@ export default function VocabApp() {
     setView(current => current === "practice" ? "practice" : "today");
   };
   const onReplaced = () => {
+    replacingHere.current = true;
     setResume(null);
     setSession(null);
   };
@@ -716,7 +725,7 @@ export default function VocabApp() {
           {visited.has("activity") && (
             <ViewPane active={view === "activity"}>
               {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
-              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} />
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} onStart={startToday} />
             </ViewPane>
           )}
         </main>

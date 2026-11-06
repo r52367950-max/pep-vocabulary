@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { lexiconIndexEntry, publishLexiconRelease, validateLexiconRelease } from "../scripts/lexicon-release.mjs";
+import { decodeLexiconIndex, encodeLexiconIndex } from "../lib/lexicon-index-codec.mjs";
 
 const entry = (id, word = "word") => ({ id: `pep-${id.repeat(16)}`, headword: word, lookup: word, tier: "C", chineseCore: "词", britishIpa: "wɜːd", americanIpa: "wɜːrd", partsOfSpeech: ["n"], scopes: ["middle-core"], sources: [{ bookId: "JH-7A", volume: "七年级上册", unit: "Unit 1", printedPage: 1, physicalPage: 24 }], flags: { highFrequencyContinuation: false, highValue: false, properName: false, formalReleaseEligible: true }, license: { headwordAndChinese: "Apache-2.0" } });
 function fixture(directory, groups = [[entry("a")]]) {
@@ -14,7 +15,7 @@ function fixture(directory, groups = [[entry("a")]]) {
     return { file, count: items.length, first: items[0].id, last: items.at(-1).id };
   });
   writeFileSync(join(directory, "manifest.json"), JSON.stringify({ releasedEntries: groups.flat().length, chunks }));
-  writeFileSync(join(directory, "index.json"), JSON.stringify(groups.flat().map(lexiconIndexEntry)));
+  writeFileSync(join(directory, "index.json"), JSON.stringify(encodeLexiconIndex(groups.flat().map(lexiconIndexEntry))));
 }
 function setup(t) {
   const root = mkdtempSync(join(tmpdir(), "lexicon-release-test-"));
@@ -66,7 +67,7 @@ test("release validation checks chunk counts, index and every published phonetic
   writeFileSync(file, JSON.stringify([invalid]));
   assert.throws(() => validateLexiconRelease(target), /rights/);
   writeFileSync(file, JSON.stringify([entry("a")]));
-  writeFileSync(join(target, "index.json"), JSON.stringify([entry("b")]));
+  writeFileSync(join(target, "index.json"), JSON.stringify(encodeLexiconIndex([lexiconIndexEntry(entry("b"))])));
   assert.throws(() => validateLexiconRelease(target), /Index mismatch/);
 });
 
@@ -149,7 +150,7 @@ test("every field of the index must match the audited chunk projection", (t) => 
   const { target } = setup(t);
   fixture(target);
   const file = join(target, "index.json");
-  const original = JSON.parse(readFileSync(file));
+  const original = decodeLexiconIndex(JSON.parse(readFileSync(file)));
   const mutations = [
     (row) => { row.tier = "A"; },
     (row) => { row.scopes = ["high-required"]; },
@@ -167,11 +168,13 @@ test("every field of the index must match the audited chunk projection", (t) => 
   for (const mutate of mutations) {
     const modified = structuredClone(original);
     mutate(modified[0]);
-    writeFileSync(file, JSON.stringify(modified));
-    assert.throws(() => validateLexiconRelease(target), /Index mismatch/);
+    writeFileSync(file, JSON.stringify(encodeLexiconIndex(modified)));
+    assert.throws(() => validateLexiconRelease(target), /Index mismatch|Invalid lexicon index/);
   }
-  // Key-order changes retain the same data and remain compatible.
-  writeFileSync(file, JSON.stringify(original.map((row) => Object.fromEntries(Object.entries(row).reverse()))));
+  // The published index must use the row encoding; the legacy object array is only read by clients.
+  writeFileSync(file, JSON.stringify(original));
+  assert.throws(() => validateLexiconRelease(target), /must use pep-lexicon-index\/2/);
+  writeFileSync(file, JSON.stringify(encodeLexiconIndex(original)));
   assert.equal(validateLexiconRelease(target).entries[0].id, entry("a").id);
 });
 

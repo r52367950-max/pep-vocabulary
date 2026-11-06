@@ -10,6 +10,7 @@ import { lexiconQueryMatcher, normalizeEntry } from '../lib/lexicon.ts';
 import { readJsonObject, sameOriginRequest } from '../lib/http.ts';
 import { delimitedCell } from '../lib/export.ts';
 import { normalizeBaseUrl } from '../lib/assistant/core.ts';
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 
 const entry = (id, headword, chineseCore) => ({ id, headword, lookup: headword, chineseCore, scopes: ['high-required'], sources: [], partsOfSpeech: [], flags: {}, britishIpa: '' });
 const apple = entry('apple', 'apple', '苹果');
@@ -38,7 +39,7 @@ test('Chinese and punctuation searches cannot turn into an empty Latin prefix', 
   assert.equal(matches(apple, 'ＡＰＰ'), true);
 });
 test('the cached search matcher finds exactly the rows a per-entry scan finds', () => {
-  const index = JSON.parse(readFileSync(new URL('../public/data/v1/index.json', import.meta.url), 'utf8')).map(normalizeEntry);
+  const index = decodeLexiconIndex(JSON.parse(readFileSync(new URL('../public/data/v1/index.json', import.meta.url), 'utf8'))).map(normalizeEntry);
   // The pre-2.14 matcher, which rebuilt and lower-cased every entry's text for each query.
   const scan = (entry, query) => {
     const normalized = query.normalize('NFKC').trim().toLowerCase();

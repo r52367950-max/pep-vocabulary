@@ -12,6 +12,8 @@
 | `large-text.mjs` | 用 CDP 把浏览器默认字号设为 32px（相当于 200%），检查词卡与配对里有没有被挤出屏幕或截断的控件 | `node artifacts/qa/large-text.mjs http://127.0.0.1:5199/ /tmp/large` |
 | `back-gesture.mjs` | 系统返回手势：词库、词条详情、词卡、练习逐层关闭，到今日页再返回才离开应用；不重载页面，也不发 RSC 请求 | `node artifacts/qa/back-gesture.mjs http://127.0.0.1:5199/` |
 | `back-gesture-offline.mjs` | 离线时按返回，停留在同一文档内，不会重新加载页面 | `node artifacts/qa/back-gesture-offline.mjs http://127.0.0.1:5199/` |
+| `lexicon-index-parse.mjs` | 在 Chromium 中比较基线提交的词库索引与当前行编码的解析耗时（正常与 4 倍 CPU 降速），并确认解码结果逐字段相同；不需要开发服务器 | `node artifacts/qa/lexicon-index-parse.mjs b224f1c` |
+| `sync-merge-e2e.mjs` | 在本地 workerd 与全新 D1 中运行构建产物，两个浏览器配置文件以同一身份交替作答、上传与合并；需先 `npm run build`，不需要开发服务器 | `node artifacts/qa/sync-merge-e2e.mjs /tmp/merge-shots` |
 
 截图对比的做法：在改动前的提交上启动一个服务器，在改动后的提交上启动另一个，用同一个 `screens.mjs` 各截一组，再用 `pixel-diff.mjs` 比较。同一份代码连续截两次，结果逐像素相同，因此出现任何差异都来自代码改动。
 

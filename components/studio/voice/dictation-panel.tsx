@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Headphones, Mic, RotateCcw, Square, Volume2 } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { compareDictation, DICTATION_SENTENCES, readLocalDictationHistory, saveLocalDictationAttempt, selectDictationRound, wordDictationItems, type DictationHistory, type DictationItem, type DictationMode } from "@/lib/voice/dictation";
@@ -35,7 +35,6 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   const [commandDraft, setCommandDraft] = useState<{ attemptId: string; command: DictationVoiceCommand } | null>(null);
   const [commandListening, setCommandListening] = useState(false);
   const commandCapture = useRef<{ handle: Awaited<ReturnType<SpellingCaptureAdapter["start"]>>; abort: AbortController; attemptId: string } | null>(null);
-  const liveActive = !!liveSnapshot && ["connecting", "connected", "closing"].includes(liveSnapshot.phase);
   const [mode, setMode] = useState<DictationMode>("words");
   const [queue, setQueue] = useState<DictationItem[]>([]);
   const [position, setPosition] = useState(0);
@@ -192,15 +191,27 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     finally { if (planAbort.current === abort) setPlanBusy(false); }
   };
   const cancelPlan = () => { planAbort.current?.abort(); planAbort.current = null; setPlanBusy(false); };
+  // A plan prepared in conversation becomes the suggestion whenever no round is running,
+  // and again after the account, learning context or round changes.
+  const incomingPlan = preparedPlan && !queue.length ? preparedPlan : null;
+  const planKey = `${accountScope}:${contextEpoch}`;
+  const [appliedPlan, setAppliedPlan] = useState<{ plan: PreparedDictationPlan | null; key: string } | null>(null);
+  if (!appliedPlan || appliedPlan.plan !== incomingPlan || appliedPlan.key !== planKey) {
+    setAppliedPlan({ plan: incomingPlan, key: planKey });
+    if (incomingPlan) setSuggestion(incomingPlan);
+  }
+  // A supplied plan counts as this context's recommendation, so none is requested for it.
   useEffect(() => {
-    if (preparedPlan && !queue.length) { setSuggestion(preparedPlan); planAttempted.current = `${accountScope}:${contextEpoch}`; }
-  }, [preparedPlan, accountScope, contextEpoch, queue.length]);
-  useEffect(() => {
-    const key = `${accountScope}:${contextEpoch}`;
-    if (!active || !accountScope || !conversationContext.trim() || queue.length || planBusy || preparedPlan || planAttempted.current === key) return;
-    planAttempted.current = key;
+    if (incomingPlan) planAttempted.current = planKey;
+  }, [incomingPlan, planKey]);
+  // Requests at most one recommendation per account and context, only when the panel opens
+  // idle with conversation to draw on. Busy and supplied-plan state are read, not watched.
+  const prepareOnEntry = useEffectEvent(() => {
+    if (!active || !accountScope || !conversationContext.trim() || queue.length || planBusy || preparedPlan || planAttempted.current === planKey) return;
+    planAttempted.current = planKey;
     void prepare();
-  }, [active, accountScope, contextEpoch, queue.length, conversationContext]);
+  });
+  useEffect(() => { prepareOnEntry(); }, [active, accountScope, contextEpoch, queue.length, conversationContext]);
   useEffect(() => () => { planAbort.current?.abort(); }, []);
   const changeMode = (next: DictationMode) => { cancelPlan(); setSuggestion(null); setPlanError(""); setHistoryOpen(false); stop(); setMode(next); setQueue([]); setPosition(0); resetAnswer(); };
   const deviceSpeak = (text: string, rate: number, id: number, attemptId: string, commandId: string) => {
@@ -359,101 +370,345 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     else stop();
   };
   const commandLabels = { repeat: "重读", slow: "慢速播放", hint: "显示提示", stop: "停止播放" };
+  const endRound = () => { stop(); void live.current?.close(); setQueue([]); resetAnswer(); };
+  const recordPaperGrade = ({ correct, total }: { correct: number; total: number }) => {
+    if (temporary || !accountScope) return;
+    void recordLearningActivity({
+      eventId: `paper-${attemptRef.current.id}`,
+      kind: "dictation",
+      title: "纸上听写批改",
+      summary: "识字经你确认；纸上批改作为辅助练习",
+      refIds: queue.filter((row) => heardItemIds.includes(row.id)).map((row) => row.wordId || row.id),
+      counts: { total, correct, assisted: total },
+    }, { accountScope });
+  };
 
-
-  return <section className="dictation-panel" aria-label="听写练习" hidden={!active}>
-    <div className="dictation-toolbar dictation-toolbar-simple">
-      <span>{queue.length ? `本组 ${queue.length} 项` : mode === "words" ? "当前教材 · 词与短语" : "句子精听"}</span>
-      <details ref={adjustment} className="dictation-adjust"><summary>调整</summary><div>
-        <label>练习内容 <select value={mode} onChange={(event) => changeMode(event.target.value as DictationMode)}><option value="words">词与短语</option><option value="sentences">句子精听</option></select></label>
-        <button type="button" className="text-button" onClick={() => { stop(); setHistoryOpen(!historyOpen); adjustment.current?.removeAttribute("open"); }}>{historyOpen ? "返回听写" : "查看错题"}{!historyOpen && mistakes.length ? ` · ${mistakes.length}` : ""}</button>
-        {queue.length > 0 && <button type="button" className="text-button" onClick={() => void start(selectDictationRound(directItems, directCount))}>换一组</button>}
-      </div></details>
-    </div>
-    {temporary && <p className="dictation-note">临时练习 · 不读取或保存听写历史</p>}
-    {storageError && <p className="dictation-notice" role="status">浏览器未能保存记录；本次仍可练习，离开页面后可能丢失。</p>}
-    <div ref={stage} className="dictation-stage">
-    {historyOpen && !temporary ? <div className="dictation-history">
-      <h2>听写错题</h2><p className="dictation-note">保留在此浏览器，最多300条练习记录；不影响单词复习进度。</p>
-      {mistakes.length ? <><button type="button" className="primary" onClick={() => start(mistakes.filter((row) => !row.resolved).map((row) => row.item).slice(0, 12))} disabled={!mistakes.some((row) => !row.resolved)}>再练尚未掌握的错题</button>
-        <ul>{mistakes.map((row) => <li key={row.item.id}><div><strong lang="en">{row.item.text}</strong><small>{row.mistakes}次出错 · {row.resolved ? "最近一次已答对" : "待再练"} · {new Date(row.lastAt).toLocaleDateString("zh-CN")}</small></div><button type="button" className="secondary" onClick={() => start([row.item])}>再练</button></li>)}</ul></> : <p className="empty">还没有错题，先完成一组听写。</p>}
-    </div> : !queue.length ? <div className="dictation-intro">
-      <span className="dictation-emblem"><Headphones size={28} aria-hidden="true" /></span>
-      <h2>听一组，记下来。</h2>
-      <p aria-live="polite">{suggestion?.items.length ? suggestion.selection === "theme" ? `已按主题选好 ${suggestion.items.length} 个词与短语。` : `已从学习材料中准备 ${suggestion.items.length} 项。` : directCount ? `练习${mode === "words" ? "当前教材中的" : "一组"} ${directCount} ${mode === "words" ? "个词与短语" : "个短句"}。` : "当前范围没有可听写的词，请换个教材或单元。"}</p>
-      <button type="button" className="primary" disabled={!suggestion?.items.length && !directCount} onClick={() => void start(suggestion?.items.length ? suggestion.items : selectDictationRound(directItems, directCount))}>开始听写 <ArrowRight size={16} aria-hidden="true" /></button>
-      <p className="dictation-note">可以用键盘，也可以写在纸上</p>
-      <details className="dictation-plan-options">
-        <summary>{mode === "words" ? "让 AI 按主题找词" : "按学习内容推荐"}</summary>
-        <form className="dictation-request" onSubmit={(event) => { event.preventDefault(); if (planBusy) cancelPlan(); else if (requestText.trim()) void prepare(); }}>
-          <label htmlFor="dictation-request">{mode === "words" ? "想找什么词？" : "想练习什么？"}</label>
+  return (
+    <section className="dictation-panel" aria-label="听写练习" hidden={!active}>
+      <div className="dictation-toolbar dictation-toolbar-simple">
+        <span>{queue.length ? `本组 ${queue.length} 项` : mode === "words" ? "当前教材 · 词与短语" : "句子精听"}</span>
+        <details ref={adjustment} className="dictation-adjust">
+          <summary>调整</summary>
           <div>
-            <textarea id="dictation-request" value={requestText} rows={2} maxLength={1000} readOnly={planBusy} aria-describedby="dictation-request-help" placeholder={mode === "words" ? "例如：与冬天意象有关的词，适合高中水平" : "例如：必修一第一单元，或某篇文章的标题"} onChange={(event) => setRequestText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && (event.metaKey || event.ctrlKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
-            <button className="text-button" disabled={!planBusy && !requestText.trim()}>{planBusy ? "取消" : mode === "words" ? "找词" : "推荐"}</button>
+            <label>
+              练习内容 <select value={mode} onChange={(event) => changeMode(event.target.value as DictationMode)}>
+                <option value="words">词与短语</option>
+                <option value="sentences">句子精听</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => { stop(); setHistoryOpen(!historyOpen); adjustment.current?.removeAttribute("open"); }}
+            >
+              {historyOpen ? "返回听写" : "查看错题"}{!historyOpen && mistakes.length ? ` · ${mistakes.length}` : ""}
+            </button>
+            {queue.length > 0 && (
+              <button type="button" className="text-button" onClick={() => void start(selectDictationRound(directItems, directCount))}>换一组</button>
+            )}
           </div>
-          <p id="dictation-request-help" className="dictation-note">{mode === "words" ? "可按主题、意境或教材选词，沿用已配置的 AI。" : "文章听写请提供标题或在阅读页选中片段。"}</p>
-        </form>
-        {planBusy && <p className="dictation-note" role="status">{mode === "words" ? "AI 正在选词…" : "正在准备推荐…"}</p>}
-        {planError && <p className="dictation-notice" role="alert">{planError} <button className="text-button" onClick={() => void prepare()}>重试</button></p>}
-        {!planBusy && !planError && suggestion?.clarification && <p className="dictation-note">{suggestion.clarification}</p>}
-      </details>
-    </div> : !item ? <div className="dictation-intro">
-      <span className="dictation-emblem"><Check size={28} aria-hidden="true" /></span><h2>这一组，听完了。</h2>
-      <p>{queue.length}项练习 · {roundErrors.length ? `${roundErrors.length}项待批改或再练` : "本组已独立答对"}</p>
-      <div className="dictation-actions">{roundErrors.length > 0 && <button type="button" className="primary" onClick={() => start(roundErrors)}>继续练习</button>}<button type="button" className="secondary" onClick={() => { stop(); void live.current?.close(); setQueue([]); resetAnswer(); }}>返回选题</button></div>
-    </div> : <div className="dictation-exercise">
-      <div className="dictation-meta"><span>{item.mode === "words" ? "词与短语" : "句子精听"} · {position + 1} / {queue.length}</span><button type="button" onClick={() => { stop(); void live.current?.close(); setQueue([]); resetAnswer(); }}>结束本组</button></div>
-      <div className={`dictation-audio is-${playback}`}>
-        <label className="dictation-voice-label">朗读方式 <select value={voiceChoice} onChange={(event) => { stop(); setVoiceChoice(event.target.value as "device" | "ai"); setSource(""); }}><option value="device">设备朗读 · 不用 API</option><option value="ai">AI 语音 · 联网使用 API</option></select></label>
-        <div className="dictation-actions">
-          <button type="button" className="dictation-play" aria-busy={playback === "loading"} onClick={() => {
-            if (playback !== "idle") { stop(); if (voiceChoice === "ai") setNotice("已停止播放或请求。服务已经处理的请求仍可能计费。"); }
-            else void play(slow ? 0.8 : 1);
-          }}>{playback !== "idle" ? <Square size={22} aria-hidden="true" /> : <Volume2 size={24} aria-hidden="true" />}{playback === "loading" ? "停止获取" : playback === "playing" ? "停止播放" : heard ? "再听一次" : "播放音频"}</button>
-          <button type="button" className="dictation-speed" aria-pressed={slow} disabled={playback === "loading"} onClick={() => { const next = !slow; setSlow(next); if (playback === "playing") void play(next ? 0.8 : 1); }}>0.8× 慢速</button>
-        </div>
-        <p className="dictation-note" role="status">{playback === "loading" ? "正在获取音频…" : source || (voiceChoice === "ai" ? "AI 语音需已配置密钥，播放时请求。" : "播放后写下你听到的内容")}{voiceChoice === "ai" ? " · 本页重复播放使用缓存" : ""}</p>
+        </details>
       </div>
-      <details className="dictation-live-options">
-        <summary>Live 语音指令与拼读</summary>
-        <p className="dictation-note">题目由设备或核验过的 AI 音频播放，Live 只识别语音输入，不播题、不判分。开启后预留 5 分钟，等待与静音仍计时；提前结束不退还预留，实际费用以服务商为准。键盘作答无需开启。</p>
-        {!submitted && !revealed && <div className="dictation-actions">
-          {commandListening ? <><button className="secondary" type="button" disabled={liveSnapshot?.phase === "connecting"} onClick={() => void finishCommand()}>说完了，确认指令</button><button className="secondary" type="button" onClick={stop}>取消</button></> : <button className="secondary" type="button" disabled={liveUnconfirmed} onClick={() => void beginCommand()}><Mic size={16} />{liveSnapshot?.phase === "connected" ? "说一个指令" : "开启 Live 并说指令"}</button>}
-          {commandDraft && <button className="secondary" type="button" onClick={executeCommand}>确认：{commandLabels[commandDraft.command]}</button>}
-        </div>}
-      </details>
-      {notice && <p className="dictation-notice" role="alert">{notice}</p>}
-      {!submitted && !revealed && <div className="dictation-answer-mode">
-        <div className="segmented" aria-label="作答方式">
-          <button type="button" aria-pressed={paperMode} onClick={() => { stop(); setPaperMode(!paperMode); }}>纸上作答</button>
-          <button type="button" aria-pressed={!paperMode && attempt.answerMode === "typed"} onClick={() => { stop(); setPaperMode(false); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "typed" }); }}>键盘作答</button>
-          <button type="button" aria-pressed={!paperMode && attempt.answerMode === "spelled"} disabled={item.mode !== "words" || liveUnconfirmed} onClick={() => { stop(); setPaperMode(false); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "spelled" }); }}>逐字母拼读</button>
-        </div>
-        {!paperMode && attempt.answerMode === "spelled" && <>
-          <p className="dictation-note">{captureLabel} · 点按钮后才开启麦克风。逐个说出字母，词间说“空格”；识别后先确认文字。</p>
-          {attempt.phase === "capturing" ? <button className="secondary" type="button" disabled={captureFinishing || liveSnapshot?.phase === "connecting"} onClick={() => void finishSpelling()}><Square size={16} />{captureFinishing ? "正在整理拼读…" : liveSnapshot?.phase === "connecting" ? "正在连接…" : "结束拼读"}</button> : <button className="secondary" type="button" disabled={!heard || liveUnconfirmed} onClick={() => void beginSpelling()}><Mic size={16} />{liveSnapshot?.phase === "connected" ? "开始拼读" : "开启 Live 并开始拼读"}</button>}
-          {attempt.phase === "capturing" && <button type="button" className="secondary" onClick={stop}>取消拼读</button>}
-        </>}
-      </div>}
-      {hintVisible && <p className="dictation-notice">提示：{item.hint || "当前题目没有额外提示。"} · 本题作为辅助练习，不计入独立掌握。</p>}
-      {paperMode ? <div className="dictation-paper-progress"><p className="dictation-note">在纸上写下第 {position + 1} 题。听完后可拍照，核对识别文字再批改。</p><button type="button" className="primary" disabled={!heard} onClick={() => { stop(); if (position + 1 >= queue.length) void live.current?.close(); setPosition(position + 1); resetAnswer(queue[position + 1]); }}>写好了，下一题</button></div> : <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
-        <label htmlFor="voice-dictation-answer">{item.mode === "words" ? "写下听到的词或短语" : "写下听到的句子"}</label>
-        <textarea ref={input} id="voice-dictation-answer" lang="en" autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} rows={item.mode === "words" ? 2 : 3} maxLength={3000} value={answer} disabled={submitted || attempt.phase === "capturing"} placeholder="Type what you hear…" onChange={(event) => apply({ type: "edit", attemptId: attemptRef.current.id, answer: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
-        {attempt.answerMode === "spelled" && attempt.phase === "confirming" && <button className="secondary" type="button" disabled={!answer.trim()} onClick={() => apply({ type: "confirm", attemptId: attemptRef.current.id })}>确认这些字母</button>}
-        {!submitted && !revealed && <div className="dictation-actions"><button className="primary" type="submit" disabled={!canSubmitDictation(attempt)}>核对答案</button><button className="secondary" type="button" onClick={showHint}>给我提示</button><button className="secondary" type="button" onClick={reveal}>显示答案</button></div>}
-      </form>}
-      {(revealed || submitted) && <div className="dictation-feedback">
-        {result && <h3>{result.correct ? "听写正确" : `匹配 ${result.matched} / ${result.total} 词`}</h3>}
-        <p className="dictation-target" lang="en">{item.text}</p><p className="dictation-note">{item.hint} · {item.source}</p>
-        {!submitted && <p className="dictation-note">本次已看答案，不记入掌握记录。可重新听写；本轮看过答案的题仍作为辅助练习。</p>}
-        {submitted && attempt.assisted && <p className="dictation-note">本题已使用提示或答案，记为辅助练习，掌握和错题记录保持不变。</p>}
-        {result && !result.correct && <><p className="dictation-note">逐词对照：划线为多写或写错，下方为应写内容。</p><div className="dictation-diff" lang="en">{result.differences.map((part, index) => <span key={index} className={`dictation-token is-${part.kind}`}>{part.kind === "equal" ? part.expected : <>{part.actual && <del>{part.actual}</del>}{part.expected && <ins>{part.expected}</ins>}<small>{part.kind === "missing" ? "漏写" : part.kind === "extra" ? "多写" : "替换"}</small></>}</span>)}</div></>}
-        <p className="dictation-note">忽略大小写和标点；接受已列明的常见缩写、英美拼写变体。含歧义的缩写按原文核对。此结果仅比较听写文字。</p>
-        <div className="dictation-actions">{submitted && <button type="button" className="primary" onClick={() => { stop(); if (position + 1 >= queue.length) void live.current?.close(); setPosition(position + 1); resetAnswer(queue[position + 1]); input.current?.focus(); }}>下一项 <ArrowRight size={16} aria-hidden="true" /></button>}<button type="button" className="secondary" onClick={() => { stop(); resetAnswer(); input.current?.focus(); }}><RotateCcw size={15} aria-hidden="true" />重新听写</button></div>
-      </div>}
-    </div>}
-    </div>
-    {queue.length > 0 && <PaperDictation items={queue} heardItemIds={heardItemIds} temporary={temporary} accountScope={accountScope} contextEpoch={contextEpoch} onGraded={({ correct, total }) => { if (!temporary && accountScope) void recordLearningActivity({ eventId: `paper-${attemptRef.current.id}`, kind: "dictation", title: "纸上听写批改", summary: "识字经你确认；纸上批改作为辅助练习", refIds: queue.filter((row) => heardItemIds.includes(row.id)).map((row) => row.wordId || row.id), counts: { total, correct, assisted: total } }, { accountScope }); }} />}
-  </section>;
+      {temporary && <p className="dictation-note">临时练习 · 不读取或保存听写历史</p>}
+      {storageError && <p className="dictation-notice" role="status">浏览器未能保存记录；本次仍可练习，离开页面后可能丢失。</p>}
+      <div ref={stage} className="dictation-stage">
+        {historyOpen && !temporary ? (
+          <div className="dictation-history">
+            <h2>听写错题</h2>
+            <p className="dictation-note">保留在此浏览器，最多300条练习记录；不影响单词复习进度。</p>
+            {mistakes.length ? (
+              <>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => start(mistakes.filter((row) => !row.resolved).map((row) => row.item).slice(0, 12))}
+                  disabled={!mistakes.some((row) => !row.resolved)}
+                >
+                  再练尚未掌握的错题
+                </button>
+                <ul>
+                  {mistakes.map((row) => (
+                    <li key={row.item.id}>
+                      <div>
+                        <strong lang="en">{row.item.text}</strong>
+                        <small>{row.mistakes}次出错 · {row.resolved ? "最近一次已答对" : "待再练"} · {new Date(row.lastAt).toLocaleDateString("zh-CN")}</small>
+                      </div>
+                      <button type="button" className="secondary" onClick={() => start([row.item])}>再练</button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : <p className="empty">还没有错题，先完成一组听写。</p>}
+          </div>
+        ) : !queue.length ? (
+          <div className="dictation-intro">
+            <span className="dictation-emblem"><Headphones size={28} aria-hidden="true" /></span>
+            <h2>听一组，记下来。</h2>
+            <p aria-live="polite">
+              {suggestion?.items.length
+                ? suggestion.selection === "theme"
+                  ? `已按主题选好 ${suggestion.items.length} 个词与短语。`
+                  : `已从学习材料中准备 ${suggestion.items.length} 项。`
+                : directCount
+                  ? `练习${mode === "words" ? "当前教材中的" : "一组"} ${directCount} ${mode === "words" ? "个词与短语" : "个短句"}。`
+                  : "当前范围没有可听写的词，请换个教材或单元。"}
+            </p>
+            <button
+              type="button"
+              className="primary"
+              disabled={!suggestion?.items.length && !directCount}
+              onClick={() => void start(suggestion?.items.length ? suggestion.items : selectDictationRound(directItems, directCount))}
+            >
+              开始听写 <ArrowRight size={16} aria-hidden="true" />
+            </button>
+            <p className="dictation-note">可以用键盘，也可以写在纸上</p>
+            <details className="dictation-plan-options">
+              <summary>{mode === "words" ? "让 AI 按主题找词" : "按学习内容推荐"}</summary>
+              <form
+                className="dictation-request"
+                onSubmit={(event) => { event.preventDefault(); if (planBusy) cancelPlan(); else if (requestText.trim()) void prepare(); }}
+              >
+                <label htmlFor="dictation-request">{mode === "words" ? "想找什么词？" : "想练习什么？"}</label>
+                <div>
+                  <textarea
+                    id="dictation-request"
+                    value={requestText}
+                    rows={2}
+                    maxLength={1000}
+                    readOnly={planBusy}
+                    aria-describedby="dictation-request-help"
+                    placeholder={mode === "words" ? "例如：与冬天意象有关的词，适合高中水平" : "例如：必修一第一单元，或某篇文章的标题"}
+                    onChange={(event) => setRequestText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.nativeEvent.isComposing && (event.metaKey || event.ctrlKey)) {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
+                      }
+                    }}
+                  />
+                  <button className="text-button" disabled={!planBusy && !requestText.trim()}>{planBusy ? "取消" : mode === "words" ? "找词" : "推荐"}</button>
+                </div>
+                <p id="dictation-request-help" className="dictation-note">
+                  {mode === "words" ? "可按主题、意境或教材选词，沿用已配置的 AI。" : "文章听写请提供标题或在阅读页选中片段。"}
+                </p>
+              </form>
+              {planBusy && <p className="dictation-note" role="status">{mode === "words" ? "AI 正在选词…" : "正在准备推荐…"}</p>}
+              {planError && (
+                <p className="dictation-notice" role="alert">
+                  {planError} <button className="text-button" onClick={() => void prepare()}>重试</button>
+                </p>
+              )}
+              {!planBusy && !planError && suggestion?.clarification && <p className="dictation-note">{suggestion.clarification}</p>}
+            </details>
+          </div>
+        ) : !item ? (
+          <div className="dictation-intro">
+            <span className="dictation-emblem"><Check size={28} aria-hidden="true" /></span>
+            <h2>这一组，听完了。</h2>
+            <p>{queue.length}项练习 · {roundErrors.length ? `${roundErrors.length}项待批改或再练` : "本组已独立答对"}</p>
+            <div className="dictation-actions">
+              {roundErrors.length > 0 && <button type="button" className="primary" onClick={() => start(roundErrors)}>继续练习</button>}
+              <button type="button" className="secondary" onClick={endRound}>返回选题</button>
+            </div>
+          </div>
+        ) : (
+          <div className="dictation-exercise">
+            <div className="dictation-meta">
+              <span>{item.mode === "words" ? "词与短语" : "句子精听"} · {position + 1} / {queue.length}</span>
+              <button type="button" onClick={endRound}>结束本组</button>
+            </div>
+            <div className={`dictation-audio is-${playback}`}>
+              <label className="dictation-voice-label">
+                朗读方式 <select value={voiceChoice} onChange={(event) => { stop(); setVoiceChoice(event.target.value as "device" | "ai"); setSource(""); }}>
+                  <option value="device">设备朗读 · 不用 API</option>
+                  <option value="ai">AI 语音 · 联网使用 API</option>
+                </select>
+              </label>
+              <div className="dictation-actions">
+                <button
+                  type="button"
+                  className="dictation-play"
+                  aria-busy={playback === "loading"}
+                  onClick={() => {
+                    if (playback !== "idle") { stop(); if (voiceChoice === "ai") setNotice("已停止播放或请求。服务已经处理的请求仍可能计费。"); }
+                    else void play(slow ? 0.8 : 1);
+                  }}
+                >
+                  {playback !== "idle" ? <Square size={22} aria-hidden="true" /> : <Volume2 size={24} aria-hidden="true" />}
+                  {playback === "loading" ? "停止获取" : playback === "playing" ? "停止播放" : heard ? "再听一次" : "播放音频"}
+                </button>
+                <button
+                  type="button"
+                  className="dictation-speed"
+                  aria-pressed={slow}
+                  disabled={playback === "loading"}
+                  onClick={() => { const next = !slow; setSlow(next); if (playback === "playing") void play(next ? 0.8 : 1); }}
+                >
+                  0.8× 慢速
+                </button>
+              </div>
+              <p className="dictation-note" role="status">
+                {playback === "loading" ? "正在获取音频…" : source || (voiceChoice === "ai" ? "AI 语音需已配置密钥，播放时请求。" : "播放后写下你听到的内容")}
+                {voiceChoice === "ai" ? " · 本页重复播放使用缓存" : ""}
+              </p>
+            </div>
+            <details className="dictation-live-options">
+              <summary>Live 语音指令与拼读</summary>
+              <p className="dictation-note">题目由设备或核验过的 AI 音频播放，Live 只识别语音输入，不播题、不判分。开启后预留 5 分钟，等待与静音仍计时；提前结束不退还预留，实际费用以服务商为准。键盘作答无需开启。</p>
+              {!submitted && !revealed && (
+                <div className="dictation-actions">
+                  {commandListening ? (
+                    <>
+                      <button className="secondary" type="button" disabled={liveSnapshot?.phase === "connecting"} onClick={() => void finishCommand()}>说完了，确认指令</button>
+                      <button className="secondary" type="button" onClick={stop}>取消</button>
+                    </>
+                  ) : (
+                    <button className="secondary" type="button" disabled={liveUnconfirmed} onClick={() => void beginCommand()}>
+                      <Mic size={16} />{liveSnapshot?.phase === "connected" ? "说一个指令" : "开启 Live 并说指令"}
+                    </button>
+                  )}
+                  {commandDraft && <button className="secondary" type="button" onClick={executeCommand}>确认：{commandLabels[commandDraft.command]}</button>}
+                </div>
+              )}
+            </details>
+            {notice && <p className="dictation-notice" role="alert">{notice}</p>}
+            {!submitted && !revealed && (
+              <div className="dictation-answer-mode">
+                <div className="segmented" aria-label="作答方式">
+                  <button type="button" aria-pressed={paperMode} onClick={() => { stop(); setPaperMode(!paperMode); }}>纸上作答</button>
+                  <button
+                    type="button"
+                    aria-pressed={!paperMode && attempt.answerMode === "typed"}
+                    onClick={() => { stop(); setPaperMode(false); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "typed" }); }}
+                  >
+                    键盘作答
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={!paperMode && attempt.answerMode === "spelled"}
+                    disabled={item.mode !== "words" || liveUnconfirmed}
+                    onClick={() => { stop(); setPaperMode(false); apply({ type: "mode", attemptId: attemptRef.current.id, mode: "spelled" }); }}
+                  >
+                    逐字母拼读
+                  </button>
+                </div>
+                {!paperMode && attempt.answerMode === "spelled" && (
+                  <>
+                    <p className="dictation-note">{captureLabel} · 点按钮后才开启麦克风。逐个说出字母，词间说“空格”；识别后先确认文字。</p>
+                    {attempt.phase === "capturing" ? (
+                      <button className="secondary" type="button" disabled={captureFinishing || liveSnapshot?.phase === "connecting"} onClick={() => void finishSpelling()}>
+                        <Square size={16} />{captureFinishing ? "正在整理拼读…" : liveSnapshot?.phase === "connecting" ? "正在连接…" : "结束拼读"}
+                      </button>
+                    ) : (
+                      <button className="secondary" type="button" disabled={!heard || liveUnconfirmed} onClick={() => void beginSpelling()}>
+                        <Mic size={16} />{liveSnapshot?.phase === "connected" ? "开始拼读" : "开启 Live 并开始拼读"}
+                      </button>
+                    )}
+                    {attempt.phase === "capturing" && <button type="button" className="secondary" onClick={stop}>取消拼读</button>}
+                  </>
+                )}
+              </div>
+            )}
+            {hintVisible && <p className="dictation-notice">提示：{item.hint || "当前题目没有额外提示。"} · 本题作为辅助练习，不计入独立掌握。</p>}
+            {paperMode ? (
+              <div className="dictation-paper-progress">
+                <p className="dictation-note">在纸上写下第 {position + 1} 题。听完后可拍照，核对识别文字再批改。</p>
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={!heard}
+                  onClick={() => { stop(); if (position + 1 >= queue.length) void live.current?.close(); setPosition(position + 1); resetAnswer(queue[position + 1]); }}
+                >
+                  写好了，下一题
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
+                <label htmlFor="voice-dictation-answer">{item.mode === "words" ? "写下听到的词或短语" : "写下听到的句子"}</label>
+                <textarea
+                  ref={input}
+                  id="voice-dictation-answer"
+                  lang="en"
+                  autoCapitalize="off"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  rows={item.mode === "words" ? 2 : 3}
+                  maxLength={3000}
+                  value={answer}
+                  disabled={submitted || attempt.phase === "capturing"}
+                  placeholder="Type what you hear…"
+                  onChange={(event) => apply({ type: "edit", attemptId: attemptRef.current.id, answer: event.target.value })}
+                  onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }}
+                />
+                {attempt.answerMode === "spelled" && attempt.phase === "confirming" && (
+                  <button className="secondary" type="button" disabled={!answer.trim()} onClick={() => apply({ type: "confirm", attemptId: attemptRef.current.id })}>确认这些字母</button>
+                )}
+                {!submitted && !revealed && (
+                  <div className="dictation-actions">
+                    <button className="primary" type="submit" disabled={!canSubmitDictation(attempt)}>核对答案</button>
+                    <button className="secondary" type="button" onClick={showHint}>给我提示</button>
+                    <button className="secondary" type="button" onClick={reveal}>显示答案</button>
+                  </div>
+                )}
+              </form>
+            )}
+            {(revealed || submitted) && (
+              <div className="dictation-feedback">
+                {result && <h3>{result.correct ? "听写正确" : `匹配 ${result.matched} / ${result.total} 词`}</h3>}
+                <p className="dictation-target" lang="en">{item.text}</p>
+                <p className="dictation-note">{item.hint} · {item.source}</p>
+                {!submitted && <p className="dictation-note">本次已看答案，不记入掌握记录。可重新听写；本轮看过答案的题仍作为辅助练习。</p>}
+                {submitted && attempt.assisted && <p className="dictation-note">本题已使用提示或答案，记为辅助练习，掌握和错题记录保持不变。</p>}
+                {result && !result.correct && (
+                  <>
+                    <p className="dictation-note">逐词对照：划线为多写或写错，下方为应写内容。</p>
+                    <div className="dictation-diff" lang="en">
+                      {result.differences.map((part, index) => (
+                        <span key={index} className={`dictation-token is-${part.kind}`}>
+                          {part.kind === "equal" ? part.expected : (
+                            <>
+                              {part.actual && <del>{part.actual}</del>}
+                              {part.expected && <ins>{part.expected}</ins>}
+                              <small>{part.kind === "missing" ? "漏写" : part.kind === "extra" ? "多写" : "替换"}</small>
+                            </>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <p className="dictation-note">忽略大小写和标点；接受已列明的常见缩写、英美拼写变体。含歧义的缩写按原文核对。此结果仅比较听写文字。</p>
+                <div className="dictation-actions">
+                  {submitted && (
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => { stop(); if (position + 1 >= queue.length) void live.current?.close(); setPosition(position + 1); resetAnswer(queue[position + 1]); input.current?.focus(); }}
+                    >
+                      下一项 <ArrowRight size={16} aria-hidden="true" />
+                    </button>
+                  )}
+                  <button type="button" className="secondary" onClick={() => { stop(); resetAnswer(); input.current?.focus(); }}>
+                    <RotateCcw size={15} aria-hidden="true" />重新听写
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {queue.length > 0 && (
+        <PaperDictation
+          items={queue}
+          heardItemIds={heardItemIds}
+          temporary={temporary}
+          accountScope={accountScope}
+          contextEpoch={contextEpoch}
+          onGraded={recordPaperGrade}
+        />
+      )}
+    </section>
+  );
 }
 export default DictationPanel;

@@ -2,7 +2,7 @@
 
 ## 环境与命令
 
-Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准。普通开发使用 `npm ci`、`npm run dev`。构建脚本依赖 Bash 与 GNU `timeout`，Windows 可在 WSL 中运行。
+Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准。普通开发使用 `npm ci`、`npm run dev`。dev 服务器只监听 `127.0.0.1`；需要从其他主机或容器预览（如经 `terminal.local`）时显式运行 `npm run dev -- --host 0.0.0.0`，并只在可信网络中使用。`npm start` 在本地 workerd 中预览 `npm run build` 的产物。构建脚本依赖 Bash 与 GNU `timeout`，Windows 可在 WSL 中运行。
 
 | 目的 | 命令或说明 |
 | --- | --- |
@@ -14,17 +14,19 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | 生产构建及产物校验 | `npm run build` |
 | Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`，默认输出 `outputs/site.tar.gz`；包含 Worker、完整迁移目录与托管配置 |
 | 本地 Worker/D1 检查 | 构建后执行 `npm run test:runtime` |
-| 完整验收 | `npm test`：数据审计、类型检查、单元测试、构建、Worker 检查；ESLint 另用 `npm run lint` |
+| 完整验收 | `npm test`：数据审计、类型检查、ESLint、单元测试、构建、Worker 检查 |
+| 持续集成 | `.github/workflows/ci.yml` 在推送到 main 与拉取请求时运行 `npm ci`、`npm run audit:prod` 和 `npm test`；Actions 固定到已审核的提交 |
 | 词库数据审计 | `npm run data:audit`；会更新 `data/audit-summary.json`，留意生成差异 |
 | 阅读数据审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
 | 后端查词性能对照 | `npm run benchmark:backend -- <baseline-ref>`；默认对比本轮合并后的 2.4.0 基线，输出微基准中位数，不代表全站或模型延迟 |
 | 性能对照 | `npm run benchmark -- <baseline-ref>`；本地需有相应提交，省略时使用历史基线 `3b12529` |
+| 词库索引解析对照 | `node artifacts/qa/lexicon-index-parse.mjs <baseline-ref>`；在 Chromium 中比较基线索引与当前行编码的解析耗时（含 4 倍 CPU 降速） |
 
 `test:runtime` 使用本地临时 D1 和测试凭据，不调用真实 AI 服务；不验证生产认证网关、真实服务商或物理设备行为。
 
 `npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
 
-`.npmrc` 的 `audit=false` 只关闭安装时的自动审计；安全检查显式运行 `npm run audit:prod`。依赖升级使用已审核的精确版本和锁文件，并验证生产构建与 Worker smoke；审计通过不能代替运行兼容性验证。
+`.npmrc` 的 `audit=false` 只关闭安装时的自动审计；安全检查显式运行 `npm run audit:prod`，开发依赖用完整的 `npm audit` 核对。依赖升级使用已审核的精确版本和锁文件，并验证生产构建与 Worker smoke；审计通过不能代替运行兼容性验证。
 
 ## 按影响选择验证
 

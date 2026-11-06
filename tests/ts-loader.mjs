@@ -7,6 +7,7 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier === 'next/headers') return { url: new URL('./request-headers.mjs', import.meta.url).href, shortCircuit: true };
   const base = specifier.startsWith('@/') ? new URL(`../${specifier.slice(2)}`, import.meta.url) :
     specifier.startsWith('.') ? new URL(specifier, context.parentURL) : null;
+  if (base && specifier.startsWith('@/') && /\.[cm]?[jt]sx?$/.test(base.pathname)) return { url: base.href, shortCircuit: true };
   if (base && !/\.[cm]?[jt]sx?$/.test(base.pathname)) {
     for (const suffix of ['.ts', '/index.ts']) {
       const url = new URL(base.href + suffix);
