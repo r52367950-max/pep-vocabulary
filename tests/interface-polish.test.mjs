@@ -43,3 +43,12 @@ test("dictation applies a prepared plan without an effect and requests at most o
   assert.match(panel, /const prepareOnEntry = useEffectEvent\(/);
   assert.match(panel, /useEffect\(\(\) => \{ prepareOnEntry\(\); \}, \[active, accountScope, contextEpoch, queue\.length, conversationContext\]\);/);
 });
+
+test("a replacement started on this page reports its own result instead of the generic notice", () => {
+  const app = source("components/vocab-app.tsx");
+  // onReplaced runs before the reload that changes the data generation.
+  assert.match(app, /const onReplaced = \(\) => \{\s*replacingHere\.current = true;/);
+  assert.match(app, /if \(replacingHere\.current\) replacingHere\.current = false;\s*else notify\("本机学习数据已替换/);
+  const tools = source("components/studio/data-tools.tsx");
+  assert.match(tools, /await replaced\(\);\s*data\.notify\(mergeMessage\(summary\)\);/);
+});
