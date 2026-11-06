@@ -47,7 +47,8 @@ function tokenEstimate(text: string) {
  * Reserve before contacting a paid provider. The conditional UPSERT, not the
  * preliminary read, decides admission across isolates. Prompt tokens are an
  * estimate (providers tokenize differently); this is not a provider billing cap.
- * Incomplete/failed calls retain their reservation until the budget day ends.
+ * Incomplete/failed calls retain their reservation until the budget day ends,
+ * except the output part of a request the provider rejected before generating.
  */
 export async function reserveTokens(userKey: string, budget: number, prompt: string, outputCap: number, now = Date.now()): Promise<TokenReservation> {
   const db = database();
@@ -67,6 +68,24 @@ export async function reserveTokens(userKey: string, budget: number, prompt: str
   ).bind(keys.total, amount, keys.day.expiresAt, amount, budget, budget).first();
   if (!row) throw exhausted();
   return { keys, amount, promptEstimate, maxOutputTokens };
+}
+
+/**
+ * A redirect or client-error status (other than 408) arrives before any output
+ * is generated. Server errors, timeouts and broken streams stay ambiguous.
+ */
+export function providerRejectedBeforeGeneration(status: number | null) {
+  return status !== null && status >= 300 && status < 500 && status !== 408;
+}
+
+/** Returns the reserved output tokens; the prompt estimate stays charged. Never throws. */
+export async function releaseOutputReservation(reservation: TokenReservation) {
+  try {
+    await database().prepare("UPDATE ai_rate_limits SET request_count = MAX(0, request_count - ?) WHERE bucket_key = ?")
+      .bind(reservation.maxOutputTokens, reservation.keys.total).run();
+  } catch {
+    // Accounting failure keeps the whole reservation, as for any other failed call.
+  }
 }
 
 /** Provider reports cannot refund below independently estimated prompt and actual output. */

@@ -1,5 +1,5 @@
 import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
-import { consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
+import { budgetDay, consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-classification";
 import type { D1Database } from "@cloudflare/workers-types";
 import { env } from "cloudflare:workers";
@@ -44,7 +44,7 @@ import { parseLearnerProfile, ProfileInputError } from "./profile";
 const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
 const MAX_GENERATION_MS = 300_000;
-import { DEFAULT_TOKEN_BUDGET, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
+import { DEFAULT_TOKEN_BUDGET, providerRejectedBeforeGeneration, releaseOutputReservation, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
 
 /** Shared paid-generation boundary for learning, classification and connection tests. */
 export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string } = {}) {
@@ -56,14 +56,20 @@ export async function complete(config: UserRuntimeConfig, request: Request, payl
   delete body.max_tokens;
   delete body.max_completion_tokens;
   delete body.temperature;
-  const completion = await fetchCompletion(fetchAiProvider, options.url || completionEndpoint(config.baseUrl, config.provider), {
-    method: "POST", redirect: "manual", signal: request.signal,
-    headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json", accept: "text/event-stream, application/json" },
-    body: JSON.stringify(usesOpenAIResponses(config.baseUrl) ? responsesPayload(payload, reservation.maxOutputTokens) : {
-      ...body, ...generationParameters(config.model, config.baseUrl, reservation.maxOutputTokens,
-        typeof payload.temperature === "number" ? payload.temperature : undefined),
-    }),
-  }, { idleMs: options.idleMs ?? config.timeoutMs, totalMs: options.totalMs ?? MAX_GENERATION_MS, stream: Boolean(payload.stream), promptChars: prompt.length });
+  let completion: Awaited<ReturnType<typeof fetchCompletion>>;
+  try {
+    completion = await fetchCompletion(fetchAiProvider, options.url || completionEndpoint(config.baseUrl, config.provider), {
+      method: "POST", redirect: "manual", signal: request.signal,
+      headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json", accept: "text/event-stream, application/json" },
+      body: JSON.stringify(usesOpenAIResponses(config.baseUrl) ? responsesPayload(payload, reservation.maxOutputTokens) : {
+        ...body, ...generationParameters(config.model, config.baseUrl, reservation.maxOutputTokens,
+          typeof payload.temperature === "number" ? payload.temperature : undefined),
+      }),
+    }, { idleMs: options.idleMs ?? config.timeoutMs, totalMs: options.totalMs ?? MAX_GENERATION_MS, stream: Boolean(payload.stream), promptChars: prompt.length });
+  } catch (error) {
+    if (error instanceof AssistantUpstreamError && providerRejectedBeforeGeneration(error.providerStatus)) await releaseOutputReservation(reservation);
+    throw error;
+  }
   const { today, usage } = await settleTokens(reservation, completion.usage, completion.content);
   completion.usage = usage;
   return { completion, today };
@@ -271,7 +277,9 @@ async function releaseIndex(request: Request): Promise<ReleaseIndexRow[]> {
   return releaseIndexPromise;
 }
 
-async function incrementBucket(bucketKey: string, expiresAt: number, limit: number): Promise<void> {
+const DAILY_REQUESTS_EXHAUSTED = "今天的 AI 请求次数已用完，北京时间 0 点重置；本地学习不受影响。";
+
+async function incrementBucket(bucketKey: string, expiresAt: number, limit: number, exhaustedMessage?: string): Promise<void> {
   let retryAfter: number | null;
   try {
     retryAfter = await consumeRateLimit(bindings().DB, bucketKey, expiresAt, limit);
@@ -281,15 +289,16 @@ async function incrementBucket(bucketKey: string, expiresAt: number, limit: numb
     }
     throw new AiRuntimeConfigError("rate_limit_unavailable", "服务端限流存储不可用。");
   }
-  if (retryAfter !== null) throw new AssistantRateLimitError(retryAfter);
+  if (retryAfter !== null) throw new AssistantRateLimitError(retryAfter, "rate_limited", exhaustedMessage);
 }
 
 async function enforceRateLimit(userKey: string, dailyLimit: number) {
   const now = Date.now();
   const minuteStart = Math.floor(now / 60_000) * 60_000;
-  const dayStart = Math.floor(now / 86_400_000) * 86_400_000;
+  // Daily request counts reset with the token and voice budgets (Beijing midnight).
+  const day = budgetDay(now);
   await incrementBucket(`minute:${userKey}:${minuteStart}`, minuteStart + 60_000, Math.min(12, dailyLimit));
-  await incrementBucket(`day:${userKey}:${dayStart}`, dayStart + 86_400_000, dailyLimit);
+  await incrementBucket(`day:${userKey}:${day.start}`, day.expiresAt, dailyLimit, DAILY_REQUESTS_EXHAUSTED);
 
   if (crypto.getRandomValues(new Uint8Array(1))[0] < 4) {
     // Awaited: a promise left pending after the response may be dropped by the runtime.
@@ -303,9 +312,9 @@ async function enforceRateLimit(userKey: string, dailyLimit: number) {
 async function enforceConnectionTestRateLimit(userKey: string) {
   const now = Date.now();
   const minuteStart = Math.floor(now / 60_000) * 60_000;
-  const dayStart = Math.floor(now / 86_400_000) * 86_400_000;
+  const day = budgetDay(now);
   await incrementBucket(`connection-test:minute:${userKey}:${minuteStart}`, minuteStart + 60_000, 6);
-  await incrementBucket(`connection-test:day:${userKey}:${dayStart}`, dayStart + 86_400_000, 30);
+  await incrementBucket(`connection-test:day:${userKey}:${day.start}`, day.expiresAt, 30, "今天的连接测试次数已用完，北京时间 0 点重置。");
 }
 
 export async function authenticatedConfig(request: Request) {
