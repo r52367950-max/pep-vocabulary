@@ -1,0 +1,17 @@
+{
+  "baseline": "b224f1c",
+  "bytes": {
+    "before": 2313458,
+    "after": 759461
+  },
+  "medianMs": {
+    "cpu1x": {
+      "before": 6.7,
+      "after": 4.3
+    },
+    "cpu4x": {
+      "before": 26.2,
+      "after": 16.3
+    }
+  }
+}

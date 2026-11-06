@@ -1,6 +1,7 @@
 import { lstatSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { decodeLexiconIndex, LEXICON_INDEX_FORMAT } from "../lib/lexicon-index-codec.mjs";
 
 const chunkPath = /^chunks\/lexicon-\d{2,}\.json$/;
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
@@ -48,8 +49,10 @@ export function validateLexiconRelease(directory) {
     if (!Array.isArray(values) || values.length !== chunk.count || values[0]?.id !== chunk.first || values.at(-1)?.id !== chunk.last) throw new Error(`Chunk metadata mismatch: ${chunk.file}`);
     return values;
   });
-  const index = readJson(join(directory, "index.json"));
-  if (entries.length !== manifest.releasedEntries || !Array.isArray(index) || index.length !== entries.length) throw new Error("Release entry count mismatch");
+  const encodedIndex = readJson(join(directory, "index.json"));
+  if (encodedIndex?.format !== LEXICON_INDEX_FORMAT) throw new Error(`Release index must use ${LEXICON_INDEX_FORMAT}`);
+  const index = decodeLexiconIndex(encodedIndex);
+  if (entries.length !== manifest.releasedEntries || index.length !== entries.length) throw new Error("Release entry count mismatch");
   const ids = new Set();
   entries.forEach((entry, position) => {
     if (!entry || !/^pep-[a-f0-9]{16}$/.test(entry.id) || typeof entry.headword !== "string" || !entry.headword || typeof entry.lookup !== "string" || !entry.lookup || typeof entry.chineseCore !== "string" || !entry.chineseCore || !Array.isArray(entry.scopes) || !entry.scopes.length || !Array.isArray(entry.sources) || !entry.sources.length || ids.has(entry.id)) throw new Error(`Invalid or duplicate release entry: ${entry?.id}`);

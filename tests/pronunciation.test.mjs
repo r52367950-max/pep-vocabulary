@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { normalizePronunciations } from "../lib/lexicon.ts";
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 
 test("legacy regional labels are separated while abbreviated American IPA remains unverified", () => {
   const original = { britishIpa: "ˈætɪtjuːd; ŋɑmE ˈætɪtuːd", americanIpa: "ˈætɪtjuːd; ŋɑmE ˈætɪtuːd" };
@@ -16,7 +17,7 @@ test("legacy regional labels are separated while abbreviated American IPA remain
 });
 
 test("all released regional-label artifacts are removed at the display boundary without changing IDs", () => {
-  const entries = JSON.parse(readFileSync(new URL("../public/data/v1/index.json", import.meta.url), "utf8"));
+  const entries = decodeLexiconIndex(JSON.parse(readFileSync(new URL("../public/data/v1/index.json", import.meta.url), "utf8")));
   const originalIds = entries.map(entry => entry.id);
   const normalized = entries.map(normalizePronunciations);
   assert.deepEqual(normalized.map(entry => entry.id), originalIds);

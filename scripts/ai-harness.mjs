@@ -15,13 +15,14 @@ import {
 } from '../lib/assistant/core.ts';
 import { parseLearnerProfile } from '../lib/assistant/profile.ts';
 import { SYSTEM_PROMPT } from '../lib/assistant/prompt.ts';
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 
 const args = process.argv.slice(2);
 const live = args.includes('--live');
 const only = args.includes('--case') ? args[args.indexOf('--case') + 1] : null;
 const repeat = args.includes('--repeat') ? Math.max(1, Number(args[args.indexOf('--repeat') + 1]) || 1) : live ? 2 : 1;
 const fixtures = JSON.parse(readFileSync(new URL('./ai-harness/cases.json', import.meta.url), 'utf8'));
-const rows = JSON.parse(readFileSync(new URL('../public/data/v1/index.json', import.meta.url), 'utf8'));
+const rows = decodeLexiconIndex(JSON.parse(readFileSync(new URL('../public/data/v1/index.json', import.meta.url), 'utf8')));
 const words = new Map(rows.filter((row) => row.flags?.formalReleaseEligible === true).map((row) => [row.id, { headword: row.headword }]));
 const profile = parseLearnerProfile(fixtures.profile, words);
 const provider = process.env.HARNESS_PROVIDER || 'deepseek';

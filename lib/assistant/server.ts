@@ -1,6 +1,7 @@
 import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
 import { budgetDay, consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-classification";
+import { decodeLexiconIndex } from "@/lib/lexicon-index-codec.mjs";
 import type { D1Database } from "@cloudflare/workers-types";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
@@ -267,9 +268,8 @@ async function releaseIndex(request: Request): Promise<ReleaseIndexRow[]> {
   releaseIndexPromise = (async () => {
     const response = await assets.fetch(new Request(new URL("/data/v1/index.json", request.url)));
     if (!response.ok) throw new AiRuntimeConfigError("evidence_store_unavailable", "正式词库证据暂时无法读取。");
-    const payload = await response.json();
-    if (!Array.isArray(payload)) throw new AiRuntimeConfigError("evidence_store_unavailable", "正式词库证据格式异常。");
-    return payload as ReleaseIndexRow[];
+    try { return decodeLexiconIndex(await response.json()) as ReleaseIndexRow[]; }
+    catch { throw new AiRuntimeConfigError("evidence_store_unavailable", "正式词库证据格式异常。"); }
   })().catch((error) => {
     releaseIndexPromise = null;
     throw error;

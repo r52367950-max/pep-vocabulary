@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { normalizeEntry, repairMeaning } from '../lib/lexicon.ts';
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 
 test('PDF font fragments disappear without losing different noun and verb senses', () => {
   assert.equal(repairMeaning('滥用；虐待；辱骂 /bjuz/ vt. 滥用；虐待；辱骂'), '滥用；虐待；辱骂');
@@ -12,7 +13,7 @@ test('PDF font fragments disappear without losing different noun and verb senses
 });
 
 test('affected release entries become readable while stable data and source evidence stay intact', () => {
-  const entries=JSON.parse(readFileSync(new URL('../public/data/v1/index.json',import.meta.url),'utf8'));
+  const entries=decodeLexiconIndex(JSON.parse(readFileSync(new URL('../public/data/v1/index.json',import.meta.url),'utf8')));
   const affected=entries.filter(row=>/[\uE000-\uF8FF]/.test(row.chineseCore));
   for(const original of affected){
     const snapshot=structuredClone(original);const fixed=normalizeEntry(original);

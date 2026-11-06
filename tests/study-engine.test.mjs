@@ -5,6 +5,7 @@ import { blankTarget, buildQuestion, getEntryExample, gradeQuestion, localSenten
 import { BOOKS, buildStudyQueue, effectiveRating, getBookUnits, selectEntries, summarizeStudy } from "../lib/study.ts";
 import { READINGS, ORIGINAL_EXAMPLES, findReadingTargets, readingWordCount } from "../lib/reading.ts";
 import { newStoredCard, scheduleReview } from "../lib/scheduler.ts";
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 
 const now = new Date("2026-09-15T12:00:00Z");
 const source = (bookId, unit = "Unit 1", printedPage = 1) => ({ bookId, unit, printedPage, volume: bookId });
@@ -176,7 +177,7 @@ test("sentence length hints do not pretend to verify grammar or correctness", ()
 });
 
 test("six original readings have translations, supported target words and answer explanations", async () => {
-  const index = JSON.parse(await readFile(new URL("../public/data/v1/index.json", import.meta.url), "utf8"));
+  const index = decodeLexiconIndex(JSON.parse(await readFile(new URL("../public/data/v1/index.json", import.meta.url), "utf8")));
   const books = new Set(BOOKS.map((book) => book.id));
   assert.ok(index.flatMap((entry) => entry.sources).every((source) => books.has(source.bookId)));
   assert.equal(READINGS.length, 6);

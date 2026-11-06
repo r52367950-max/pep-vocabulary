@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createReleaseStage, lexiconIndexEntry, publishLexiconRelease, validateLexiconRelease } from "./lexicon-release.mjs";
 import { middleSourceRows, snapshotSourceInputs } from "./source-inputs.mjs";
+import { encodeLexiconIndex } from "../lib/lexicon-index-codec.mjs";
 import { basename, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -576,7 +577,7 @@ for (let indexStart = 0; indexStart < released.length; indexStart += chunkSize) 
   writeFileSync(join(releaseDir, "chunks", name), `${JSON.stringify(slice)}\n`);
   chunks.push({ file: `chunks/${name}`, first: slice[0]?.id, last: slice.at(-1)?.id, count: slice.length });
 }
-writeFileSync(join(releaseDir, "index.json"), `${JSON.stringify(index)}\n`);
+writeFileSync(join(releaseDir, "index.json"), `${JSON.stringify(encodeLexiconIndex(index))}\n`);
 writeFileSync(join(releaseDir, "manifest.json"), `${JSON.stringify({
   version: "1.0.0-rc.1", generatedAt: new Date().toISOString(), schemaVersion: "1.0.0",
   sourceRecords: sourceRecords.length, normalizedRecords: normalized.length, uniqueEntries: entries.length,

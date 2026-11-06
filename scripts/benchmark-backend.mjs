@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
 import { resolveLexiconEvidence } from '../lib/assistant/core.ts';
+import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 
 // Benchmark the exact old resolver, independently of unrelated module changes.
 const baseline = process.argv[2] || 'e2e9e25b350e9cbaf7b2fa6c5da4063cc26d2a70';
@@ -12,7 +13,7 @@ const end = source.indexOf('\nfunction privateIpv4', start);
 if (start < 0 || end < 0) throw new Error('Baseline resolver not found');
 const js = ts.transpileModule(source.slice(start, end), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const previous = (await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)).resolveLexiconEvidence;
-const rows = JSON.parse(readFileSync('public/data/v1/index.json', 'utf8'));
+const rows = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.json', 'utf8')));
 const ids = rows.filter((row) => row.flags?.formalReleaseEligible).slice(0, 6).map((row) => row.id);
 const expected = JSON.stringify(previous(rows, ids));
 if (JSON.stringify(resolveLexiconEvidence(rows, ids)) !== expected) throw new Error('Resolver results differ');
