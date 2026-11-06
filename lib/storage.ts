@@ -185,19 +185,53 @@ export async function exportBackup(generation?: string) {
   });
 }
 
+export class LocalDataChangedError extends Error {
+  constructor() { super("合并期间本机又有新的学习记录，本机数据没有被替换。请再上传一次，把新记录一起合并。"); }
+}
+
+function replaceStores(tx: IDBTransaction, migrated: BackupPayload, generation: string) {
+  for (const name of backupStores) {
+    const store = tx.objectStore(name);
+    store.clear();
+    for (const row of migrated[name]) store.put(row);
+  }
+  tx.objectStore("meta").clear();
+  tx.objectStore("meta").put({ key: GENERATION_KEY, value: generation });
+}
+
 export async function restoreBackup(payload: unknown, expectedGeneration?: string) {
   // Validate every row before opening the destructive transaction.
   const migrated = validateBackup(payload);
   const generation = createLocalId();
-  await generationTransaction<void>(backupStores, "readwrite", expectedGeneration, (tx) => {
-    for (const name of backupStores) {
-      const store = tx.objectStore(name);
-      store.clear();
-      for (const row of migrated[name]) store.put(row);
-    }
-    tx.objectStore("meta").clear();
-    tx.objectStore("meta").put({ key: GENERATION_KEY, value: generation });
-  });
+  await generationTransaction<void>(backupStores, "readwrite", expectedGeneration, (tx) => replaceStores(tx, migrated, generation));
+  announceReplacement();
+  return generation;
+}
+
+/**
+ * Replaces the local records with a merged snapshot only if they still equal
+ * `expected` (the export the merge was computed from), checked under the same
+ * lock as the write. A review, note or writing saved in the meantime keeps the
+ * local data untouched.
+ */
+export async function replaceMergedBackup(payload: unknown, expected: BackupPayload, expectedGeneration: string) {
+  const migrated = validateBackup(payload);
+  const generation = createLocalId();
+  let changed = false;
+  try {
+    await generationTransaction<void>(backupStores, "readwrite", expectedGeneration, (tx) => {
+      let pending = backupStores.length;
+      for (const name of backupStores) {
+        tx.objectStore(name).getAll().onsuccess = function () {
+          if (changed) return;
+          if (stableJson(this.result) !== stableJson(expected[name])) { changed = true; tx.abort(); return; }
+          if (--pending === 0) replaceStores(tx, migrated, generation);
+        };
+      }
+    });
+  } catch (error) {
+    throw changed ? new LocalDataChangedError() : error;
+  }
   announceReplacement();
   return generation;
 }
