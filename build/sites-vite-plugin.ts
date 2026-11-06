@@ -48,7 +48,7 @@ export function sites(): Plugin {
 
       // Browser QA pages deliberately import source modules and test fixtures.
       // They remain available in development, never in the published artifact.
-      for (const file of ["qa-reading-import.html", "qa-fixtures"]) {
+      for (const file of ["qa-reading-import.html", "qa-viewport.html", "qa-fixtures"]) {
         await rm(resolve(root, "dist", "client", file), { recursive: true, force: true });
       }
 

@@ -28,6 +28,11 @@ const manifest = JSON.parse(await readFile(hostingPath, "utf8"));
 if (manifest.d1 !== "DB") throw new Error("Packaged Sites manifest must declare the D1 binding as DB");
 NODE
 
+if compgen -G "${SITES_PROJECT_ROOT}/dist/client/qa-*" >/dev/null; then
+  echo "Browser QA pages and fixtures must not be published in dist/client" >&2
+  exit 66
+fi
+
 grep -q 'export{.*default' "${worker}" || grep -q 'export default' "${worker}" || {
   echo "dist/server/index.js must expose a default Worker export" >&2
   exit 66

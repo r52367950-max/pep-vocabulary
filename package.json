@@ -9,12 +9,12 @@
     "install:ci": "bash scripts/install-ci.sh",
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
     "build": "bash scripts/build-verified.sh",
-    "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
+    "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite preview",
     "data:manifest": "node scripts/build-source-manifest.mjs",
     "data:build": "node scripts/build-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
     "test:unit": "node --import ./tests/register.mjs --test --test-concurrency=2 tests/*.test.mjs",
-    "test": "npm run data:audit && npm run typecheck && npm run test:unit && npm run build && npm run test:runtime",
+    "test": "npm run data:audit && npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:runtime",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
@@ -50,7 +50,7 @@
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
-    "vite": "8.3.0",
+    "vite": "8.3.6",
     "wrangler": "4.131.2"
   },
   "type": "module",
@@ -58,9 +58,15 @@
   "overrides": {
     "image-size": "2.0.4",
     "esbuild": "0.28.2",
-    "undici": "7.29.1",
-    "fast-uri": "3.1.8",
+    "undici": "7.30.2",
+    "fast-uri": "3.1.9",
     "sharp": "0.35.5",
-    "source-map-js": "1.2.2"
+    "source-map-js": "1.2.2",
+    "satori": "0.33.5",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.5"
+    },
+    "zod": "4.6.7",
+    "fflate": "0.7.5"
   }
 }
