@@ -1,15 +1,50 @@
 "use client";
 
 import { useMemo } from "react";
-import { Check, Clock3, Leaf, Target } from "lucide-react";
+import { Check, Clock3, Leaf, Play, Target } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { StudyStats } from "@/lib/progress";
 import { forecastDueLoad } from "@/lib/scheduler";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { Empty } from "./shared";
+import { StudioSymbol } from "./symbol";
 import StudyInsights from "./ai/study-insights";
 
-export default function Activity({ data, stats, onPractice, onWord }: {
+/** Shown before the first answer: one invitation instead of empty charts and zero rows. */
+function FirstRecord({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="activity-empty" aria-labelledby="activity-empty-title">
+      <StudioSymbol name="activity" size={30} />
+      <h2 id="activity-empty-title">还没有学习记录</h2>
+      <p>完成第一轮学习后，这里会显示学过的词数、连续学习天数、最近七天的变化和复习安排。</p>
+      <button type="button" className="primary" onClick={onStart}>
+        <Play size={14} fill="currentColor" style={{ strokeWidth: 0 }} aria-hidden="true" />
+        开始今天的学习
+      </button>
+    </section>
+  );
+}
+
+export default function Activity(props: {
+  data: Vocabulary; stats: StudyStats;
+  onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void;
+  onStart: () => void;
+}) {
+  const { data, onStart } = props;
+  const empty = !data.history.active.length && !data.cards.size;
+  return (
+    <div className="activity-view">
+      <div className="page-heading">
+        <div>
+          <h1>学习记录</h1>
+        </div>
+      </div>
+      {empty ? <FirstRecord onStart={onStart} /> : <ActivityRecord {...props} />}
+    </div>
+  );
+}
+
+function ActivityRecord({ data, stats, onPractice, onWord }: {
   data: Vocabulary; stats: StudyStats;
   onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void;
 }) {
@@ -28,12 +63,7 @@ export default function Activity({ data, stats, onPractice, onWord }: {
   const maximum = Math.max(10, ...week.map((day) => day.count));
   const forecast = useMemo(() => forecastDueLoad(data.cards.values(), 7), [data.cards]);
   return (
-    <div className="activity-view">
-      <div className="page-heading">
-        <div>
-          <h1>学习记录</h1>
-        </div>
-      </div>
+    <>
       <div className="activity-metrics">
         {[
           {
@@ -150,7 +180,7 @@ export default function Activity({ data, stats, onPractice, onWord }: {
           </Empty>
         )}
       </section>
-    </div>
+    </>
   );
 }
 const BookIcon = Target;

@@ -35,7 +35,7 @@ test('failed sends remain bounded to current tab and are dropped on temporary mo
   setTemporaryMode(false);f.failPost=false;await flushLearningActivities();assert.equal(f.posts.length,0);
 });
 test('closing journal invalidates privacy context and drops queued activity',async t=>{
-  const f=setup(t);await refreshLearningJournal(); const epoch=learningContextStore.get().epoch;
+  setup(t);await refreshLearningJournal(); const epoch=learningContextStore.get().epoch;
   await updateLearningJournal({enabled:false});assert.ok(learningContextStore.get().epoch>epoch);
   assert.equal(learningJournalStore.get().journal.enabled,false);
 });
