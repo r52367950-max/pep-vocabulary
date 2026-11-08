@@ -236,3 +236,23 @@ test('the agreed base is stored with the cloud link and read back', async () => 
   await saveCloudLink({ identity: 'id-1', revision: 4 }, generation);
   assert.deepEqual(await readCloudLink(generation), { identity: 'id-1', revision: 4 }, 'links saved before 2.17.0 have no base');
 });
+
+test('links saved before 2.17.0 have no base: offline note, favourite and pause survive a later review elsewhere', () => {
+  const local = snapshot([shared], [edited(settled(), { note: 'offline new note', favorite: true, status: 'paused' }, 10)]);
+  const cloud = review(shared.after, 'apple', { eventId: 'cloud-2', minute: 20 });
+  const merged = card(mergeBackups(local, snapshot([shared, cloud], [cloud.after])).payload, 'apple');
+  assert.equal(merged.note, 'offline new note');
+  assert.equal(merged.favorite, true);
+  assert.equal(merged.status, 'paused');
+  assert.deepEqual(merged.fsrs, cloud.after.fsrs);
+  const split = card(mergeBackups(snapshot([shared], [edited(settled(), { note: 'new note' }, 10)]),
+    snapshot([shared], [edited(settled(), { favorite: true }, 20)])).payload, 'apple');
+  assert.equal(split.note, 'new note', 'a note and a favourite edited on different devices are both kept');
+  assert.equal(split.favorite, true);
+});
+
+test('with 29 shared versions and one new version on each side, the 31-version merge is refused', () => {
+  const common = Array.from({ length: 29 }, (_, index) => versionRow(`common-${index}`, `common ${index}`, index));
+  assert.throws(() => mergeBackups(snapshot([], [], { writings: [essay([...common, versionRow('local-only', 'mine', 40)], 40)] }),
+    snapshot([], [], { writings: [essay([...common, versionRow('remote-only', 'theirs', 41)], 41)] })), SyncMergeError);
+});

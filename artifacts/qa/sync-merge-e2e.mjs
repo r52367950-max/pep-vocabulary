@@ -2,6 +2,7 @@
 // Worker in local workerd with a fresh D1. Device A uploads, device B studies
 // the same words and merges, then device A studies again and merges. Finally A
 // edits a word's note while B favourites the same word; both edits must survive.
+import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 // Usage after npm run build: node artifacts/qa/sync-merge-e2e.mjs [screenshot-dir]
@@ -133,3 +134,9 @@ try {
   await browser.close();
   await mf.dispose();
 }
+// Exit non-zero when a device or the cloud ends up with the wrong records.
+assert.deepEqual([report.cloudAfterA?.events, report.cloudAfterB?.events, report.bLocalAfter?.events, report.cloudFinal?.events, report.aLocalFinal?.events], [3, 6, 6, 7, 7]);
+assert.match(report.bUpload, /^已合并并上传/);
+assert.match(report.aUploadAgain, /^已合并并上传/);
+assert.deepEqual(report.metadataFinal && { note: report.metadataFinal.note, favorite: report.metadataFinal.favorite }, { note: 'A 的笔记', favorite: true });
+assert.deepEqual(errors, []);
