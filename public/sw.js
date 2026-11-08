@@ -8,9 +8,14 @@ function cacheable(request, response) {
 }
 
 async function putSafely(cache, request, response) {
-  if (cacheable(request, response)) {
+  if (cache && cacheable(request, response)) {
     try { await cache.put(request, response.clone()); } catch { /* A full cache must not break online learning. */ }
   }
+}
+
+async function matchSafely(cache, request) {
+  try { return cache ? await cache.match(request) : undefined; }
+  catch { return undefined; }
 }
 
 self.addEventListener("install", (event) => {
@@ -87,22 +92,24 @@ self.addEventListener("fetch", (event) => {
   if (!navigation && !asset) return;
   // Asset names from Vite are content hashed. Data files live in a versioned shell cache.
   const operation = (async () => {
-    const cache = await caches.open(VERSION);
+    // Storage may become unavailable after installation (quota, private mode,
+    // browser cleanup). A failed cache lookup must not block a working network.
+    const cache = await caches.open(VERSION).catch(() => null);
     const key = navigation ? new Request(new URL("/", self.location.origin)) : event.request;
     if (!navigation) {
-      const cached = await cache.match(key);
+      const cached = await matchSafely(cache, key);
       if (cached) return cached;
     }
     try {
       const response = await fetch(event.request);
       if (navigation && !response.ok && !response.redirected) {
-        const cached = await cache.match(key);
+        const cached = await matchSafely(cache, key);
         if (cached) return cached;
       }
       await putSafely(cache, key, response);
       return response;
     } catch (error) {
-      const cached = await cache.match(key);
+      const cached = await matchSafely(cache, key);
       if (cached) return cached;
       throw error;
     }

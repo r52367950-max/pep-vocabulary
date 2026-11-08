@@ -1,0 +1,16 @@
+import pkg from '/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.js';
+const {chromium}=pkg;const b=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+const p=await b.newPage({viewport:{width:1024,height:768}});p.on('pageerror',e=>console.log('PAGEERROR',e.message));
+await p.goto('http://127.0.0.1:4173/');await p.getByRole('button',{name:'写作练习'}).waitFor();
+await p.evaluate(()=>{window.__getAll=IDBObjectStore.prototype.getAll; IDBObjectStore.prototype.getAll=function(...args){if(this.name==='writings')throw new DOMException('QA injected read fault','UnknownError'); return window.__getAll.apply(this,args)}});
+await p.getByRole('button',{name:'写作练习'}).click();await p.getByRole('alert').waitFor({timeout:5000});
+console.log('READ FAILURE', (await p.locator('body').innerText()).slice(0,1000));await p.screenshot({path:'/tmp/pep-qa-writing-read-fail.png'});
+await p.evaluate(()=>IDBObjectStore.prototype.getAll=window.__getAll);
+await p.getByRole('button',{name:'重新读取'}).click();await p.getByRole('alert').waitFor({state:'hidden',timeout:5000});
+console.log('READ RETRY',(await p.locator('body').innerText()).slice(0,700));
+await p.getByRole('button',{name:'开始写作',exact:true}).click();await p.getByRole('textbox').fill('I remember a quiet meal with my family.');
+await p.waitForTimeout(1100);console.log('SAVED',(await p.locator('body').innerText()).slice(0,700));
+await p.evaluate(()=>{window.__put=IDBObjectStore.prototype.put; IDBObjectStore.prototype.put=function(...args){if(this.name==='writings')throw new DOMException('QA injected write fault','UnknownError');return window.__put.apply(this,args)}});
+await p.getByRole('textbox').fill('I remember a quiet meal with my family. The room was warm.');await p.waitForTimeout(1400);
+console.log('WRITE FAILURE',(await p.locator('body').innerText()).slice(0,800));await p.screenshot({path:'/tmp/pep-qa-writing-save-fail.png'});
+await b.close();

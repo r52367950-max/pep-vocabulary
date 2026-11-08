@@ -32,6 +32,27 @@ test('Vite /assets JavaScript is cached for offline revisits', async () => {
   try { assert.equal(await (await event('/assets/app-hash.js').finish()).text(), 'asset'); }
   finally { failure = false; }
 });
+test('cache open and lookup failures cannot break online navigation or assets', async () => {
+  const originalOpen = runtime.caches.open;
+  const originalMatch = cache.match;
+  for (const operation of ['open', 'match']) {
+    try {
+      if (operation === 'open') runtime.caches.open = async () => { throw new Error('Storage unavailable'); };
+      else cache.match = async () => { throw new Error('Cache read failed'); };
+      for (const [path, mode] of [['/', 'navigate'], ['/assets/uncached.js', 'cors']]) {
+        const response = await event(path, mode).finish();
+        assert.equal(response.status, 200);
+        assert.equal(await response.text(), 'asset');
+      }
+      status = 503;
+      assert.equal((await event('/', 'navigate').finish()).status, 503);
+    } finally {
+      runtime.caches.open = originalOpen;
+      cache.match = originalMatch;
+      status = 200;
+    }
+  }
+});
 test('navigation errors cannot overwrite a valid offline shell', async () => {
   await event('/', 'navigate').finish();
   status = 503;
