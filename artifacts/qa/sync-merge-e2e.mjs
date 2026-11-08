@@ -1,6 +1,7 @@
 // Two browser profiles (devices) share one gateway identity against the built
 // Worker in local workerd with a fresh D1. Device A uploads, device B studies
-// the same words and merges, then device A studies again and merges.
+// the same words and merges, then device A studies again and merges. Finally A
+// edits a word's note while B favourites the same word; both edits must survive.
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 // Usage after npm run build: node artifacts/qa/sync-merge-e2e.mjs [screenshot-dir]
@@ -72,6 +73,20 @@ const localEvents = ({ page }) => page.evaluate(() => new Promise((resolveCount,
     tx.oncomplete = () => resolveCount(out); };
   open.onerror = () => reject(open.error);
 }));
+// Same write as updateCardMetadata: patch one field and stamp updatedAt.
+const editCard = ({ page }, patch) => page.evaluate((patch) => new Promise((done, reject) => {
+  const open = indexedDB.open('pep-vocab-studio');
+  open.onsuccess = () => {
+    const tx = open.result.transaction(['cards', 'events'], 'readwrite'), cards = tx.objectStore('cards');
+    tx.objectStore('events').getAll().onsuccess = function () {
+      const id = this.result.map(e => e.cardId).sort()[0];
+      cards.get(id).onsuccess = function () { cards.put({ ...this.result, ...patch, updatedAt: new Date().toISOString() }); };
+      tx.oncomplete = () => done(id);
+    };
+  };
+  open.onerror = () => reject(open.error);
+}), patch);
+const cloudCard = async (id) => JSON.parse((await db.prepare('SELECT payload FROM sync_states').first()).payload).cards.find(c => c.id === id);
 const cloud = async () => {
   const row = await db.prepare('SELECT revision, payload FROM sync_states').first();
   if (!row) return null;
@@ -104,6 +119,14 @@ try {
   await a.page.getByRole('button', { name: /学习记录/ }).first().click();
   await a.page.waitForTimeout(800);
   await a.page.screenshot({ path: `${shots}/a-activity-after-merge.png` });
+
+  const word = await editCard(a, { note: 'A 的笔记' });
+  await a.page.waitForTimeout(50);
+  await editCard(b, { favorite: true });
+  report.bUploadFavorite = await upload(b, 'b-merge-favorite');
+  report.aUploadNote = await upload(a, 'a-merge-note');
+  const merged = await cloudCard(word);
+  report.metadataFinal = { word, note: merged.note ?? null, favorite: merged.favorite ?? false, revision: (await cloud()).revision };
 } finally {
   report.errors = errors;
   console.log(JSON.stringify(report, null, 1));

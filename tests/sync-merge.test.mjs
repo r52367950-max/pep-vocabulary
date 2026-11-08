@@ -3,8 +3,8 @@ import test from 'node:test';
 import 'fake-indexeddb/auto';
 import { scheduleReview } from '../lib/scheduler.ts';
 import { validateBackup } from '../lib/backup.ts';
-import { mergeBackups, SyncMergeError } from '../lib/sync-merge.ts';
-import { clearUserData, commitReview, exportBackup, LocalDataChangedError, loadLearningState, replaceMergedBackup, restoreBackup } from '../lib/storage.ts';
+import { mergeBackups, syncBase, SyncMergeError } from '../lib/sync-merge.ts';
+import { clearUserData, commitReview, exportBackup, LocalDataChangedError, loadLearningState, readCloudLink, replaceMergedBackup, restoreBackup, saveCloudLink } from '../lib/storage.ts';
 
 const start = Date.parse('2026-10-02T10:00:00.000Z');
 const at = (minutes) => new Date(start + minutes * 60_000);
@@ -27,7 +27,7 @@ test('answers for different words on each device are combined without rescheduli
   const local = review(null, 'banana', { eventId: 'local-1', minute: 5 });
   const cloud = review(shared.after, 'apple', { eventId: 'cloud-1', minute: 60 * 24 });
   const { payload, summary } = mergeBackups(snapshot([shared, local], [shared.after, local.after]), snapshot([shared, cloud], [cloud.after]));
-  assert.deepEqual(summary, { localAnswers: 1, cloudAnswers: 1, rescheduledWords: 0, droppedUndos: 0 });
+  assert.deepEqual(summary, { localAnswers: 1, cloudAnswers: 1, rescheduledWords: 0, droppedUndos: [], combinedNotes: [], keptVersions: 0 });
   assert.deepEqual(byId(payload, 'local-1'), local);
   assert.deepEqual(byId(payload, 'cloud-1'), cloud);
   assert.deepEqual(card(payload, 'apple'), cloud.after);
@@ -47,7 +47,7 @@ test('a word answered on both devices keeps every answer and reschedules local o
   const local = review(shared.after, 'apple', { eventId: 'local-2', minute: 60 * 26, rating: 1, answer: 'aple' });
   const later = review(local.after, 'apple', { eventId: 'local-3', minute: 60 * 27, rating: 3 });
   const { payload, summary } = mergeBackups(snapshot([shared, later, local], [later.after]), snapshot([shared, cloud], [cloud.after]));
-  assert.deepEqual(summary, { localAnswers: 2, cloudAnswers: 1, rescheduledWords: 1, droppedUndos: 0 });
+  assert.deepEqual(summary, { localAnswers: 2, cloudAnswers: 1, rescheduledWords: 1, droppedUndos: [], combinedNotes: [], keptVersions: 0 });
   assert.deepEqual(byId(payload, 'cloud-2'), cloud, 'cloud history is kept as confirmed');
   const first = byId(payload, 'local-2'), second = byId(payload, 'local-3');
   assert.deepEqual(evidenceOf(first), evidenceOf(local), 'the recorded answer is unchanged');
@@ -74,7 +74,7 @@ test('local undo records are replayed with their answers; an undo of a synced an
 
   const undoShared = undo(shared, 'local-undo-shared', 30);
   const dropped = mergeBackups(snapshot([shared, undoShared], []), snapshot([shared, cloud], [cloud.after]));
-  assert.equal(dropped.summary.droppedUndos, 1);
+  assert.deepEqual(dropped.summary.droppedUndos, ['apple'], 'the word is named so the undo can be confirmed before upload');
   assert.equal(byId(dropped.payload, 'local-undo-shared'), undefined);
   assert.deepEqual(card(dropped.payload, 'apple'), cloud.after);
 });
@@ -87,7 +87,7 @@ test('merging again after the cloud holds rescheduled copies adds nothing and ne
   const again = mergeBackups(localSnapshot, first);
   assert.equal(again.payload.events.length, first.events.length);
   assert.deepEqual(card(again.payload, 'apple'), card(first, 'apple'));
-  assert.deepEqual(again.summary, { localAnswers: 0, cloudAnswers: 1, rescheduledWords: 0, droppedUndos: 0 }, 'only the other device\'s answer is new here');
+  assert.deepEqual(again.summary, { localAnswers: 0, cloudAnswers: 1, rescheduledWords: 0, droppedUndos: [], combinedNotes: [], keptVersions: 0 }, 'only the other device\'s answer is new here');
 });
 
 test('the same record ID with a different recorded answer is refused', () => {
@@ -96,7 +96,7 @@ test('the same record ID with a different recorded answer is refused', () => {
   assert.throws(() => mergeBackups(snapshot([shared, local], [local.after]), snapshot([shared, cloud], [cloud.after])), SyncMergeError);
 });
 
-test('notes, favourites, pause, settings and writings follow the most recently updated side', () => {
+test('without a recorded base, metadata set on either side is kept and settings follow the most recently updated side', () => {
   const cloud = review(shared.after, 'apple', { eventId: 'cloud-2', minute: 60 * 24 });
   const localCard = { ...shared.after, note: 'local note', favorite: true, status: 'paused', updatedAt: at(60 * 30).toISOString() };
   const settings = (minutes, dailyMinutes) => ({ key: 'app', dailyMinutes, desiredRetention: 0.9, selectedBooks: ['HS-R1'], mode: 'normal', theme: 'system',
@@ -156,4 +156,83 @@ test('a merged snapshot replaces local data only if nothing was saved since the 
   assert.notEqual(replaced, generation);
   assert.deepEqual((await exportBackup(replaced)).events.map((event) => event.eventId).sort(), ['cloud-1', 'local-1', 'local-2']);
   await restoreBackup(snapshot([], []));
+});
+
+// Metadata helpers: a synced snapshot both devices agreed on, then each device's own edits.
+const settled = (patch = {}) => ({ ...shared.after, ...patch });
+const edited = (cardRow, patch, minutes) => ({ ...cardRow, ...patch, updatedAt: at(minutes).toISOString() });
+const versionRow = (id, text, minute, extra = {}) => ({ id, text, savedAt: at(minute).toISOString(), review: null, ...extra });
+const essay = (versions, minute) => ({ id: 'essay', createdAt: at(0).toISOString(), updatedAt: at(minute).toISOString(), genre: 'free', title: 'My trip',
+  prompt: 'Prompt', targetIds: [], wordRange: [80, 120], versions });
+
+test('a note edited on this device survives a later review on the other device', () => {
+  const agreed = snapshot([shared], [settled({ note: 'first' })]);
+  const local = snapshot([shared], [edited(settled({ note: 'first' }), { note: 'second' }, 60)]);
+  const cloud = review(settled({ note: 'first' }), 'apple', { eventId: 'cloud-2', minute: 60 * 24 });
+  const { payload, summary } = mergeBackups(local, snapshot([shared, cloud], [cloud.after]), syncBase(agreed));
+  assert.equal(card(payload, 'apple').note, 'second');
+  assert.deepEqual(card(payload, 'apple').fsrs, cloud.after.fsrs, 'scheduling follows the cloud review');
+  assert.deepEqual(summary.combinedNotes, []);
+});
+
+test('a note changed on one side and a favourite on the other are both kept, including an unfavourite', () => {
+  const start = settled({ note: 'first', favorite: true });
+  const agreed = syncBase(snapshot([shared], [start]));
+  const local = snapshot([shared], [edited(start, { note: 'second' }, 60)]);
+  const cloud = snapshot([shared], [edited(start, { favorite: false }, 120)]);
+  const merged = card(mergeBackups(local, cloud, agreed).payload, 'apple');
+  assert.equal(merged.note, 'second');
+  assert.equal(merged.favorite, false);
+  const reversed = card(mergeBackups(cloud, local, agreed).payload, 'apple');
+  assert.equal(reversed.note, 'second');
+  assert.equal(reversed.favorite, false);
+});
+
+test('a note changed differently on both sides keeps both texts, and merging again adds nothing', () => {
+  const start = settled({ note: 'first' });
+  const agreed = syncBase(snapshot([shared], [start]));
+  const local = snapshot([shared], [edited(start, { note: 'mine' }, 60)]);
+  const { payload, summary } = mergeBackups(local, snapshot([shared], [edited(start, { note: 'theirs' }, 30)]), agreed);
+  assert.equal(card(payload, 'apple').note, 'theirs\n\n——另一版本——\nmine');
+  assert.deepEqual(summary.combinedNotes, ['apple']);
+  const again = mergeBackups(local, payload, agreed);
+  assert.equal(card(again.payload, 'apple').note, card(payload, 'apple').note);
+  assert.deepEqual(again.summary.combinedNotes, []);
+  assert.throws(() => mergeBackups(snapshot([shared], [edited(start, { note: 'm'.repeat(30_000) }, 60)]),
+    snapshot([shared], [edited(start, { note: 't'.repeat(30_000) }, 30)]), agreed), SyncMergeError, 'refused instead of truncating');
+});
+
+test('a draft edited in place on this device keeps its newer text when the cloud did not touch it', () => {
+  const agreed = syncBase(snapshot([], [], { writings: [essay([versionRow('v1', 'old draft', 1)], 1)] }));
+  const local = snapshot([], [], { writings: [essay([versionRow('v1', 'new draft', 50)], 50)] });
+  const cloud = snapshot([], [], { writings: [essay([versionRow('v1', 'old draft', 1)], 1)] });
+  const { payload, summary } = mergeBackups(local, cloud, agreed);
+  assert.deepEqual(payload.writings[0].versions.map((row) => row.text), ['new draft']);
+  assert.equal(summary.keptVersions, 0);
+  const cloudEdited = snapshot([], [], { writings: [essay([versionRow('v1', 'cloud draft', 40)], 40)] });
+  const both = mergeBackups(local, cloudEdited, agreed);
+  assert.deepEqual(both.payload.writings[0].versions.map((row) => row.text), ['cloud draft', 'new draft'], 'both edits of the same draft are kept, newer last');
+  assert.equal(both.summary.keptVersions, 1);
+  const again = mergeBackups(local, both.payload, agreed);
+  assert.equal(again.payload.writings[0].versions.length, 2, 'merging again does not copy the draft twice');
+  assert.equal(again.summary.keptVersions, 0);
+  const unknown = mergeBackups(local, cloud);
+  assert.deepEqual(unknown.payload.writings[0].versions.map((row) => row.text), ['old draft', 'new draft'], 'without a base both texts are kept');
+});
+
+test('a merge that would exceed 30 writing versions is refused instead of dropping one side', () => {
+  const rows = (prefix, count) => Array.from({ length: count }, (_, index) => versionRow(`${prefix}-${index}`, `${prefix} ${index}`, index));
+  const local = snapshot([], [], { writings: [essay(rows('mine', 20), 30)] });
+  const cloud = snapshot([], [], { writings: [essay(rows('theirs', 20), 20)] });
+  assert.throws(() => mergeBackups(local, cloud), (error) => error instanceof SyncMergeError && /30/.test(error.message));
+});
+
+test('the agreed base is stored with the cloud link and read back', async () => {
+  await clearUserData();
+  const { generation } = await loadLearningState();
+  const base = syncBase(snapshot([shared], [settled({ note: 'first' })], { writings: [essay([versionRow('v1', 'draft', 1)], 1)] }));
+  await saveCloudLink({ identity: 'id-1', revision: 3, base }, generation);
+  assert.deepEqual(await readCloudLink(generation), { identity: 'id-1', revision: 3, base });
+  await saveCloudLink({ identity: 'id-1', revision: 4 }, generation);
+  assert.deepEqual(await readCloudLink(generation), { identity: 'id-1', revision: 4 }, 'links saved before 2.17.0 have no base');
 });
