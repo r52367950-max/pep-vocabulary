@@ -24,10 +24,11 @@ import {
   readCloudLink,
   saveCloudLink,
   USER_DATA_SCHEMA_VERSION,
+  validateBackup,
 } from "@/lib/storage";
 import { SESSION_KEY } from "@/lib/session";
 import { assertSyncPayloadFits } from "@/lib/sync-limits";
-import { mergeBackups, type MergeSummary } from "@/lib/sync-merge";
+import { mergeBackups, syncBase, type MergeSummary } from "@/lib/sync-merge";
 
 const megabytes = (bytes: number) => (bytes / 1_048_576).toLocaleString("zh-CN", { maximumFractionDigits: bytes < 10_485_760 ? 1 : 0 });
 const LINK_KEY = "pep-vocab-cloud-link-v2";
@@ -38,11 +39,16 @@ type CloudState = {
 };
 class RevisionConflict extends Error {}
 const MERGE_EXPLANATION =
-  "两边的作答都会保留；同一个词在两台设备上都复习过时，以云端记录为准重新安排本机这几次作答的复习时间。笔记、收藏和设置采用较晚修改的一侧。";
+  "两边的作答都会保留；同一个词在两台设备上都复习过时，以云端记录为准重新安排本机这几次作答的复习时间。笔记、收藏和作文按各自的修改合并，两边改成不同内容时都保留；设置采用较晚修改的一侧。";
 function mergeMessage(summary: MergeSummary) {
   const parts = [`本机 ${summary.localAnswers} 次作答`, `云端 ${summary.cloudAnswers} 次作答`];
-  const rescheduled = summary.rescheduledWords ? `；${summary.rescheduledWords} 个两边都复习过的词已按云端记录重排复习时间` : "";
-  return `已合并并上传：${parts.join("、")}${rescheduled}。`;
+  const notes = [
+    summary.rescheduledWords && `${summary.rescheduledWords} 个两边都复习过的词已按云端记录重排复习时间`,
+    summary.combinedNotes.length && `${summary.combinedNotes.length} 个词的笔记两边改法不同，两份内容都已保留在笔记中`,
+    summary.keptVersions && `${summary.keptVersions} 个作文版本两边改法不同，本机内容另存为新版本`,
+    summary.droppedUndos.length && `${summary.droppedUndos.length} 个词的撤销未执行`,
+  ].filter(Boolean);
+  return `已合并并上传：${parts.join("、")}${notes.map((note) => `；${note}`).join("")}。`;
 }
 export default function DataTools({
   data,
@@ -180,8 +186,17 @@ export default function DataTools({
     const cloud = await readCloud();
     if (cloud.identity !== identity || !cloud.state)
       throw new Error("云端账号或数据已改变，本机记录没有变化。请重试。");
+    const link = await readCloudLink(data.generation);
     const local = await exportBackup(data.generation);
-    const { payload, summary } = mergeBackups(local, JSON.parse(cloud.state.payload));
+    const { payload, summary } = mergeBackups(local, JSON.parse(cloud.state.payload), link?.identity === identity ? link.base ?? null : null);
+    if (summary.droppedUndos.length) {
+      const names = summary.droppedUndos.map((id) => `“${data.byId.get(id)?.headword ?? id}”`);
+      const words = names.length > 5 ? `${names.slice(0, 5).join("")}等 ${names.length} 个词` : names.join("");
+      if (!window.confirm(`本机对${words}的撤销无法执行：被撤销的作答已经同步，另一台设备之后又复习了这些词。继续合并会保留这些作答和之后的复习，撤销不生效；取消则本机和云端都不变，可以先回到学习中重新作答。继续合并？`)) {
+        data.notify("已取消合并，本机和云端记录都没有变化。");
+        return;
+      }
+    }
     assertSyncPayloadFits(JSON.stringify(payload));
     let revision: number;
     try {
@@ -192,7 +207,7 @@ export default function DataTools({
       throw error;
     }
     const generation = await replaceMergedBackup(payload, local, data.generation);
-    await saveCloudLink({ identity, revision }, generation);
+    await saveCloudLink({ identity, revision, base: syncBase(payload) }, generation);
     await replaced();
     data.notify(mergeMessage(summary));
   };
@@ -208,8 +223,9 @@ export default function DataTools({
           )
         )
           return;
-        const generation = await restoreBackup(JSON.parse(remote.state.payload), data.generation);
-        await saveCloudLink({ identity: remote.identity, revision: remote.state.revision }, generation);
+        const restored = validateBackup(JSON.parse(remote.state.payload));
+        const generation = await restoreBackup(restored, data.generation);
+        await saveCloudLink({ identity: remote.identity, revision: remote.state.revision, base: syncBase(restored) }, generation);
         await replaced();
         data.notify("已恢复当前账号的云端备份。");
         return;
@@ -243,7 +259,7 @@ export default function DataTools({
           await mergeAndUpload(remote.identity);
         return;
       }
-      await saveCloudLink({ identity: remote.identity, revision }, data.generation);
+      await saveCloudLink({ identity: remote.identity, revision, base: syncBase(payload) }, data.generation);
       data.notify("学习记录已备份到当前账号。");
     });
   return (

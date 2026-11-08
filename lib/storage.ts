@@ -2,6 +2,7 @@ import { USER_DATA_SCHEMA_VERSION, defaultSettings, validateBackup, validWriting
 export { USER_DATA_SCHEMA_VERSION, defaultSettings, validateBackup } from "./backup";
 export type { AppSettings, StoredCard, ReviewEvent, WritingRecord, WritingVersion, WritingGenre, SkillName, SkillVector } from "./backup";
 import { stableJson } from "./stable-json";
+import type { SyncBase } from "./sync-merge";
 
 const DB_NAME = "pep-vocab-studio";
 // Version 3 added writings. Version 4 preserves all records and prevents older
@@ -13,7 +14,8 @@ type StoreName = (typeof stores)[number];
 export const INITIAL_DATA_GENERATION = "initial";
 const GENERATION_KEY = "data-generation";
 const CLOUD_LINK_KEY = "cloud-link";
-export type CloudLink = { identity: string; revision: number };
+/** `base` records what this device and the cloud agreed on at `revision`, so a later merge can tell which side changed a field. */
+export type CloudLink = { identity: string; revision: number; base?: SyncBase };
 
 export class DataReplacedError extends Error {
   constructor() { super("本机数据已在其他页面替换或清空。请保留未保存的文字，再重新打开操作。"); }
@@ -253,8 +255,10 @@ export function readCloudLink(generation: string) {
         try { link = JSON.parse(localStorage.getItem("pep-vocab-cloud-link-v2") || "null"); } catch { /* No valid legacy binding. */ }
       }
       const value = link as Partial<CloudLink> | null;
-      result(value && typeof value.identity === "string" && Number.isSafeInteger(value.revision) && value.revision! >= 0
-        ? { identity: value.identity, revision: value.revision! } : null);
+      if (!value || typeof value.identity !== "string" || !Number.isSafeInteger(value.revision) || value.revision! < 0) return result(null);
+      const base = value.base;
+      const validBase = Boolean(base) && typeof base === "object" && [base!.cards, base!.writings].every((part) => Boolean(part) && typeof part === "object");
+      result({ identity: value.identity, revision: value.revision!, ...(validBase ? { base } : {}) });
     };
   });
 }
