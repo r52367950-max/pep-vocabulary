@@ -1,6 +1,7 @@
 // Packs the built prototype into one self-contained page for private review hosting.
 // Run after the Vite build:  node prototypes/ai-companion/scripts/bundle-artifact.mjs
-// Output: prototypes/ai-companion/dist/ciji-ai-prototype.html (not committed).
+// Output (not committed): dist/ciji-ai-prototype.html for hosting that supplies the document
+// skeleton, and dist/ciji-ai-prototype-standalone.html to open directly from disk.
 import { readFile, writeFile } from "node:fs/promises";
 
 const dist = new URL("../dist/", import.meta.url);
@@ -23,3 +24,21 @@ ${host}</style>
 `;
 await writeFile(new URL("ciji-ai-prototype.html", dist), page);
 console.log(`ciji-ai-prototype.html ${(page.length / 1024).toFixed(0)} KB`);
+
+// A complete document for opening straight from disk: the browser keeps the safe areas itself.
+const standalone = `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>词迹 AI 对话原型</title>
+<style>${css}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">${js.replaceAll("</script", "<\\/script")}</script>
+</body>
+</html>
+`;
+await writeFile(new URL("ciji-ai-prototype-standalone.html", dist), standalone);
+console.log(`ciji-ai-prototype-standalone.html ${(standalone.length / 1024).toFixed(0)} KB`);
