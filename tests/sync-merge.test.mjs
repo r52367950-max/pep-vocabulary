@@ -237,6 +237,25 @@ test('the agreed base is stored with the cloud link and read back', async () => 
   assert.deepEqual(await readCloudLink(generation), { identity: 'id-1', revision: 4 }, 'links saved before 2.17.0 have no base');
 });
 
+test('older acknowledgements preserve both the newest revision and its agreed merge base', async () => {
+  await clearUserData();
+  const { generation } = await loadLearningState();
+  const olderBase = syncBase(snapshot([shared], [settled({ note: 'old note' })]));
+  const newestBase = syncBase(snapshot([shared], [settled({ note: 'new note' })], { writings: [essay([versionRow('v1', 'new draft', 2)], 2)] }));
+  const newest = { identity: 'id-1', revision: 10, base: newestBase };
+  await saveCloudLink({ identity: 'id-1', revision: 8, base: olderBase }, generation);
+  await Promise.all([
+    saveCloudLink(newest, generation),
+    saveCloudLink({ identity: 'id-1', revision: 9, base: olderBase }, generation),
+    saveCloudLink({ identity: 'id-1', revision: 8 }, generation),
+  ]);
+  assert.deepEqual(await readCloudLink(generation), newest);
+  // A newly associated account has an independent revision sequence.
+  const other = { identity: 'id-2', revision: 1, base: olderBase };
+  await saveCloudLink(other, generation);
+  assert.deepEqual(await readCloudLink(generation), other);
+});
+
 test('links saved before 2.17.0 have no base: offline note, favourite and pause survive a later review elsewhere', () => {
   const local = snapshot([shared], [edited(settled(), { note: 'offline new note', favorite: true, status: 'paused' }, 10)]);
   const cloud = review(shared.after, 'apple', { eventId: 'cloud-2', minute: 20 });

@@ -1,9 +1,9 @@
 {
-  "auditedAt": "2026-09-29T14:10:41.635Z",
+  "auditedAt": "2026-11-08T11:55:33.258Z",
   "status": "release-candidate-with-declared-gaps",
   "counts": {
     "targetTextbooks": 12,
-    "sourceManifestEntries": 41,
+    "sourceManifestEntries": 20,
     "curriculumHeadwordRows": 2997,
     "releasedEntries": 4681,
     "missingEnglishDefinitions": 333,

@@ -424,8 +424,11 @@ function nullableText(value: unknown, field: string, maximum: number): string | 
 }
 
 function parseJsonObject(content: string): Record<string, unknown> {
-  const trimmed = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  if (trimmed.length > 300_000) throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
+  if (content.length > 300_000) throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
+  let trimmed = content.trim().replace(/^```(?:json)?\s*/i, "");
+  // An unanchored /\s*```$/ retries at every whitespace character when there
+  // is no closing fence. Valid, whitespace-heavy JSON must stay linear-time.
+  if (trimmed.endsWith("```")) trimmed = trimmed.slice(0, -3).trimEnd();
   try {
     return outputRecord(JSON.parse(trimmed));
   } catch (error) {
@@ -945,10 +948,14 @@ export async function probeConnectionEndpoint(
   fetcher: typeof fetch,
   candidates: string[],
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<{ url: string; status: number; latencyMs: number }> {
   let lastError: AssistantUpstreamError | null = null;
   for (const url of candidates) {
+    if (signal?.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
     const controller = new AbortController();
+    const cancel = () => controller.abort(signal?.reason);
+    signal?.addEventListener("abort", cancel, { once: true });
     const startedAt = Date.now();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -959,6 +966,7 @@ export async function probeConnectionEndpoint(
         signal: controller.signal,
       });
       response.body?.cancel().catch(() => undefined);
+      if (signal?.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
       if (response.status >= 300 && response.status < 400) {
         lastError = new AssistantUpstreamError(
           "provider_redirect_rejected",
@@ -971,6 +979,7 @@ export async function probeConnectionEndpoint(
       }
       return { url, status: response.status, latencyMs: Date.now() - startedAt };
     } catch (error) {
+      if (signal?.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
       if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
         lastError = new AssistantUpstreamError(
           "upstream_timeout",
@@ -983,6 +992,7 @@ export async function probeConnectionEndpoint(
       }
     } finally {
       clearTimeout(timeout);
+      signal?.removeEventListener("abort", cancel);
     }
   }
   throw lastError || new AssistantUpstreamError("upstream_network_error", "没有可测试的模型接口地址。", 502, false);

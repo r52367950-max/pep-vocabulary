@@ -11,7 +11,7 @@ fi
 bash scripts/validate-artifact.sh
 
 archive_path="${1:-${project_root}/outputs/site.tar.gz}"
-mkdir -p "$(dirname "${archive_path}")"
+mkdir -p "$(dirname "${archive_path}")" "${project_root}/outputs"
 archive_path="$(realpath -m "${archive_path}")"
 staging_path="$(mktemp -d "${project_root}/outputs/.sites-package.XXXXXX")"
 trap 'rm -rf -- "${staging_path}"' EXIT

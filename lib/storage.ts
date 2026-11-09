@@ -265,7 +265,14 @@ export function readCloudLink(generation: string) {
 
 export async function saveCloudLink(link: CloudLink, generation: string) {
   await generationTransaction<void>(["meta"], "readwrite", generation, (tx) => {
-    tx.objectStore("meta").put({ key: CLOUD_LINK_KEY, value: link });
+    const store = tx.objectStore("meta");
+    store.get(CLOUD_LINK_KEY).onsuccess = function () {
+      const current = this.result?.value as CloudLink | undefined;
+      // Revision and its merge base are one acknowledgement. A late response
+      // must never replace a newer agreed snapshot for this account.
+      if (current?.identity === link.identity && current.revision > link.revision) return;
+      store.put({ key: CLOUD_LINK_KEY, value: link });
+    };
   });
 }
 

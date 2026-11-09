@@ -512,6 +512,7 @@ export async function testAssistantConnection(request: Request): Promise<Respons
       fetchAiProvider,
       connectionEndpointCandidates(config.provider, config.baseUrl),
       Math.min(config.timeoutMs, 8_000),
+      request.signal,
     );
     endpointLatencyMs = endpoint.latencyMs;
 

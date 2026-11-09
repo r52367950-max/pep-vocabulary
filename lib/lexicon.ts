@@ -67,6 +67,23 @@ const detailCache = new Map<string, LexiconDetail>();
 const chunkPromises = new Map<number, Promise<void>>();
 const chunkById = new Map<string, number>();
 
+async function fetchLexiconJson(url: string, failureMessage: string): Promise<unknown> {
+  const controller = new AbortController();
+  // Keep the deadline through body parsing too: a response can arrive while its
+  // body stalls. Failed requests are evicted below, so a reconnect can retry.
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(failureMessage);
+    return await response.json();
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("词库读取超时，请检查网络后重试。");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // Older releases converted NAmE (a regional label) as though it were IPA.
 // Repair the display boundary without rewriting source evidence or inventing
 // a complete pronunciation from a textbook's abbreviated form.
@@ -131,12 +148,12 @@ export function normalizeEntry<T extends LexiconIndexEntry>(entry: T): T {
 export function loadLexicon() {
   if (lexiconPromise) return lexiconPromise;
   lexiconPromise = (async () => {
-    const [indexResponse, manifestResponse] = await Promise.all([
-      fetch("/data/v1/index.json"), fetch("/data/v1/manifest.json"),
+    const [indexData, manifestData] = await Promise.all([
+      fetchLexiconJson("/data/v1/index.json", "词库索引暂时无法读取"),
+      fetchLexiconJson("/data/v1/manifest.json", "词库索引暂时无法读取"),
     ]);
-    if (!indexResponse.ok || !manifestResponse.ok) throw new Error("词库索引暂时无法读取");
-    const index = decodeLexiconIndex(await indexResponse.json()) as LexiconIndexEntry[];
-    const manifest = await manifestResponse.json() as LexiconManifest;
+    const index = decodeLexiconIndex(indexData) as LexiconIndexEntry[];
+    const manifest = manifestData as LexiconManifest;
     if (!Array.isArray(index) || !Array.isArray(manifest.chunks)) throw new Error("词库格式无效");
     let position = 0;
     chunkById.clear();
@@ -161,9 +178,7 @@ export async function loadDetails(ids: string[]) {
     if (!chunkPromises.has(chunk)) {
       const descriptor = manifest.chunks[chunk];
       const promise = (async () => {
-        const response = await fetch(`/data/v1/${descriptor.file}`);
-        if (!response.ok) throw new Error("词条详情分片暂时无法读取");
-        const rows = await response.json() as LexiconDetail[];
+        const rows = await fetchLexiconJson(`/data/v1/${descriptor.file}`, "词条详情分片暂时无法读取") as LexiconDetail[];
         if (!Array.isArray(rows) || rows.length !== descriptor.count || new Set(rows.map((row) => row.id)).size !== rows.length || rows.some((row) => chunkById.get(row.id) !== chunk)) throw new Error("词条详情分片与索引不一致");
         rows.forEach((row) => detailCache.set(row.id, normalizeEntry(row)));
       })().catch((error) => { chunkPromises.delete(chunk); throw error; });

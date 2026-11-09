@@ -57,27 +57,27 @@ export default function Lexicon({
     () => selectEntries(data.index, scope === "book" ? { bookId, unit } : {}),
     [data.index, scope, bookId, unit],
   );
+  // Bookmark/review updates affect status only, not the matched text.
+  const searched = useMemo(() => scoped.filter(lexiconQueryMatcher(search)), [scoped, search]);
   const rows = useMemo(() => {
-    const matches = lexiconQueryMatcher(search);
-    return scoped.filter((entry) => {
+    if (status === "all") return searched;
+    return searched.filter((entry) => {
       const card = data.cards.get(entry.id);
-      return (
-        matches(entry) &&
-        (status === "all" ||
-          (status === "favorite"
-            ? card?.favorite
-            : status === "unseen"
-              ? !card?.lastReviewed && card?.status !== "paused"
-              : card?.status === status))
-      );
+      return status === "favorite"
+        ? card?.favorite
+        : status === "unseen"
+          ? !card?.lastReviewed && card?.status !== "paused"
+          : card?.status === status;
     });
-  }, [scoped, data.cards, search, status]);
+  }, [searched, data.cards, status]);
   const currentPage = Math.min(
     page,
     Math.max(0, Math.ceil(rows.length / 40) - 1),
   );
   const visible = rows.slice(currentPage * 40, currentPage * 40 + 40);
-  const picks = rows.filter((entry) => selected.has(entry.id));
+  // Selection survives search/filter changes. Hidden selections must remain in
+  // the count and practice queue, and keep the clear-selection action visible.
+  const picks = useMemo(() => data.index.filter((entry) => selected.has(entry.id)), [data.index, selected]);
   const practice = picks.length ? picks : rows.slice(0, 20);
   const exportRows = () => {
     const content =
@@ -211,7 +211,7 @@ export default function Lexicon({
       <div className="word-list-meta">
         <span role="status" aria-live="polite">
           共 {rows.length.toLocaleString("zh-CN")} 词{" "}
-          {picks.length > 0 && `· 已选 ${picks.length} 词`}
+          {picks.length > 0 && `· 已选 ${picks.length} 词 · 跨搜索保留`}
         </span>
         <div>
           {picks.length > 0 && (

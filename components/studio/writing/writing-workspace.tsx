@@ -22,6 +22,7 @@ import type { WritingHandwritingAssessment } from "@/lib/writing-recognition";
 import { WRITING_TOPICS, recommendWritingTopic, randomWritingTopic, topicPrompt, validWritingTopic, type WritingTopic } from "@/lib/writing-topics";
 
 type View = { kind: "list" } | { kind: "setup" } | { kind: "edit"; id: string };
+const WRITING_LOAD_ERROR = "写作记录暂时无法读取，请检查浏览器存储权限后重试。请重新读取后确认最新状态。";
 
 export default function WritingWorkspace({ data, initialTargets, openId, onExit, onPractice, onWord }: {
   data: Vocabulary;
@@ -49,15 +50,35 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
   onPractice: (entries: LexiconIndexEntry[]) => void; onWord: (entry: LexiconIndexEntry) => void; temporary: boolean;
 }) {
   const [records, setRecords] = useState<WritingRecord[] | null>(null);
+  const [loadError, setLoadError] = useState("");
   // An open editor belongs to the dataset it read; preserve its text when another page restores data.
   const [generation] = useState(() => data.generation);
   const [view, setView] = useState<View>(openId ? { kind: "edit", id: openId } : initialTargets ? { kind: "setup" } : { kind: "list" });
-  const reload = useCallback(() => (temporary ? Promise.resolve([]) : listWritings()).catch(() => []).then((rows) => {
-    setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
-  }), [temporary]);
+  const readVersion = useRef(0);
+  const reload = useCallback(async () => {
+    const version = ++readVersion.current;
+    try {
+      const rows = temporary ? [] : await listWritings();
+      if (version === readVersion.current) {
+        setLoadError("");
+        setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+      }
+    } catch (cause) {
+      if (version === readVersion.current) setLoadError(WRITING_LOAD_ERROR);
+      throw cause;
+    }
+  }, [temporary]);
   useEffect(() => {
     let active = true;
-    (temporary ? Promise.resolve([]) : listWritings()).catch(() => []).then((rows) => { if (active) setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))); });
+    const version = ++readVersion.current;
+    (temporary ? Promise.resolve([]) : listWritings()).then((rows) => {
+      if (active && version === readVersion.current) {
+        setRecords(rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+        setLoadError("");
+      }
+    }).catch(() => {
+      if (active && version === readVersion.current) setLoadError(WRITING_LOAD_ERROR);
+    });
     return () => { active = false; };
   }, [temporary]);
 
@@ -88,11 +109,12 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
         </button>
         <span className="learn-header-title">{view.kind === "list" ? "写作" : view.kind === "setup" ? "新的写作" : record ? writingTitle(record) : "写作"}</span>
         <span className="learn-header-spacer" />
-        {view.kind === "list" && <button className="secondary writing-new" onClick={() => setView({ kind: "setup" })}><Plus size={16} aria-hidden="true" />新写一篇</button>}
+        {view.kind === "list" && <button className="secondary writing-new" disabled={records === null} onClick={() => setView({ kind: "setup" })}><Plus size={16} aria-hidden="true" />新写一篇</button>}
       </header>
       {temporary && <p className="ai-note writing-stage" style={{ paddingBottom: 8 }} role="status">临时写作：本次草稿与批改不保存，切换模式后不会补存。需要保留原文时请先复制。</p>}
-      {records === null ? <div className="learn-pending" role="status">正在读取写作记录…</div>
-        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (record) => { try { await deleteWriting(record, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); } }} />
+      {loadError && <div className="learn-pending" role="alert"><p>{loadError}</p><button className="secondary" onClick={() => void reload().catch(() => undefined)}>重新读取</button></div>}
+      {records === null ? !loadError && <div className="learn-pending" role="status">正在读取写作记录…</div>
+        : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (record) => { try { await deleteWriting(record, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); await reload().catch(() => undefined); } }} />
           : view.kind === "setup" ? <WritingSetup key={data.generation} data={data} initialTargets={initialTargets} temporary={temporary} recentTitles={(records || []).map(item => item.title || item.prompt.slice(0, 120))} onCreate={async (created) => { const context = captureWritingContext(); await writeWritingInContext(context, () => saveWriting(created, null, generation)); if (!writingContextCurrent(context)) return; upsert(created); setView({ kind: "edit", id: created.id }); }} />
             : record ? <WritingEditor key={record.id} record={record} data={data} generation={generation} onSave={upsert} onPractice={onPractice} onWord={onWord} temporary={temporary} />
               : <div className="learn-pending">这篇写作已不存在。</div>}
@@ -282,7 +304,7 @@ function WritingEditor({ record, data, generation, onSave, onPractice, onWord, t
   const [mode, setMode] = useState<"write" | "review">(current.review ? "review" : "write");
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "failed">("saved");
   const [uploadBusy, setUploadBusy] = useState(false);
   const latest = useRef(record);
   const committed = useRef(record);
@@ -309,8 +331,8 @@ function WritingEditor({ record, data, generation, onSave, onPractice, onWord, t
   const persist = useCallback((next: WritingRecord, context = captureWritingContext(), signal?: AbortSignal) => {
     if (signal?.aborted || !writingContextCurrent(context)) return Promise.reject(new WritingContextChangedError());
     latest.current = next;
-    if (temporary) { onSave(next); setSaved(true); return Promise.resolve(); }
-    setSaved(false);
+    if (temporary) { onSave(next); setSaveStatus("saved"); return Promise.resolve(); }
+    setSaveStatus(saveFailed.current ? "failed" : "saving");
     // Queue writes immediately, including the last keystroke before leaving the editor.
     const pending = writes.current.then(async () => {
       if (saveFailed.current) throw new Error("草稿尚未保存。请复制当前文字后重新打开，避免覆盖其他页面的修改。");
@@ -318,11 +340,12 @@ function WritingEditor({ record, data, generation, onSave, onPractice, onWord, t
       committed.current = next;
       if (!writingContextCurrent(context) || signal?.aborted) return;
       onSave(next);
-      if (latest.current === next) setSaved(true);
+      if (latest.current === next) setSaveStatus("saved");
     });
     writes.current = pending.catch((cause) => {
       if (cause instanceof WritingContextChangedError) return;
       saveFailed.current = true;
+      setSaveStatus("failed");
       const message = cause instanceof Error ? cause.message : "草稿未能保存到本机，请复制文字后重试。";
       setError(message);
       data.notify(message);
@@ -413,7 +436,7 @@ function WritingEditor({ record, data, generation, onSave, onPractice, onWord, t
           value={text} readOnly={reviewing !== null || uploadBusy} onChange={(event) => edit(event.target.value)} placeholder="Start writing here…" maxLength={8000} />
         <p className="writing-count" aria-live="polite">
           <span className="learn-tabular">{words}</span> 词 · 目标 {record.wordRange[0]}–{record.wordRange[1]}
-          <span>{temporary ? "临时草稿 · 不保存记录" : saved ? "已保存在本机" : "正在保存…"}</span>
+          <span>{temporary ? "临时草稿 · 不保存记录" : saveStatus === "saved" ? "已保存在本机" : saveStatus === "failed" ? "尚未保存，请复制保留文字" : "正在保存…"}</span>
         </p>
       </div>
       <aside className="writing-rail" aria-label="写作提示">
