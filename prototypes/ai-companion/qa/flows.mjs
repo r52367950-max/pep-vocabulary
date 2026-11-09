@@ -1,7 +1,7 @@
 // Browser walk-through of the prototype's user paths, at desktop, iPad and phone sizes.
 // Usage (after `npx vite build --config prototypes/ai-companion/vite.config.ts` and
 // `npx vite preview --config prototypes/ai-companion/vite.config.ts`):
-//   node prototypes/ai-companion/qa/flows.mjs [baseUrl] [screenshotDir]
+//   node prototypes/ai-companion/qa/flows.mjs [baseUrl] [screenshotDir] [deviceScaleFactor]
 // Every check is something a learner can see or do; failures exit non-zero.
 import { createRequire } from "node:module";
 import { readFileSync, mkdirSync } from "node:fs";
@@ -9,6 +9,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const base = process.argv[2] ?? "http://127.0.0.1:5179/";
 const shots = process.argv[3] ?? new URL("./shots/", import.meta.url).pathname;
+const scale = Number(process.argv[4] ?? 1);
 mkdirSync(shots, { recursive: true });
 const sample = JSON.parse(readFileSync(new URL("../src/data/sample.json", import.meta.url), "utf8"));
 const notes = readFileSync(new URL("../src/data/mangrove-notes.ts", import.meta.url), "utf8");
@@ -29,7 +30,7 @@ const VIEWPORTS = [
 ];
 
 async function fresh(browser, viewport) {
-  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1, hasTouch: Boolean(viewport.touch), isMobile: Boolean(viewport.mobile), locale: "zh-CN" });
+  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: scale, hasTouch: Boolean(viewport.touch), isMobile: Boolean(viewport.mobile), locale: "zh-CN" });
   const page = await context.newPage();
   page.setDefaultTimeout(8000);
   const errors = [];

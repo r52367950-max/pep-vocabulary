@@ -44,8 +44,9 @@ export function formatBytes(size: number) {
 /** Decodes UTF-8 text; refuses binary content and keeps the first LIMITS.readChars characters. */
 export function decodeText(bytes: Uint8Array): { ok: true; text: string; chars: number; truncated: boolean } | { ok: false; message: string } {
   const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  if (text.includes("\u0000")) return { ok: false, message: "文件看起来不是纯文本，无法读取。" };
-  const replacement = (text.match(/�/g) ?? []).length;
+  // Regex escapes stay escapes in the bundle, so no raw control or replacement character is emitted.
+  if (/\u0000/.test(text)) return { ok: false, message: "文件看起来不是纯文本，无法读取。" };
+  const replacement = (text.match(/\uFFFD/g) ?? []).length;
   if (replacement > Math.max(8, text.length / 50)) return { ok: false, message: "文件不是 UTF-8 编码的文本，无法读取。" };
   const chars = [...text].length;
   const truncated = chars > LIMITS.readChars;
