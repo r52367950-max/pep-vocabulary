@@ -175,7 +175,7 @@
         {
           "command": "npm run test:unit",
           "result": "pass",
-          "tests": 594,
+          "tests": 598,
           "failed": 0,
           "skipped": 0
         },
@@ -212,20 +212,75 @@
     }
   ],
   "additionalFinding": {
-    "status": "not_changed",
-    "title": "Single-article removal lacks per-ID cross-tab invalidation and a deletion fence against delayed saves of the same ID.",
-    "paths": [
-      "lib/personal-readings.ts:removePersonalArticle",
-      "lib/personal-readings.ts:savePersonalArticle"
+    "outcome": "fixed",
+    "title": "Single-article deletion fences delayed saves and invalidates current-client cross-tab caches.",
+    "changedFiles": [
+      "lib/personal-readings.ts",
+      "components/studio/reading.tsx",
+      "tests/personal-readings.test.mjs"
     ],
-    "scope": "Separate from whole-library clear; requires an article-specific lifecycle change to preserve unrelated in-progress imports."
+    "strategy": "Per-ID tombstones, independent removal snapshots and authoritative re-read before export; IndexedDB v3 fences old writers.",
+    "validation": {
+      "focusedTests": 17,
+      "result": "pass",
+      "cases": [
+        "same-ID delayed saves",
+        "different-ID drafts preserved",
+        "intentional re-import and deduplication",
+        "missed notifications with concurrent foreground refresh",
+        "v1/v2 data preservation and old writer rejection",
+        "cached export rejected after deletion"
+      ],
+      "independentReadOnlyReview": "completed; confirmed snapshot cancellation race fixed and covered by deterministic regression",
+      "browserRetest": "unavailable: managed preview relay timed out; no alternative server launched"
+    },
+    "compatibility": "Already loaded older JavaScript needs a page refresh for new UI and export protection."
   },
   "deliveryState": {
-    "code": "committed on fix branch",
-    "site": "not deployed",
+    "code": "release 2.18.1 prepared for GitHub and Sites; exact publication result is recorded separately",
+    "site": "publication verified separately",
     "securityCloudFindings": "not closed",
     "privateDriveSharing": "not modified; historical commits may retain prior metadata",
     "paidAI": "not called",
-    "physicalDevices": "not tested"
+    "physicalDevices": "not tested",
+    "browserRetest": "New deletion path limited by managed preview relay; prior original-seven Chromium evidence retained."
+  },
+  "releaseVersion": "2.18.1",
+  "releaseCodeCommit": "a2758c211dcda28e7f318e8ba21b9e27f3b2b50c",
+  "releaseValidation": {
+    "codeCommit": "a2758c211dcda28e7f318e8ba21b9e27f3b2b50c",
+    "appVersion": "2.18.1",
+    "commands": [
+      {
+        "command": "npm run typecheck",
+        "result": "pass"
+      },
+      {
+        "command": "npm run lint",
+        "result": "pass"
+      },
+      {
+        "command": "npm run test:unit",
+        "result": "pass",
+        "tests": 598,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "command": "npm run audit:prod",
+        "result": "pass",
+        "vulnerabilities": 0
+      },
+      {
+        "command": "npm run build",
+        "result": "pass"
+      },
+      {
+        "command": "npm run test:runtime",
+        "result": "pass",
+        "checks": 50
+      }
+    ],
+    "preview": "Managed relay timed out twice; no alternate server launched. Original seven Chromium cases retained; new per-ID lifecycle covered by fake-IDB/module/event regressions."
   }
 }
