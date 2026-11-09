@@ -6,7 +6,7 @@ import { respond, streamLength } from "./engine";
 import { buildPlan, type PlanSpec, type PracticeItem } from "./practice";
 import {
   applyFallback, buildRequest, checkSendable, classifyTask, isModelChoice, requestLabel, resolveRoute, routeTable,
-  type ContextSummary, type Fallback, type RequestPayload, type SelectionAction,
+  type ContextSummary, type Fallback, type ModelChoice, type RequestPayload, type SelectionAction,
 } from "./routing";
 import { paragraphLabel, quoteFromPoints, type Quote } from "./selection";
 import { attachmentText, type Attachment } from "./sources";
@@ -47,7 +47,7 @@ let idCounter = 0;
 export const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(++idCounter).toString(36)}`;
 
 export function emptyDraft(settings: Settings): Draft {
-  return { text: "", quotes: [], attachments: [], includeRecords: settings.includeRecords, includeArticle: settings.includeArticle, nextOnly: null };
+  return { text: "", quotes: [], attachments: [], includeRecords: settings.includeRecords, includeArticle: settings.includeArticle };
 }
 function blankConversation(temporary: boolean): Conversation {
   const now = Date.now();
@@ -62,7 +62,7 @@ function writeStorage(key: string, value: string | null) {
 }
 
 function sampleRequest(task: Parameters<typeof resolveRoute>[0], context: Partial<ContextSummary> = {}): { request: RequestPayload; routeReason: string } {
-  const route = resolveRoute(task, { nextOnly: null, preference: "auto" }, routeTable("sol-high"));
+  const route = resolveRoute(task, { preference: "auto" }, routeTable("sol-high"));
   return { request: buildRequest(route, { records: false, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [], ...context }), routeReason: route.reason };
 }
 
@@ -133,6 +133,7 @@ type ActionType =
   | { type: "finish"; id: string; messageId: string; status: AssistantMessage["status"]; generation: number }
   | { type: "block"; id: string; messageId: string; index: number; block: Block }
   | { type: "drop-remainder"; id: string; messageId: string }
+  | { type: "conversation-model"; id: string; model: ModelChoice }
   | { type: "practice"; session: PracticeSession | null }
   | { type: "announce"; text: string }
   | { type: "focus-composer" };
@@ -178,11 +179,13 @@ function reducer(state: State, action: ActionType): State {
     case "settings": return { ...state, settings: { ...state.settings, ...action.patch } };
     case "view": {
       if (action.view === state.view) return state;
-      return { ...state, view: action.view, lastLearnView: action.view === "chat" ? state.lastLearnView : action.view, miniOpen: action.view === "chat" ? false : state.miniOpen };
+      // Leaving the conversation ends a voice session; its captions return to the conversation.
+      return { ...state, view: action.view, lastLearnView: action.view === "chat" ? state.lastLearnView : action.view, miniOpen: action.view === "chat" ? false : state.miniOpen, voiceOpen: action.view === "chat" ? state.voiceOpen : false };
     }
     case "mini": return { ...state, miniOpen: action.open };
     case "settings-open": return { ...state, settingsOpen: action.section };
-    case "voice-open": return { ...state, voiceOpen: action.open };
+    // Voice takes over the conversation area, so opening it from a learning page goes to the conversation.
+    case "voice-open": return action.open ? { ...state, voiceOpen: true, view: "chat", miniOpen: false } : { ...state, voiceOpen: false };
     case "new": {
       const fresh = action.conversation;
       const current = state.conversations.find((conversation) => conversation.id === state.activeId);
@@ -254,6 +257,8 @@ function reducer(state: State, action: ActionType): State {
           return { ...message, status: action.status, blocks: truncateBlocks(message.blocks, message.revealed), ...(remainder ? { remainder } : {}) };
         }),
       }));
+    case "conversation-model":
+      return patchConversation(state, action.id, (conversation) => ({ ...conversation, model: action.model }));
     case "drop-remainder":
       return patchConversation(state, action.id, (conversation) => ({
         ...conversation,
@@ -291,7 +296,7 @@ type Store = {
   openChat: (conversationId?: string) => void;
   startPractice: (items: PracticeItem[], title: string, source: string, origin: PracticeSession["origin"]) => void;
   returnResult: () => void;
-  appendVoice: (captions: Caption[], seconds: number, blocks: Block[], request: RequestPayload | null, routeReason: string) => void;
+  appendVoice: (conversationId: string, captions: Caption[], seconds: number, blocks: Block[], request: RequestPayload | null, routeReason: string) => void;
   articleAvailable: (conversation: Conversation, draft: Draft) => boolean;
   newConversation: (temporary: boolean) => void;
   remove: (conversationId: string) => void;
@@ -386,8 +391,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     const classification = classifyTask({ text, action: options.action, hasQuote: quotes.length > 0, practiceResult: Boolean(options.result) });
     // Feedback on a returned result follows the route preference, never a pending one-message choice.
-    const nextOnly = options.result ? null : draft.nextOnly;
-    const decided = resolveRoute(classification, { nextOnly, preference: current.settings.routePreference }, routeTable(current.settings.complexPlanTier));
+    const decided = resolveRoute(classification, { conversation: conversation.model, preference: current.settings.routePreference }, routeTable(current.settings.complexPlanTier));
     const route = options.fallback ? applyFallback(decided, options.fallback) : decided;
     const check = checkSendable(route, current.settings.service);
     if (!check.ok) {
@@ -420,8 +424,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       type: "draft", id: conversationId,
       patch: (latest) => options.keepDraft
         // The draft stays as typed; a quote just answered is kept for a follow-up unless one is already there.
-        ? { ...(options.result ? {} : { nextOnly: null }), quotes: latest.quotes.length || !carried.length ? latest.quotes : carried }
-        : { nextOnly: null, text: "", attachments: [], quotes: carried },
+        ? { quotes: latest.quotes.length || !carried.length ? latest.quotes : carried }
+        : { text: "", attachments: [], quotes: carried },
     });
     const truncate = current.settings.service === "truncate-next";
     if (truncate) dispatch({ type: "settings", patch: { service: "normal" } });
@@ -458,13 +462,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const source = conversation?.messages.find((message): message is AssistantMessage => message.id === messageId && message.role === "assistant");
     if (!conversation || !source?.remainder || conversation.messages.some((message) => message.role === "assistant" && message.status === "streaming")) return;
     // The continuation repeats the original request's model and effort.
-    const base = resolveRoute({ task: source.request.metadata.task, signals: [] }, { nextOnly: null, preference: "auto" }, routeTable(current.settings.complexPlanTier));
+    const base = resolveRoute({ task: source.request.metadata.task, signals: [] }, { preference: "auto" }, routeTable(current.settings.complexPlanTier));
     const route = { ...base, model: source.request.model, effort: source.request.reasoning.effort };
     const check = checkSendable(route, current.settings.service);
     if (!check.ok) { dispatch({ type: "notice", id: conversationId, notice: { message: check.message, alternatives: [] } }); return; }
     const reply: AssistantMessage = {
       id: newId("a"), role: "assistant", at: Date.now(), status: "streaming", blocks: source.remainder, revealed: 0,
-      request: { ...source.request, metadata: { ...source.request.metadata, routeSource: "next-only" } },
+      request: source.request,
       routeReason: "继续上一条：你手动发起的第二次请求",
     };
     dispatch({ type: "drop-remainder", id: conversationId, messageId });
@@ -498,7 +502,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (missing) {
       const notice: AssistantMessage = {
         id: newId("a"), role: "assistant", at: Date.now(), status: "done", revealed: 0, routeReason: "提示",
-        request: buildRequest(resolveRoute({ task: "practice-feedback", signals: [] }, { nextOnly: null, preference: "auto" }, routeTable(current.settings.complexPlanTier)), { records: false, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [] }),
+        request: buildRequest(resolveRoute({ task: "practice-feedback", signals: [] }, { preference: "auto" }, routeTable(current.settings.complexPlanTier)), { records: false, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [] }),
         blocks: [{ type: "notice", tone: "warn", text: "原来的对话已经不在了（临时对话会在离开时清除），结果放在这段新对话里。" }],
       };
       dispatch({ type: "append", id: conversationId, messages: [notice] });
@@ -510,12 +514,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     else dispatch({ type: "view", view: "chat" });
   }, [dispatch, send]);
 
-  const appendVoice = useCallback((captions: Caption[], seconds: number, blocks: Block[], request: RequestPayload | null, routeReason: string) => {
-    const current = stateRef.current;
-    if (!captions.length) return;
+  const appendVoice = useCallback((conversationId: string, captions: Caption[], seconds: number, blocks: Block[], request: RequestPayload | null, routeReason: string) => {
+    if (!captions.length || !stateRef.current.conversations.some((conversation) => conversation.id === conversationId)) return;
     const messages: Message[] = [{ id: newId("v"), role: "voice", at: Date.now(), captions, seconds }];
     if (blocks.length && request) messages.push({ id: newId("a"), role: "assistant", at: Date.now(), status: "done", revealed: 0, blocks, request, routeReason });
-    dispatch({ type: "append", id: current.activeId, messages, title: `语音 · ${captions.find((caption) => caption.speaker === "user")?.text.slice(0, 16) ?? "对话"}` });
+    dispatch({ type: "append", id: conversationId, messages, title: `语音 · ${captions.find((caption) => caption.speaker === "user")?.text.slice(0, 16) ?? "对话"}` });
   }, [dispatch]);
 
   const active = state.conversations.find((conversation) => conversation.id === state.activeId) ?? state.conversations[0];

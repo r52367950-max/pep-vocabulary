@@ -7,6 +7,7 @@ import { MessageList } from "./messages";
 import { TemporaryIcon } from "./icons";
 import { useDismiss } from "./popover";
 import { withTransition } from "./transition";
+import { VoiceStage } from "./voice-stage";
 
 export const SUGGESTIONS = [
   { icon: Clock, label: "安排 15 分钟听写", text: "我今天只有 15 分钟，帮我安排听写和复习" },
@@ -51,64 +52,68 @@ export function ChatView() {
     <section className={`chat${panelOpen ? " panel-open" : ""}`} aria-label="AI 对话">
       <ConversationPanel open={panelOpen} onClose={() => { setPanelOpen(false); toggle.current?.focus({ preventScroll: true }); }} guard={guard} />
       <div className="chat-main">
-        {/* Left: moving between conversations. Right: actions on this one, then leaving the page. */}
-        <header className="chat-top">
-          <button ref={toggle} type="button" className="icon-button" aria-label={panelOpen ? "收起对话列表" : "展开对话列表"} aria-expanded={panelOpen} title="对话列表" onClick={() => setPanelOpen((value) => !value)}>
-            <PanelLeft size={19} aria-hidden="true" />
-          </button>
-          <div className="top-title">
-            {!empty && !active.temporary && <span className="title-text">{active.title}</span>}
-            {returnTo && returnTo.id !== active.id && (
-              <button type="button" className="return-chip" onClick={() => dispatch({ type: "select", id: returnTo.id })}>
-                <Undo2 size={14} aria-hidden="true" /><span>回到刚才的对话</span>
+        {state.voiceOpen ? <VoiceStage key={active.id} conversationId={active.id} /> : (
+          <>
+            {/* Left: moving between conversations. Right: actions on this one, then leaving the page. */}
+            <header className="chat-top">
+              <button ref={toggle} type="button" className="icon-button" aria-label={panelOpen ? "收起对话列表" : "展开对话列表"} aria-expanded={panelOpen} title="对话列表" onClick={() => setPanelOpen((value) => !value)}>
+                <PanelLeft size={19} aria-hidden="true" />
               </button>
-            )}
-          </div>
-          <div className="top-cluster">
-            <button type="button" className="icon-button" aria-label="新对话" title="新对话" disabled={empty && !active.temporary && !hasDraftContent(state.drafts[active.id])}
-              onClick={() => guard("开始新对话", () => newConversation(false))}>
-              <SquarePen size={18} aria-hidden="true" />
-            </button>
-            <button type="button" className={`temp-toggle${active.temporary ? " is-on" : ""}`} aria-pressed={active.temporary}
-              aria-label={active.temporary ? "临时对话已开启，点按退出" : "开始临时对话"} title={active.temporary ? "退出临时对话" : "临时对话：不保存"}
-              onClick={() => active.temporary ? guard("退出临时对话", () => newConversation(false)) : newConversation(true)}>
-              <TemporaryIcon size={19} />
-              {active.temporary && <span>临时对话</span>}
-            </button>
-            <span className="top-divider" aria-hidden="true" />
-            <button type="button" className="icon-button" aria-label="收起为小窗，回到学习页" title="收起为小窗"
-              onClick={() => guard("收起为小窗", () => { dispatch({ type: "view", view: state.lastLearnView }); dispatch({ type: "mini", open: true }); })}>
-              <Minimize2 size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </header>
-        <div className="chat-scroll" ref={scroller} onScroll={(event) => {
-          const element = event.currentTarget;
-          stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
-        }}>
-          {empty ? (
-            <div className="hero">
-              <h1 className="greeting">{active.temporary ? "临时对话" : "今天想学什么？"}</h1>
-              {active.temporary
-                ? <p className="hero-sub">这段对话不进入历史，离开或关闭页面后清除；附件和引用同样不保存。</p>
-                : <p className="hero-sub">说出目标，我会按你的练习表现安排下一步。</p>}
-              <Composer conversationId={active.id} variant="hero" />
-              <ul className="suggestions" aria-label="可以这样开始">
-                {SUGGESTIONS.map(({ icon: Icon, label, text }) => (
-                  <li key={label}><button type="button" onClick={(event) => send(text, event.detail === 0)}><Icon size={16} aria-hidden="true" />{label}</button></li>
-                ))}
-              </ul>
+              <div className="top-title">
+                {!empty && !active.temporary && <span className="title-text">{active.title}</span>}
+                {returnTo && returnTo.id !== active.id && (
+                  <button type="button" className="return-chip" onClick={() => dispatch({ type: "select", id: returnTo.id })}>
+                    <Undo2 size={14} aria-hidden="true" /><span>回到刚才的对话</span>
+                  </button>
+                )}
+              </div>
+              <div className="top-cluster">
+                <button type="button" className="icon-button" aria-label="新对话" title="新对话" disabled={empty && !active.temporary && !hasDraftContent(state.drafts[active.id])}
+                  onClick={() => guard("开始新对话", () => newConversation(false))}>
+                  <SquarePen size={18} aria-hidden="true" />
+                </button>
+                <button type="button" className={`temp-toggle${active.temporary ? " is-on" : ""}`} aria-pressed={active.temporary}
+                  aria-label={active.temporary ? "临时对话已开启，点按退出" : "开始临时对话"} title={active.temporary ? "退出临时对话" : "临时对话：不保存"}
+                  onClick={() => active.temporary ? guard("退出临时对话", () => newConversation(false)) : newConversation(true)}>
+                  <TemporaryIcon size={19} />
+                  {active.temporary && <span>临时对话</span>}
+                </button>
+                <span className="top-divider" aria-hidden="true" />
+                <button type="button" className="icon-button" aria-label="收起为小窗，回到学习页" title="收起为小窗"
+                  onClick={() => guard("收起为小窗", () => { dispatch({ type: "view", view: state.lastLearnView }); dispatch({ type: "mini", open: true }); })}>
+                  <Minimize2 size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </header>
+            <div className="chat-scroll" ref={scroller} onScroll={(event) => {
+              const element = event.currentTarget;
+              stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+            }}>
+              {empty ? (
+                <div className="hero">
+                  <h1 className="greeting">{active.temporary ? "临时对话" : "今天想学什么？"}</h1>
+                  {active.temporary
+                    ? <p className="hero-sub">这段对话不进入历史，离开或关闭页面后清除；附件和引用同样不保存。</p>
+                    : <p className="hero-sub">说出目标，我会按你的练习表现安排下一步。</p>}
+                  <Composer conversationId={active.id} variant="hero" />
+                  <ul className="suggestions" aria-label="可以这样开始">
+                    {SUGGESTIONS.map(({ icon: Icon, label, text }) => (
+                      <li key={label}><button type="button" onClick={(event) => send(text, event.detail === 0)}><Icon size={16} aria-hidden="true" />{label}</button></li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <MessageList messages={active.messages} conversationId={active.id} place="full" />
+              )}
             </div>
-          ) : (
-            <MessageList messages={active.messages} conversationId={active.id} place="full" />
-          )}
-        </div>
-        {!empty && (
-          <div className="chat-dock">
-            <Composer conversationId={active.id} variant="dock" />
-          </div>
+            {!empty && (
+              <div className="chat-dock">
+                <Composer conversationId={active.id} variant="dock" />
+              </div>
+            )}
+            <p className="demo-foot">演示原型：本地规则回答，未连接模型；语音不使用麦克风</p>
+          </>
         )}
-        <p className="demo-foot">演示原型：本地规则回答，未连接模型；语音不使用麦克风</p>
       </div>
       {pending && (
         <div className="confirm-layer" role="alertdialog" aria-modal="false" aria-labelledby="leave-temp-title">

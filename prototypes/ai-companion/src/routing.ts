@@ -123,26 +123,31 @@ export const MODEL_USE: Record<ModelId, string> = {
 export function isModelChoice(value: unknown): value is ModelChoice {
   return value === "auto" || MODEL_IDS.includes(value as ModelId);
 }
-export type RouteSource = "auto" | "next-only" | "preference";
+/** Where the model came from: automatic, chosen in this conversation, the settings default, or a one-message fallback. */
+export type RouteSource = "auto" | "conversation" | "default" | "fallback";
 export type Route = { model: ModelId; effort: Effort; task: TaskKind; source: RouteSource; reason: string; automatic: { model: ModelId; effort: Effort } };
 
-export function resolveRoute(classification: Classification, choice: { nextOnly: ModelId | null; preference: ModelChoice }, table: RouteTable): Route {
+/**
+ * A model chosen in the composer belongs to that conversation; a new conversation starts from
+ * the default in settings. Thinking strength always follows the task.
+ */
+export function resolveRoute(classification: Classification, choice: { conversation?: ModelChoice; preference: ModelChoice }, table: RouteTable): Route {
   const automatic = TIERS[table[classification.task]];
-  const chosen = choice.nextOnly ?? (choice.preference === "auto" ? null : choice.preference);
-  const source: RouteSource = choice.nextOnly ? "next-only" : chosen ? "preference" : "auto";
+  const effective = choice.conversation ?? choice.preference;
+  const source: RouteSource = effective === "auto" ? "auto" : choice.conversation ? "conversation" : "default";
   const why = classification.signals.length ? `（${classification.signals.join("、")}）` : "";
   const autoLabel = requestLabel(automatic.model, automatic.effort);
-  const reason = source === "auto"
+  const reason = effective === "auto"
     ? `自动：${TASK_LABEL[classification.task]}${why}`
-    : `${source === "next-only" ? "仅本条指定" : "你指定的默认模型"} ${MODEL_NAME[chosen!]}，思考强度按任务；自动会用 ${autoLabel}`;
-  return { model: chosen ?? automatic.model, effort: automatic.effort, task: classification.task, source, reason, automatic: { model: automatic.model, effort: automatic.effort } };
+    : `${source === "conversation" ? "这段对话指定" : "设置中的默认模型"} ${MODEL_NAME[effective]}，思考强度按任务；自动会用 ${autoLabel}`;
+  return { model: effective === "auto" ? automatic.model : effective, effort: automatic.effort, task: classification.task, source, reason, automatic: { model: automatic.model, effort: automatic.effort } };
 }
 
 /** A one-message fallback offered after a refusal; the learner has to choose it. */
 export type Fallback = { model: ModelId; effort?: Effort; label: string };
 export function applyFallback(route: Route, fallback: Fallback): Route {
   const model = fallback.model, effort = fallback.effort ?? route.effort;
-  return { ...route, model, effort, source: "next-only", reason: `仅本条：${fallback.label}；自动会用 ${requestLabel(route.automatic.model, route.automatic.effort)}` };
+  return { ...route, model, effort, source: "fallback", reason: `仅本条：${fallback.label}；自动会用 ${requestLabel(route.automatic.model, route.automatic.effort)}` };
 }
 
 export type ContextSummary = {

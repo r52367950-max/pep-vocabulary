@@ -171,7 +171,7 @@ export function SettingsDialog() {
                       </button>
                     ))}
                   </div>
-                  <p className="settings-note">思考强度不需要选择，始终按任务自动决定（见下方规则）。输入框里的「仅下一条」只影响一条消息，不会改动这里。</p>
+                  <p className="settings-note">新对话从这里的默认开始；在输入框里换模型只影响那一段对话。思考强度不需要选择，始终按任务自动决定（见下方规则）。</p>
                   <Row title="复杂规划的思考强度" detail="多约束、有步骤依赖的规划。「Soda High」暂按 Sol · 高 理解，尚未确认，可在这里改。">
                     <Segmented label="复杂规划档位" value={settings.complexPlanTier} onChange={(complexPlanTier) => update({ complexPlanTier })} options={[{ value: "sol-high", label: "Sol · 高" }, { value: "sol-medium", label: "Sol · 中" }]} />
                   </Row>

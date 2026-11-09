@@ -1,3 +1,4 @@
+import { isModelChoice } from "./routing";
 import type { Block, Conversation } from "./types";
 
 /** Persisted form: normal conversations only, attachment previews dropped, unfinished answers marked stopped. */
@@ -22,7 +23,8 @@ export function parseStoredConversations(raw: string | null): Conversation[] | n
     const value = JSON.parse(raw) as { version?: unknown; conversations?: unknown };
     if (value.version !== 1 || !Array.isArray(value.conversations)) return null;
     return value.conversations.filter((item): item is Conversation => Boolean(item) && typeof item.id === "string" && typeof item.title === "string"
-      && Array.isArray(item.messages) && item.temporary === false).slice(0, 100);
+      && Array.isArray(item.messages) && item.temporary === false).slice(0, 100)
+      .map((item) => (item.model === undefined || isModelChoice(item.model) ? item : { ...item, model: undefined }));
   } catch {
     return null;
   }

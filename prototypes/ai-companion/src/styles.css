@@ -655,18 +655,42 @@ dialog.settings[open] { animation: layer-in 180ms var(--ease); }
 .about .settings-group { margin-top: 18px; }
 .about .plain-list { color: var(--ink-2); font-size: 14px; }
 
-/* ---------- Voice ---------- */
-.voice-modal { width: min(520px, calc(100vw - 32px)); }
-.voice { display: flex; flex-direction: column; gap: 14px; }
-.voice-banner { display: flex; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-control); background: var(--warn-soft); font-size: 13.5px; }
-.voice-banner svg { flex: none; margin-top: 3px; color: var(--warn); }
-.voice-state { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-surface); font-weight: 600; }
-.voice-state svg { color: var(--accent); }
-.voice-route { flex-basis: 100%; font-size: 12.5px; font-weight: 400; color: var(--muted); }
-.caption-list.live { max-height: 220px; overflow-y: auto; }
-.caption-empty { font-size: 13.5px; color: var(--muted); }
-.voice-input { display: flex; gap: 6px; }
-.voice-controls { display: flex; justify-content: space-between; gap: 10px; }
+/* ---------- Voice: the whole conversation area, captions above, controls below ---------- */
+.voice-stage { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg); }
+/* A fixed glow, not tied to any sound level. */
+.voice-stage::after { content: ""; position: absolute; inset: auto 0 0 0; z-index: -1; height: 48%; background: radial-gradient(120% 95% at 50% 100%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 72%); pointer-events: none; }
+.voice-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 56px; padding: var(--safe-top) 20px 0; }
+.voice-title { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.voice-title svg { color: var(--accent); }
+.voice-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-size: 12.5px; font-weight: 600; }
+.voice-lines { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; padding: 8px 24px; }
+.voice-hello { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 540px; margin: auto; text-align: center; }
+.voice-hello .trace-glyph { color: var(--ink); }
+.voice-greeting { margin: 4px 0 0; font-size: clamp(24px, 3vw, 30px); font-weight: 650; letter-spacing: -0.01em; }
+.voice-note { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.7; }
+.voice-captions { display: flex; flex-direction: column; gap: 18px; width: min(720px, 100%); margin: auto auto 0; padding: 0 0 12px; list-style: none; }
+.voice-line { display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 10px; color: var(--muted); }
+.voice-line .who { padding-top: 5px; font-size: 12.5px; font-weight: 600; }
+.voice-line p { margin: 0; font-size: 17px; line-height: 1.7; }
+.voice-line.line-user p { color: var(--ink-2); }
+.voice-line.is-latest { color: var(--ink); }
+.voice-line.is-latest p { font-size: 22px; line-height: 1.6; font-weight: 500; color: var(--ink); }
+.voice-bottom { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 24px calc(18px + var(--safe-bottom)); }
+.voice-state { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; margin: 0; font-size: 15px; font-weight: 600; }
+.state-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.voice-state.is-speaking .state-dot { background: var(--accent); }
+.voice-route { flex-basis: 100%; text-align: center; font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.suggestions.voice-samples { justify-content: center; max-width: 720px; margin: 0; }
+.voice-bar { display: flex; align-items: center; gap: 10px; width: min(720px, 100%); }
+.voice-input { display: flex; flex: 1; align-items: center; gap: 6px; min-width: 0; height: 52px; padding: 0 7px 0 16px; border: 1px solid var(--line-strong); border-radius: var(--r-field); background: var(--surface); transition: border-color 140ms ease, box-shadow 140ms ease; }
+.voice-input:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong)); box-shadow: var(--focus-ring); }
+.voice-input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; font-size: 16px; }
+.voice-send { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: var(--on-accent); }
+.voice-send:disabled { background: var(--fill-strong); color: var(--faint); }
+.voice-round { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--ink-2); }
+.voice-round.is-on { background: var(--fill-strong); color: var(--ink); }
+.voice-round:disabled { opacity: 0.5; }
+.voice-round.voice-end { border-color: transparent; background: var(--ink); color: var(--bg); }
 
 /* ---------- Tablet portrait and phones ---------- */
 @media (max-width: 1000px) {
@@ -742,6 +766,14 @@ dialog.settings[open] { animation: layer-in 180ms var(--ease); }
   .settings-content { padding: 14px max(16px, env(safe-area-inset-left, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
   .setting-row { flex-wrap: wrap; }
   .modal { width: calc(100vw - 24px); }
+  .voice-top { padding-inline: max(14px, env(safe-area-inset-left, 0px)) max(14px, env(safe-area-inset-right, 0px)); }
+  .voice-lines { padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+  .voice-line.is-latest p { font-size: 19px; }
+  .voice-bottom { align-items: stretch; padding: 8px max(10px, env(safe-area-inset-left, 0px)) 12px max(10px, env(safe-area-inset-right, 0px)); }
+  .suggestions.voice-samples { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .suggestions.voice-samples li { flex: none; }
+  .voice-bar { width: 100%; gap: 8px; }
+  .voice-round { width: 48px; height: 48px; }
 }
 @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
 
@@ -752,6 +784,8 @@ dialog.settings[open] { animation: layer-in 180ms var(--ease); }
 
 /* Hover feedback only where a pointer can hover; on touch screens it would stick after a tap. */
 @media (hover: hover) {
+  .voice-round:hover:not(:disabled) { background: var(--fill); color: var(--ink); }
+  .voice-round.voice-end:hover { background: color-mix(in srgb, var(--ink) 85%, var(--bg)); color: var(--bg); }
   .nav-item:hover { background: var(--fill-strong); color: var(--ink); }
   .icon-button:hover:not(:disabled) { background: var(--fill); color: var(--ink); }
   .button-primary:hover:not(:disabled) { background: var(--accent-ink); }

@@ -400,23 +400,20 @@ async function pathPractice(page, viewport) {
 }
 
 async function pathRouting(page, viewport) {
-  // 5. Automatic → one-message model → refusal keeps it → default model → back to automatic.
+  // 5. Automatic → a model chosen for this conversation → refusal and one-message fallback →
+  //    a new conversation starts from the settings default.
   const box = composer(page, ".chat-dock");
-  const chip = page.locator(".chat-dock .route-button");
+  const chip = page.locator(".chat .route-button");
   const chipText = async () => (await chip.innerText()).replace(/\s+/g, "");
   await box.fill("帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词");
   check("自动模式只显示「自动」", await chipText() === "自动");
   await chip.click();
   check("菜单里解释自动的判断", (await page.locator(".route-menu .route-reason").innerText()).includes("Sol · 高"));
-  check("模型菜单不提供思考强度选项", (await page.locator(".route-menu .route-option").allInnerTexts()).every((text) => !/[低中高]$|· [低中高]/.test(text.split("\n")[0])));
-  await page.locator(".route-menu .route-option", { hasText: "Terra" }).click();
-  check("仅下一条显示所选模型", await chipText() === "Terra仅下一条");
+  check("菜单只有自动、Sol、Terra", (await page.locator(".route-menu .route-option strong").allInnerTexts()).join("|") === "自动|Sol|Terra");
+  check("没有「仅下一条」或「后续默认」", !/仅下一条|后续默认/.test(await page.locator(".route-menu").innerText()));
+  await page.keyboard.press("Escape");
   const draft = await box.inputValue();
-  await box.fill("");
-  await box.press("Enter");
-  check("空消息不消耗单次选择", (await chip.innerText()).includes("仅下一条"));
-  await chip.click();
-  await page.locator(".route-menu .route-option", { hasText: "Sol" }).click();
+
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
   await page.locator("#service-state").selectOption("sol-unavailable");
@@ -424,12 +421,12 @@ async function pathRouting(page, viewport) {
   await box.fill(draft);
   await box.press("Enter");
   check("模型不可用时拒绝发送并说明", (await page.locator(".chat-dock .composer-notice").innerText()).includes("不会自动换模型"));
-  check("被拒绝的发送不消耗单次选择", (await chip.innerText()).includes("仅下一条") && (await box.inputValue()) === draft);
+  check("被拒绝时草稿保留", (await box.inputValue()) === draft);
   await page.locator(".chat-dock .composer-notice button", { hasText: "只把这条改用 Terra 发送" }).click();
   await waitIdle(page);
-  check("选择的备选只用于这一条", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 高");
+  check("备选只用于这一条", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 高");
   check("说明自动原本的选择", (await lastReply(page).locator(".meta-reason").innerText()).includes("自动会用 Sol · 高"));
-  check("单次选择用后恢复自动", await chipText() === "自动");
+  check("备选之后仍是自动", await chipText() === "自动");
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
   await page.locator("#service-state").selectOption("normal");
@@ -447,18 +444,32 @@ async function pathRouting(page, viewport) {
   await lastReply(page).locator("button", { hasText: "确认加入" }).click();
 
   await chip.click();
-  await page.locator(".route-menu [role=radio]", { hasText: "后续默认" }).click();
   await page.locator(".route-menu .route-option", { hasText: "Terra" }).click();
-  check("后续默认只显示模型名", await chipText() === "Terra");
+  check("选中的模型显示在输入框", await chipText() === "Terra");
+  await send(page, "我今天只有 15 分钟");
+  check("这段对话用所选模型，思考强度按任务", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中");
   await send(page, "看看我这周的学习状态");
-  check("默认模型用于下一条，思考强度按任务", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中");
-  check("后续默认不会被一次发送清除", await chipText() === "Terra");
+  check("选择在这段对话里保持", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中" && await chipText() === "Terra");
+  const conversationTitle = await page.locator(".title-text").innerText();
+  await page.locator(".chat-top [aria-label='新对话']").click();
+  check("新对话回到默认的自动", await chipText() === "自动");
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
-  check("设置里显示同一默认模型", await page.locator(".settings-routes [aria-checked=true]").innerText().then((text) => text.startsWith("Terra")));
+  check("对话里的选择不改设置默认", (await page.locator(".settings-routes [aria-checked=true]").innerText()).startsWith("自动"));
+  await page.locator(".settings-routes .route-option", { hasText: "Terra" }).click();
+  await closeSettings(page);
+  check("设置默认后新对话显示 Terra", await chipText() === "Terra");
+  await openSettings(page, viewport);
+  await settingsSection(page, "模型");
   await page.locator(".settings-routes .route-option", { hasText: "自动（推荐）" }).click();
   await closeSettings(page);
   check("在设置中恢复自动", await chipText() === "自动");
+  await openPanel(page);
+  await page.locator(".conv-row", { hasText: conversationTitle }).first().click();
+  if (await page.locator(".conv-panel:not([hidden])").count() && viewport.width < 1280) await page.keyboard.press("Escape");
+  check("回到原对话时它的模型仍是 Terra", await chipText() === "Terra");
+  await chip.click();
+  await page.locator(".route-menu .route-option", { hasText: "自动" }).click();
 }
 
 async function pathSettings(page, viewport) {
@@ -499,16 +510,22 @@ async function pathSettings(page, viewport) {
 
 async function pathVoice(page, viewport) {
   await page.locator(".chat-dock [aria-label^='语音会话']").click();
-  await page.waitForSelector("dialog.voice-modal[open]");
-  check("语音入口说明未接通麦克风", (await page.locator(".voice-banner").innerText()).includes("不会使用麦克风"));
-  await page.locator(".voice .suggestions button", { hasText: "我今天只有 15 分钟" }).click();
-  await page.waitForSelector(".caption-ai");
-  check("字幕显示双方", await page.locator(".voice .caption").count() === 2);
-  await page.locator(".voice-controls button", { hasText: "结束" }).click();
-  await page.waitForFunction(() => !document.querySelector("dialog.voice-modal[open]"));
+  await page.waitForSelector(".voice-stage");
+  const [stage, main] = await Promise.all([page.locator(".voice-stage").boundingBox(), page.locator(".chat-main").boundingBox()]);
+  check("语音会话占满整个对话区域", Math.abs(stage.width - main.width) < 2 && Math.abs(stage.height - main.height) < 2, JSON.stringify([stage, main]));
+  check("说明未接通语音、不使用麦克风", (await page.locator(".voice-badge").innerText()).includes("不使用麦克风"));
+  check("打开后可以直接用文字代替说话", await page.evaluate(() => document.activeElement?.id === "voice-typed"));
+  await page.locator(".voice-samples button", { hasText: "我今天只有 15 分钟" }).click();
+  await page.waitForSelector(".voice-line.line-ai");
+  check("字幕显示双方", await page.locator(".voice-line").count() === 2);
+  const [caption, bar] = await Promise.all([page.locator(".voice-line.is-latest").boundingBox(), page.locator(".voice-bar").boundingBox()]);
+  check("文字显示在控制条上方", caption.y + caption.height <= bar.y);
+  check("状态只用文字和固定标记", (await page.locator(".voice-state").innerText()).match(/AI 在回答|轮到你说/) !== null);
+  await page.screenshot({ path: `${shots}/${viewport.name}-13-voice.png` });
+  await page.locator(".voice-end").click();
   await page.waitForSelector(".chat .voice-card");
   check("语音回到同一对话", await page.locator(".chat .voice-card").count() === 1 && await lastReply(page).locator(".plan-card").count() === 1);
-  await page.screenshot({ path: `${shots}/${viewport.name}-13-voice-back.png` });
+  await page.screenshot({ path: `${shots}/${viewport.name}-14-voice-back.png` });
 }
 
 async function pathTargets(page, viewport) {

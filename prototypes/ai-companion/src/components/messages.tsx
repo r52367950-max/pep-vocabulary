@@ -115,7 +115,7 @@ function AssistantReply({ message, conversationId, place }: { message: Assistant
           <dl className="request-detail">
             <div><dt>任务</dt><dd>{TASK_LABEL[message.request.metadata.task]}</dd></div>
             <div><dt>请求</dt><dd><code>model: {message.request.model}</code> <code>reasoning.effort: {message.request.reasoning.effort}</code></dd></div>
-            <div><dt>来源</dt><dd>{message.request.metadata.routeSource === "auto" ? "自动选择" : message.request.metadata.routeSource === "next-only" ? "仅这一条的手动选择" : "你设定的后续偏好"}</dd></div>
+            <div><dt>来源</dt><dd>{{ auto: "自动选择", conversation: "这段对话指定的模型", default: "设置中的默认模型", fallback: "只用于这一条的备选" }[message.request.metadata.routeSource]}</dd></div>
             <div><dt>附带</dt><dd>
               学习记录{context.records ? "（示例）" : "：未附带"}；文章全文：{context.article === "full" ? "已附带" : context.article === "off" ? "已关闭" : "无"}；
               引用 {context.quotes} 段{context.quotes ? `（${context.quoteChars} 字符）` : ""}

@@ -9,7 +9,6 @@ import { RecordsView, TodayView, WordsView } from "./components/learn-views";
 import { Launcher, MiniPanel } from "./components/mini-panel";
 import { ReadingView } from "./components/reading-view";
 import { SettingsDialog } from "./components/settings-dialog";
-import { VoiceSession } from "./components/voice-session";
 
 /** The conversation sits between the word bank and reading: one entry, same place on every size. */
 const NAV: { id: View; label: string; short: string; symbol?: SymbolName }[] = [
@@ -87,7 +86,6 @@ export function App() {
       {!chat && state.miniOpen && <MiniPanel />}
       {!chat && <Launcher />}
       <SettingsDialog />
-      <VoiceSession />
       <p className="visually-hidden" role="status" aria-live="polite">{state.announcement}</p>
     </div>
   );

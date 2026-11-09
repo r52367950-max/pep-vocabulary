@@ -132,7 +132,7 @@ export function Composer({ conversationId, variant, placeholder }: {
 
   const classification = classifyTask({ text: draft.text, hasQuote: draft.quotes.length > 0 });
   const table = routeTable(state.settings.complexPlanTier);
-  const route = resolveRoute(classification, { nextOnly: draft.nextOnly, preference: state.settings.routePreference }, table);
+  const route = resolveRoute(classification, { conversation: conversation.model, preference: state.settings.routePreference }, table);
 
   return (
     <div className={`composer composer-${variant}${dragging ? " is-dragging" : ""}`}
@@ -210,9 +210,9 @@ export function Composer({ conversationId, variant, placeholder }: {
         </Popover>
         <span className="bar-spacer" />
         <Popover label="模型" placement={variant === "hero" ? "bottom" : "top"} align="end" triggerClass={`bar-button route-button route-${route.source}`}
-          triggerLabel={route.source === "auto" ? "模型：自动" : `模型：${MODEL_NAME[route.model]}${route.source === "next-only" ? "，仅下一条" : "，默认"}`}
-          trigger={<>{route.source === "auto" ? <span>自动</span> : <><span>{MODEL_NAME[route.model]}</span>{route.source === "next-only" && <span className="route-tag">仅下一条</span>}</>}<ChevronDown size={14} aria-hidden="true" /></>}>
-          {(close) => <RouteMenu conversationId={conversationId} automatic={TIERS[table[classification.task]]} reason={`${TASK_LABEL[classification.task]}${classification.signals.length ? `（${classification.signals.join("、")}）` : ""}`} close={close} />}
+          triggerLabel={route.source === "auto" ? "模型：自动" : `模型：${MODEL_NAME[route.model]}`}
+          trigger={<><span>{route.source === "auto" ? "自动" : MODEL_NAME[route.model]}</span><ChevronDown size={14} aria-hidden="true" /></>}>
+          {(close) => <RouteMenu conversationId={conversationId} selected={conversation.model ?? state.settings.routePreference} automatic={TIERS[table[classification.task]]} reason={`${TASK_LABEL[classification.task]}${classification.signals.length ? `（${classification.signals.join("、")}）` : ""}`} close={close} />}
         </Popover>
         {/* One round button: stop while answering, send when there is something to send, otherwise voice. */}
         {streaming ? (
@@ -233,27 +233,18 @@ export function Composer({ conversationId, variant, placeholder }: {
   );
 }
 
-function RouteMenu({ conversationId, reason, automatic, close }: { conversationId: string; reason: string; automatic: { model: ModelId; effort: Effort }; close: () => void }) {
-  const { state, dispatch } = useStore();
-  const draft = state.drafts[conversationId];
-  const [scope, setScope] = useState<"next" | "default">("next");
-  if (!draft) return null;
-  const selected = scope === "next" ? draft.nextOnly ?? "auto" : state.settings.routePreference;
+function RouteMenu({ conversationId, selected, reason, automatic, close }: { conversationId: string; selected: ModelChoice; reason: string; automatic: { model: ModelId; effort: Effort }; close: () => void }) {
+  const { dispatch } = useStore();
   const choose = (choice: ModelChoice) => {
-    if (scope === "next") dispatch({ type: "draft", id: conversationId, patch: { nextOnly: choice === "auto" ? null : choice } });
-    else dispatch({ type: "settings", patch: { routePreference: choice } });
-    dispatch({ type: "announce", text: scope === "next" ? (choice === "auto" ? "下一条恢复自动" : `下一条使用 ${MODEL_NAME[choice]}`) : (choice === "auto" ? "后续恢复自动选择" : `后续默认使用 ${MODEL_NAME[choice]}`) });
+    dispatch({ type: "conversation-model", id: conversationId, model: choice });
+    dispatch({ type: "announce", text: choice === "auto" ? "这段对话改为自动选择模型" : `这段对话使用 ${MODEL_NAME[choice]}` });
     close();
   };
   return (
     <div className="route-menu">
       <p className="menu-title">模型</p>
       <p className="route-reason">这条自动会用 {requestLabel(automatic.model, automatic.effort)}：{reason}</p>
-      <div className="segmented" role="radiogroup" aria-label="作用范围">
-        <button type="button" role="radio" aria-checked={scope === "next"} onClick={() => setScope("next")}>仅下一条</button>
-        <button type="button" role="radio" aria-checked={scope === "default"} onClick={() => setScope("default")}>后续默认</button>
-      </div>
-      <div className="route-options" role="radiogroup" aria-label={scope === "next" ? "下一条消息的模型" : "后续默认的模型"}>
+      <div className="route-options" role="radiogroup" aria-label="这段对话的模型">
         <button type="button" role="radio" aria-checked={selected === "auto"} className="route-option" onClick={() => choose("auto")}>
           <span><strong>自动</strong><small>按任务选择模型（推荐）</small></span>{selected === "auto" && <Check size={16} aria-hidden="true" />}
         </button>
@@ -263,8 +254,8 @@ function RouteMenu({ conversationId, reason, automatic, close }: { conversationI
           </button>
         ))}
       </div>
-      <p className="menu-foot">思考强度始终按任务自动决定。{scope === "next" ? "「仅下一条」只影响下一条发出的消息；发送失败或被拒绝时保留。" : "「后续默认」用于之后所有消息，可在设置中恢复自动。"}</p>
-      <button type="button" className="link-button" onClick={() => { close(); dispatch({ type: "settings-open", section: "model" }); }}>在设置中查看自动模式的规则</button>
+      <p className="menu-foot">思考强度始终按任务自动决定。这里的选择只用于这段对话；新对话的默认模型在设置里。</p>
+      <button type="button" className="link-button" onClick={() => { close(); dispatch({ type: "settings-open", section: "model" }); }}>在设置中修改默认模型</button>
     </div>
   );
 }

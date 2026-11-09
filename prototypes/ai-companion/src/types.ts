@@ -1,6 +1,6 @@
 import type { Quote } from "./selection";
 import type { Attachment } from "./sources";
-import type { RequestPayload, SelectionAction, ModelChoice, ModelId, ComplexPlanTier, ServiceState } from "./routing";
+import type { RequestPayload, SelectionAction, ModelChoice, ComplexPlanTier, ServiceState } from "./routing";
 import type { PlanScope, PlanSpec, PracticeItem, Score } from "./practice";
 
 export type QuoteMode = "translate" | "define" | "grammar" | "context";
@@ -39,14 +39,14 @@ export type Message = UserMessage | AssistantMessage | ResultMessage | VoiceMess
 
 export type Conversation = {
   id: string; title: string; temporary: boolean; sample?: boolean;
+  /** Model picked in the composer for this conversation; absent means the settings default. */
+  model?: ModelChoice;
   createdAt: number; updatedAt: number; messages: Message[];
 };
 
 export type Draft = {
   text: string; quotes: Quote[]; attachments: Attachment[];
   includeRecords: boolean; includeArticle: boolean;
-  /** One-message model choice; consumed only by a message that is actually sent. */
-  nextOnly: ModelId | null;
 };
 
 export type SendMode = "enter" | "mod-enter";

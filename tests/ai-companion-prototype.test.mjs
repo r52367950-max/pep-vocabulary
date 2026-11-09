@@ -14,7 +14,7 @@ import { parseStoredConversations, serializeConversations } from "../prototypes/
 import { readFile } from "node:fs/promises";
 
 const table = routeTable("sol-high");
-const auto = { nextOnly: null, preference: "auto" };
+const auto = { preference: "auto" };
 const emptyContext = { records: true, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [] };
 const route = (input, choice = auto) => resolveRoute(classifyTask(input), choice, table);
 
@@ -64,22 +64,22 @@ test("the complex-planning strength is a setting, not a constant", () => {
 
 test("a chosen model replaces only the model; thinking strength stays with the task", () => {
   const plan = classifyTask({ text: "我今天只有 15 分钟", hasQuote: false });
-  const once = resolveRoute(plan, { nextOnly: "gpt-6.1-terra", preference: "auto" }, table);
-  assert.deepEqual([once.model, once.effort, once.source], ["gpt-6.1-terra", "medium", "next-only"]);
-  assert.match(once.reason, /自动会用 Sol · 中/);
-  const translate = resolveRoute({ task: "translate", signals: [] }, { nextOnly: "gpt-6.1-sol", preference: "auto" }, table);
+  const chosen = resolveRoute(plan, { conversation: "gpt-6.1-terra", preference: "auto" }, table);
+  assert.deepEqual([chosen.model, chosen.effort, chosen.source], ["gpt-6.1-terra", "medium", "conversation"]);
+  assert.match(chosen.reason, /这段对话指定 Terra.*自动会用 Sol · 中/);
+  const translate = resolveRoute({ task: "translate", signals: [] }, { conversation: "gpt-6.1-sol", preference: "auto" }, table);
   assert.deepEqual([translate.model, translate.effort], ["gpt-6.1-sol", "low"]);
-  const preferred = resolveRoute(plan, { nextOnly: null, preference: "gpt-6.1-terra" }, table);
-  assert.deepEqual([preferred.model, preferred.source], ["gpt-6.1-terra", "preference"]);
-  const both = resolveRoute(plan, { nextOnly: "gpt-6.1-sol", preference: "gpt-6.1-terra" }, table);
-  assert.equal(both.model, "gpt-6.1-sol", "a one-message choice wins over the default for that message only");
+  const fromSettings = resolveRoute(plan, { preference: "gpt-6.1-terra" }, table);
+  assert.deepEqual([fromSettings.model, fromSettings.source], ["gpt-6.1-terra", "default"]);
+  const backToAuto = resolveRoute(plan, { conversation: "auto", preference: "gpt-6.1-terra" }, table);
+  assert.deepEqual([backToAuto.model, backToAuto.source], ["gpt-6.1-sol", "auto"], "a conversation set to automatic overrides a fixed default");
   assert.ok(isModelChoice("auto") && isModelChoice("gpt-6.1-sol") && !isModelChoice("sol-high"), "older stored tiers fall back to automatic");
 });
 
 test("the request carries exactly the routed model and effort, and labels read from it", () => {
-  for (const nextOnly of [null, "gpt-6.1-sol", "gpt-6.1-terra"]) {
+  for (const conversation of [undefined, "auto", "gpt-6.1-sol", "gpt-6.1-terra"]) {
     for (const task of ["chat", "complex-plan", "translate", "grammar"]) {
-      const decided = resolveRoute({ task, signals: [] }, { nextOnly, preference: "auto" }, table);
+      const decided = resolveRoute({ task, signals: [] }, { conversation, preference: "auto" }, table);
       const request = buildRequest(decided, emptyContext);
       assert.equal(request.model, decided.model);
       assert.equal(request.reasoning.effort, decided.effort);
@@ -100,7 +100,7 @@ test("unavailable models and budget limits refuse instead of silently retrying",
   assert.match(unavailable.message, /不会自动换模型/);
   assert.deepEqual(unavailable.alternatives.map((item) => item.model), ["gpt-6.1-terra"]);
   const fallback = applyFallback(medium, unavailable.alternatives[0]);
-  assert.deepEqual([fallback.model, fallback.effort, fallback.source], ["gpt-6.1-terra", "medium", "next-only"]);
+  assert.deepEqual([fallback.model, fallback.effort, fallback.source], ["gpt-6.1-terra", "medium", "fallback"]);
   assert.deepEqual(checkSendable(terra, "sol-unavailable"), { ok: true });
   const low = checkSendable(high, "budget-low");
   assert.equal(low.ok, false);
@@ -270,6 +270,11 @@ test("only normal conversations are saved, without attachment previews or undeli
   assert.deepEqual(parsed.map((item) => item.id), ["n"]);
   assert.equal(parsed[0].messages[2].status, "stopped");
   assert.deepEqual(parsed[0].messages[2].blocks, [{ type: "text", text: "abc" }]);
+  const withModels = parseStoredConversations(JSON.stringify({ version: 1, conversations: [
+    { id: "a", title: "a", temporary: false, messages: [], model: "gpt-6.1-terra" },
+    { id: "b", title: "b", temporary: false, messages: [], model: "sol-high" },
+  ] }));
+  assert.deepEqual(withModels.map((item) => item.model), ["gpt-6.1-terra", undefined], "a conversation keeps its model; an outdated value is dropped");
   assert.equal(parseStoredConversations("{bad"), null);
   assert.equal(parseStoredConversations(JSON.stringify({ version: 2, conversations: [] })), null);
 });
