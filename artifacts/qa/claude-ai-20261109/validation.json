@@ -1,0 +1,37 @@
+{
+  "typecheck": "passed",
+  "lint": "passed (0 errors, 0 warnings)",
+  "production_build": "passed",
+  "artifact_validation": "passed",
+  "worker_smoke": {
+    "status": "passed",
+    "checks": 54
+  },
+  "production_dependency_audit": "0 vulnerabilities",
+  "data_audit": "passed with the existing declared content gaps",
+  "unit_and_regression": {
+    "status": "passed after focused revalidation",
+    "full_suite_cases": 626,
+    "affected_suite_cases": 24,
+    "strategy": "Reuse unchanged passing results; independently rerun the affected files and added state, voice, reading and backend checks."
+  },
+  "browser_integration": {
+    "status": "passed",
+    "checks": 19,
+    "viewports": [
+      1440,
+      1180,
+      820,
+      390
+    ]
+  },
+  "browser_live_voice": {
+    "status": "passed",
+    "checks": 7
+  },
+  "limits": [
+    "AI HTTP and WebRTC transports use deterministic fixtures; no paid provider call or real microphone capture.",
+    "This PR preserves existing database migrations, word IDs and backup schema.",
+    "Production site deployment is separate from PR delivery."
+  ]
+}

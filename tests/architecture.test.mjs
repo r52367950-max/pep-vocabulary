@@ -41,7 +41,9 @@ test("destructive reset and AI degradation are explicit", () => {
   const app = source("components/vocab-app.tsx");
   const settings = source("components/console-settings.tsx");
   assert.match(app, /window\.confirm\(\s*["']将清空本机/);
-  assert.match(settings, /关闭后不会发起模型请求/);
+  assert.match(settings, /aria-label="启用 AI 增强"/);
+  assert.match(settings, /checked=\{settings\.aiEnabled\}/);
+  assert.match(settings, /onUpdate\(\{ aiEnabled: event\.target\.checked \}\)/);
   assert.match(source("components/studio/study-session.tsx"), /系统英语语音/);
 });
 

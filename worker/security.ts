@@ -23,6 +23,7 @@ export const PRIVATE_API_ROUTES: Readonly<Record<string, readonly string[]>> = {
   "/api/sync": ["GET", "POST"],
   "/api/ai/config": ["GET", "POST", "DELETE"],
   "/api/ai/test": ["POST"],
+  "/api/assistant/chat": ["POST"],
   "/api/assistant/check-sentence": ["POST"],
   "/api/assistant/contrast-words": ["POST"],
   "/api/assistant/explain": ["POST"],

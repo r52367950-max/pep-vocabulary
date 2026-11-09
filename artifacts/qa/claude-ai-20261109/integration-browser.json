@@ -1,0 +1,156 @@
+{
+  "status": "passed",
+  "browser": "156.0.8078.79",
+  "base": "http://127.0.0.1:5174",
+  "viewportSizes": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "ipad-landscape",
+      "width": 1180,
+      "height": 760,
+      "touch": true
+    },
+    {
+      "name": "ipad-portrait",
+      "width": 820,
+      "height": 1100,
+      "touch": true
+    },
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "mobile": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "desktop: original Today artwork and learning entry retained",
+      "status": "passed"
+    },
+    {
+      "name": "desktop: Claude chat/model/history/mini layout and shared draft",
+      "status": "passed",
+      "horizontalOverflow": 0
+    },
+    {
+      "name": "ipad-landscape: original Today artwork and learning entry retained",
+      "status": "passed"
+    },
+    {
+      "name": "ipad-landscape: Claude chat/model/history/mini layout and shared draft",
+      "status": "passed",
+      "horizontalOverflow": 0
+    },
+    {
+      "name": "ipad-portrait: original Today artwork and learning entry retained",
+      "status": "passed"
+    },
+    {
+      "name": "ipad-portrait: Claude chat/model/history/mini layout and shared draft",
+      "status": "passed",
+      "horizontalOverflow": 0
+    },
+    {
+      "name": "IME and Shift+Enter do not send; stopping suppresses delayed answer",
+      "status": "passed"
+    },
+    {
+      "name": "Actual client transport displays actionable HTTP error and clears busy state",
+      "status": "passed"
+    },
+    {
+      "name": "Temporary conversation uses temporary request scope and never persists",
+      "status": "passed"
+    },
+    {
+      "name": "Voice uses full chat region and unconfigured service never opens microphone/session",
+      "status": "passed"
+    },
+    {
+      "name": "Actual TXT file read sends content once and leaves raw attachment out of persisted history",
+      "status": "passed"
+    },
+    {
+      "name": "Actual article Range selection reaches shared mini/full request with exact quote",
+      "status": "passed"
+    },
+    {
+      "name": "phone: original Today artwork and learning entry retained",
+      "status": "passed"
+    },
+    {
+      "name": "phone: Claude chat/model/history/mini layout and shared draft",
+      "status": "passed",
+      "horizontalOverflow": 0
+    },
+    {
+      "name": "Same-account context refresh restores the quarantined draft and attachment after verification",
+      "status": "passed"
+    },
+    {
+      "name": "Account invalidation refreshes context, clears prior data and sends only under the new scope",
+      "status": "passed"
+    },
+    {
+      "name": "Keyboard delete removes the selected saved conversation",
+      "status": "passed"
+    },
+    {
+      "name": "Action card opens actual study session, saves one answer and returns its real result to follow-up context",
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    "today-original-desktop",
+    "chat-empty-desktop",
+    "chat-answer-desktop",
+    "chat-history-desktop",
+    "mini-desktop",
+    "chat-empty-ipad-landscape",
+    "chat-answer-ipad-landscape",
+    "chat-history-ipad-landscape",
+    "mini-ipad-landscape",
+    "chat-empty-ipad-portrait",
+    "chat-answer-ipad-portrait",
+    "chat-history-ipad-portrait",
+    "mini-ipad-portrait",
+    "chat-empty-phone",
+    "chat-answer-phone",
+    "chat-history-phone",
+    "mini-phone",
+    "voice-unconfigured-desktop",
+    "reading-selection-mini-desktop",
+    "actual-practice-result-desktop"
+  ],
+  "pageErrors": [],
+  "failure": null,
+  "limits": [
+    "HTTP fixture responses cover client transport and UI behavior; upstream model quality/latency is not measured.",
+    "Voice readiness fixture is unconfigured; no microphone or paid voice session is started.",
+    "Screenshots capture the real local app with controlled QA answers."
+  ],
+  "verificationMode": "Incremental browser verification: original unaffected passes retained; account lifecycle and changed phone layout rechecked in bounded runs; real practice-result flow checked separately. This is not one fresh monolithic run.",
+  "resolvedFindings": [
+    {
+      "finding": "After context invalidation, the original client required an extra send attempt to reconnect. No stale account content was submitted.",
+      "fix": "Automatically refresh and quarantine draft/files until account scope is verified.",
+      "verification": "integration-browser-account.json: same-account recovery, new-account purge, keyboard history delete."
+    },
+    {
+      "finding": "Review-mode result card displayed the Chinese expected answer as its item title.",
+      "fix": "Use the real vocabulary headword as the result item title.",
+      "verification": "integration-browser-practice.json: English headword asserted; actual result screenshot refreshed."
+    }
+  ],
+  "targetedReports": [
+    "integration-browser-account.json",
+    "integration-browser-phone.json",
+    "integration-browser-practice.json"
+  ]
+}

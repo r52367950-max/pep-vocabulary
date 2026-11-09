@@ -1,10 +1,10 @@
 # 项目状态入口
 
-核对日期：2026-11-09；2.18.1 收紧发布、开发工具、账户日志及 DOCX 导入的安全边界，清理公开来源中的私有项目记录，并补齐个人文章清空与单篇删除的跨页失效和迟到保存防护。详见 [2.18.1 发布说明](docs/RELEASE_2.18.1.md)。
+核对日期：2026-11-09；当前候选版本 2.19.0 接入 Claude 对话界面、阅读选文和真实 AI/语音服务，保留原词迹学习页面。此轮通过 PR 交付，正式站发布单独进行。详见 [2.19.0 版本说明](docs/RELEASE_2.19.0.md)。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.18.1 | `package.json` |
+| 应用版本 | 2.19.0 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0；索引 `pep-lexicon-index/2` 行编码 | `public/data/v1/manifest.json`、`lib/lexicon-index-codec.mjs` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |

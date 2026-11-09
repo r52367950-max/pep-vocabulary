@@ -345,7 +345,7 @@ export function responsesPayload(payload: Record<string, unknown>, maximum: numb
     stream: Boolean(payload.stream), store: false,
     ...(payload.response_format ? { text: { format: payload.response_format } } : {}),
     ...(payload.prompt_cache_key ? { prompt_cache_key: payload.prompt_cache_key } : {}),
-    ...(/^gpt-[56]/.test(String(payload.model)) ? { reasoning: { effort: "low" } } : {}),
+    ...(/^gpt-[56]/.test(String(payload.model)) ? { reasoning: { effort: ["low", "medium", "high"].includes(String(payload.reasoning_effort)) ? payload.reasoning_effort : "low" } } : {}),
   };
 }
 

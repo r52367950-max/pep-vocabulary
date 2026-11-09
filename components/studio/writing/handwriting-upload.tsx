@@ -67,10 +67,10 @@ export default function HandwritingUpload({ temporary, disabled, hasText, onBusy
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {photo && <img className="handwriting-preview" src={photo.url} alt="本次手写作文照片" />}
       {(phase === "preparing" || phase === "loading") && <p role="status">{phase === "preparing" ? "正在本机处理照片…" : "正在逐字识别与评价书写…"}</p>}
-      {phase === "ready" && <><p className="ai-note">上传清晰完整的作文照片，保留原稿拼写。照片仅用于本次识别，不保存；识别使用 AI 接口额度。</p><div className="handwriting-actions">{!sent && <button className="secondary" disabled={disabled} onClick={() => void recognize()}>识别原稿</button>}<button className="text-button" onClick={() => input.current?.click()}>重新选图</button></div></>}
+      {phase === "ready" && <><p className="ai-note">选择清晰完整的作文照片。识别使用 AI 接口额度。</p><div className="handwriting-actions">{!sent && <button className="secondary" disabled={disabled} onClick={() => void recognize()}>识别原稿</button>}<button className="text-button" onClick={() => input.current?.click()}>重新选图</button></div></>}
       {phase === "confirm" && result && <>
         <label className="ai-field"><span>核对识别文字</span><textarea rows={9} value={text} maxLength={8000} lang="en" spellCheck={false} onChange={event => { setText(event.target.value); setConfirmed(false); }} /></label>
-        <p className="ai-note">只修正识别错误，保留原稿的拼写、语法与标点。确认后才导入正文，再进行内容批改。</p>
+        <p className="ai-note">核对识别文字，保留原稿的拼写、语法与标点，然后导入正文。</p>
         {result.uncertainSpans.length > 0 && <p className="ai-note">请重点核对：{result.uncertainSpans.map(item => `${item.text}（${item.reason}）`).join("；")}</p>}
         <HandwritingAssessment assessment={result.handwriting} />
         <label className="handwriting-confirm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /><span>我已对照原稿核对文字{hasText ? "；导入后原正文保留为旧版" : ""}</span></label>

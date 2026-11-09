@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import { useModal } from "@/hooks/use-modal";
@@ -15,8 +15,6 @@ export default function SettingsDialog({ data, onClose, onClear, onReplaced, ini
 }) {
   const [showData, setShowData] = useState(false);
   const { dialog: dialogRef, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(onClose);
-  // The backup tools open from this dialog; load them while the settings are being read.
-  useEffect(() => { void DataTools.preload().catch(() => undefined); }, []);
   return <dialog ref={dialogRef} className="settings-dialog" aria-labelledby="settings-dialog-title" data-closing={closing}
     onCancel={onCancel} onPointerDown={onPointerDown} onClick={onClick}>
     <div className="settings-dialog-frame">

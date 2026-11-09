@@ -13,6 +13,7 @@ import { recordLearningActivity } from "@/lib/learning-journal-client";
 import { ActionMenu } from "./action-menu";
 import { StudioDialog } from "./studio-dialog";
 import { preloadable } from "./preloadable";
+import ReadingAiTools from "./reading-ai-tools";
 
 const ReadingImport = preloadable(() => import("./reading-import"));
 const prepareImport = () => { void ReadingImport.preload().catch(() => undefined); };
@@ -90,7 +91,7 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
     const timeout = setTimeout(() => controller.abort("timeout"), 15000);
     let active = true;
     loadReadingCatalog(controller.signal).then(value => { if (active) { catalogLoaded.current = catalogRetry; setCatalog(value); setCatalogError(""); } }).catch(() => {
-      if (active) setCatalogError("请检查网络连接，或稍后再试。已保存的学习记录不受影响。");
+      if (active) setCatalogError("请检查网络连接后重试。");
     }).finally(() => clearTimeout(timeout));
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [catalogRetry]);
@@ -184,12 +185,12 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
           <p className="reader-byline"><span>{article.author}</span><span className="reader-duration">{article.wordCount.toLocaleString("zh-CN")} 词 · 约 {Math.max(1, Math.ceil(article.wordCount / 150))} 分钟</span></p>
         </header>
         {lookupEnabled && targets.length > 0 && <p className="reader-lookup-hint"><BookOpen size={15} aria-hidden="true" />点按带下划线的单词，查看释义。</p>}
-        <article className="reader-prose" lang="en" translate="no" aria-label={article.title} style={{ fontSize: `${fontSize / 16}rem` }}>
+        <ReadingAiTools article={article} fontSize={fontSize}>
           {article.paragraphs.map((paragraph, i) => <div className="reader-paragraph" key={i}>
-            <p>{lookupProse ? lookupProse[i] : paragraph.en}</p>
+            <p data-reading-ai-paragraph={i} tabIndex={0} aria-label={`第 ${i + 1} 段`}>{lookupProse ? lookupProse[i] : paragraph.en}</p>
             {translation && paragraph.zh && <p lang="zh-CN" className="reader-translation">{paragraph.zh}</p>}
           </div>)}
-        </article>
+        </ReadingAiTools>
         <aside className="reader-endnote" aria-label="作品简介"><p>{article.background}</p>{article.backgroundEn && <p lang="en">{article.backgroundEn}</p>}</aside>
         <details className="reader-words">
           <summary><BookOpen size={19} aria-hidden="true" /><span>文中的课内词</span><span className="reader-count">{targets.length}</span><ChevronDown className="reader-disclosure" size={17} aria-hidden="true" /></summary>

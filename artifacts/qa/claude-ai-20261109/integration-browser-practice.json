@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "browser": "156.0.8078.79",
+  "base": "http://127.0.0.1:5174",
+  "viewportSizes": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "ipad-landscape",
+      "width": 1180,
+      "height": 760,
+      "touch": true
+    },
+    {
+      "name": "ipad-portrait",
+      "width": 820,
+      "height": 1100,
+      "touch": true
+    },
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "mobile": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "Action card opens actual study session, saves one answer and returns its real result to follow-up context",
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    "actual-practice-result-desktop"
+  ],
+  "pageErrors": [],
+  "failure": null,
+  "limits": [
+    "HTTP fixture responses cover client transport and UI behavior; upstream model quality/latency is not measured.",
+    "Voice readiness fixture is unconfigured; no microphone or paid voice session is started.",
+    "Screenshots capture the real local app with controlled QA answers."
+  ]
+}

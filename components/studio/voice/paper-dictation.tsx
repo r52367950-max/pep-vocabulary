@@ -169,7 +169,7 @@ function PaperSession({ items, heardItemIds, temporary, accountScope, onGraded }
           )}
           {phase === "ready" && (
             <>
-              <p className="dictation-note">仅发送这张压缩照片识字，不发送标准答案。照片不保存在本机记录；识别会使用已配置模型的额度。</p>
+              <p className="dictation-note">识别这张听写照片，使用已配置模型的额度。</p>
               <div className="paper-actions">
                 {!sent && <button type="button" className="primary" onClick={() => void recognize()}>识别文字</button>}
                 <button type="button" className="text-button" onClick={() => input.current?.click()}>重新选图</button>
@@ -178,7 +178,7 @@ function PaperSession({ items, heardItemIds, temporary, accountScope, onGraded }
           )}
           {phase === "confirm" && (
             <>
-              <p>请核对识别文字与题号，保留原来的拼写。只有确认后才会判分；未播放的题目不可选择。</p>
+              <p>核对文字与对应题号，保留原来的拼写，然后确认批改。</p>
               <div className="paper-rows">
                 {rows.map((row, index) => (
                   <div className="paper-row" key={index}>
@@ -219,7 +219,6 @@ function PaperSession({ items, heardItemIds, temporary, accountScope, onGraded }
                   </li>
                 ))}
               </ul>
-              <p className="dictation-note">这是经人工核对的照片批改，不改变单词复习进度。</p>
             </div>
           )}
         </>

@@ -27,3 +27,6 @@ export const Quiz = preloadable(styled(() => import("./learn/quiz")));
 export const LearnActivity = preloadable(styled(() => Promise.all([import("./learn/learn-activity"), Flashcards.preload(), Match.preload(), Quiz.preload()]).then(([m]) => m)));
 export const WritingWorkspace = preloadable(styled(() => import("./writing/writing-workspace")));
 export const VoiceWorkspace = preloadable(styled(() => import("./voice-workspace")));
+
+// The assistant loads on explicit navigation, launcher intent, or a reading selection.
+export const CompanionHost = preloadable(() => import("./companion"));

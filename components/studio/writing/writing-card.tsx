@@ -32,7 +32,7 @@ export default function WritingCard({ data, onWrite }: {
       <div className="writing-prompt">
         <div className="writing-prompt-copy">
           <strong>{targets.length ? "用最近学过的词写一段" : "写一段英语短文"}</strong>
-          <small>{policy.temporary ? "临时写作不读取历史草稿或推荐目标词。" : targets.length ? "写 80–120 词，用上下面的词。写完可以让 AI 批改。" : "学过一些词后，这里会推荐目标词。"}</small>
+          <small>{policy.temporary ? "临时写作 · 写完可以让 AI 批改。" : targets.length ? "写 80–120 词，用上下面的词。写完可以让 AI 批改。" : "学过一些词后，这里会推荐目标词。"}</small>
         </div>
         {targets.length > 0 && (
           <p className="writing-line" aria-label={`目标词：${targets.map((entry) => entry.headword).join("、")}`}>

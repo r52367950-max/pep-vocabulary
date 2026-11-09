@@ -50,12 +50,14 @@ export default function StudySession({
   session,
   onChange,
   onExit,
+  exitLabel,
   onRetry,
 }: {
   data: Vocabulary;
   session: StudySessionState;
   onChange: (session: StudySessionState) => void;
   onExit: () => void;
+  exitLabel?: string;
   onRetry: (ids: string[]) => void;
 }) {
   const [details, setDetails] = useState(new Map<string, LexiconDetail>());
@@ -385,7 +387,7 @@ export default function StudySession({
         <p className="muted">作答已保存在本机，下次复习会按记忆情况安排。</p>
         <div className="button-row">
           <button className="primary" onClick={onExit}>
-            返回今日
+            {exitLabel || "返回今日"}
           </button>
           {mistakes.length > 0 && (
             <button className="secondary" onClick={() => onRetry(mistakes)}>

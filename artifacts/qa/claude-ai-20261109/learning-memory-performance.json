@@ -1,0 +1,16 @@
+{
+  "description": "Collapsed learning journal, identical fixture with 30 days and 90 activities",
+  "method": "React renderToStaticMarkup with fixed learning stores; rendered element and textarea counts",
+  "baseline": "c2362d007d368efdcee984f691d0f29c1bb4a826",
+  "before": {
+    "elements": 668,
+    "summaryInputs": 30,
+    "htmlBytes": 26068
+  },
+  "after": {
+    "elements": 7,
+    "summaryInputs": 0,
+    "htmlBytes": 371
+  },
+  "scope": "Initial collapsed content only. Browser timing and expanded interaction are separate checks."
+}

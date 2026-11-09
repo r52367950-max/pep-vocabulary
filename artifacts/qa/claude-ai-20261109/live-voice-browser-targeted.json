@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "browser": "156.0.8078.79",
+  "base": "http://127.0.0.1:5174",
+  "filter": "Temporary dictation",
+  "checks": [
+    {
+      "name": "Temporary dictation uses the real request scope and recovers from AI speech failure",
+      "status": "passed"
+    }
+  ],
+  "pageErrors": [],
+  "failure": null,
+  "limits": [
+    "Actual browser, React integration and NativeLiveSession code exercised with fake RTCPeerConnection, tracks and speech synthesis.",
+    "Account/context/voice HTTP uses deterministic fixtures; no real mic, provider, quota spend or voice latency measurement."
+  ]
+}
