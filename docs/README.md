@@ -18,6 +18,7 @@
 | 2026-11-09 Security Cloud 修复 | [三页报告](SECURITY_FIX_2026-11-09.pdf) · [HTML 设计源](SECURITY_FIX_2026-11-09.html) · [PNG 与验证证据](../artifacts/qa/security-20261109/) |
 | 体验与性能报告 | [2.14.0 优化报告](OPTIMIZATION_REPORT_2.14.0.md) · [两页图文版](OPTIMIZATION_REPORT_2.14.0.pdf) |
 | 浏览器与样式检查脚本 | [artifacts/qa/README.md](../artifacts/qa/README.md) |
+| AI 对话候选原型（独立，未并入产品） | [prototypes/ai-companion/README.md](../prototypes/ai-companion/README.md) |
 | 插画制作记录 | [阅读 2.1](ASSET_READING_2.1.md)、[2.1.1 提示词](ART_PROMPTS_2.1.1.md)、[早期阅读](ASSET_READING.md)、[早期今日页](ASSET_DAILY.md) |
 
 ## 历史记录

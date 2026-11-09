@@ -1,0 +1,304 @@
+import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
+import { ArrowUp, AudioLines, Check, FileText, Image as ImageIcon, Plus, Quote as QuoteIcon, Square, X } from "lucide-react";
+import { classifyTask, resolveRoute, routeTable, TASK_LABEL, TIER_ORDER, TIERS, tierLabel, type TierId } from "../routing";
+import { paragraphLabel, quoteContext, type Quote } from "../selection";
+import { ARTICLE } from "../data";
+import { attachmentText, checkFile, decodeText, formatBytes, LIMITS, statusDetail, statusLabel, type Attachment } from "../sources";
+import { newId, useStore } from "../store";
+import { Popover } from "./popover";
+import { Modal } from "./modal";
+import { Thumb } from "./thumb";
+import { withTransition } from "./transition";
+
+type Preview = { kind: "quote"; quote: Quote } | { kind: "attachment"; attachment: Attachment } | null;
+
+/** Prefilled question when a quote arrives from the reading toolbar; selected so typing replaces it. */
+export const QUOTE_PREFILL = "这段在说什么？";
+let handledFocus = 0;
+
+export function Composer({ conversationId, variant, placeholder }: {
+  conversationId: string;
+  variant: "hero" | "dock" | "mini";
+  placeholder?: string;
+}) {
+  const store = useStore();
+  const { state, dispatch } = store;
+  const conversation = state.conversations.find((item) => item.id === conversationId);
+  const draft = state.drafts[conversationId];
+  const notice = state.notices[conversationId];
+  const area = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [accept, setAccept] = useState("");
+  const [preview, setPreview] = useState<Preview>(null);
+  const [dragging, setDragging] = useState(false);
+  const streaming = conversation?.messages.some((message) => message.role === "assistant" && message.status === "streaming") ?? false;
+
+  useLayoutEffect(() => {
+    const element = area.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, variant === "mini" ? 160 : 240)}px`;
+  }, [draft?.text, variant]);
+  // Only an explicit request (send from the centred box, "ask AI", opening the small window) moves
+  // the cursor here; switching pages or conversations never does.
+  const focusNonce = state.focusNonce;
+  useEffect(() => {
+    const element = area.current;
+    if (!element || focusNonce <= handledFocus) return;
+    handledFocus = focusNonce;
+    element.focus({ preventScroll: true });
+    if (element.value === QUOTE_PREFILL) element.select();
+    else element.setSelectionRange(element.value.length, element.value.length);
+  }, [focusNonce]);
+
+  if (!conversation || !draft) return null;
+  const available = store.articleAvailable(conversation, draft);
+  const empty = !draft.text.trim() && !draft.quotes.length && !draft.attachments.length;
+  const sourceCount = (draft.includeRecords ? 1 : 0) + (available && draft.includeArticle ? 1 : 0);
+
+  const submit = (forceTier?: TierId) => {
+    if (streaming) return;
+    const run = () => {
+      const outcome = store.send(conversationId, { forceTier, articleAvailable: available });
+      if (outcome.ok) dispatch({ type: "focus-composer" });
+    };
+    // The centred box hands over to the docked one; animate that move when motion is allowed.
+    if (variant === "hero") withTransition(run); else run();
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
+    const modifier = event.metaKey || event.ctrlKey;
+    if (event.shiftKey && !modifier) return;
+    if (state.settings.sendMode === "mod-enter" && !modifier) return;
+    event.preventDefault();
+    submit();
+  };
+
+  const addFiles = async (files: File[]) => {
+    let count = draft.attachments.length;
+    for (const file of files) {
+      const check = checkFile(file.name, file.type, file.size, count);
+      if (!check.ok) { dispatch({ type: "notice", id: conversationId, notice: { message: check.message, alternatives: [] } }); continue; }
+      count += 1;
+      const attachment: Attachment = {
+        id: newId("att"), name: file.name, kind: check.kind, size: file.size,
+        status: check.kind === "text" ? "reading" : "attached",
+        previewUrl: check.kind === "image" ? URL.createObjectURL(file) : undefined,
+      };
+      dispatch({ type: "draft", id: conversationId, patch: (latest) => ({ attachments: [...latest.attachments, attachment] }) });
+      if (check.kind !== "text") continue;
+      let patch: Partial<Attachment>;
+      let text: string | null = null;
+      try {
+        const decoded = decodeText(new Uint8Array(await file.arrayBuffer()));
+        if (decoded.ok) { text = decoded.text; patch = { status: "read", chars: decoded.chars, truncated: decoded.truncated }; }
+        else patch = { status: "error", error: decoded.message };
+      } catch {
+        patch = { status: "error", error: "文件无法读取。" };
+      }
+      // The attachment may have been removed, or its conversation discarded, while it was read.
+      if (!store.getState().drafts[conversationId]?.attachments.some((item) => item.id === attachment.id)) continue;
+      if (text !== null) attachmentText.set(attachment.id, text);
+      dispatch({ type: "draft", id: conversationId, patch: (latest) => ({ attachments: latest.attachments.map((item) => item.id === attachment.id ? { ...item, ...patch } : item) }) });
+    }
+    if (count > draft.attachments.length) dispatch({ type: "notice", id: conversationId, notice: undefined });
+  };
+
+  const removeAttachment = (attachment: Attachment) => {
+    attachmentText.drop(attachment);
+    dispatch({ type: "draft", id: conversationId, patch: (latest) => ({ attachments: latest.attachments.filter((item) => item.id !== attachment.id) }) });
+  };
+  const removeQuote = (quote: Quote) => {
+    dispatch({ type: "draft", id: conversationId, patch: (latest) => ({ quotes: latest.quotes.filter((item) => item.id !== quote.id) }) });
+    dispatch({ type: "announce", text: "已移除引用" });
+  };
+  const pick = (kind: "image" | "file") => {
+    setAccept(kind === "image" ? "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" : ".txt,.md,.markdown,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf");
+    requestAnimationFrame(() => fileInput.current?.click());
+  };
+  const onPaste = (event: ClipboardEvent) => {
+    const files = [...event.clipboardData.files];
+    if (!files.length) return;
+    event.preventDefault();
+    void addFiles(files);
+  };
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault();
+    setDragging(false);
+    void addFiles([...event.dataTransfer.files]);
+  };
+
+  const classification = classifyTask({ text: draft.text, hasQuote: draft.quotes.length > 0 });
+  const table = routeTable(state.settings.complexPlanTier);
+  const route = resolveRoute(classification, { nextOnly: draft.nextOnly, preference: state.settings.routePreference }, table);
+  const routeTag = route.source === "next-only" ? "仅下一条" : route.source === "preference" ? "默认" : "自动";
+
+  return (
+    <div className={`composer composer-${variant}${dragging ? " is-dragging" : ""}`}
+      onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); setDragging(true); } }}
+      onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+      {(draft.quotes.length > 0 || draft.attachments.length > 0) && (
+        <ul className="chip-row" aria-label="这条消息的来源">
+          {draft.quotes.map((quote) => (
+            <li key={quote.id} className="source-chip quote-chip">
+              <button type="button" className="chip-main" onClick={() => setPreview({ kind: "quote", quote })} aria-label={`查看引用：${quote.text.slice(0, 40)}`}>
+                <QuoteIcon size={14} aria-hidden="true" />
+                <span className="chip-text"><span className="chip-kicker">{quote.carried ? "继续追问" : "引用"} · {paragraphLabel(quote)}</span>{quote.text.replace(/\n+/g, " ")}</span>
+              </button>
+              <button type="button" className="chip-remove" aria-label="移除这段引用" onClick={() => removeQuote(quote)}><X size={14} aria-hidden="true" /></button>
+            </li>
+          ))}
+          {draft.attachments.map((attachment) => (
+            <li key={attachment.id} className={`source-chip file-chip status-${attachment.status}`}>
+              <button type="button" className="chip-main" onClick={() => setPreview({ kind: "attachment", attachment })} aria-label={`查看附件 ${attachment.name}：${statusLabel(attachment)}`}>
+                {attachment.previewUrl ? <Thumb src={attachment.previewUrl} alt="" className="chip-thumb" /> : attachment.kind === "image" ? <ImageIcon size={15} aria-hidden="true" /> : <FileText size={15} aria-hidden="true" />}
+                <span className="chip-text"><span className="chip-kicker">{statusLabel(attachment)}</span>{attachment.name}</span>
+              </button>
+              <button type="button" className="chip-remove" aria-label={`移除附件 ${attachment.name}`} onClick={() => removeAttachment(attachment)}><X size={14} aria-hidden="true" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label className="visually-hidden" htmlFor={`composer-${conversationId}-${variant}`}>消息</label>
+      <textarea
+        id={`composer-${conversationId}-${variant}`}
+        ref={area}
+        rows={1}
+        value={draft.text}
+        placeholder={placeholder ?? (draft.quotes.length ? "关于这段，你想问什么？" : "说说你的目标，或把眼前的问题交给我")}
+        onChange={(event) => dispatch({ type: "draft", id: conversationId, patch: { text: event.target.value } })}
+        onKeyDown={onKeyDown}
+        onPaste={onPaste}
+        enterKeyHint={state.settings.sendMode === "enter" ? "send" : "enter"}
+      />
+      {notice && (
+        <div className="composer-notice" role="alert">
+          <p>{notice.message}</p>
+          <div className="notice-actions">
+            {notice.alternatives.map((tier) => (
+              <button key={tier} type="button" className="button button-quiet" onClick={() => submit(tier)}>只把这条改用 {tierLabel(tier)} 发送</button>
+            ))}
+            <button type="button" className="icon-button small" aria-label="关闭提示" onClick={() => dispatch({ type: "notice", id: conversationId, notice: undefined })}><X size={15} aria-hidden="true" /></button>
+          </div>
+        </div>
+      )}
+      <div className="composer-bar">
+        <Popover label="来源" placement={variant === "hero" ? "bottom" : "top"} triggerClass="bar-button" triggerLabel={`来源，已附带 ${sourceCount} 项学习资料`}
+          trigger={<><Plus size={17} aria-hidden="true" /><span className="bar-label">来源</span>{sourceCount > 0 && <span className="count">{sourceCount}</span>}</>}>
+          {(close) => (
+            <div className="source-menu">
+              <p className="menu-title">添加到这条消息</p>
+              <div className="menu-actions">
+                <button type="button" className="menu-item" onClick={() => { close(); pick("image"); }}><ImageIcon size={17} aria-hidden="true" /><span>图片<small>作为附件，不识别内容</small></span></button>
+                <button type="button" className="menu-item" onClick={() => { close(); pick("file"); }}><FileText size={17} aria-hidden="true" /><span>文件<small>TXT/MD/CSV 读取文字；PDF/DOCX 只作附件</small></span></button>
+              </div>
+              <p className="menu-title">附带的学习资料</p>
+              <label className="switch-row">
+                <span>学习记录<small>示例记录 · 练习对错与错误类型</small></span>
+                <input type="checkbox" role="switch" checked={draft.includeRecords} onChange={(event) => dispatch({ type: "draft", id: conversationId, patch: { includeRecords: event.target.checked } })} />
+                <span className="switch" aria-hidden="true" />
+              </label>
+              <label className={`switch-row${available ? "" : " is-disabled"}`}>
+                <span>当前文章全文<small>{available ? `${ARTICLE.title} · ${draft.includeArticle ? "整篇附带" : "已关闭，只发送你选中的引用"}` : "打开阅读页或引用文章后可用"}</small></span>
+                <input type="checkbox" role="switch" disabled={!available} checked={available && draft.includeArticle} onChange={(event) => dispatch({ type: "draft", id: conversationId, patch: { includeArticle: event.target.checked } })} />
+                <span className="switch" aria-hidden="true" />
+              </label>
+              <p className="menu-foot">最多 {LIMITS.count} 个附件。附件内容只留在这个页面里，不写入浏览器存储。</p>
+            </div>
+          )}
+        </Popover>
+        <span className="bar-spacer" />
+        <Popover label="回答方式" placement={variant === "hero" ? "bottom" : "top"} align="end" triggerClass={`bar-button route-button route-${route.source}`}
+          triggerLabel={`回答方式：${routeTag}，${tierLabel(route.tier)}`}
+          trigger={<><span className="route-tag">{routeTag}</span><span>{tierLabel(route.tier)}</span></>}>
+          {(close) => <RouteMenu conversationId={conversationId} automatic={table[classification.task]} reason={`${TASK_LABEL[classification.task]}${classification.signals.length ? `（${classification.signals.join("、")}）` : ""}`} close={close} />}
+        </Popover>
+        <button type="button" className="icon-button voice-button" aria-label="语音会话（演示，不使用麦克风）" title="语音会话（演示）" onClick={() => dispatch({ type: "voice-open", open: true })}>
+          <AudioLines size={18} aria-hidden="true" />
+        </button>
+        {streaming ? (
+          <button type="button" className="send-button is-stop" aria-label="停止回答" onClick={() => store.stop(conversationId)}><Square size={13} fill="currentColor" aria-hidden="true" /></button>
+        ) : (
+          <button type="button" className="send-button" aria-label="发送" disabled={empty} onClick={() => submit()}><ArrowUp size={18} aria-hidden="true" /></button>
+        )}
+      </div>
+      {streaming && !empty && <p className="composer-hint" role="status">正在回答。可以继续输入，回答结束后再发送。</p>}
+      <input ref={fileInput} type="file" multiple hidden accept={accept} onChange={(event) => { void addFiles([...(event.target.files ?? [])]); event.target.value = ""; }} />
+      <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.kind === "quote" ? "引用" : "附件"}>
+        {preview?.kind === "quote" && <QuotePreview quote={preview.quote} />}
+        {preview?.kind === "attachment" && <AttachmentPreview attachment={draft.attachments.find((item) => item.id === preview.attachment.id) ?? preview.attachment} />}
+      </Modal>
+    </div>
+  );
+}
+
+function RouteMenu({ conversationId, reason, automatic, close }: { conversationId: string; reason: string; automatic: TierId; close: () => void }) {
+  const { state, dispatch } = useStore();
+  const draft = state.drafts[conversationId];
+  const [scope, setScope] = useState<"next" | "default">("next");
+  if (!draft) return null;
+  const selected = scope === "next" ? draft.nextOnly ?? "auto" : state.settings.routePreference;
+  const choose = (choice: TierId | "auto") => {
+    if (scope === "next") dispatch({ type: "draft", id: conversationId, patch: { nextOnly: choice === "auto" ? null : choice } });
+    else dispatch({ type: "settings", patch: { routePreference: choice } });
+    dispatch({ type: "announce", text: scope === "next" ? (choice === "auto" ? "下一条恢复自动" : `下一条使用 ${tierLabel(choice)}`) : (choice === "auto" ? "后续恢复自动选择" : `后续默认使用 ${tierLabel(choice)}`) });
+    close();
+  };
+  return (
+    <div className="route-menu">
+      <p className="menu-title">回答方式</p>
+      <p className="route-reason">自动判断：{reason} → {tierLabel(automatic)}</p>
+      <div className="segmented" role="radiogroup" aria-label="作用范围">
+        <button type="button" role="radio" aria-checked={scope === "next"} onClick={() => setScope("next")}>仅下一条</button>
+        <button type="button" role="radio" aria-checked={scope === "default"} onClick={() => setScope("default")}>后续默认</button>
+      </div>
+      <div className="route-options" role="radiogroup" aria-label={scope === "next" ? "下一条消息的模型" : "后续默认的模型"}>
+        <button type="button" role="radio" aria-checked={selected === "auto"} className="route-option" onClick={() => choose("auto")}>
+          <span><strong>自动</strong><small>按任务选择模型和推理强度（推荐）</small></span>{selected === "auto" && <Check size={16} aria-hidden="true" />}
+        </button>
+        {TIER_ORDER.map((tier) => (
+          <button key={tier} type="button" role="radio" aria-checked={selected === tier} className="route-option" onClick={() => choose(tier)}>
+            <span><strong>{tierLabel(tier)}</strong><small>{TIERS[tier].use}</small></span>{selected === tier && <Check size={16} aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+      <p className="menu-foot">{scope === "next" ? "只影响下一条发出的消息；发送失败或被拒绝时保留。" : "保存为之后所有消息的默认选择，可在设置中恢复自动。"}</p>
+      <button type="button" className="link-button" onClick={() => { close(); dispatch({ type: "settings-open", section: "model" }); }}>在设置中查看路由规则</button>
+    </div>
+  );
+}
+
+export function QuotePreview({ quote }: { quote: Quote }) {
+  const context = quoteContext(ARTICLE, quote);
+  return (
+    <div className="quote-preview">
+      <p className="preview-meta">{quote.title} · {quote.author} · {paragraphLabel(quote)}</p>
+      <blockquote className="reading-text">
+        {context.before && <span className="context">{context.before}</span>}
+        <mark>{quote.text}</mark>
+        {context.after && <span className="context">{context.after}</span>}
+      </blockquote>
+      <p className="preview-note">高亮部分是你选中的原文；前后灰字是所在句的其余部分，作为局部语境一起显示。发送时只附带高亮部分{quote.carried ? "，这是上一个问题沿用下来的引用" : ""}。</p>
+    </div>
+  );
+}
+
+export function AttachmentPreview({ attachment }: { attachment: Attachment }) {
+  const text = attachmentText.get(attachment.id);
+  return (
+    <div className="attachment-preview">
+      <p className="preview-meta">{attachment.name} · {formatBytes(attachment.size)}</p>
+      <p className={`status-line status-${attachment.status}`}>{statusLabel(attachment)}</p>
+      {attachment.previewUrl && <Thumb src={attachment.previewUrl} alt={`附件 ${attachment.name} 的预览`} className="preview-image" />}
+      {attachment.status === "read" && text && (
+        <>
+          <p className="preview-label">已读取的文字（前 600 字）</p>
+          <pre className="preview-text">{text.slice(0, 600)}</pre>
+        </>
+      )}
+      {!attachment.previewUrl && attachment.status !== "read" && attachment.kind !== "text" && <p className="preview-note">没有可显示的预览。</p>}
+      {attachment.status === "read" && !text && <p className="preview-note">内容只在发送时的页面里保留，刷新后无法再次查看。</p>}
+      <p className="preview-note">{statusDetail(attachment)}</p>
+    </div>
+  );
+}

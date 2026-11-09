@@ -1,0 +1,2036 @@
+{
+ "generatedFrom": {
+  "lexiconVersion": "1.0.0-rc.1",
+  "lexiconSchema": "1.0.0",
+  "reading": "public/readings/v1/articles/noaa-mangroves.json"
+ },
+ "article": {
+  "id": "noaa-mangroves",
+  "title": "Mangrove Forests",
+  "titleZh": "红树林",
+  "author": "NOAA",
+  "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_estuaries/est06_habitats.html",
+  "rights": {
+   "label": "NOAA 公开信息",
+   "basis": "NOAA National Ocean Service 的网站声明允许复制及分发未另行注明限制的公开信息。本篇仅提取官方正文，不使用标志、照片或第三方内容。",
+   "url": "https://oceanservice.noaa.gov/disclaimer.html"
+  },
+  "difficulty": "B2",
+  "form": "excerpt",
+  "background": "河口教程的红树林部分说明其分布、缺氧土壤、根系沉积作用、海岸防护和潮汐分区。",
+  "paragraphs": [
+   {
+    "text": "Mangrove forests, or mangals grow at tropical and subtropical latitudes near the equator where the sea surface temperatures never fall below 16°C. Mangals line about two-thirds of the coastlines in tropical areas of the world.",
+    "sentences": [
+     "Mangrove forests, or mangals grow at tropical and subtropical latitudes near the equator where the sea surface temperatures never fall below 16°C.",
+     "Mangals line about two-thirds of the coastlines in tropical areas of the world."
+    ]
+   },
+   {
+    "text": "There are about 80 species of mangrove trees, all of which grow in hypoxic (oxygen poor) soils where slow-moving waters allow fine sediments to accumulate. Many mangrove forests can be recognized by their dense tangle of prop roots that make the trees appear to be standing on stilts above the water. This tangle of roots helps to slow the movement of tidal waters, causing even more sediments to settle out of the water and build up the muddy bottom.",
+    "sentences": [
+     "There are about 80 species of mangrove trees, all of which grow in hypoxic (oxygen poor) soils where slow-moving waters allow fine sediments to accumulate.",
+     "Many mangrove forests can be recognized by their dense tangle of prop roots that make the trees appear to be standing on stilts above the water.",
+     "This tangle of roots helps to slow the movement of tidal waters, causing even more sediments to settle out of the water and build up the muddy bottom."
+    ]
+   },
+   {
+    "text": "Mangrove forests stabilize the coastline, reducing erosion from storm surges, currents, waves and tides.",
+    "sentences": [
+     "Mangrove forests stabilize the coastline, reducing erosion from storm surges, currents, waves and tides."
+    ]
+   },
+   {
+    "text": "Just like the high and low areas of salt marshes where specific types of grasses are found, mangals have distinct zones characterized by the species of mangrove tree that grows there. Where a species of mangrove tree exists depends on its tolerance for tidal flooding, soil salinity, and the availability of nutrients. Three dominant species of mangrove trees are found in Florida.",
+    "sentences": [
+     "Just like the high and low areas of salt marshes where specific types of grasses are found, mangals have distinct zones characterized by the species of mangrove tree that grows there.",
+     "Where a species of mangrove tree exists depends on its tolerance for tidal flooding, soil salinity, and the availability of nutrients.",
+     "Three dominant species of mangrove trees are found in Florida."
+    ]
+   },
+   {
+    "text": "The red mangrove (Rhizophora mangle) colonizes the seaward side of the mangal, so it receives the greatest amount of tidal flooding. Further inland and at a slightly higher elevation, black mangroves (Avicennia germinanas) grow. The zone in which black mangrove trees are found is only shallowly flooded during high tides. White mangrove (Laguncularia racemosa) and buttonwood trees (Conocarpus erectus), a non-mangrove species, face inland and dominate the highest parts of the mangal.",
+    "sentences": [
+     "The red mangrove (Rhizophora mangle) colonizes the seaward side of the mangal, so it receives the greatest amount of tidal flooding.",
+     "Further inland and at a slightly higher elevation, black mangroves (Avicennia germinanas) grow.",
+     "The zone in which black mangrove trees are found is only shallowly flooded during high tides.",
+     "White mangrove (Laguncularia racemosa) and buttonwood trees (Conocarpus erectus), a non-mangrove species, face inland and dominate the highest parts of the mangal."
+    ]
+   },
+   {
+    "text": "The zone where white mangrove and buttonwood trees grow is almost never flooded by tidal waters.",
+    "sentences": [
+     "The zone where white mangrove and buttonwood trees grow is almost never flooded by tidal waters."
+    ]
+   }
+  ]
+ },
+ "practiceIds": [
+  "pep-7b757011391556ef",
+  "pep-972964bccfc3ee3d",
+  "pep-a67b4882f52ad22f",
+  "pep-8f5bfe019e58437c",
+  "pep-5cd302bf9831da93",
+  "pep-1f4ca80704771fae",
+  "pep-7e6e95397e908a29",
+  "pep-20bdc7b11c7f7616",
+  "pep-6c1bd8407ed82d19",
+  "pep-d2ba6deb773ae298",
+  "pep-7659868035ff4ac7",
+  "pep-398230cb6733dcf8",
+  "pep-e1f2391c60800472",
+  "pep-38103c897f9f592f",
+  "pep-4d4610e814eb0ff4",
+  "pep-af87949e00e5f862",
+  "pep-1112f6da81d316b8",
+  "pep-21fb2c60107f0343",
+  "pep-f9ab758fcec30dfb",
+  "pep-97297ed1988e7659"
+ ],
+ "lexicon": [
+  {
+   "id": "pep-b1702dbb731f8bae",
+   "headword": "about",
+   "chineseCore": "关于",
+   "ipa": "əˈbaʊt",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7fc9d2357a057970",
+   "headword": "above",
+   "chineseCore": "在上面；向上面",
+   "ipa": "əˈbəv",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 12"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6c0e4a9a3ad39765",
+   "headword": "all",
+   "chineseCore": "所有的；全部的",
+   "ipa": "ˈɔɫ",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6f14220952d6dfbe",
+   "headword": "allow",
+   "chineseCore": "允许，准许",
+   "ipa": "əˈɫaʊ",
+   "sources": [
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-be34086c226eb2b6",
+   "headword": "almost",
+   "chineseCore": "几乎；差不多",
+   "ipa": "ˈɔɫˌmoʊst",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-8c80247c5f8cef09",
+   "headword": "amount",
+   "chineseCore": "金额；数量",
+   "ipa": "əˈmaʊnt",
+   "sources": [
+    {
+     "bookId": "HS-R2",
+     "volume": "必修第二册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6300a84f786124d7",
+   "headword": "and",
+   "chineseCore": "和；又；而",
+   "ipa": "ˈænd",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-af87949e00e5f862",
+   "headword": "anxious",
+   "chineseCore": "焦虑的；不安的",
+   "ipa": "ˈæŋkʃəs",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-b8d27ca4b5783e50",
+   "headword": "appear",
+   "chineseCore": "似乎；显得；出现",
+   "ipa": "əˈpɪɹ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6182fd96c5328086",
+   "headword": "area",
+   "chineseCore": "地域，地区；范围",
+   "ipa": "ˈɛɹiə",
+   "sources": [
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-38103c897f9f592f",
+   "headword": "awkward",
+   "chineseCore": "令人尴尬的；难对付的",
+   "ipa": "ˈɔːkwəd",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-5b7241b5cc2c44b5",
+   "headword": "below",
+   "chineseCore": "低于；在...下面",
+   "ipa": "biˈɫoʊ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-81c4212eac68cd07",
+   "headword": "black",
+   "chineseCore": "黑色（的）",
+   "ipa": "ˈbɫæk",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-3b93c528636ff308",
+   "headword": "bottom",
+   "chineseCore": "底部；最下部",
+   "ipa": "ˈbɑtəm",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 13"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7659868035ff4ac7",
+   "headword": "breathe",
+   "chineseCore": "呼吸",
+   "ipa": "briːð",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-39bb554fce550818",
+   "headword": "build",
+   "chineseCore": "身材",
+   "ipa": "ˈbɪɫd",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 9"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-f5b9a869a66fb624",
+   "headword": "can",
+   "chineseCore": "能；会",
+   "ipa": "ˈkæn",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-0d41fc24766feed7",
+   "headword": "cause",
+   "chineseCore": "原因",
+   "ipa": "ˈkɑz",
+   "sources": [
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-e1f2391c60800472",
+   "headword": "concentrate",
+   "chineseCore": "集中（注意力）；聚精会神",
+   "ipa": "ˈkɒnsntreɪt",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-21fb2c60107f0343",
+   "headword": "confident",
+   "chineseCore": "自信的；有把握的",
+   "ipa": "ˈkɒnfɪdənt",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    }
+   ]
+  },
+  {
+   "id": "pep-398230cb6733dcf8",
+   "headword": "context",
+   "chineseCore": "上下文；语境；背景",
+   "ipa": "ˈkɒntekst",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-4d4610e814eb0ff4",
+   "headword": "curious",
+   "chineseCore": "好奇的；求知欲强的",
+   "ipa": "ˈkjʊəriəs",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6a30417b41b2de6c",
+   "headword": "current",
+   "chineseCore": "当前的；现在的 n. 水流；电流；思潮",
+   "ipa": "ˈkʌrənt",
+   "sources": [
+    {
+     "bookId": "HS-R3",
+     "volume": "必修第三册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6c1bd8407ed82d19",
+   "headword": "damage",
+   "chineseCore": "损害；破坏 n. 损坏；损失",
+   "ipa": "ˈdæmɪdʒ",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-791d40e604bd8617",
+   "headword": "depend",
+   "chineseCore": "依靠，依赖；取决于",
+   "ipa": "dɪˈpɛnd",
+   "sources": [
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-20bdc7b11c7f7616",
+   "headword": "destroy",
+   "chineseCore": "摧毁；毁灭",
+   "ipa": "dɪˈstrɔɪ",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-5cd302bf9831da93",
+   "headword": "disaster",
+   "chineseCore": "灾难；灾害",
+   "ipa": "dɪˈzɑːstə(r)",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-c9d6544a18a658e9",
+   "headword": "distinct",
+   "chineseCore": "清晰的；清楚的；有区别的",
+   "ipa": "dɪˈstɪŋkt",
+   "sources": [
+    {
+     "bookId": "HS-S1",
+     "volume": "选择性必修第一册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-ce32d645a3860542",
+   "headword": "dominant",
+   "chineseCore": "首要的；占支配地位的；显著的",
+   "ipa": "ˈdɒmɪnənt",
+   "sources": [
+    {
+     "bookId": "HS-S3",
+     "volume": "选择性必修第三册",
+     "unit": "Unit 5"
+    }
+   ]
+  },
+  {
+   "id": "pep-d5918616c6e66238",
+   "headword": "dominate",
+   "chineseCore": "支配；控制；占有优势",
+   "ipa": "ˈdɒmɪneɪt",
+   "sources": [
+    {
+     "bookId": "HS-S3",
+     "volume": "选择性必修第三册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-8f5bfe019e58437c",
+   "headword": "drought",
+   "chineseCore": "旱灾；久旱",
+   "ipa": "draʊt",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-8bec240f6402a83e",
+   "headword": "during",
+   "chineseCore": "在……的时候，在……的期间",
+   "ipa": "ˈdɝɪŋ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-d2ba6deb773ae298",
+   "headword": "effort",
+   "chineseCore": "努力；艰难的尝试；尽力",
+   "ipa": "ˈefət",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-a67b4882f52ad22f",
+   "headword": "electricity",
+   "chineseCore": "电；电能",
+   "ipa": "ɪˌlekˈtrɪsəti",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 6"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-972964bccfc3ee3d",
+   "headword": "emergency",
+   "chineseCore": "突发事件；紧急情况",
+   "ipa": "iˈmɜːdʒənsi",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-0cbbaf07be21d08e",
+   "headword": "equator",
+   "chineseCore": "赤道",
+   "ipa": "ɪˈkweɪtə(r)",
+   "sources": [
+    {
+     "bookId": "HS-S4",
+     "volume": "选择性必修第四册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 9"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7b757011391556ef",
+   "headword": "evacuate",
+   "chineseCore": "疏散；撤出 vi. 撤离",
+   "ipa": "ɪˈvækjueɪt",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    }
+   ]
+  },
+  {
+   "id": "pep-052dd95a9426ff21",
+   "headword": "even",
+   "chineseCore": "甚至；愈加",
+   "ipa": "ˈivɪn",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-e66dfd7791950ed3",
+   "headword": "exist",
+   "chineseCore": "存在；生存",
+   "ipa": "ɪgˈzɪst",
+   "sources": [
+    {
+     "bookId": "HS-R2",
+     "volume": "必修第二册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-97297ed1988e7659",
+   "headword": "explore",
+   "chineseCore": "探索；勘探",
+   "ipa": "ɪkˈsplɔː(r)",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-a09d9d51d67180b9",
+   "headword": "face",
+   "chineseCore": "脸",
+   "ipa": "ˈfeɪs",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 9"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-1b9da4bf5a8be84b",
+   "headword": "fall",
+   "chineseCore": "摔倒；跌倒",
+   "ipa": "ˈfɑɫ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-aa35d48626173b8d",
+   "headword": "find",
+   "chineseCore": "找到；发现",
+   "ipa": "ˈfaɪnd",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-19a8b0669482fe36",
+   "headword": "fine",
+   "chineseCore": "对……处以罚款",
+   "ipa": "faɪn",
+   "sources": [
+    {
+     "bookId": "HS-S3",
+     "volume": "选择性必修第三册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-5c293477c5f20529",
+   "headword": "flood",
+   "chineseCore": "洪水；大量 vi. 淹没；大量涌入 vt. 使灌满水；淹没",
+   "ipa": "flʌd",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-f8d28370a00cce94",
+   "headword": "for",
+   "chineseCore": "给；对；为了",
+   "ipa": "ˈfɔɹ",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-cb383e3151b3780f",
+   "headword": "forest",
+   "chineseCore": "森林",
+   "ipa": "ˈfɔɹəst",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 12"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-472c39149f0753b6",
+   "headword": "from",
+   "chineseCore": "(表示开始的时间)从......开始",
+   "ipa": "ˈfɹəm",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 9"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-87d0f6f31b5fff67",
+   "headword": "further",
+   "chineseCore": "的比较级）更远；进一步",
+   "ipa": "ˈfɜːðə(r)",
+   "sources": [
+    {
+     "bookId": "HS-R2",
+     "volume": "必修第二册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-79c5653f9556f18b",
+   "headword": "grass",
+   "chineseCore": "草；草地",
+   "ipa": "ˈɡɹæs",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-74effc7e6f2da641",
+   "headword": "grow",
+   "chineseCore": "生长；种植",
+   "ipa": "ˈɡɹoʊ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 11"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-35c5b0b7029328a4",
+   "headword": "have",
+   "chineseCore": "与过去分词连用构成动词的完成时态",
+   "ipa": "ˈhæv",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7e6e95397e908a29",
+   "headword": "helicopter",
+   "chineseCore": "直升机",
+   "ipa": "ˈhelɪkɒptə(r)",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    }
+   ]
+  },
+  {
+   "id": "pep-70dc8f56a9360ed3",
+   "headword": "help",
+   "chineseCore": "帮助；援助",
+   "ipa": "ˈhɛɫp",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-8769835547858466",
+   "headword": "high",
+   "chineseCore": "高的",
+   "ipa": "ˈhaɪ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 12"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-1112f6da81d316b8",
+   "headword": "impression",
+   "chineseCore": "印象；感想",
+   "ipa": "ɪmˈpreʃn",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-2494747421711ef3",
+   "headword": "its",
+   "chineseCore": "它的",
+   "ipa": "ˈɪts",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-d399e2fc83c1ad20",
+   "headword": "just",
+   "chineseCore": "只是；恰好",
+   "ipa": "ˈdʒəst",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 6"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-1f4ca80704771fae",
+   "headword": "landslide",
+   "chineseCore": "山地或悬崖的）崩塌；滑坡",
+   "ipa": "ˈlændslaɪd",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    }
+   ]
+  },
+  {
+   "id": "pep-da1947885fdf496e",
+   "headword": "like",
+   "chineseCore": "喜欢；喜爱",
+   "ipa": "ˈɫaɪk",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-62a8f726c91d4424",
+   "headword": "line",
+   "chineseCore": "排，队，列",
+   "ipa": "ˈɫaɪn",
+   "sources": [
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 8"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-797806b019de26aa",
+   "headword": "low",
+   "chineseCore": "（数量等）少的；低的；矮的",
+   "ipa": "ˈɫoʊ",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 13"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-d57f07eeb5c4445b",
+   "headword": "make",
+   "chineseCore": "制造",
+   "ipa": "ˈmeɪk",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-8e61c6e1cc0f5aff",
+   "headword": "many",
+   "chineseCore": "许多",
+   "ipa": "ˈmɛni",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-ec167a225e69f1fb",
+   "headword": "more",
+   "chineseCore": "更多的",
+   "ipa": "ˈmɔɹ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-36adc6d190164a47",
+   "headword": "movement",
+   "chineseCore": "动作；运动；活动",
+   "ipa": "ˈmuːvmənt",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-67f46bff05b86bd8",
+   "headword": "near",
+   "chineseCore": "在……附近",
+   "ipa": "ˈnɪɹ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 8"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-2016efbf3134f641",
+   "headword": "never",
+   "chineseCore": "从不；绝不",
+   "ipa": "ˈnɛvɝ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-97192a47b637b521",
+   "headword": "only",
+   "chineseCore": "只；仅",
+   "ipa": "ˈoʊnɫi",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-f9ab758fcec30dfb",
+   "headword": "organise",
+   "chineseCore": "组织；筹备；安排；组建 vi. 组建；成立",
+   "ipa": "ˈɔːgənaɪz",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Welcome Unit"
+    }
+   ]
+  },
+  {
+   "id": "pep-6295d693144a11a5",
+   "headword": "out",
+   "chineseCore": "外出",
+   "ipa": "ˈaʊt",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-6ba0edec5ac5be49",
+   "headword": "oxygen",
+   "chineseCore": "氧；氧气",
+   "ipa": "ˈɒksɪdʒən",
+   "sources": [
+    {
+     "bookId": "HS-R3",
+     "volume": "必修第三册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-4e7fe1139cf7d377",
+   "headword": "part",
+   "chineseCore": "部分；参加",
+   "ipa": "ˈpɑɹt",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 10"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-db26a4a9da5f1d67",
+   "headword": "poor",
+   "chineseCore": "贫穷的；可怜的",
+   "ipa": "ˈpuɹ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-3d7beccd6993192f",
+   "headword": "receive",
+   "chineseCore": "接受；收到",
+   "ipa": "ɹəˈsiv",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 8"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-8597e95f098b6f37",
+   "headword": "recognise",
+   "chineseCore": "辨别出；承认；认可",
+   "ipa": "ˈrekəgnaɪz",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-37155775ea14a09a",
+   "headword": "red",
+   "chineseCore": "红色（的）",
+   "ipa": "ˈɹɛd",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-68832628522084ad",
+   "headword": "reduce",
+   "chineseCore": "减少",
+   "ipa": "rɪˈdjuːs",
+   "sources": [
+    {
+     "bookId": "HS-R2",
+     "volume": "必修第二册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-290891c30458cb67",
+   "headword": "root",
+   "chineseCore": "根；根茎； 根部；根源",
+   "ipa": "ruːt",
+   "sources": [
+    {
+     "bookId": "HS-S1",
+     "volume": "选择性必修第一册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-bc64037de9892762",
+   "headword": "salt",
+   "chineseCore": "盐",
+   "ipa": "ˈsɔɫt",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 8"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-79a565853e752078",
+   "headword": "sea",
+   "chineseCore": "海；海洋；；许多；大量（与of连用）",
+   "ipa": "ˈsi",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-fa4195ec7da51c00",
+   "headword": "settle",
+   "chineseCore": "定居；结束（争论）；解决（纠纷）",
+   "ipa": "ˈsetl",
+   "sources": [
+    {
+     "bookId": "HS-R3",
+     "volume": "必修第三册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-48bfcf0f0998fe8b",
+   "headword": "side",
+   "chineseCore": "侧面；旁边；方面",
+   "ipa": "ˈsaɪd",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 7"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-45081f61fca1b090",
+   "headword": "slightly",
+   "chineseCore": "略微；稍微",
+   "ipa": "ˈslaɪtli",
+   "sources": [
+    {
+     "bookId": "HS-S1",
+     "volume": "选择性必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-47d39d0d860fe1c3",
+   "headword": "slow",
+   "chineseCore": "缓慢的；迟缓的",
+   "ipa": "ˈsɫoʊ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 11"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-21fa98214be3d426",
+   "headword": "soil",
+   "chineseCore": "泥土；土壤；国土；领土",
+   "ipa": "sɔɪl",
+   "sources": [
+    {
+     "bookId": "HS-S1",
+     "volume": "选择性必修第一册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-bc8491819debc8fa",
+   "headword": "species",
+   "chineseCore": "物种",
+   "ipa": "ˈspiːʃiːz",
+   "sources": [
+    {
+     "bookId": "HS-R2",
+     "volume": "必修第二册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7948e017b6aadbb1",
+   "headword": "specific",
+   "chineseCore": "特定的；明确的；具体的",
+   "ipa": "spəˈsɪfɪk",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-e64f992948844a30",
+   "headword": "stand",
+   "chineseCore": "站立；忍受",
+   "ipa": "ˈstænd",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-505fda9385cf9c3b",
+   "headword": "storm",
+   "chineseCore": "暴风雨",
+   "ipa": "ˈstɔɹm",
+   "sources": [
+    {
+     "bookId": "JH-8B",
+     "volume": "八年级下册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-c1f7dc6385e6840d",
+   "headword": "surface",
+   "chineseCore": "表面；表层",
+   "ipa": "ˈsɝfəs",
+   "sources": [
+    {
+     "bookId": "JH-9",
+     "volume": "九年级全一册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-c8509ca353dfe58d",
+   "headword": "temperature",
+   "chineseCore": "温度，气候",
+   "ipa": "ˈtɛmpɝətʃɝ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 8"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-086ad1e4dccfff95",
+   "headword": "that",
+   "chineseCore": "那；那个",
+   "ipa": "ˈðæt",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-05508e92045cdadd",
+   "headword": "the",
+   "chineseCore": "指已提到或易领会到的人或事",
+   "ipa": "ˈðə",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7787a63af94152bc",
+   "headword": "their",
+   "chineseCore": "他（她、它）们的",
+   "ipa": "ˈðɛɹ",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-cc480f4bb5596e1c",
+   "headword": "there",
+   "chineseCore": "(在)那里",
+   "ipa": "ˈðɛɹ",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 8"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-68a9b0bc8600bfb8",
+   "headword": "this",
+   "chineseCore": "这；这个",
+   "ipa": "ˈðɪs",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-e5da2f3d0178515c",
+   "headword": "three",
+   "chineseCore": "三",
+   "ipa": "ˈθɹi",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 1"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-c80d4cee8c2c7512",
+   "headword": "tree",
+   "chineseCore": "树",
+   "ipa": "ˈtɹi",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-71dbc656f5a9fb61",
+   "headword": "tropical",
+   "chineseCore": "热带的；来自热带的",
+   "ipa": "ˈtrɒpɪkl",
+   "sources": [
+    {
+     "bookId": "HS-S3",
+     "volume": "选择性必修第三册",
+     "unit": "Unit 3"
+    }
+   ]
+  },
+  {
+   "id": "pep-3e599aa83449be2a",
+   "headword": "type",
+   "chineseCore": "类型；种类 vi. & vt. 打字",
+   "ipa": "taɪp",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-cc09e82f3ce5e742",
+   "headword": "water",
+   "chineseCore": "水",
+   "ipa": "ˈwɔtɝ",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 5"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-7f198d03f6cbe05f",
+   "headword": "wave",
+   "chineseCore": "海浪；波浪 vi. & vt. 挥手；招手",
+   "ipa": "weɪv",
+   "sources": [
+    {
+     "bookId": "HS-R1",
+     "volume": "必修第一册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-bd86c087fe6378f3",
+   "headword": "where",
+   "chineseCore": "在哪里；到哪里",
+   "ipa": "ˈhwɛɹ",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Unit 4"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-1313d0628a892066",
+   "headword": "which",
+   "chineseCore": "哪一个；哪些",
+   "ipa": "ˈhwɪtʃ",
+   "sources": [
+    {
+     "bookId": "JH-8A",
+     "volume": "八年级上册",
+     "unit": "Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-c91be480e1635585",
+   "headword": "white",
+   "chineseCore": "白色（的）",
+   "ipa": "ˈhwaɪt",
+   "sources": [
+    {
+     "bookId": "JH-7A",
+     "volume": "七年级上册",
+     "unit": "Starter Unit 3"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-fa91edfe48a04dca",
+   "headword": "world",
+   "chineseCore": "世界",
+   "ipa": "ˈwɝɫd",
+   "sources": [
+    {
+     "bookId": "JH-7B",
+     "volume": "七年级下册",
+     "unit": "Unit 10"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  },
+  {
+   "id": "pep-0d7d90a9b38c0287",
+   "headword": "zone",
+   "chineseCore": "有别于周围的）地区；地带；区域",
+   "ipa": "zəʊn",
+   "sources": [
+    {
+     "bookId": "HS-S2",
+     "volume": "选择性必修第二册",
+     "unit": "Unit 2"
+    },
+    {
+     "bookId": "STD-HS",
+     "volume": "课程标准附录2",
+     "unit": "词汇表"
+    }
+   ]
+  }
+ ]
+}

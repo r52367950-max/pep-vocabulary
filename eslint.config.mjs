@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "public/vendor/**",
     // Vendored Claude Code skills, not application code.
     ".claude/**",
+    // Built output of standalone prototypes.
+    "prototypes/*/dist/**",
   ]),
 ]);
 
