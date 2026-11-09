@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BarChart3, BookOpen, CalendarRange, Clock, Minimize2, PanelLeft, Search, Settings, ShieldCheck, SquarePen, Trash2, Undo2 } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { BarChart3, BookOpen, CalendarRange, Clock, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
 import { hasDraftContent, useStore } from "../store";
 import type { Conversation } from "../types";
 import { Composer } from "./composer";
@@ -132,6 +132,22 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
   const [confirming, setConfirming] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
+  // Delete is a secondary action: long press (touch or mouse), right click, or the Delete key.
+  const press = useRef<{ id: string; timer: ReturnType<typeof setTimeout>; x: number; y: number; fired: boolean } | null>(null);
+  const endPress = () => { if (press.current) clearTimeout(press.current.timer); };
+  useEffect(() => () => { if (press.current) clearTimeout(press.current.timer); }, []);
+  const askDelete = (id: string) => { setConfirming(id); navigator.vibrate?.(10); };
+  const startPress = (id: string, event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
+    endPress();
+    const timer = setTimeout(() => { if (press.current) { press.current.fired = true; askDelete(id); } }, 500);
+    press.current = { id, timer, x: event.clientX, y: event.clientY, fired: false };
+  };
+  const movePress = (event: ReactPointerEvent) => {
+    const current = press.current;
+    if (current && !current.fired && Math.hypot(event.clientX - current.x, event.clientY - current.y) > 8) { endPress(); press.current = null; }
+  };
+  const restoreFocus = (id: string) => requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(`[data-conv="${id}"]`)?.focus({ preventScroll: true }));
   const overlay = () => !window.matchMedia("(min-width: 1280px)").matches;
   useDismiss(open, panel, () => { if (overlay()) onClose(); });
   useEffect(() => {
@@ -173,6 +189,7 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
             <TemporaryIcon size={16} /><span className="conv-title">临时对话<small>进行中 · 不保存</small></span>
           </button>
         )}
+        <p id="conv-delete-hint" className="visually-hidden">长按、右键或按 Delete 键可以删除对话</p>
         <div className="conv-groups">
           {groups.map(([label, items]) => items.length > 0 && (
             <section key={label}>
@@ -185,18 +202,26 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
                       {confirming === conversation.id ? (
                         <div className="conv-confirm" role="group" aria-label={`删除「${conversation.title}」`}>
                           <span>删除这段对话？</span>
-                          <button type="button" className="button button-danger small" onClick={() => { remove(conversation.id); setConfirming(null); }}>删除</button>
-                          <button type="button" className="button button-quiet small" autoFocus onClick={() => setConfirming(null)}>取消</button>
+                          <button type="button" className="button button-danger small" onClick={() => { remove(conversation.id); setConfirming(null); search.current?.focus({ preventScroll: true }); }}>删除</button>
+                          <button type="button" className="button button-quiet small" autoFocus onClick={() => { setConfirming(null); restoreFocus(conversation.id); }}>取消</button>
                         </div>
                       ) : (
-                        <>
-                          <button type="button" className="conv-row" aria-current={conversation.id === active.id ? "true" : undefined} onClick={() => choose(conversation.id)}>
-                            <span className="conv-title">{draftOnly ? state.drafts[conversation.id]?.text.slice(0, 24) || "未发送的草稿" : conversation.title}
-                              <small>{conversation.sample ? "示例" : draftOnly ? "草稿" : conversation.id === active.id ? "当前" : new Date(conversation.updatedAt).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}</small>
-                            </span>
-                          </button>
-                          <button type="button" className="icon-button small row-delete" aria-label={`删除「${conversation.title}」`} onClick={() => setConfirming(conversation.id)}><Trash2 size={15} aria-hidden="true" /></button>
-                        </>
+                        <button type="button" className="conv-row" data-conv={conversation.id} aria-current={conversation.id === active.id ? "true" : undefined}
+                          aria-keyshortcuts="Delete" aria-describedby="conv-delete-hint" title="长按或右键可删除"
+                          onPointerDown={(event) => startPress(conversation.id, event)} onPointerMove={movePress}
+                          onPointerUp={endPress} onPointerCancel={() => { endPress(); press.current = null; }} onPointerLeave={endPress}
+                          onContextMenu={(event) => { event.preventDefault(); endPress(); askDelete(conversation.id); }}
+                          onKeyDown={(event) => { if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); askDelete(conversation.id); } }}
+                          onClick={() => {
+                            // The click that ends a long press only opened the delete prompt.
+                            if (press.current?.fired) { press.current = null; return; }
+                            press.current = null;
+                            choose(conversation.id);
+                          }}>
+                          <span className="conv-title">{draftOnly ? state.drafts[conversation.id]?.text.slice(0, 24) || "未发送的草稿" : conversation.title}
+                            <small>{conversation.sample ? "示例" : draftOnly ? "草稿" : conversation.id === active.id ? "当前" : new Date(conversation.updatedAt).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}</small>
+                          </span>
+                        </button>
                       )}
                     </li>
                   );
@@ -206,10 +231,6 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
           ))}
           {sorted.length === 0 && <p className="empty-note">{term ? "没有找到匹配的对话。" : "还没有保存的对话。"}</p>}
         </div>
-        <footer className="panel-foot">
-          <button type="button" className="panel-link" onClick={() => dispatch({ type: "settings-open", section: "general" })}><Settings size={17} aria-hidden="true" />设置</button>
-          <button type="button" className="panel-link" onClick={() => dispatch({ type: "settings-open", section: "privacy" })}><ShieldCheck size={17} aria-hidden="true" />对话数据与隐私</button>
-        </footer>
       </aside>
     </>
   );

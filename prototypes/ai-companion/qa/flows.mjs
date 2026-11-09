@@ -74,10 +74,16 @@ async function selectArticle(page, startPara, startOffset, endPara, endOffset) {
   await page.waitForTimeout(220);
   await page.waitForSelector(".select-toolbar", { timeout: 3000 });
 }
+// On a phone the conversation page has no settings button: settings sit in the learning pages'
+// header, so the walk-through goes there and back through the tabs, as a learner would.
+let settingsFromChat = false;
 async function openSettings(page, viewport) {
+  settingsFromChat = false;
   if (!viewport.mobile) await page.locator(".side-nav .nav-item[title='设置']").click();
-  else if (await page.locator(".mobile-head").count()) await page.locator(".mobile-head [aria-label='设置']").click();
-  else { await openPanel(page); await page.locator(".panel-link", { hasText: "设置" }).click(); }
+  else {
+    if (!(await page.locator(".mobile-head").count())) { settingsFromChat = true; await page.locator(".tab-bar button", { hasText: "今日" }).click(); }
+    await page.locator(".mobile-head [aria-label='设置']").click();
+  }
   await page.waitForSelector("dialog.settings[open]");
 }
 async function settingsSection(page, label) {
@@ -86,6 +92,7 @@ async function settingsSection(page, label) {
 async function closeSettings(page) {
   await page.locator("dialog.settings [aria-label='关闭设置']").click();
   await page.waitForFunction(() => !document.querySelector("dialog.settings[open]"));
+  if (settingsFromChat) { settingsFromChat = false; await page.locator(".tab-bar button", { hasText: "AI" }).click(); await page.waitForSelector(".chat"); }
 }
 async function leaveChat(page, viewport) {
   // From the full conversation back to a learning page.
@@ -147,6 +154,28 @@ async function pathConversation(page, viewport) {
   const listText = await page.locator(".conv-groups").innerText();
   check("临时对话不进入历史", !listText.includes("临时问一句"));
   check("历史里有刚才的对话", listText.includes(title.slice(0, 8)));
+  const panelText = await page.locator(".conv-panel").innerText();
+  check("对话列表里没有设置或隐私入口", !/设置|隐私/.test(panelText));
+  check("对话行默认不显示删除", await page.locator(".conv-panel button", { hasText: "删除" }).count() === 0 && await page.locator(".conv-panel [aria-label^='删除']").count() === 0);
+  const sampleRow = page.locator(".conv-row", { hasText: "翻译 · Mangrove" });
+  const rowBox = await sampleRow.boundingBox();
+  await page.mouse.move(rowBox.x + 30, rowBox.y + rowBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  await page.mouse.up();
+  check("长按显示删除确认", (await page.locator(".conv-confirm").innerText()).includes("删除这段对话"));
+  check("长按不会打开那段对话", await page.locator(".chat .message-user", { hasText: "临时问一句" }).count() === 1);
+  await page.locator(".conv-confirm button", { hasText: "取消" }).click();
+  check("取消后对话仍在", await page.locator(".conv-row", { hasText: "翻译 · Mangrove" }).count() === 1);
+  if (!viewport.touch) {
+    await page.locator(".conv-row", { hasText: "翻译 · Mangrove" }).focus();
+    await page.keyboard.press("Delete");
+    check("键盘 Delete 也能删除", await page.locator(".conv-confirm").count() === 1);
+    await page.locator(".conv-confirm button", { hasText: "取消" }).click();
+    await page.locator(".conv-row", { hasText: "翻译 · Mangrove" }).click({ button: "right" });
+    check("右键显示删除确认", await page.locator(".conv-confirm").count() === 1);
+    await page.locator(".conv-confirm button", { hasText: "取消" }).click();
+  }
   await page.screenshot({ path: `${shots}/${viewport.name}-03-history.png` });
   await page.locator(".conv-row", { hasText: title.slice(0, 8) }).click();
   check("离开有内容的临时对话先确认", await page.locator(".confirm-layer").count() === 1);

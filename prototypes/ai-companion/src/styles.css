@@ -464,23 +464,19 @@ dialog::backdrop { background: var(--scrim); }
 .panel-head { display: flex; align-items: center; gap: 2px; min-height: 56px; padding: 0 2px; }
 .panel-title { flex: 1; font-size: 14px; font-weight: 600; color: var(--ink-2); padding-left: 4px; }
 .conv-panel .search-field { margin: 0 2px 8px; }
-.conv-groups { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px; }
+.conv-groups { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px var(--safe-bottom); }
 .conv-groups section + section { margin-top: 10px; }
 .conv-groups h3 { margin: 8px 10px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .conv-groups ul { margin: 0; padding: 0; list-style: none; }
 .conv-groups li { position: relative; display: flex; align-items: center; border-radius: var(--r-control); }
-.conv-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; min-height: 44px; padding: 6px 10px; border-radius: var(--r-control); text-align: left; color: var(--ink); }
+.conv-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; min-height: 44px; padding: 6px 10px; border-radius: var(--r-control); text-align: left; color: var(--ink); -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: background-color 140ms ease, transform 160ms var(--ease); }
+.conv-row:active { background: var(--fill-strong); transform: scale(0.985); }
 .conv-row.is-temp { flex: none; width: 100%; margin-bottom: 6px; color: var(--accent-ink); background: var(--accent-soft); }
 .conv-title { display: flex; flex-direction: column; min-width: 0; font-size: 14px; line-height: 1.4; }
 .conv-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conv-title small { font-size: 11.5px; color: var(--muted); }
-.row-delete { opacity: 0; margin-right: 4px; }
-@media (pointer: coarse) { .row-delete { opacity: 1; } }
 .conv-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 8px 10px; font-size: 13.5px; }
 .conv-confirm span { flex: 1 1 100%; }
-.panel-foot { display: flex; flex-direction: column; gap: 2px; padding: 8px 0 var(--safe-bottom); border-top: 1px solid var(--line); }
-.panel-link { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: var(--r-control); color: var(--ink-2); font-size: 14px; text-align: left; }
-@media (pointer: coarse) { .panel-link { min-height: 44px; } }
 .panel-scrim { display: none; }
 @media (max-width: 1279px) {
   .conv-panel { position: absolute; inset: 0 auto 0 0; z-index: 40; width: min(320px, 88%); box-shadow: var(--shadow-panel); border-right: 0; animation: drawer-in 200ms var(--ease); }
@@ -752,7 +748,6 @@ dialog.settings[open] { animation: layer-in 180ms var(--ease); }
 
 .bar-button[aria-expanded="true"] { background: var(--fill); color: var(--ink); }
 .conv-groups li.is-current { background: var(--fill-strong); }
-.conv-groups li.is-current .row-delete, .row-delete:focus-visible { opacity: 1; }
 .select-toolbar button:focus-visible { background: var(--fill); color: var(--ink); }
 
 /* Hover feedback only where a pointer can hover; on touch screens it would stick after a tap. */
@@ -777,8 +772,6 @@ dialog.settings[open] { animation: layer-in 180ms var(--ease); }
   .sent-quote:hover .reading-text { color: var(--ink); }
   .meta-route:hover { background: var(--fill); }
   .conv-groups li:hover { background: var(--fill-strong); }
-  .conv-groups li:hover .row-delete { opacity: 1; }
-  .panel-link:hover { background: var(--fill-strong); color: var(--ink); }
   .launcher:hover { background: var(--canvas); transform: translateY(-1px); }
   .entry-list button:hover { background: var(--canvas); }
   .select-toolbar button:hover { background: var(--fill); color: var(--ink); }
