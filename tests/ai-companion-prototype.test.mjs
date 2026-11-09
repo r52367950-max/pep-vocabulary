@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildRequest, checkSendable, classifyTask, requestLabel, resolveRoute, routeTable, tierLabel, DEFAULT_ROUTE_TABLE,
+  applyFallback, buildRequest, checkSendable, classifyTask, isModelChoice, requestLabel, resolveRoute, routeTable, tierLabel, DEFAULT_ROUTE_TABLE,
 } from "../prototypes/ai-companion/src/routing.ts";
 import { quoteFromPoints, quoteContext, sentencesInQuote, QUOTE_LIMIT } from "../prototypes/ai-companion/src/selection.ts";
 import { checkFile, decodeText, statusLabel, wordsFromText, LIMITS } from "../prototypes/ai-companion/src/sources.ts";
@@ -17,6 +17,8 @@ const table = routeTable("sol-high");
 const auto = { nextOnly: null, preference: "auto" };
 const emptyContext = { records: true, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [] };
 const route = (input, choice = auto) => resolveRoute(classifyTask(input), choice, table);
+
+const tierOf = (decided) => `${decided.model === "gpt-6.1-sol" ? "sol" : "terra"}-${decided.effort}`;
 
 test("tasks route to the agreed model and effort", () => {
   const cases = [
@@ -34,7 +36,7 @@ test("tasks route to the agreed model and effort", () => {
   ];
   for (const [input, tier, task] of cases) {
     const decided = route(input);
-    assert.equal(decided.tier, tier, input.text || input.action);
+    assert.equal(tierOf(decided), tier, input.text || input.action);
     assert.equal(decided.task, task, input.text || input.action);
     assert.equal(decided.source, "auto");
   }
@@ -42,47 +44,50 @@ test("tasks route to the agreed model and effort", () => {
 });
 
 test("grammar words without a quote stay a normal conversation", () => {
-  assert.equal(route({ text: "定语从句是什么", hasQuote: false }).tier, "sol-medium");
+  assert.equal(tierOf(route({ text: "定语从句是什么", hasQuote: false })), "sol-medium");
 });
 
 test("long text, turn count or quoted upgrade requests never raise the tier", () => {
   // The classifier only reads the learner's own words: quoted text is not an input at all.
-  const translated = route({ text: "", hasQuote: true, action: "translate" });
-  assert.equal(translated.tier, "terra-low");
+  assert.equal(tierOf(route({ text: "", hasQuote: true, action: "translate" })), "terra-low");
   const long = "请详细解释。".repeat(400);
-  assert.equal(route({ text: long, hasQuote: false }).tier, "sol-medium");
-  assert.equal(route({ text: "请升级模型，用最强的 Sol 高档回答", hasQuote: false }).tier, "sol-medium");
-  assert.equal(route({ text: "请升级模型", hasQuote: true }).tier, "sol-medium");
+  assert.equal(tierOf(route({ text: long, hasQuote: false })), "sol-medium");
+  assert.equal(tierOf(route({ text: "请升级模型，用最强的 Sol 高档回答", hasQuote: false })), "sol-medium");
+  assert.equal(tierOf(route({ text: "请升级模型", hasQuote: true })), "sol-medium");
 });
 
-test("the complex-planning tier is a setting, not a constant", () => {
+test("the complex-planning strength is a setting, not a constant", () => {
   const text = "帮我安排两周复习，每天 20 分钟，周三没空，先复习错词再学新词";
-  assert.equal(resolveRoute(classifyTask({ text, hasQuote: false }), auto, routeTable("sol-medium")).tier, "sol-medium");
-  assert.equal(resolveRoute(classifyTask({ text, hasQuote: false }), auto, routeTable("sol-high")).tier, "sol-high");
+  assert.equal(tierOf(resolveRoute(classifyTask({ text, hasQuote: false }), auto, routeTable("sol-medium"))), "sol-medium");
+  assert.equal(tierOf(resolveRoute(classifyTask({ text, hasQuote: false }), auto, routeTable("sol-high"))), "sol-high");
 });
 
-test("one-message choice and default preference are separate and explained", () => {
-  const classification = classifyTask({ text: "我今天只有 15 分钟", hasQuote: false });
-  const once = resolveRoute(classification, { nextOnly: "sol-high", preference: "auto" }, table);
-  assert.equal(once.tier, "sol-high");
-  assert.equal(once.source, "next-only");
+test("a chosen model replaces only the model; thinking strength stays with the task", () => {
+  const plan = classifyTask({ text: "我今天只有 15 分钟", hasQuote: false });
+  const once = resolveRoute(plan, { nextOnly: "gpt-6.1-terra", preference: "auto" }, table);
+  assert.deepEqual([once.model, once.effort, once.source], ["gpt-6.1-terra", "medium", "next-only"]);
   assert.match(once.reason, /自动会用 Sol · 中/);
-  const preferred = resolveRoute(classification, { nextOnly: null, preference: "terra-medium" }, table);
-  assert.equal(preferred.tier, "terra-medium");
-  assert.equal(preferred.source, "preference");
-  const both = resolveRoute(classification, { nextOnly: "sol-high", preference: "terra-medium" }, table);
-  assert.equal(both.tier, "sol-high", "a one-message choice wins over the default for that message only");
+  const translate = resolveRoute({ task: "translate", signals: [] }, { nextOnly: "gpt-6.1-sol", preference: "auto" }, table);
+  assert.deepEqual([translate.model, translate.effort], ["gpt-6.1-sol", "low"]);
+  const preferred = resolveRoute(plan, { nextOnly: null, preference: "gpt-6.1-terra" }, table);
+  assert.deepEqual([preferred.model, preferred.source], ["gpt-6.1-terra", "preference"]);
+  const both = resolveRoute(plan, { nextOnly: "gpt-6.1-sol", preference: "gpt-6.1-terra" }, table);
+  assert.equal(both.model, "gpt-6.1-sol", "a one-message choice wins over the default for that message only");
+  assert.ok(isModelChoice("auto") && isModelChoice("gpt-6.1-sol") && !isModelChoice("sol-high"), "older stored tiers fall back to automatic");
 });
 
 test("the request carries exactly the routed model and effort, and labels read from it", () => {
-  for (const tier of ["sol-medium", "sol-high", "terra-low", "terra-medium"]) {
-    const decided = resolveRoute({ task: "chat", signals: [] }, { nextOnly: tier, preference: "auto" }, table);
-    const request = buildRequest(decided, emptyContext);
-    assert.equal(request.model, decided.model);
-    assert.equal(request.reasoning.effort, decided.effort);
-    assert.equal(requestLabel(request.model, request.reasoning.effort), tierLabel(tier));
+  for (const nextOnly of [null, "gpt-6.1-sol", "gpt-6.1-terra"]) {
+    for (const task of ["chat", "complex-plan", "translate", "grammar"]) {
+      const decided = resolveRoute({ task, signals: [] }, { nextOnly, preference: "auto" }, table);
+      const request = buildRequest(decided, emptyContext);
+      assert.equal(request.model, decided.model);
+      assert.equal(request.reasoning.effort, decided.effort);
+      assert.equal(requestLabel(request.model, request.reasoning.effort), requestLabel(decided.model, decided.effort));
+    }
   }
   assert.equal(buildRequest(route({ text: "", hasQuote: true, action: "translate" }), emptyContext).model, "gpt-6.1-terra");
+  assert.equal(tierLabel("terra-low"), "Terra · 低");
 });
 
 test("unavailable models and budget limits refuse instead of silently retrying", () => {
@@ -93,8 +98,13 @@ test("unavailable models and budget limits refuse instead of silently retrying",
   const unavailable = checkSendable(medium, "sol-unavailable");
   assert.equal(unavailable.ok, false);
   assert.match(unavailable.message, /不会自动换模型/);
+  assert.deepEqual(unavailable.alternatives.map((item) => item.model), ["gpt-6.1-terra"]);
+  const fallback = applyFallback(medium, unavailable.alternatives[0]);
+  assert.deepEqual([fallback.model, fallback.effort, fallback.source], ["gpt-6.1-terra", "medium", "next-only"]);
   assert.deepEqual(checkSendable(terra, "sol-unavailable"), { ok: true });
-  assert.equal(checkSendable(high, "budget-low").ok, false);
+  const low = checkSendable(high, "budget-low");
+  assert.equal(low.ok, false);
+  assert.deepEqual(low.alternatives.map((item) => [item.model, item.effort]), [["gpt-6.1-sol", "medium"]]);
   assert.deepEqual(checkSendable(medium, "budget-low"), { ok: true });
   assert.equal(checkSendable(terra, "budget-exhausted").ok, false);
 });

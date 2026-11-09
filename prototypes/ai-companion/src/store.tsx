@@ -5,8 +5,8 @@ import { ARTICLE, sentenceSpans } from "./data";
 import { respond, streamLength } from "./engine";
 import { buildPlan, type PlanSpec, type PracticeItem } from "./practice";
 import {
-  buildRequest, checkSendable, classifyTask, resolveRoute, routeTable, TIER_ORDER, TIERS, tierLabel,
-  type ContextSummary, type RequestPayload, type SelectionAction, type TierId,
+  applyFallback, buildRequest, checkSendable, classifyTask, isModelChoice, requestLabel, resolveRoute, routeTable,
+  type ContextSummary, type Fallback, type RequestPayload, type SelectionAction,
 } from "./routing";
 import { paragraphLabel, quoteFromPoints, type Quote } from "./selection";
 import { attachmentText, type Attachment } from "./sources";
@@ -18,7 +18,7 @@ import {
 
 const STORAGE_KEY = "ciji-ai-prototype:v1";
 
-export type ComposerNotice = { message: string; alternatives: TierId[] };
+export type ComposerNotice = { message: string; alternatives: Fallback[] };
 export type PracticeSession = {
   id: string; convId: string | null; origin: "full" | "mini" | "page";
   title: string; source: string; items: PracticeItem[];
@@ -101,7 +101,9 @@ function sampleConversations(): Conversation[] {
 }
 
 function initialState(): State {
-  const settings = { ...DEFAULT_SETTINGS, ...readStorage(`${STORAGE_KEY}:settings`, (raw) => { try { return raw ? JSON.parse(raw) as Partial<Settings> : {}; } catch { return {}; } }) };
+  const saved = { ...DEFAULT_SETTINGS, ...readStorage(`${STORAGE_KEY}:settings`, (raw) => { try { return raw ? JSON.parse(raw) as Partial<Settings> : {}; } catch { return {}; } }) };
+  // Earlier prototype builds stored a model-and-effort tier; anything else returns to automatic.
+  const settings: Settings = { ...saved, routePreference: isModelChoice(saved.routePreference) ? saved.routePreference : "auto" };
   const stored = readStorage(STORAGE_KEY, parseStoredConversations);
   const conversations = stored ?? sampleConversations();
   const blank = blankConversation(false);
@@ -270,7 +272,9 @@ function reducer(state: State, action: ActionType): State {
 }
 
 export type SendOptions = {
-  text?: string; quotes?: Quote[]; action?: SelectionAction; forceTier?: TierId;
+  text?: string; quotes?: Quote[]; action?: SelectionAction;
+  /** A fallback the learner chose after a refusal; applies to this message only. */
+  fallback?: Fallback;
   /** Sends without touching the draft (suggestions, toolbar actions). */
   keepDraft?: boolean; via?: "text" | "action" | "voice"; result?: PracticeResult; articleAvailable?: boolean;
 };
@@ -382,8 +386,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     const classification = classifyTask({ text, action: options.action, hasQuote: quotes.length > 0, practiceResult: Boolean(options.result) });
     // Feedback on a returned result follows the route preference, never a pending one-message choice.
-    const nextOnly = options.forceTier ?? (options.result ? null : draft.nextOnly);
-    const route = resolveRoute(classification, { nextOnly, preference: current.settings.routePreference }, routeTable(current.settings.complexPlanTier));
+    const nextOnly = options.result ? null : draft.nextOnly;
+    const decided = resolveRoute(classification, { nextOnly, preference: current.settings.routePreference }, routeTable(current.settings.complexPlanTier));
+    const route = options.fallback ? applyFallback(decided, options.fallback) : decided;
     const check = checkSendable(route, current.settings.service);
     if (!check.ok) {
       // A refused send keeps the draft and the one-message choice; nothing is sent or retried.
@@ -421,7 +426,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const truncate = current.settings.service === "truncate-next";
     if (truncate) dispatch({ type: "settings", patch: { service: "normal" } });
     stream(conversationId, reply, truncate);
-    return { ok: true, blocks, label: tierLabel(route.tier) };
+    return { ok: true, blocks, label: requestLabel(route.model, route.effort) };
   }, [articleAvailable, dispatch, stream]);
 
   const stop = useCallback((conversationId: string) => {
@@ -452,8 +457,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const conversation = current.conversations.find((item) => item.id === conversationId);
     const source = conversation?.messages.find((message): message is AssistantMessage => message.id === messageId && message.role === "assistant");
     if (!conversation || !source?.remainder || conversation.messages.some((message) => message.role === "assistant" && message.status === "streaming")) return;
-    const tier = TIER_ORDER.find((id) => TIERS[id].model === source.request.model && TIERS[id].effort === source.request.reasoning.effort) ?? "sol-medium";
-    const route = { ...resolveRoute({ task: source.request.metadata.task, signals: [] }, { nextOnly: tier, preference: "auto" }, routeTable(current.settings.complexPlanTier)) };
+    // The continuation repeats the original request's model and effort.
+    const base = resolveRoute({ task: source.request.metadata.task, signals: [] }, { nextOnly: null, preference: "auto" }, routeTable(current.settings.complexPlanTier));
+    const route = { ...base, model: source.request.model, effort: source.request.reasoning.effort };
     const check = checkSendable(route, current.settings.service);
     if (!check.ok) { dispatch({ type: "notice", id: conversationId, notice: { message: check.message, alternatives: [] } }); return; }
     const reply: AssistantMessage = {
@@ -521,6 +527,5 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 export function planSteps(spec: PlanSpec) { return buildPlan(spec); }
-export function tierName(tier: TierId) { return `${TIERS[tier].model === "gpt-6.1-sol" ? "Sol" : "Terra"} · ${tierLabel(tier).split(" · ")[1]}`; }
 export type { Attachment };
 export { parseStoredConversations, serializeConversations };

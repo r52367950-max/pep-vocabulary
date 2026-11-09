@@ -113,21 +113,36 @@ export function classifyTask(input: ClassifyInput): Classification {
   return { task: "chat", signals: [] };
 }
 
-export type RouteChoice = "auto" | TierId;
+/** The learner picks a model or leaves it automatic; thinking strength always follows the task. */
+export type ModelChoice = "auto" | ModelId;
+export const MODEL_IDS: ModelId[] = ["gpt-6.1-sol", "gpt-6.1-terra"];
+export const MODEL_USE: Record<ModelId, string> = {
+  "gpt-6.1-sol": "对话、学习计划、状态总结和作文反馈",
+  "gpt-6.1-terra": "阅读中的翻译、词义和语法",
+};
+export function isModelChoice(value: unknown): value is ModelChoice {
+  return value === "auto" || MODEL_IDS.includes(value as ModelId);
+}
 export type RouteSource = "auto" | "next-only" | "preference";
-export type Route = { tier: TierId; model: ModelId; effort: Effort; task: TaskKind; source: RouteSource; reason: string };
+export type Route = { model: ModelId; effort: Effort; task: TaskKind; source: RouteSource; reason: string; automatic: { model: ModelId; effort: Effort } };
 
-export function resolveRoute(classification: Classification, choice: { nextOnly: TierId | null; preference: RouteChoice }, table: RouteTable): Route {
-  const automatic = table[classification.task];
-  const tier = choice.nextOnly ?? (choice.preference === "auto" ? automatic : choice.preference);
-  const source: RouteSource = choice.nextOnly ? "next-only" : choice.preference === "auto" ? "auto" : "preference";
+export function resolveRoute(classification: Classification, choice: { nextOnly: ModelId | null; preference: ModelChoice }, table: RouteTable): Route {
+  const automatic = TIERS[table[classification.task]];
+  const chosen = choice.nextOnly ?? (choice.preference === "auto" ? null : choice.preference);
+  const source: RouteSource = choice.nextOnly ? "next-only" : chosen ? "preference" : "auto";
   const why = classification.signals.length ? `（${classification.signals.join("、")}）` : "";
+  const autoLabel = requestLabel(automatic.model, automatic.effort);
   const reason = source === "auto"
     ? `自动：${TASK_LABEL[classification.task]}${why}`
-    : source === "next-only"
-      ? `仅本条手动选择；自动会用 ${tierLabel(automatic)}`
-      : `你的后续偏好；自动会用 ${tierLabel(automatic)}`;
-  return { tier, model: TIERS[tier].model, effort: TIERS[tier].effort, task: classification.task, source, reason };
+    : `${source === "next-only" ? "仅本条指定" : "你指定的默认模型"} ${MODEL_NAME[chosen!]}，思考强度按任务；自动会用 ${autoLabel}`;
+  return { model: chosen ?? automatic.model, effort: automatic.effort, task: classification.task, source, reason, automatic: { model: automatic.model, effort: automatic.effort } };
+}
+
+/** A one-message fallback offered after a refusal; the learner has to choose it. */
+export type Fallback = { model: ModelId; effort?: Effort; label: string };
+export function applyFallback(route: Route, fallback: Fallback): Route {
+  const model = fallback.model, effort = fallback.effort ?? route.effort;
+  return { ...route, model, effort, source: "next-only", reason: `仅本条：${fallback.label}；自动会用 ${requestLabel(route.automatic.model, route.automatic.effort)}` };
 }
 
 export type ContextSummary = {
@@ -149,17 +164,17 @@ export function buildRequest(route: Route, context: ContextSummary): RequestPayl
 export type ServiceState = "normal" | "sol-unavailable" | "budget-low" | "budget-exhausted" | "truncate-next";
 export type SendCheck =
   | { ok: true }
-  | { ok: false; problem: "unavailable" | "budget"; message: string; alternatives: TierId[] };
+  | { ok: false; problem: "unavailable" | "budget"; message: string; alternatives: Fallback[] };
 
 export function checkSendable(route: Route, service: ServiceState): SendCheck {
   if (service === "budget-exhausted") {
     return { ok: false, problem: "budget", message: "今日 AI 额度已用完（模拟）。这条消息没有发出，草稿已保留；听写判分等本地功能不受影响。", alternatives: [] };
   }
   if (service === "budget-low" && route.effort === "high") {
-    return { ok: false, problem: "budget", message: `剩余额度不够完成 ${tierLabel(route.tier)} 的预计用量（模拟）。可以只把这条改用较低档位发送。`, alternatives: ["sol-medium"] };
+    return { ok: false, problem: "budget", message: `剩余额度不够完成 ${requestLabel(route.model, route.effort)} 的预计用量（模拟）。可以只把这条降为中等思考发送。`, alternatives: [{ model: route.model, effort: "medium", label: "只把这条降为中等思考发送" }] };
   }
   if (service === "sol-unavailable" && route.model === "gpt-6.1-sol") {
-    return { ok: false, problem: "unavailable", message: `${MODEL_NAME[route.model]} 暂时不可用（模拟）。这条消息没有发出，也不会自动换模型重试。`, alternatives: ["terra-medium"] };
+    return { ok: false, problem: "unavailable", message: `${MODEL_NAME[route.model]} 暂时不可用（模拟）。这条消息没有发出，也不会自动换模型重试。`, alternatives: [{ model: "gpt-6.1-terra", label: "只把这条改用 Terra 发送" }] };
   }
   return { ok: true };
 }

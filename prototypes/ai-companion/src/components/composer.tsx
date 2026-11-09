@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
-import { ArrowUp, AudioLines, Check, FileText, Image as ImageIcon, Plus, Quote as QuoteIcon, Square, X } from "lucide-react";
-import { classifyTask, resolveRoute, routeTable, TASK_LABEL, TIER_ORDER, TIERS, tierLabel, type TierId } from "../routing";
+import { ArrowUp, AudioLines, Check, ChevronDown, FileText, Image as ImageIcon, Plus, Quote as QuoteIcon, Square, X } from "lucide-react";
+import { classifyTask, MODEL_IDS, MODEL_NAME, MODEL_USE, requestLabel, resolveRoute, routeTable, TASK_LABEL, TIERS, type Effort, type Fallback, type ModelChoice, type ModelId } from "../routing";
 import { paragraphLabel, quoteContext, type Quote } from "../selection";
 import { ARTICLE } from "../data";
 import { attachmentText, checkFile, decodeText, formatBytes, LIMITS, statusDetail, statusLabel, type Attachment } from "../sources";
@@ -53,13 +53,15 @@ export function Composer({ conversationId, variant, placeholder }: {
 
   if (!conversation || !draft) return null;
   const available = store.articleAvailable(conversation, draft);
-  const empty = !draft.text.trim() && !draft.quotes.length && !draft.attachments.length;
   const sourceCount = (draft.includeRecords ? 1 : 0) + (available && draft.includeArticle ? 1 : 0);
 
-  const submit = (forceTier?: TierId) => {
+  // A quote kept from the previous answer is context, not something to send on its own.
+  const hasContent = Boolean(draft.text.trim() || draft.attachments.length || draft.quotes.some((quote) => !quote.carried));
+
+  const submit = (fallback?: Fallback) => {
     if (streaming) return;
     const run = () => {
-      const outcome = store.send(conversationId, { forceTier, articleAvailable: available });
+      const outcome = store.send(conversationId, { fallback, articleAvailable: available });
       if (outcome.ok) dispatch({ type: "focus-composer" });
     };
     // The centred box hands over to the docked one; animate that move when motion is allowed.
@@ -131,7 +133,6 @@ export function Composer({ conversationId, variant, placeholder }: {
   const classification = classifyTask({ text: draft.text, hasQuote: draft.quotes.length > 0 });
   const table = routeTable(state.settings.complexPlanTier);
   const route = resolveRoute(classification, { nextOnly: draft.nextOnly, preference: state.settings.routePreference }, table);
-  const routeTag = route.source === "next-only" ? "仅下一条" : route.source === "preference" ? "默认" : "自动";
 
   return (
     <div className={`composer composer-${variant}${dragging ? " is-dragging" : ""}`}
@@ -175,8 +176,8 @@ export function Composer({ conversationId, variant, placeholder }: {
         <div className="composer-notice" role="alert">
           <p>{notice.message}</p>
           <div className="notice-actions">
-            {notice.alternatives.map((tier) => (
-              <button key={tier} type="button" className="button button-quiet" onClick={() => submit(tier)}>只把这条改用 {tierLabel(tier)} 发送</button>
+            {notice.alternatives.map((fallback) => (
+              <button key={fallback.label} type="button" className="button button-quiet" onClick={() => submit(fallback)}>{fallback.label}</button>
             ))}
             <button type="button" className="icon-button small" aria-label="关闭提示" onClick={() => dispatch({ type: "notice", id: conversationId, notice: undefined })}><X size={15} aria-hidden="true" /></button>
           </div>
@@ -208,21 +209,21 @@ export function Composer({ conversationId, variant, placeholder }: {
           )}
         </Popover>
         <span className="bar-spacer" />
-        <Popover label="回答方式" placement={variant === "hero" ? "bottom" : "top"} align="end" triggerClass={`bar-button route-button route-${route.source}`}
-          triggerLabel={`回答方式：${routeTag}，${tierLabel(route.tier)}`}
-          trigger={<><span className="route-tag">{routeTag}</span><span>{tierLabel(route.tier)}</span></>}>
-          {(close) => <RouteMenu conversationId={conversationId} automatic={table[classification.task]} reason={`${TASK_LABEL[classification.task]}${classification.signals.length ? `（${classification.signals.join("、")}）` : ""}`} close={close} />}
+        <Popover label="模型" placement={variant === "hero" ? "bottom" : "top"} align="end" triggerClass={`bar-button route-button route-${route.source}`}
+          triggerLabel={route.source === "auto" ? "模型：自动" : `模型：${MODEL_NAME[route.model]}${route.source === "next-only" ? "，仅下一条" : "，默认"}`}
+          trigger={<>{route.source === "auto" ? <span>自动</span> : <><span>{MODEL_NAME[route.model]}</span>{route.source === "next-only" && <span className="route-tag">仅下一条</span>}</>}<ChevronDown size={14} aria-hidden="true" /></>}>
+          {(close) => <RouteMenu conversationId={conversationId} automatic={TIERS[table[classification.task]]} reason={`${TASK_LABEL[classification.task]}${classification.signals.length ? `（${classification.signals.join("、")}）` : ""}`} close={close} />}
         </Popover>
-        <button type="button" className="icon-button voice-button" aria-label="语音会话（演示，不使用麦克风）" title="语音会话（演示）" onClick={() => dispatch({ type: "voice-open", open: true })}>
-          <AudioLines size={18} aria-hidden="true" />
-        </button>
+        {/* One round button: stop while answering, send when there is something to send, otherwise voice. */}
         {streaming ? (
           <button type="button" className="send-button is-stop" aria-label="停止回答" onClick={() => store.stop(conversationId)}><Square size={13} fill="currentColor" aria-hidden="true" /></button>
+        ) : hasContent ? (
+          <button type="button" className="send-button" aria-label="发送" onClick={() => submit()}><ArrowUp size={18} aria-hidden="true" /></button>
         ) : (
-          <button type="button" className="send-button" aria-label="发送" disabled={empty} onClick={() => submit()}><ArrowUp size={18} aria-hidden="true" /></button>
+          <button type="button" className="send-button is-voice" aria-label="语音会话（演示，不使用麦克风）" title="语音会话（演示，不使用麦克风）" onClick={() => dispatch({ type: "voice-open", open: true })}><AudioLines size={18} aria-hidden="true" /></button>
         )}
       </div>
-      {streaming && !empty && <p className="composer-hint" role="status">正在回答。可以继续输入，回答结束后再发送。</p>}
+      {streaming && hasContent && <p className="composer-hint" role="status">正在回答。可以继续输入，回答结束后再发送。</p>}
       <input ref={fileInput} type="file" multiple hidden accept={accept} onChange={(event) => { void addFiles([...(event.target.files ?? [])]); event.target.value = ""; }} />
       <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.kind === "quote" ? "引用" : "附件"}>
         {preview?.kind === "quote" && <QuotePreview quote={preview.quote} />}
@@ -232,38 +233,38 @@ export function Composer({ conversationId, variant, placeholder }: {
   );
 }
 
-function RouteMenu({ conversationId, reason, automatic, close }: { conversationId: string; reason: string; automatic: TierId; close: () => void }) {
+function RouteMenu({ conversationId, reason, automatic, close }: { conversationId: string; reason: string; automatic: { model: ModelId; effort: Effort }; close: () => void }) {
   const { state, dispatch } = useStore();
   const draft = state.drafts[conversationId];
   const [scope, setScope] = useState<"next" | "default">("next");
   if (!draft) return null;
   const selected = scope === "next" ? draft.nextOnly ?? "auto" : state.settings.routePreference;
-  const choose = (choice: TierId | "auto") => {
+  const choose = (choice: ModelChoice) => {
     if (scope === "next") dispatch({ type: "draft", id: conversationId, patch: { nextOnly: choice === "auto" ? null : choice } });
     else dispatch({ type: "settings", patch: { routePreference: choice } });
-    dispatch({ type: "announce", text: scope === "next" ? (choice === "auto" ? "下一条恢复自动" : `下一条使用 ${tierLabel(choice)}`) : (choice === "auto" ? "后续恢复自动选择" : `后续默认使用 ${tierLabel(choice)}`) });
+    dispatch({ type: "announce", text: scope === "next" ? (choice === "auto" ? "下一条恢复自动" : `下一条使用 ${MODEL_NAME[choice]}`) : (choice === "auto" ? "后续恢复自动选择" : `后续默认使用 ${MODEL_NAME[choice]}`) });
     close();
   };
   return (
     <div className="route-menu">
-      <p className="menu-title">回答方式</p>
-      <p className="route-reason">自动判断：{reason} → {tierLabel(automatic)}</p>
+      <p className="menu-title">模型</p>
+      <p className="route-reason">这条自动会用 {requestLabel(automatic.model, automatic.effort)}：{reason}</p>
       <div className="segmented" role="radiogroup" aria-label="作用范围">
         <button type="button" role="radio" aria-checked={scope === "next"} onClick={() => setScope("next")}>仅下一条</button>
         <button type="button" role="radio" aria-checked={scope === "default"} onClick={() => setScope("default")}>后续默认</button>
       </div>
       <div className="route-options" role="radiogroup" aria-label={scope === "next" ? "下一条消息的模型" : "后续默认的模型"}>
         <button type="button" role="radio" aria-checked={selected === "auto"} className="route-option" onClick={() => choose("auto")}>
-          <span><strong>自动</strong><small>按任务选择模型和推理强度（推荐）</small></span>{selected === "auto" && <Check size={16} aria-hidden="true" />}
+          <span><strong>自动</strong><small>按任务选择模型（推荐）</small></span>{selected === "auto" && <Check size={16} aria-hidden="true" />}
         </button>
-        {TIER_ORDER.map((tier) => (
-          <button key={tier} type="button" role="radio" aria-checked={selected === tier} className="route-option" onClick={() => choose(tier)}>
-            <span><strong>{tierLabel(tier)}</strong><small>{TIERS[tier].use}</small></span>{selected === tier && <Check size={16} aria-hidden="true" />}
+        {MODEL_IDS.map((model) => (
+          <button key={model} type="button" role="radio" aria-checked={selected === model} className="route-option" onClick={() => choose(model)}>
+            <span><strong>{MODEL_NAME[model]}</strong><small>适合{MODEL_USE[model]}</small></span>{selected === model && <Check size={16} aria-hidden="true" />}
           </button>
         ))}
       </div>
-      <p className="menu-foot">{scope === "next" ? "只影响下一条发出的消息；发送失败或被拒绝时保留。" : "保存为之后所有消息的默认选择，可在设置中恢复自动。"}</p>
-      <button type="button" className="link-button" onClick={() => { close(); dispatch({ type: "settings-open", section: "model" }); }}>在设置中查看路由规则</button>
+      <p className="menu-foot">思考强度始终按任务自动决定。{scope === "next" ? "「仅下一条」只影响下一条发出的消息；发送失败或被拒绝时保留。" : "「后续默认」用于之后所有消息，可在设置中恢复自动。"}</p>
+      <button type="button" className="link-button" onClick={() => { close(); dispatch({ type: "settings-open", section: "model" }); }}>在设置中查看自动模式的规则</button>
     </div>
   );
 }

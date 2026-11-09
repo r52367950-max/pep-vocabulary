@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, MicOff, PhoneOff, Send, Volume2, VolumeX } from "lucide-react";
 import { respond } from "../engine";
-import { AUDIO_ROUTE, buildRequest, checkSendable, classifyTask, resolveRoute, routeTable, tierLabel, type RequestPayload } from "../routing";
+import { AUDIO_ROUTE, buildRequest, checkSendable, classifyTask, MODEL_NAME, resolveRoute, routeTable, type RequestPayload } from "../routing";
 import { useStore } from "../store";
 import type { Block, Caption } from "../types";
 import { Modal } from "./modal";
@@ -85,7 +85,7 @@ function VoiceBody() {
       <div className="voice-state" role="status">
         <AudioLines size={20} aria-hidden="true" />
         <span>{phase === "speaking" ? (muted ? "AI 在回答（已静音，只看字幕）" : "AI 在回答") : "轮到你说"}</span>
-        <span className="voice-route">{AUDIO_ROUTE.label} · 文字任务按学习路由{state.settings.routePreference !== "auto" ? `（默认 ${tierLabel(state.settings.routePreference)}）` : ""}</span>
+        <span className="voice-route">{AUDIO_ROUTE.label} · 文字任务按学习路由{state.settings.routePreference !== "auto" ? `（默认 ${MODEL_NAME[state.settings.routePreference]}）` : ""}</span>
       </div>
       <ol className="caption-list live" ref={list} aria-label="字幕">
         {captions.length === 0 && <li className="caption-empty">字幕会显示在这里。结束后，整段字幕回到当前对话。</li>}

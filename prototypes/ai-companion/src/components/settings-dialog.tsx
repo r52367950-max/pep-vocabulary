@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BookOpenCheck, ChevronLeft, ChevronRight, Info, MessagesSquare, Palette, ShieldCheck, Sparkles, X } from "lucide-react";
 import { DATA_ORIGIN } from "../data";
 import { SCOPE_LABEL } from "../practice";
-import { AUDIO_ROUTE, PROGRAM_ROUTE, routeTable, TASK_LABEL, TIER_ORDER, TIERS, tierLabel, type RouteChoice, type ServiceState, type TaskKind } from "../routing";
+import { AUDIO_ROUTE, MODEL_IDS, MODEL_NAME, MODEL_USE, PROGRAM_ROUTE, routeTable, TASK_LABEL, tierLabel, type ModelChoice, type ServiceState, type TaskKind } from "../routing";
 import { useStore } from "../store";
 import type { Settings, SettingsSection } from "../types";
 
@@ -163,21 +163,21 @@ export function SettingsDialog() {
               )}
               {section === "model" && (
                 <>
-                  <p className="settings-group">默认回答方式</p>
-                  <div className="route-options settings-routes" role="radiogroup" aria-label="默认回答方式">
-                    {(["auto", ...TIER_ORDER] as RouteChoice[]).map((choice) => (
+                  <p className="settings-group">默认模型</p>
+                  <div className="route-options settings-routes" role="radiogroup" aria-label="默认模型">
+                    {(["auto", ...MODEL_IDS] as ModelChoice[]).map((choice) => (
                       <button key={choice} type="button" role="radio" aria-checked={settings.routePreference === choice} className="route-option" onClick={() => update({ routePreference: choice })}>
-                        <span><strong>{choice === "auto" ? "自动（推荐）" : tierLabel(choice)}</strong><small>{choice === "auto" ? "按任务选择模型与推理强度" : `固定使用；${TIERS[choice].use}`}</small></span>
+                        <span><strong>{choice === "auto" ? "自动（推荐）" : MODEL_NAME[choice]}</strong><small>{choice === "auto" ? "按任务选择模型" : `固定使用；适合${MODEL_USE[choice]}`}</small></span>
                       </button>
                     ))}
                   </div>
-                  <p className="settings-note">输入框里的「仅下一条」只影响一条消息，不会改动这里。</p>
-                  <Row title="复杂规划档位" detail="多约束、有步骤依赖的规划。「Soda High」暂按 Sol · 高 理解，尚未确认，可在这里改。">
+                  <p className="settings-note">思考强度不需要选择，始终按任务自动决定（见下方规则）。输入框里的「仅下一条」只影响一条消息，不会改动这里。</p>
+                  <Row title="复杂规划的思考强度" detail="多约束、有步骤依赖的规划。「Soda High」暂按 Sol · 高 理解，尚未确认，可在这里改。">
                     <Segmented label="复杂规划档位" value={settings.complexPlanTier} onChange={(complexPlanTier) => update({ complexPlanTier })} options={[{ value: "sol-high", label: "Sol · 高" }, { value: "sol-medium", label: "Sol · 中" }]} />
                   </Row>
-                  <p className="settings-group">自动路由规则</p>
+                  <p className="settings-group">自动模式的规则</p>
                   <table className="route-table">
-                    <thead><tr><th scope="col">任务</th><th scope="col">模型 · 推理强度</th></tr></thead>
+                    <thead><tr><th scope="col">任务</th><th scope="col">模型 · 思考强度</th></tr></thead>
                     <tbody>
                       {TASK_ORDER.map((task) => <tr key={task}><th scope="row">{TASK_LABEL[task]}</th><td>{tierLabel(table[task])}{task === "complex-plan" ? "（候选）" : ""}</td></tr>)}
                       <tr><th scope="row">拼写核对、确定答案评分</th><td>{PROGRAM_ROUTE.label} · 不调用模型</td></tr>

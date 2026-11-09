@@ -51,11 +51,20 @@ export function ChatView() {
     <section className={`chat${panelOpen ? " panel-open" : ""}`} aria-label="AI 对话">
       <ConversationPanel open={panelOpen} onClose={() => { setPanelOpen(false); toggle.current?.focus({ preventScroll: true }); }} guard={guard} />
       <div className="chat-main">
+        {/* Left: moving between conversations. Right: actions on this one, then leaving the page. */}
         <header className="chat-top">
+          <button ref={toggle} type="button" className="icon-button" aria-label={panelOpen ? "收起对话列表" : "展开对话列表"} aria-expanded={panelOpen} title="对话列表" onClick={() => setPanelOpen((value) => !value)}>
+            <PanelLeft size={19} aria-hidden="true" />
+          </button>
+          <div className="top-title">
+            {!empty && !active.temporary && <span className="title-text">{active.title}</span>}
+            {returnTo && returnTo.id !== active.id && (
+              <button type="button" className="return-chip" onClick={() => dispatch({ type: "select", id: returnTo.id })}>
+                <Undo2 size={14} aria-hidden="true" /><span>回到刚才的对话</span>
+              </button>
+            )}
+          </div>
           <div className="top-cluster">
-            <button ref={toggle} type="button" className="icon-button" aria-label={panelOpen ? "收起对话列表" : "展开对话列表"} aria-expanded={panelOpen} title="对话列表" onClick={() => setPanelOpen((value) => !value)}>
-              <PanelLeft size={19} aria-hidden="true" />
-            </button>
             <button type="button" className="icon-button" aria-label="新对话" title="新对话" disabled={empty && !active.temporary && !hasDraftContent(state.drafts[active.id])}
               onClick={() => guard("开始新对话", () => newConversation(false))}>
               <SquarePen size={18} aria-hidden="true" />
@@ -66,19 +75,12 @@ export function ChatView() {
               <TemporaryIcon size={19} />
               {active.temporary && <span>临时对话</span>}
             </button>
+            <span className="top-divider" aria-hidden="true" />
+            <button type="button" className="icon-button" aria-label="收起为小窗，回到学习页" title="收起为小窗"
+              onClick={() => guard("收起为小窗", () => { dispatch({ type: "view", view: state.lastLearnView }); dispatch({ type: "mini", open: true }); })}>
+              <Minimize2 size={18} aria-hidden="true" />
+            </button>
           </div>
-          <div className="top-title">
-            {!empty && !active.temporary && <span className="title-text">{active.title}</span>}
-            {returnTo && returnTo.id !== active.id && (
-              <button type="button" className="return-chip" onClick={() => dispatch({ type: "select", id: returnTo.id })}>
-                <Undo2 size={14} aria-hidden="true" /><span>回到刚才的对话</span>
-              </button>
-            )}
-          </div>
-          <button type="button" className="icon-button" aria-label="收起为小窗，回到学习页" title="收起为小窗"
-            onClick={() => guard("收起为小窗", () => { dispatch({ type: "view", view: state.lastLearnView }); dispatch({ type: "mini", open: true }); })}>
-            <Minimize2 size={18} aria-hidden="true" />
-          </button>
         </header>
         <div className="chat-scroll" ref={scroller} onScroll={(event) => {
           const element = event.currentTarget;

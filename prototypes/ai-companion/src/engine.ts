@@ -6,7 +6,7 @@
 import { ARTICLE, lookupWord, sentenceSpans } from "./data";
 import { englishTokens } from "./lexicon-match";
 import { buildPlan, itemFromWord, sampleStatus, type PlanScope, type PracticeItem } from "./practice";
-import { tierLabel, type Route } from "./routing";
+import { requestLabel, type Route } from "./routing";
 import { sentencesInQuote, type Quote } from "./selection";
 import { wordsFromText, type Attachment } from "./sources";
 import type { Action, Block, PracticeResult, Settings } from "./types";
@@ -172,7 +172,7 @@ export function respond(input: RespondInput): Block[] {
     }
     case "essay-feedback":
       return [
-        { type: "notice", tone: "info", text: `作文反馈需要模型完成（正式接入时用 ${tierLabel(route.tier)}）。演示中不生成批改，避免把示例内容当成对你作文的评价。` },
+        { type: "notice", tone: "info", text: `作文反馈需要模型完成（正式接入时用 ${requestLabel(route.model, route.effort)}）。演示中不生成批改，避免把示例内容当成对你作文的评价。` },
         ...(sourcesBlock(input) ? [sourcesBlock(input)!] : []),
       ];
     default:
@@ -193,7 +193,7 @@ export function respond(input: RespondInput): Block[] {
   }
   const sources = sourcesBlock(input);
   if (sources) blocks.push(sources);
-  blocks.push({ type: "notice", tone: "info", text: `正式接入后，这条消息会以 ${tierLabel(route.tier)} 发送${quote ? "，并附上你的引用" : ""}。` });
+  blocks.push({ type: "notice", tone: "info", text: `正式接入后，这条消息会以 ${requestLabel(route.model, route.effort)} 发送${quote ? "，并附上你的引用" : ""}。` });
   if (!quote) {
     blocks.push({
       type: "actions",

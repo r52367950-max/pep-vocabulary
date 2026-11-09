@@ -76,7 +76,7 @@ async function selectArticle(page, startPara, startOffset, endPara, endOffset) {
 }
 async function openSettings(page, viewport) {
   if (!viewport.mobile) await page.locator(".side-nav .nav-item[title='设置']").click();
-  else if (await page.locator(".tab-bar").count()) await page.locator(".tab-bar button", { hasText: "设置" }).click();
+  else if (await page.locator(".mobile-head").count()) await page.locator(".mobile-head [aria-label='设置']").click();
   else { await openPanel(page); await page.locator(".panel-link", { hasText: "设置" }).click(); }
   await page.waitForSelector("dialog.settings[open]");
 }
@@ -93,7 +93,7 @@ async function leaveChat(page, viewport) {
   await page.waitForSelector(".mini-panel");
   if (viewport.mobile) await page.locator(".mini-panel [aria-label='收起小窗']").click();
 }
-const SHORT = { 今日学习: "今日", 学习记录: "记录" };
+const SHORT = { 今日学习: "今日", 学习记录: "记录", "AI 对话": "AI" };
 async function goView(page, viewport, label) {
   if (viewport.mobile) await page.locator(".tab-bar button", { hasText: SHORT[label] ?? label }).click();
   else await page.locator(".side-nav .nav-item", { hasText: label }).click();
@@ -102,7 +102,27 @@ async function goView(page, viewport, label) {
 async function pathConversation(page, viewport) {
   // 1. Empty home → first message → continuing → new / temporary → back through history.
   check("空态居中问候", await page.locator(".greeting").innerText() === "今天想学什么？");
-  check("全站侧栏没有新对话或学习助手", viewport.mobile || (await page.locator(".side-nav").innerText()).match(/新对话|学习助手/) === null);
+  check("全站导航没有新对话或学习助手", viewport.mobile || (await page.locator(".side-nav").innerText()).match(/新对话|学习助手/) === null);
+  if (viewport.mobile) {
+    const tabs = await page.locator(".tab-bar button").allInnerTexts();
+    check("手机底部五个入口，AI 居中", tabs.length === 5 && tabs[2].trim() === "AI", tabs.join("|"));
+    check("对话页保留底部入口并标出 AI", (await page.locator(".tab-bar [aria-current=page]").innerText()).trim() === "AI");
+  } else {
+    const items = await page.locator(".side-nav nav .nav-item").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("title")));
+    check("侧栏 AI 对话位于词库与阅读之间", items.join("|") === "今日学习|词库|AI 对话|阅读|学习记录", items.join("|"));
+    check("对话页高亮 AI 对话", (await page.locator(".side-nav .nav-item[aria-current=page]").getAttribute("title")) === "AI 对话");
+  }
+  check("新对话与临时对话在右上角", await page.evaluate(() => {
+    const top = document.querySelector(".chat-top").getBoundingClientRect();
+    const fresh = document.querySelector(".chat-top [aria-label='新对话']").getBoundingClientRect();
+    const temp = document.querySelector(".chat-top .temp-toggle").getBoundingClientRect();
+    const list = document.querySelector(".chat-top [aria-label='展开对话列表']").getBoundingClientRect();
+    return fresh.left > top.left + top.width / 2 && temp.left > top.left + top.width / 2 && list.right < top.left + top.width / 2;
+  }));
+  check("空输入框显示语音键", await page.locator(".composer-hero .send-button.is-voice").count() === 1 && await page.locator(".composer-hero [aria-label='发送']").count() === 0);
+  await composer(page).fill("x");
+  check("有文字时同一位置变为发送", await page.locator(".composer-hero [aria-label='发送']").count() === 1 && await page.locator(".composer-hero .is-voice").count() === 0);
+  await composer(page).fill("");
   const heroBox = await page.locator(".composer-hero").boundingBox();
   if (!viewport.mobile) check("输入框位于视觉中部", heroBox && heroBox.y > viewport.height * 0.25 && heroBox.y + heroBox.height < viewport.height * 0.75, JSON.stringify(heroBox));
   else check("手机输入框贴近底部", heroBox && heroBox.y + heroBox.height > viewport.height * 0.8, JSON.stringify(heroBox));
@@ -144,6 +164,11 @@ async function pathConversation(page, viewport) {
 
 async function pathReading(page, viewport) {
   // 2. Select text → translate / grammar → follow up → expand → remove quote.
+  const before = await page.locator(".title-text").innerText();
+  await leaveChat(page, viewport);
+  await goView(page, viewport, "AI 对话");
+  await page.waitForSelector(".chat-dock");
+  check("导航里的 AI 对话回到同一会话", (await page.locator(".title-text").innerText()) === before);
   await leaveChat(page, viewport);
   await goView(page, viewport, "阅读");
   await page.waitForSelector(".reading-body");
@@ -346,40 +371,47 @@ async function pathPractice(page, viewport) {
 }
 
 async function pathRouting(page, viewport) {
-  // 5. Automatic route → one-message override → default preference → back to automatic.
+  // 5. Automatic → one-message model → refusal keeps it → default model → back to automatic.
   const box = composer(page, ".chat-dock");
   const chip = page.locator(".chat-dock .route-button");
+  const chipText = async () => (await chip.innerText()).replace(/\s+/g, "");
   await box.fill("帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词");
-  check("多约束规划自动 Sol · 高", (await chip.innerText()).replace(/\s+/g, "") === "自动Sol·高");
+  check("自动模式只显示「自动」", await chipText() === "自动");
   await chip.click();
-  await page.locator(".route-menu .route-option", { hasText: "Sol · 中" }).click();
-  check("仅下一条覆盖显示在输入框", (await chip.innerText()).replace(/\s+/g, "") === "仅下一条Sol·中");
+  check("菜单里解释自动的判断", (await page.locator(".route-menu .route-reason").innerText()).includes("Sol · 高"));
+  check("模型菜单不提供思考强度选项", (await page.locator(".route-menu .route-option").allInnerTexts()).every((text) => !/[低中高]$|· [低中高]/.test(text.split("\n")[0])));
+  await page.locator(".route-menu .route-option", { hasText: "Terra" }).click();
+  check("仅下一条显示所选模型", await chipText() === "Terra仅下一条");
   const draft = await box.inputValue();
   await box.fill("");
   await box.press("Enter");
   check("空消息不消耗单次选择", (await chip.innerText()).includes("仅下一条"));
+  await chip.click();
+  await page.locator(".route-menu .route-option", { hasText: "Sol" }).click();
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
   await page.locator("#service-state").selectOption("sol-unavailable");
   await closeSettings(page);
-  if (viewport.mobile && !(await page.locator(".chat").count())) await page.locator(".launcher").click();
   await box.fill(draft);
   await box.press("Enter");
   check("模型不可用时拒绝发送并说明", (await page.locator(".chat-dock .composer-notice").innerText()).includes("不会自动换模型"));
   check("被拒绝的发送不消耗单次选择", (await chip.innerText()).includes("仅下一条") && (await box.inputValue()) === draft);
+  await page.locator(".chat-dock .composer-notice button", { hasText: "只把这条改用 Terra 发送" }).click();
+  await waitIdle(page);
+  check("选择的备选只用于这一条", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 高");
+  check("说明自动原本的选择", (await lastReply(page).locator(".meta-reason").innerText()).includes("自动会用 Sol · 高"));
+  check("单次选择用后恢复自动", await chipText() === "自动");
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
   await page.locator("#service-state").selectOption("normal");
   await closeSettings(page);
-  await page.locator(".chat-dock .composer-notice [aria-label='关闭提示']").click();
+  await box.fill(draft);
   await box.press("Enter");
   await waitIdle(page);
-  check("单次选择按实际请求显示", (await lastReply(page).locator(".meta-model").innerText()) === "Sol · 中");
-  check("说明自动原本的选择", (await lastReply(page).locator(".meta-reason").innerText()).includes("自动会用 Sol · 高"));
+  check("自动模式按任务给出模型与思考强度", (await lastReply(page).locator(".meta-model").innerText()) === "Sol · 高");
   check("长期计划分清整段与今天第一步", await lastReply(page).locator(".long-plan").count() === 1 && await lastReply(page).locator(".plan-card.is-first-step").count() === 1);
   await lastReply(page).locator(".meta-route").click();
-  check("请求里的 effort 与标签一致", (await lastReply(page).locator(".request-detail").innerText()).includes("reasoning.effort: medium"));
-  check("单次选择用后恢复自动", (await chip.innerText()).startsWith("自动"));
+  check("请求里的 model 与 effort 与标签一致", (await lastReply(page).locator(".request-detail").innerText()).match(/model: gpt-6\.1-sol[\s\S]*reasoning\.effort: high/) !== null);
   await page.screenshot({ path: `${shots}/${viewport.name}-11-long-plan.png` });
   await lastReply(page).locator("button", { hasText: "加入学习安排" }).click();
   check("加入安排前需要确认", (await lastReply(page).locator(".schedule-row").innerText()).includes("确认加入"));
@@ -387,17 +419,17 @@ async function pathRouting(page, viewport) {
 
   await chip.click();
   await page.locator(".route-menu [role=radio]", { hasText: "后续默认" }).click();
-  await page.locator(".route-menu .route-option", { hasText: "Terra · 中" }).click();
-  check("后续偏好显示为默认", (await chip.innerText()).replace(/\s+/g, "") === "默认Terra·中");
-  await send(page, "这周我该先复习什么？");
-  check("后续偏好用于下一条", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中");
-  check("后续偏好不会被一次发送清除", (await chip.innerText()).includes("默认"));
+  await page.locator(".route-menu .route-option", { hasText: "Terra" }).click();
+  check("后续默认只显示模型名", await chipText() === "Terra");
+  await send(page, "看看我这周的学习状态");
+  check("默认模型用于下一条，思考强度按任务", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中");
+  check("后续默认不会被一次发送清除", await chipText() === "Terra");
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
-  check("设置里显示同一偏好", await page.locator(".settings-routes [aria-checked=true]").innerText().then((text) => text.includes("Terra · 中")));
+  check("设置里显示同一默认模型", await page.locator(".settings-routes [aria-checked=true]").innerText().then((text) => text.startsWith("Terra")));
   await page.locator(".settings-routes .route-option", { hasText: "自动（推荐）" }).click();
   await closeSettings(page);
-  check("在设置中恢复自动", (await chip.innerText()).startsWith("自动"));
+  check("在设置中恢复自动", await chipText() === "自动");
 }
 
 async function pathSettings(page, viewport) {

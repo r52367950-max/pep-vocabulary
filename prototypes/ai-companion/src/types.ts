@@ -1,6 +1,6 @@
 import type { Quote } from "./selection";
 import type { Attachment } from "./sources";
-import type { RequestPayload, SelectionAction, TierId, RouteChoice, ComplexPlanTier, ServiceState } from "./routing";
+import type { RequestPayload, SelectionAction, ModelChoice, ModelId, ComplexPlanTier, ServiceState } from "./routing";
 import type { PlanScope, PlanSpec, PracticeItem, Score } from "./practice";
 
 export type QuoteMode = "translate" | "define" | "grammar" | "context";
@@ -45,8 +45,8 @@ export type Conversation = {
 export type Draft = {
   text: string; quotes: Quote[]; attachments: Attachment[];
   includeRecords: boolean; includeArticle: boolean;
-  /** One-message route override; consumed only by a message that is actually sent. */
-  nextOnly: TierId | null;
+  /** One-message model choice; consumed only by a message that is actually sent. */
+  nextOnly: ModelId | null;
 };
 
 export type SendMode = "enter" | "mod-enter";
@@ -59,7 +59,7 @@ export type Settings = {
   sendMode: SendMode;
   includeRecords: boolean;
   includeArticle: boolean;
-  routePreference: RouteChoice;
+  routePreference: ModelChoice;
   complexPlanTier: ComplexPlanTier;
   service: ServiceState;
 };

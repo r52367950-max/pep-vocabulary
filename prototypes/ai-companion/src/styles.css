@@ -114,7 +114,7 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1
 [aria-current="page"] .studio-symbol .symbol-regular { display: none; }
 .stage { min-width: 0; outline: none; }
 .app.is-chat .stage { height: var(--vh); overflow: hidden; }
-.tab-bar { display: none; }
+.tab-bar, .mobile-head { display: none; }
 
 /* Rail: tablets in portrait always, and every wide screen while the conversation is open. */
 @media (min-width: 761px) and (max-width: 1000px) {
@@ -245,10 +245,11 @@ dialog::backdrop { background: var(--scrim); }
 @keyframes layer-in { from { opacity: 0; transform: translateY(4px); } }
 
 /* ---------- Conversation ---------- */
-.chat { position: relative; display: flex; height: var(--vh); background: var(--bg); }
+.chat { position: relative; display: flex; height: 100%; background: var(--bg); }
 .chat-main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .chat-top { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: var(--safe-top) 12px 0; }
 .top-cluster { display: flex; align-items: center; gap: 2px; flex: none; }
+.top-divider { width: 1px; height: 20px; margin: 0 6px; background: var(--line-strong); }
 .temp-toggle { display: inline-flex; align-items: center; gap: 6px; height: var(--tap); min-width: var(--tap); padding: 0 9px; border-radius: 999px; color: var(--ink-2); font-size: 13.5px; transition: background-color 140ms ease, color 140ms ease; }
 .temp-toggle.is-on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; padding-right: 13px; }
 .top-title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
@@ -283,16 +284,16 @@ dialog::backdrop { background: var(--scrim); }
 .composer-bar .popover-wrap:first-child .bar-button { margin-left: -6px; }
 .count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--fill-strong); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .route-tag { font-size: 12px; color: var(--muted); }
+.route-button svg { color: var(--muted); margin-left: -2px; }
 .route-button.route-next-only { background: var(--accent-soft); color: var(--accent-ink); }
-.route-button.route-next-only .route-tag, .route-button.route-preference .route-tag { color: inherit; font-weight: 600; }
-.route-button.route-preference { color: var(--ink); }
-.voice-button { width: 34px; height: 34px; }
+.route-button.route-next-only .route-tag, .route-button.route-next-only svg { color: inherit; }
+.route-button.route-preference { color: var(--ink); font-weight: 600; }
 .send-button { display: grid; place-items: center; flex: none; width: 34px; height: 34px; margin-left: 4px; border-radius: 50%; background: var(--accent); color: var(--on-accent); transition: background-color 140ms ease; }
 .send-button:disabled { background: var(--fill-strong); color: var(--faint); }
 .send-button.is-stop { background: var(--ink); color: var(--bg); }
 @media (pointer: coarse) {
-  .bar-button, .voice-button, .send-button { height: 40px; }
-  .voice-button, .send-button { width: 40px; }
+  .bar-button, .send-button { height: 40px; }
+  .send-button { width: 40px; }
 }
 .composer-hint { margin: 6px 2px 0; font-size: 12.5px; color: var(--muted); }
 .composer-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 4px; padding: 8px 8px 8px 12px; border-radius: var(--r-control); background: var(--warn-soft); color: var(--ink); font-size: 13.5px; }
@@ -676,14 +677,20 @@ dialog.settings[open] { animation: layer-in 180ms var(--ease); }
   .page { padding: 32px 28px 112px; }
 }
 @media (max-width: 760px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
+  /* Five tabs, AI in the middle; the conversation keeps them and ends just above. */
+  .app { display: block; --tabbar-h: calc(61px + var(--safe-bottom)); }
   .side-nav { display: none; }
-  .stage { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
-  .app.is-chat .stage { padding-bottom: 0; }
+  .stage { padding-bottom: var(--tabbar-h); }
+  .app.is-chat .stage { height: calc(var(--vh) - var(--tabbar-h)); padding-bottom: 0; }
+  .app.is-chat .demo-foot { padding-bottom: 8px; }
+  .mobile-head { position: sticky; top: 0; z-index: 45; display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: var(--safe-top) max(8px, env(safe-area-inset-right, 0px)) 0 max(8px, env(safe-area-inset-left, 0px)); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); }
+  .mobile-head .brand { margin: 0; }
+  .mobile-head .icon-button { color: var(--ink-2); }
   .tab-bar { position: fixed; inset: auto 0 0; z-index: 50; display: flex; padding: 4px max(8px, env(safe-area-inset-left, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-right, 0px)); border-top: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); }
   .tab-bar button { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; border-radius: var(--r-control); color: var(--muted); font-size: 11px; }
   .tab-bar button[aria-current="page"] { color: var(--accent-ink); }
-  .page { padding: 20px max(16px, env(safe-area-inset-left, 0px)) 24px max(16px, env(safe-area-inset-right, 0px)); }
+  .tab-bar button[aria-current="page"] .studio-symbol { color: var(--accent); }
+  .page { padding: 8px max(16px, env(safe-area-inset-left, 0px)) 24px max(16px, env(safe-area-inset-right, 0px)); }
   .page-head h1 { font-size: 24px; }
   .launcher { right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; }
   .mini-panel { inset: auto 0 0 0; width: 100%; height: min(74dvh, 640px); border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0px); animation-name: sheet-in; z-index: 60; }
