@@ -58,6 +58,7 @@ export const learningJournalSettings = sqliteTable("learning_journal_settings", 
   userKey: text("user_key").primaryKey(), enabled: integer("enabled").notNull().default(1),
   revision: integer("revision").notNull().default(0), privacyRevision: integer("privacy_revision").notNull().default(0),
   suppressedBefore: text("suppressed_before").notNull().default(""), writeToken: text("write_token").notNull().default(""),
+  eventCount: integer("event_count").notNull().default(0), storageBytes: integer("storage_bytes").notNull().default(0),
 });
 export const learningJournalEvents = sqliteTable("learning_journal_events", {
   userKey: text("user_key").notNull(), eventId: text("event_id").notNull(), date: text("date").notNull(),

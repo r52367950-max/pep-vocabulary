@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
@@ -6,12 +5,14 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import '../tests/register.mjs';
 import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
-const base = process.argv[2] || '3b12529';
+import { benchmarkBaseline } from './benchmark-baseline.mjs';
+const baseline = benchmarkBaseline('core', process.argv[2]);
+const base = baseline.revision;
 const index = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.json', 'utf8')));
 const manifest = JSON.parse(readFileSync('public/data/v1/manifest.json', 'utf8'));
-async function load(path, baseline) {
-  if (!baseline) return import(pathToFileURL(resolve(path)).href);
-  const source = baseline ? execFileSync('git', ['show', `${base}:${path}`], { encoding: 'utf8' }) : readFileSync(path, 'utf8');
+async function load(path, previous) {
+  if (!previous) return import(pathToFileURL(resolve(path)).href);
+  const source = baseline.source(path);
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   return import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 }

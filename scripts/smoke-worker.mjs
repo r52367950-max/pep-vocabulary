@@ -239,6 +239,22 @@ try {
   assert.equal(journalReplay.status,200); assert.equal((await journalReplay.json()).ignored,'deleted');
   assert.notEqual((await (await request('/api/learning-memory?metadata=1',{headers})).json()).contextVersion,contextAfterJournal.contextVersion);
   results.push({path:'/api/learning-journal atomic idempotency, independent activity revision, privacy deletion and no resurrection',status:'passed'});
+  const journalUsage = await db.prepare('SELECT user_key,event_count,storage_bytes FROM learning_journal_settings').first();
+  const journalDayCount = (await db.prepare('SELECT count(*) AS n FROM learning_journal_days').first()).n;
+  const emptyDateDelete = await request('/api/learning-journal', { method:'DELETE',headers,body:JSON.stringify({accountScope:journalDeleted.accountScope,revision:journalDeleted.revision,date:'1000-01-01'}) });
+  assert.equal(emptyDateDelete.status,404,await emptyDateDelete.clone().text());
+  assert.equal((await db.prepare('SELECT count(*) AS n FROM learning_journal_days').first()).n,journalDayCount);
+  assert.equal((await (await request('/api/learning-journal',{headers})).json()).revision,journalDeleted.revision);
+  await db.prepare('UPDATE learning_journal_settings SET storage_bytes=? WHERE user_key=?').bind(64*1024*1024-1,journalUsage.user_key).run();
+  try {
+    const quotaPost=await request('/api/learning-journal',{method:'POST',headers,body:JSON.stringify({...journalEvent,eventId:'smoke-journal-quota',privacyRevision:journalDeleted.privacyRevision})});
+    assert.equal(quotaPost.status,409,await quotaPost.clone().text());
+    assert.equal((await quotaPost.json()).error.code,'journal_capacity_exceeded');
+    assert.equal(await db.prepare('SELECT event_id FROM learning_journal_events WHERE user_key=? AND event_id=?').bind(journalUsage.user_key,'smoke-journal-quota').first(),null);
+    assert.deepEqual(await db.prepare('SELECT event_count,storage_bytes FROM learning_journal_settings WHERE user_key=?').bind(journalUsage.user_key).first(),{event_count:journalUsage.event_count,storage_bytes:64*1024*1024-1});
+    assert.equal((await (await request('/api/learning-journal',{headers})).json()).revision,journalDeleted.revision);
+  } finally { await db.prepare('UPDATE learning_journal_settings SET storage_bytes=? WHERE user_key=?').bind(journalUsage.storage_bytes,journalUsage.user_key).run(); }
+  results.push({path:'/api/learning-journal D1 quota trigger rolls back allocation and maps 409; missing day deletion allocates nothing',status:'passed'});
   const unconfiguredVoice = await request('/api/voice/status', { headers });
   assert.equal(unconfiguredVoice.status, 200, await unconfiguredVoice.clone().text());
   const unconfiguredBody = await unconfiguredVoice.json();

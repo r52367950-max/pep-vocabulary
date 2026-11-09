@@ -1,13 +1,14 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
 import { resolveLexiconEvidence } from '../lib/assistant/core.ts';
 import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
+import { benchmarkBaseline } from './benchmark-baseline.mjs';
 
 // Benchmark the exact old resolver, independently of unrelated module changes.
-const baseline = process.argv[2] || 'e2e9e25b350e9cbaf7b2fa6c5da4063cc26d2a70';
-const source = execFileSync('git', ['show', `${baseline}:lib/assistant/core.ts`], { encoding: 'utf8' });
+const approved = benchmarkBaseline('backend', process.argv[2]);
+const baseline = approved.revision;
+const source = approved.source('lib/assistant/core.ts');
 const start = source.indexOf('export function resolveLexiconEvidence');
 const end = source.indexOf('\nfunction privateIpv4', start);
 if (start < 0 || end < 0) throw new Error('Baseline resolver not found');

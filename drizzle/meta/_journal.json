@@ -64,6 +64,13 @@
       "when": 1793444361622,
       "tag": "0008_learning_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1794203677857,
+      "tag": "0009_learning_journal_quota",
+      "breakpoints": true
     }
   ]
 }

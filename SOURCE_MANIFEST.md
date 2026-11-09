@@ -25,7 +25,6 @@
 | IPA-DICT-EN-UK | ipa-dict English UK pronunciation list | — | verified-primary | tab-separated pronunciation lookup | MIT; open-dict-data/ipa-dict |
 | IPA-DICT-EN-US | ipa-dict English US pronunciation list | — | verified-primary | tab-separated pronunciation lookup | MIT; open-dict-data/ipa-dict |
 | ECDICT-2025 | ECDICT free English-Chinese dictionary database | — | verified-primary | CSV lookup; core translation and phonetic fields only | MIT; Copyright (c) 2025 Linwei |
-| DRIVE-ARCHITECTURE-RECOMMENDATIONS | VOCAB_APP_ARCHITECTURE_AND_FEATURE_RECOMMENDATIONS.md | — | verified-user-source | Google Drive text fetch | private project material |
 | MIKIGO-MIDDLE-CROSSCHECK | english-chinese-words 人教版初中词表 | — | verified-cross-source | Markdown headings and first bold gloss only | Apache-2.0 repository; examples and expanded notes excluded because upstream provenance is not field-level |
 
 ## 缺失与版本结论

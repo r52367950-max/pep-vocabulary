@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { deflateSync, zipSync, strToU8 } from 'fflate';
 import { inspectDocxArchive, readDocxDocument, MAX_DOCX_DOCUMENT_BYTES } from '../lib/docx-archive.ts';
 import { extractDocxXml, DOCX_WORKER_TIMEOUT_MS } from '../lib/docx-import.ts';
+import { docxText } from '../lib/reading-import.ts';
 
 const xml = strToU8('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>A normal document.</w:t></w:r></w:p></w:body></w:document>');
 function crc32(bytes) {
@@ -218,4 +219,15 @@ test('unsupported Workers never fall back to synchronous UI parsing', async t =>
   const previous = globalThis.Worker; delete globalThis.Worker;
   t.after(() => { if (previous !== undefined) globalThis.Worker = previous; });
   await assert.rejects(extractDocxXml(file(), new AbortController().signal), /粘贴正文/);
+});
+
+test('DOCX XML size, markup and entity limits reject input before DOM allocation', t => {
+  const previous = globalThis.DOMParser;
+  let allocations = 0;
+  globalThis.DOMParser = class { constructor() { allocations++; throw new Error('DOM allocation reached'); } };
+  t.after(() => { if (previous === undefined) delete globalThis.DOMParser; else globalThis.DOMParser = previous; });
+  assert.throws(() => docxText('x'.repeat(MAX_DOCX_DOCUMENT_BYTES + 1)), /内容过多/);
+  assert.throws(() => docxText('<p/>'.repeat(80_001)), /内容过多/);
+  assert.throws(() => docxText('<!DOCTYPE p [<!ENTITY a "word">]><p>&a;</p>'), /格式损坏/);
+  assert.equal(allocations, 0);
 });

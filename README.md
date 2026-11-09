@@ -39,7 +39,7 @@ npm run dev
 | `npm run typecheck` / `npm run test:unit` | 类型检查 / 单元与回归测试 |
 | `npm run lint` | ESLint 检查 |
 | `npm start` | 在本地 workerd 中预览 `npm run build` 的产物 |
-| `npm run benchmark -- <baseline-ref>` | 对照指定历史提交；本地需已取得该提交 |
+| `npm run benchmark` | 对照已审核历史基线 `3b12529`；本地需已取得该提交，新基线须经代码审查加入允许列表 |
 | `npm run build` | 有超时限制的生产构建与产物验证 |
 | `npm run data:audit` | 审核发布词库与来源字段 |
 | `npm run data:manifest` / `npm run data:build` | 在具备来源缓存时重新生成词库 |

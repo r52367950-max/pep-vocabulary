@@ -61,3 +61,18 @@ test('temporary round trip while initial policy is pending cannot backfill an ol
   setTemporaryMode(true);setTemporaryMode(false);release();
   assert.equal(await result,false);assert.equal(learningJournalStore.get().pending,0);
 });
+
+test('account capacity errors appear in journal state and are not queued for automatic retry', async t => {
+  setup(t);
+  const original = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = async (url, init = {}) => {
+    if (init.method === 'POST') { posts++; return Response.json({ error: { code: 'journal_capacity_exceeded', message: '学习日志已达到账号保存上限。' } }, { status: 409 }); }
+    return original(url, init);
+  };
+  assert.equal(await recordLearningActivity({ eventId: 'quota:blocked', kind: 'study', title: '学习' }), false);
+  assert.equal(learningJournalStore.get().pending, 0);
+  assert.match(learningJournalStore.get().error, /账号保存上限/);
+  await flushLearningActivities();
+  assert.equal(posts, 1);
+});

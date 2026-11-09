@@ -2,6 +2,10 @@
 
 2.9.0 adds automatic account activity journals and day summaries, separate from manual notes and raw chats. See [2.9.0 release](RELEASE_2.9.0.md) for current recording, temporary-mode and retrieval behavior. The confirmed-note design below describes the retained 2.8.x subsystem.
 
+Account journals retain at most 100,000 event rows, including deletion markers, and 64 MiB of accounted storage across events and day summaries. Storage includes UTF-8 text, 128 bytes of overhead per row, and a reserved 24-byte deletion timestamp per day; it bounds application allocation rather than measuring SQLite file size. Migration `0009_learning_journal_quota` initializes existing usage and maintains it atomically with database triggers, so appending does not rescan the account's history. Quota failures roll back the complete mutation and return `409 / journal_capacity_exceeded`, shown in the journal panel. Deleting content releases its text allocation; event IDs and day/privacy fences remain to suppress queued replay. The event-row allowance includes retained IDs and is not reset by deletion. Existing accounts above a limit retain reads and deletions. Date edits and deletions require an existing visible day and do not allocate empty day markers. Offline vocabulary learning remains available when the cloud journal is full.
+
+If deletion would expose a longer activity in the six-item day summary and exceed the byte allowance, the regenerated facts summary shows the remaining activity count. All remaining event content, sources and counts stay available. Ordinary summaries keep their detailed form.
+
 The account memory is shared by text AI, writing review, spoken practice and dictation preferences. `lib/learning-memory` retains the existing `voice_learning_memories` D1 rows and CAS revision; no schema migration or account reassignment is performed. The legacy voice endpoint remains compatible.
 
 ## Boundaries

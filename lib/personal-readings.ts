@@ -2,6 +2,47 @@ import { createLocalId, DataReplacedError } from "./storage";
 import { validLibraryArticle, validReadingMeta, type LibraryArticle, type ReadingMeta } from "./reading-library";
 
 type PersonalMeta = ReadingMeta & { contentHash: string };
+const REPLACEMENT_KEY = "vocab-personal-readings-generation";
+const replacementListeners = new Set<() => void>();
+let replacementEpoch = 0, observedGeneration = "initial";
+let replacementChannel: BroadcastChannel | undefined;
+let observing = false;
+function observeReplacement(generation: unknown) {
+  if (typeof generation !== "string" || generation === observedGeneration) return;
+  observedGeneration = generation;
+  replacementEpoch++;
+  for (const listener of replacementListeners) listener();
+}
+function observePersonalReadings() {
+  if (observing || typeof window === "undefined") return;
+  observing = true;
+  // Keep the observer alive while Activity hides the reader and disconnects its effects.
+  if (typeof BroadcastChannel !== "undefined") {
+    try {
+      replacementChannel = new BroadcastChannel(REPLACEMENT_KEY);
+      replacementChannel.onmessage = event => observeReplacement(event.data);
+    } catch { /* Storage events and foreground checks remain available. */ }
+  }
+  window.addEventListener("storage", event => {
+    if (event.key === REPLACEMENT_KEY) observeReplacement(event.newValue);
+  });
+  const refresh = () => { void personalReadingsGeneration().then(observeReplacement).catch(() => undefined); };
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+  refresh();
+}
+export function subscribePersonalReadingsReplacement(listener: () => void) {
+  observePersonalReadings();
+  replacementListeners.add(listener);
+  return () => { replacementListeners.delete(listener); };
+}
+export const personalReadingsReplacementEpoch = () => replacementEpoch;
+function announceReplacement(generation: string) {
+  observePersonalReadings();
+  observeReplacement(generation);
+  try { replacementChannel?.postMessage(generation); } catch { /* Foreground checks re-read the durable generation. */ }
+  try { localStorage.setItem(REPLACEMENT_KEY, generation); } catch { /* Cross-page broadcast remains available without localStorage. */ }
+}
 const normalizedBody = (article: LibraryArticle) => article.paragraphs.map(p => p.en.toLowerCase().replace(/\s+/g, " ").trim()).join(" ");
 function fingerprint(body: string) {
   // This is only an index hint, not a security digest. A candidate's entire
@@ -94,7 +135,8 @@ export async function removePersonalArticle(id: string) {
 }
 export async function clearPersonalReadings() {
   const db = await open();
-  return new Promise<void>((resolve, reject) => { const tx = db.transaction(["index", "articles", "meta"], "readwrite"); tx.objectStore("meta").put({ key: "generation", value: createLocalId() }); tx.objectStore("index").clear(); tx.objectStore("articles").clear(); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => { db.close(); reject(new Error("个人文章清空失败。")); }; });
+  const generation = createLocalId();
+  return new Promise<void>((resolve, reject) => { const tx = db.transaction(["index", "articles", "meta"], "readwrite"); tx.objectStore("meta").put({ key: "generation", value: generation }); tx.objectStore("index").clear(); tx.objectStore("articles").clear(); tx.oncomplete = () => { db.close(); announceReplacement(generation); resolve(); }; tx.onerror = () => { db.close(); reject(new Error("个人文章清空失败。")); }; });
 }
 export function exportPersonalArticle(article: LibraryArticle) {
   const content = `# ${article.title}\n\n${article.author}\n\n${article.paragraphs.map(p => p.en).join("\n\n")}\n`;

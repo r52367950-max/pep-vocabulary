@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, ExternalLink, Download, Trash2, Languages, Minus, Plus, RotateCcw, Search, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { READING_CATEGORIES, READING_FORMS, LENGTHS, lengthBand, loadReadingCatalog, loadLibraryArticle, matchReadingWords, type LibraryArticle, type ReadingMeta, type ReadingCategory } from "@/lib/reading-library";
 import { readingArtKind } from "@/lib/art";
 import { Artwork } from "./art";
-import { listPersonalReadings, readPersonalArticle, removePersonalArticle, exportPersonalArticle } from "@/lib/personal-readings";
+import { listPersonalReadings, readPersonalArticle, removePersonalArticle, exportPersonalArticle, subscribePersonalReadingsReplacement, personalReadingsReplacementEpoch } from "@/lib/personal-readings";
 import { contextStillCurrent, learningContextStore, refreshLearningContext } from "@/lib/learning-context-client";
 import { recordLearningActivity } from "@/lib/learning-journal-client";
 import { ActionMenu } from "./action-menu";
@@ -25,9 +25,14 @@ function Cover({ category, articleId, eager = false }: { category: ReadingCatego
 function LoadError({ message, retry }: { message: string; retry: () => void }) {
   return <div className="reading-empty" role="alert"><BookOpen size={30} aria-hidden="true" /><h2>暂时无法打开</h2><p>{message}</p><button className="secondary" onClick={retry}><RotateCcw size={16} aria-hidden="true" />重新加载</button></div>;
 }
-export default function Reading({ data, onDetail, onPractice }: {
+type ReadingProps = {
   data: Vocabulary; onDetail: (word: LexiconIndexEntry) => void; onPractice: (words: LexiconIndexEntry[]) => void;
-}) {
+};
+export default function Reading(props: ReadingProps) {
+  const replacement = useSyncExternalStore(subscribePersonalReadingsReplacement, personalReadingsReplacementEpoch, () => 0);
+  return <ReadingView key={replacement} {...props} />;
+}
+function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
   const [personal, setPersonal] = useState<ReadingMeta[]>([]);
   const [personalError, setPersonalError] = useState("");
   const [shelf, setShelf] = useState<"library" | "personal">("library");

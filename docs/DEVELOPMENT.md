@@ -12,17 +12,19 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | 全部单元/回归测试 | `npm run test:unit` |
 | 指定回归测试 | `node --import ./tests/register.mjs --test tests/sync.test.mjs`，替换为受影响的测试文件 |
 | 生产构建及产物校验 | `npm run build` |
-| Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`，默认输出 `outputs/site.tar.gz`；包含 Worker、完整迁移目录与托管配置 |
+| Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`；每次清除旧 `dist/` 并重建，构建失败即停止。默认输出 `outputs/site.tar.gz`，包含 Worker、完整迁移目录与托管配置 |
 | 本地 Worker/D1 检查 | 构建后执行 `npm run test:runtime` |
 | 完整验收 | `npm test`：数据审计、类型检查、ESLint、单元测试、构建、Worker 检查 |
 | 持续集成 | `.github/workflows/ci.yml` 在推送到 main 与拉取请求时运行 `npm ci`、`npm run audit:prod` 和 `npm test`；Actions 固定到已审核的提交 |
 | 词库数据审计 | `npm run data:audit`；会更新 `data/audit-summary.json`，留意生成差异 |
 | 阅读数据审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
-| 后端查词性能对照 | `npm run benchmark:backend -- <baseline-ref>`；默认对比本轮合并后的 2.4.0 基线，输出微基准中位数，不代表全站或模型延迟 |
-| 性能对照 | `npm run benchmark -- <baseline-ref>`；本地需有相应提交，省略时使用历史基线 `3b12529` |
+| 后端查词性能对照 | `npm run benchmark:backend`；使用已审核的 2.4.0 基线 `e2e9e25`，输出微基准中位数，不代表全站或模型延迟 |
+| 性能对照 | `npm run benchmark`；使用已审核历史基线 `3b12529`，本地需有相应提交 |
 | 词库索引解析对照 | `node artifacts/qa/lexicon-index-parse.mjs <baseline-ref>`；在 Chromium 中比较基线索引与当前行编码的解析耗时（含 4 倍 CPU 降速） |
 
 `test:runtime` 使用本地临时 D1 和测试凭据，不调用真实 AI 服务；不验证生产认证网关、真实服务商或物理设备行为。
+
+三个比较脚本只执行 `scripts/benchmark-baseline.mjs` 中审核过的完整提交对应模块或切片；可传入解析到相同提交的短引用。阅读匹配基线保留 `0b8610b`（默认）和 `3eb1875`。其他引用在读取和执行历史代码前拒绝；新增基线须先审查其全部执行代码，再更新允许列表。Git replacement refs 不参与读取。
 
 `npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
 

@@ -8,7 +8,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "Commit the reviewed source before packaging a published Site." >&2
   exit 65
 fi
-bash scripts/validate-artifact.sh
+source_commit="$(git rev-parse HEAD)"
+# dist is ignored and can outlive a checkout. Always replace it with a fresh
+# build of the reviewed source before trusting any executable archive content.
+bash scripts/sites-env.sh -- bash scripts/build-verified.sh
+if [[ "$(git rev-parse HEAD)" != "${source_commit}" || -n "$(git status --porcelain)" ]]; then
+  echo "Reviewed source changed during the build; commit and package it again." >&2
+  exit 65
+fi
 
 archive_path="${1:-${project_root}/outputs/site.tar.gz}"
 mkdir -p "$(dirname "${archive_path}")" "${project_root}/outputs"
@@ -26,4 +33,4 @@ tar --hard-dereference -czf "${archive_path}" \
   -C "${project_root}" dist .openai/hosting.json drizzle \
   -C "${staging_path}" migrations
 
-echo "Packaged committed source $(git rev-parse HEAD) into ${archive_path}"
+echo "Packaged freshly built committed source ${source_commit} into ${archive_path}"

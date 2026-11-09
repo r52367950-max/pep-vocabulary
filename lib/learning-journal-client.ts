@@ -33,7 +33,7 @@ async function request(method = "GET", body?: unknown): Promise<LearningJournal>
   try {
     const response = await fetch(`/api/learning-journal${method === "GET" ? `?timezone=${encodeURIComponent(timezone())}` : ""}`, { method, credentials: "same-origin", cache: "no-store", signal: controller.signal, ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
     const value = await response.json();
-    if (!response.ok) throw Object.assign(new Error(value?.error?.message || "学习日志暂时无法更新，请重试。"), { status: response.status });
+    if (!response.ok) throw Object.assign(new Error(value?.error?.message || "学习日志暂时无法更新，请重试。"), { status: response.status, code: value?.error?.code });
     if (!value?.accountScope || !Number.isSafeInteger(value.revision) || !Number.isSafeInteger(value.privacyRevision) || !Array.isArray(value.days)) throw new Error("学习日志返回格式无效。");
     return value;
   } finally { clearTimeout(timeout); }
@@ -65,7 +65,7 @@ export async function recordLearningActivity(event: LearningActivity, options: {
       queue = queue.slice(-40); emit();
     }
     await flushLearningActivities();
-    return !queue.some((item) => item.event.eventId === event.eventId);
+    return !queue.some((item) => item.event.eventId === event.eventId) && !state.error;
   } catch { return false; }
 }
 export function flushLearningActivities(): Promise<void> {
@@ -89,6 +89,7 @@ export function flushLearningActivities(): Promise<void> {
         const status = (cause as { status?: number }).status;
         if (status && status >= 400 && status < 500 && status !== 429) queue = queue.filter((candidate) => candidate !== item);
         else { item.attempts++; state = { ...state, error: "学习日志稍后会重试同步；离开页面后未同步的记录不会保留。" }; }
+        if ((cause as { code?: string }).code === "journal_capacity_exceeded") state = { ...state, error: cause instanceof Error ? cause.message : "学习日志已达到账号保存上限。" };
         emit();
         if (queue.length && generation === ticketBeforeAttempt) { clearTimeout(retryTimer); retryTimer = setTimeout(() => { void flushLearningActivities(); }, Math.min(60_000, 2_000 * 2 ** item.attempts)); }
         break;

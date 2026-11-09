@@ -1,6 +1,7 @@
 import { imageDimensions } from "./image-input";
 import { countReadingWords } from "./reading-library";
 import { extractDocxXml } from "./docx-import";
+import { MAX_DOCX_DOCUMENT_BYTES } from "./docx-archive";
 import { PDF_DECODE_LIMITS, PdfTextBudget, readBoundedPdfText, type PdfTextItem, type PdfTextPage } from "./pdf-import";
 
 export type ImportProgress = (message: string) => void;
@@ -69,6 +70,46 @@ export function htmlText(input: string) {
   }
   return text.join("");
 }
+const docxLimit = () => new Error("Word 文档内容过多，请选取需要的部分或粘贴正文后导入。");
+/** Visit each XML node once; text belongs only to its nearest paragraph, including text boxes. */
+export function docxText(input: string): string {
+  if (input.length > MAX_DOCX_DOCUMENT_BYTES) throw docxLimit();
+  let markup = 0;
+  for (let i = input.indexOf("<"); i !== -1; i = input.indexOf("<", i + 1)) {
+    if (++markup > 80_000) throw docxLimit();
+  }
+  // WordprocessingML has no DTD. Reject entity declarations before DOM allocation.
+  if (/<!DOCTYPE|<!ENTITY/i.test(input)) throw new Error("Word 文档格式损坏。");
+  const doc = new DOMParser().parseFromString(input, "application/xml");
+  if (doc.getElementsByTagName("parsererror").length) throw new Error("Word 文档格式损坏。");
+  const paragraphs: string[][] = [];
+  const pending: { node: Node; depth: number; paragraph: number; text: boolean }[] = [{ node: doc, depth: 0, paragraph: -1, text: false }];
+  let nodes = 0, characters = 0;
+  while (pending.length) {
+    const current = pending.pop()!;
+    if (++nodes > 80_000 || current.depth > 128) throw docxLimit();
+    let { paragraph, text } = current;
+    const { node } = current;
+    if (node.nodeType === 1) {
+      const name = (node as Element).localName;
+      if (name === "p") {
+        if (paragraphs.length >= 2000) throw docxLimit();
+        paragraph = paragraphs.push([]) - 1;
+      }
+      if (name === "t") text = true;
+    }
+    if ((node.nodeType === 3 || node.nodeType === 4) && text && paragraph >= 0) {
+      const value = node.nodeValue ?? "";
+      characters += value.length;
+      if (characters > 120_000) throw docxLimit();
+      paragraphs[paragraph].push(value);
+    }
+    for (let child = node.lastChild; child; child = child.previousSibling) {
+      pending.push({ node: child, depth: current.depth + 1, paragraph, text });
+    }
+  }
+  return paragraphs.map(parts => parts.join("")).filter(Boolean).join("\n\n");
+}
 export { parseClassification } from "./reading-classification";
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(new DOMException("已取消", "AbortError"));
@@ -128,9 +169,8 @@ export async function extractReadingFile(file: File, signal: AbortSignal, progre
   if (extension === "docx") {
     progress("正在读取 Word 文档…");
     const bytes = await extractDocxXml(file, signal);
-    const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), "application/xml");
-    if (doc.querySelector("parsererror")) throw new Error("Word 文档格式损坏。");
-    return normalizeReadingText([...doc.getElementsByTagNameNS("*", "p")].map(p => [...p.getElementsByTagNameNS("*", "t")].map(t => t.textContent ?? "").join("")).filter(Boolean).join("\n\n"));
+    signal.throwIfAborted();
+    return normalizeReadingText(docxText(new TextDecoder().decode(bytes)));
   }
   let worker: OcrWorker | undefined;
   let task: PdfTask | undefined;

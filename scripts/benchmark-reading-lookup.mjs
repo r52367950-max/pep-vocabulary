@@ -1,11 +1,12 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
 import { matchReadingWords } from '../lib/reading-library.ts';
 import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
-const baseline = process.argv[2] || '0b8610b';
-const source = execFileSync('git', ['show', `${baseline}:lib/reading-library.ts`], { encoding: 'utf8' });
+import { benchmarkBaseline } from './benchmark-baseline.mjs';
+const approved = benchmarkBaseline('reading', process.argv[2]);
+const baseline = approved.revision;
+const source = approved.source('lib/reading-library.ts');
 const js = ts.transpileModule(source.slice(source.indexOf('const common =')), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const before = (await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)).matchReadingWords;
 const index = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.json', 'utf8')));

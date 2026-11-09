@@ -1,3 +1,4 @@
+import type { D1PreparedStatement } from "@cloudflare/workers-types";
 import { memoryDatabase } from "@/lib/learning-memory/store";
 import { AssistantInputError } from "@/lib/assistant/core";
 import { stableJson } from "@/lib/stable-json";
@@ -20,11 +21,27 @@ export async function journalDays(key: string, limit = 30): Promise<JournalDay[]
   }));
 }
 function ensureSettings(key: string) { return memoryDatabase().prepare("INSERT INTO learning_journal_settings (user_key) VALUES (?) ON CONFLICT(user_key) DO NOTHING").bind(key); }
-function refreshDay(key: string, date: string, token: string | null = null) {
-  return memoryDatabase().prepare(`UPDATE learning_journal_days SET facts_summary=CASE WHEN (SELECT count(*) FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0)=0 THEN '' ELSE '记录了 ' || (SELECT count(*) FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0) || ' 项学习活动：' || COALESCE((SELECT group_concat(title,'；') FROM (SELECT title || CASE WHEN summary<>'' THEN '：' || substr(summary,1,120) ELSE '' END AS title FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0 ORDER BY occurred_at DESC,event_id DESC LIMIT 6)),'') END, updated_at=? WHERE user_key=? AND date=? AND (? IS NULL OR EXISTS(SELECT 1 FROM learning_journal_settings WHERE user_key=? AND write_token=?))`).bind(key,date,key,date,key,date,new Date().toISOString(),key,date,token,key,token);
+function refreshDay(key: string, date: string, token: string | null = null, deleting = false) {
+  // Removing a short event can expose a longer seventh summary item. Keep
+  // privacy deletion available at capacity without dropping remaining events.
+  return memoryDatabase().prepare(`WITH day_content AS (
+    SELECT count(*) AS total, COALESCE((SELECT group_concat(title,'；') FROM (SELECT title || CASE WHEN summary<>'' THEN '：' || substr(summary,1,120) ELSE '' END AS title FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0 ORDER BY occurred_at DESC,event_id DESC LIMIT 6)),'') AS details
+    FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0
+  ), next_summary AS (
+    SELECT CASE WHEN total=0 THEN '' ELSE '记录了 ' || total || ' 项学习活动：' || details END AS full_summary,
+      CASE WHEN total=0 THEN '' ELSE '记录了 ' || total || ' 项学习活动。' END AS compact_summary FROM day_content
+  ) UPDATE learning_journal_days SET facts_summary=(SELECT CASE WHEN ? AND
+      (SELECT storage_bytes FROM learning_journal_settings WHERE user_key=?)+length(CAST(full_summary AS BLOB))-length(CAST(facts_summary AS BLOB))>67108864
+      THEN compact_summary ELSE full_summary END FROM next_summary), updated_at=?
+    WHERE user_key=? AND date=? AND (? IS NULL OR EXISTS(SELECT 1 FROM learning_journal_settings WHERE user_key=? AND write_token=?))`).bind(key,date,key,date,deleting?1:0,key,new Date().toISOString(),key,date,token,key,token);
 }
 async function hash(value: unknown) { const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(stableJson(value))); return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join(""); }
 function policyConflict(): never { throw new AssistantInputError("journal_policy_changed", "自动记录设置已变化，请重新读取。", 409); }
+function capacityExceeded(): never { throw new AssistantInputError("journal_capacity_exceeded", "学习日志已达到账号保存上限，本次云端记录未保存。仍可删除已有内容，本机学习不受影响。", 409); }
+async function journalBatch(statements: D1PreparedStatement[]) {
+  try { return await memoryDatabase().batch(statements); }
+  catch (error) { if (error instanceof Error && error.message.includes("journal_capacity_exceeded")) return capacityExceeded(); throw error; }
+}
 export async function appendJournalEvent(key: string, body: Record<string, unknown>) {
   const event = eventInput(body), digest = await hash(event), db = memoryDatabase();
   const meta = await journalMetadata(key);
@@ -32,7 +49,7 @@ export async function appendJournalEvent(key: string, body: Record<string, unkno
   if (!meta.enabled) return { accepted: false, ignored: "disabled" };
   const existing = await db.prepare("SELECT content_hash,deleted FROM learning_journal_events WHERE user_key=? AND event_id=?").bind(key,event.eventId).first<{content_hash:string;deleted:number}>();
   if (existing) { if (existing.deleted) return { accepted:false,ignored:"deleted" }; if (existing.content_hash!==digest) throw new AssistantInputError("journal_event_conflict","同一学习事件不能重复提交不同内容。",409); return {accepted:false,duplicate:true}; }
-  const results = await db.batch([
+  const results = await journalBatch([
     ensureSettings(key),
     db.prepare(`INSERT INTO learning_journal_events (user_key,event_id,date,timezone,occurred_at,kind,title,summary,ref_ids,counts,content_hash)
       SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM learning_journal_settings WHERE user_key=? AND enabled=1 AND privacy_revision=? AND suppressed_before<?)
@@ -61,6 +78,10 @@ export async function mutateJournal(key: string, body: Record<string, unknown>, 
   const event = eventId ? await db.prepare("SELECT date,deleted FROM learning_journal_events WHERE user_key=? AND event_id=?").bind(key,eventId).first<{date:string;deleted:number}>():null;
   if (eventId && (!event || event.deleted)) throw new AssistantInputError("journal_not_found","学习记录已删除或不存在。",404);
   const day=date??event?.date??null;
+  if(date) {
+    const exists=await db.prepare("SELECT date FROM learning_journal_days WHERE user_key=? AND date=? AND (facts_summary<>'' OR edited_summary IS NOT NULL)").bind(key,date).first();
+    if(!exists) throw new AssistantInputError("journal_not_found","当天没有学习记录。",404);
+  }
   const summary=method==="PUT"&&!setting?text(body.summary,1200,true):null;
   const title=method==="PUT"&&eventId?text(body.title,160):null;
   const guard="EXISTS(SELECT 1 FROM learning_journal_settings WHERE user_key=? AND write_token=?)";
@@ -68,18 +89,16 @@ export async function mutateJournal(key: string, body: Record<string, unknown>, 
   if (setting) { /* Disabling and re-enabling fence queued events from the previous policy. */ }
   else if(method==="DELETE") {
     statements.push(db.prepare(`UPDATE learning_journal_events SET deleted=1,title='',summary='',ref_ids='[]',counts='{}',content_hash='' WHERE user_key=? AND ${eventId?"event_id=?":"date=?"} AND ${guard}`).bind(key,eventId??day,key,token));
-    if(date) statements.push(db.prepare(`INSERT INTO learning_journal_days (user_key,date,deleted_before,updated_at) SELECT ?,?,?,? WHERE ${guard} ON CONFLICT(user_key,date) DO UPDATE SET edited_summary=NULL,deleted_before=excluded.deleted_before,facts_summary='',updated_at=excluded.updated_at`).bind(key,date,now,now,key,token));
+    if(date) statements.push(db.prepare(`UPDATE learning_journal_days SET edited_summary=NULL,deleted_before=?,facts_summary='',updated_at=? WHERE user_key=? AND date=? AND ${guard}`).bind(now,now,key,date,key,token));
     else statements.push(db.prepare(`UPDATE learning_journal_days SET edited_summary=NULL WHERE user_key=? AND date=? AND ${guard}`).bind(key,day,key,token));
   } else if(eventId) {
     statements.push(db.prepare(`UPDATE learning_journal_events SET title=?,summary=?,edited=1 WHERE user_key=? AND event_id=? AND deleted=0 AND ${guard}`).bind(title,summary,key,eventId,key,token));
     statements.push(db.prepare(`UPDATE learning_journal_days SET edited_summary=NULL WHERE user_key=? AND date=? AND ${guard}`).bind(key,day,key,token));
   } else {
-    const exists=await db.prepare("SELECT date FROM learning_journal_days WHERE user_key=? AND date=? AND (facts_summary<>'' OR edited_summary IS NOT NULL)").bind(key,day).first();
-    if(!exists) throw new AssistantInputError("journal_not_found","当天没有学习记录。",404);
     statements.push(db.prepare(`UPDATE learning_journal_days SET edited_summary=?,updated_at=? WHERE user_key=? AND date=? AND ${guard}`).bind(summary,now,key,day,key,token));
   }
-  if(day) statements.push(refreshDay(key,day,token));
-  const results=await db.batch(statements);
+  if(day) statements.push(refreshDay(key,day,token,method==="DELETE"));
+  const results=await journalBatch(statements);
   if(!(results[1].results??[]).length) throw new AssistantInputError("journal_conflict","学习记录已在别处更新，请重新读取。",409);
 }
 export async function journalContext(key:string) {
