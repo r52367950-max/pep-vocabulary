@@ -7,7 +7,7 @@ import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { READING_CATEGORIES, READING_FORMS, LENGTHS, lengthBand, loadReadingCatalog, loadLibraryArticle, matchReadingWords, type LibraryArticle, type ReadingMeta, type ReadingCategory } from "@/lib/reading-library";
 import { readingArtKind } from "@/lib/art";
 import { Artwork } from "./art";
-import { listPersonalReadings, readPersonalArticle, removePersonalArticle, exportPersonalArticle, subscribePersonalReadingsReplacement, personalReadingsReplacementEpoch } from "@/lib/personal-readings";
+import { listPersonalReadings, readPersonalArticle, removePersonalArticle, exportPersonalArticle, subscribePersonalReadingsReplacement, personalReadingsReplacementEpoch, subscribePersonalReadingRemovals, removedPersonalReadingIds } from "@/lib/personal-readings";
 import { contextStillCurrent, learningContextStore, refreshLearningContext } from "@/lib/learning-context-client";
 import { recordLearningActivity } from "@/lib/learning-journal-client";
 import { ActionMenu } from "./action-menu";
@@ -16,6 +16,7 @@ import { preloadable } from "./preloadable";
 
 const ReadingImport = preloadable(() => import("./reading-import"));
 const prepareImport = () => { void ReadingImport.preload().catch(() => undefined); };
+const noRemovedArticles: ReadonlySet<string> = new Set();
 
 function Cover({ category, articleId, eager = false }: { category: ReadingCategory; articleId: string; eager?: boolean }) {
   return <span className={`reading-cover cover-${category}`} aria-hidden="true">
@@ -33,15 +34,19 @@ export default function Reading(props: ReadingProps) {
   return <ReadingView key={replacement} {...props} />;
 }
 function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
-  const [personal, setPersonal] = useState<ReadingMeta[]>([]);
+  const removed = useSyncExternalStore(subscribePersonalReadingRemovals, removedPersonalReadingIds, () => noRemovedArticles);
+  const [personalRows, setPersonal] = useState<ReadingMeta[]>([]);
+  const personal = useMemo(() => personalRows.filter(row => !removed.has(row.id)), [personalRows, removed]);
   const [personalError, setPersonalError] = useState("");
   const [shelf, setShelf] = useState<"library" | "personal">("library");
   const [importOpen, setImportOpen] = useState(false);
   const [catalog, setCatalog] = useState<ReadingMeta[] | null>(null);
   const [catalogError, setCatalogError] = useState("");
   const [catalogRetry, setCatalogRetry] = useState(0);
-  const [articleId, setArticleId] = useState<string | null>(null);
-  const [article, setArticle] = useState<LibraryArticle | null>(null);
+  const [selectedArticleId, setArticleId] = useState<string | null>(null);
+  const articleId = selectedArticleId && !removed.has(selectedArticleId) ? selectedArticleId : null;
+  const [loadedContent, setArticle] = useState<LibraryArticle | null>(null);
+  const article = articleId ? loadedContent : null;
   const [articleError, setArticleError] = useState("");
   const [articleRetry, setArticleRetry] = useState(0);
   const [translation, setTranslation] = useState(false);
@@ -71,6 +76,9 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
   const catalogLoaded = useRef(-1);
 
   useEffect(() => {
+    if (lastArticle.current && removed.has(lastArticle.current)) { loadedArticle.current = ""; lastArticle.current = null; }
+  }, [removed]);
+  useEffect(() => {
     if (personalLoaded.current) return;
     let active = true;
     listPersonalReadings().then(a => { if (active) { personalLoaded.current = true; setPersonal(a); } }).catch(e => { if (active) setPersonalError(e.message); });
@@ -96,11 +104,11 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
     const openingContext = learningContextStore.get();
     const account = openingContext.temporary ? Promise.resolve(null) : refreshLearningContext(controller.signal).catch(() => null);
     (articleId.startsWith("personal-") ? readPersonalArticle(articleId) : loadLibraryArticle(articleId, controller.signal)).then(value => {
-      if (active) {
+      if (active && !removedPersonalReadingIds().has(value.id)) {
         loadedArticle.current = key; setArticle(value); requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
         // Record only this visible article opening, not completion or the local library's contents.
         void account.then(context => {
-          if (!active || !context || !contextStillCurrent(context, false) || (openingContext.memory && openingContext.memory.accountScope !== context.accountScope) || learningContextStore.get().epoch > openingContext.epoch + 1) return;
+          if (!active || removedPersonalReadingIds().has(value.id) || !context || !contextStillCurrent(context, false) || (openingContext.memory && openingContext.memory.accountScope !== context.accountScope) || learningContextStore.get().epoch > openingContext.epoch + 1) return;
           const now = new Date(), date = new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
           const eventId = `reading-${value.id}-${date}`, openingKey = `${context.accountScope}:${eventId}`;
           if (journaledOpenings.current.has(openingKey)) return;
@@ -146,6 +154,9 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
   const back = () => { returning.current = true; setArticleId(null); setReaderPanel(null); };
   const resetFilters = () => { setQuery(""); setCategory("all"); setDifficulty("all"); setLength(0); setPage(1); };
 
+  if (selectedArticleId && removed.has(selectedArticleId)) {
+    setArticle(null); setArticleId(null); setArticleError(""); setReaderPanel(null); setAnswers({});
+  }
   if (articleId) {
     const questions = article?.questions ?? [];
     const hasTranslation = article?.paragraphs.some(p => p.zh);
@@ -159,7 +170,7 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
             { label: "调整字号…", icon: <span aria-hidden="true">Aa</span>, onSelect: () => setReaderPanel("appearance") },
             { label: "作品信息…", icon: <BookOpen size={17} aria-hidden="true" />, onSelect: () => setReaderPanel("source"), disabled: !article },
             ...(article?.form === "imported" ? [
-              { label: "导出文章", icon: <Download size={17} aria-hidden="true" />, separator: true, onSelect: () => exportPersonalArticle(article) },
+              { label: "导出文章", icon: <Download size={17} aria-hidden="true" />, separator: true, onSelect: () => { void exportPersonalArticle(article).catch(cause => data.notify(cause instanceof Error ? cause.message : "文章暂时无法导出，请重新读取。")); } },
               { label: "移除文章", icon: <Trash2 size={17} aria-hidden="true" />, danger: true, onSelect: () => { if (!confirm("从本机移除这篇文章？已保存的单词学习记录会保留。")) return; void removePersonalArticle(article.id).then(() => listPersonalReadings()).then(rows => { setPersonal(rows); back(); }).catch(() => data.notify("移除未完成，请重试。")); } },
             ] : []),
           ]} />

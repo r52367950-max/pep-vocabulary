@@ -1,16 +1,16 @@
 # 项目状态入口
 
-核对日期：2026-11-08；2.18.0 修复跨搜索选词、词库超时、缓存读取故障、写作失败反馈及云备份响应乱序，并优化搜索复用、AI 解析与连接取消。详见 [2.18.0 发布说明](docs/RELEASE_2.18.0.md)。
+核对日期：2026-11-09；2.18.1 收紧发布、开发工具、账户日志及 DOCX 导入的安全边界，清理公开来源中的私有项目记录，并补齐个人文章清空与单篇删除的跨页失效和迟到保存防护。详见 [2.18.1 发布说明](docs/RELEASE_2.18.1.md)。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.18.0 | `package.json` |
+| 应用版本 | 2.18.1 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0；索引 `pep-lexicon-index/2` 行编码 | `public/data/v1/manifest.json`、`lib/lexicon-index-codec.mjs` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
 | 本机个人文章 | 独立 IndexedDB；不包含在学习 JSON 备份中 | `lib/personal-readings.ts`、`lib/storage.ts` |
 | 云端备份 | 手动完整快照，上传时可确认合并其他设备的记录；学习活动另经账户日志自动同步，日常日志不替代完整备份 | `app/api/sync/route.ts`、`lib/sync-merge.ts` |
-| 数据库迁移 | 0000–0008（保留旧迁移；0007 配置删除代际，0008 账户学习日志） | `drizzle/` 与迁移 journal |
+| 数据库迁移 | 0000–0009（保留旧迁移；0007 配置删除代际，0008 账户学习日志，0009 日志计量预算） | `drizzle/` 与迁移 journal |
 
 当前仓库功能见 [README](README.md)，开发约定见 [AGENTS.md](AGENTS.md)。版本、测试数量和数据缺口以后以对应代码、生成数据与本次执行结果为准，不把这里的快照作为永久常量。
 

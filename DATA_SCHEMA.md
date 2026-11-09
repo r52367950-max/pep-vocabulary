@@ -70,7 +70,7 @@ IndexedDB：`pep-vocab-studio`，版本 4；用户数据 schema `1.2.0`。
 
 AI 回答缓存在另一个 IndexedDB `pep-vocab-ai-cache`，不进入学习备份或同步。数据库自动从版本 1 升级到版本 2：保留 `results` 表与账号、学习记忆版本、任务和输入绑定的缓存键（最多约 600 条），新增 `metadata` 表保存清除代次。清空缓存会在一个事务内更换代次并删除结果；进行中的旧请求无法写回。全局清空本机数据也等待此缓存清空；仅清除 AI 缓存不会删除口语记录或改变画像授权。已有页面若阻止数据库升级，需要关闭旧页面后重试。
 
-个人文章保存在独立 IndexedDB `pep-vocab-personal-readings`（版本 1）的 `index` 与 `articles` 表，可逐篇导出 Markdown；不包含在学习备份与 D1 快照中。
+个人文章保存在独立 IndexedDB `pep-vocab-personal-readings`（版本 3）的 `index`、`articles` 与 `meta` 表，可逐篇导出 Markdown；不包含在学习备份与 D1 快照中。`meta` 保存整库替换代次与按文章 ID 的删除标记，防止清空、删除后的迟到保存恢复旧内容。版本 2 的已有正文与目录原样保留；旧客户端需刷新后使用新版删除与导出保护。
 
 ## D1 同步
 
