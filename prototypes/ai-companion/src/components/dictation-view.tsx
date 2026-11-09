@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Eye, EyeOff, Play, RotateCcw, Snail, X } from "lucide-react";
 import { MISTAKE_TITLE, scopeItems, scoreAnswer, type CharPart, type Score } from "../practice";
-import { PROGRAM_ROUTE } from "../routing";
 import { newId, useStore } from "../store";
 
 function speak(text: string, slow: boolean) {
@@ -88,7 +87,6 @@ export function DictationView() {
           {session.rounds.length > 1 && (
             <p className="page-sub">{session.rounds.map((round, index) => `${index === 0 ? "第一轮" : `重练第 ${index} 轮`} ${round.filter((row) => row.score.correct).length}/${round.length}`).join(" · ")}</p>
           )}
-          <p className="page-sub">{PROGRAM_ROUTE.detail}。</p>
         </header>
         <ol className="review-list">
           {last.map((row) => (
@@ -115,7 +113,6 @@ export function DictationView() {
             </button>
           ) : null}
         </div>
-        <p className="page-note">带回对话的是全部轮次的作答：第一轮与每次重练分别记录，反馈依据这些真实对错。</p>
       </div>
     );
   }

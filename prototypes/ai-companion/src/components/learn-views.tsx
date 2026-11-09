@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { StudioSymbol } from "@/components/studio/symbol";
-import { dayLabel, LEXICON, SAMPLE_ATTEMPTS, SAMPLE_LABEL, SAMPLE_NOTE, sourceLabel, wordById, WEEKDAYS } from "../data";
+import { dayLabel, LEXICON, SAMPLE_ATTEMPTS, SAMPLE_LABEL, sourceLabel, wordById, WEEKDAYS } from "../data";
 import { itemFromWord, MISTAKE_TITLE, sampleStatus, scopeItems, scoreAnswer } from "../practice";
 import { useStore } from "../store";
 
@@ -18,9 +18,9 @@ export function TodayView() {
       </header>
       <section className="today-lead" aria-label="今天">
         <div>
-          <p className="sample-tag">{SAMPLE_LABEL} · {SAMPLE_NOTE}</p>
+          <p className="sample-tag">{SAMPLE_LABEL}</p>
           <h2>今天复习 {status.due} 词，重练 {status.openMistakes} 个错词</h2>
-          <p className="page-sub">每天 {state.settings.dailyMinutes} 分钟 · 可在设置的「学习安排」里调整</p>
+          <p className="page-sub">每天 {state.settings.dailyMinutes} 分钟</p>
         </div>
         <button type="button" className="button button-primary" onClick={() => startPractice(items, `${items.length} 词听写`, "今日学习", "page")}>开始今天的听写</button>
       </section>
@@ -43,7 +43,7 @@ export function WordsView() {
   }, [query]);
   return (
     <div className="page words-page">
-      <header className="page-head"><h1>词库</h1><p className="page-sub">原型只带了 {LEXICON.length} 个词条：练习用词和示例文章里的教材词，释义来自正式词库。</p></header>
+      <header className="page-head"><h1>词库</h1><p className="page-sub">{LEXICON.length} 个词条</p></header>
       <label className="search-field wide">
         <Search size={17} aria-hidden="true" />
         <input type="search" value={query} placeholder="搜索单词或中文释义" aria-label="搜索词库" onChange={(event) => setQuery(event.target.value)} />
@@ -76,7 +76,7 @@ export function RecordsView() {
   const max = Math.max(...[...byDay.values()].map((row) => row.total));
   return (
     <div className="page records-page">
-      <header className="page-head"><h1>学习记录</h1><p className="page-sub">{SAMPLE_LABEL}：{SAMPLE_NOTE}。状态只看练习表现，不看聊天次数。</p></header>
+      <header className="page-head"><h1>学习记录</h1><p className="sample-tag">{SAMPLE_LABEL}</p></header>
       <section className="records-week" aria-label="最近 7 天">
         <h2 className="section-title">最近 7 天</h2>
         <ol className="week-bars">
@@ -93,7 +93,6 @@ export function RecordsView() {
             );
           })}
         </ol>
-        <p className="page-note">深色部分是答对的词，浅色是这天练过的全部词。</p>
       </section>
       <section aria-label="最近的作答">
         <h2 className="section-title">最近写错的词</h2>

@@ -97,7 +97,7 @@ test("unavailable models and budget limits refuse instead of silently retrying",
   assert.deepEqual(checkSendable(medium, "normal"), { ok: true });
   const unavailable = checkSendable(medium, "sol-unavailable");
   assert.equal(unavailable.ok, false);
-  assert.match(unavailable.message, /不会自动换模型/);
+  assert.match(unavailable.message, /没有发出/);
   assert.deepEqual(unavailable.alternatives.map((item) => item.model), ["gpt-6.1-terra"]);
   const fallback = applyFallback(medium, unavailable.alternatives[0]);
   assert.deepEqual([fallback.model, fallback.effort, fallback.source], ["gpt-6.1-terra", "medium", "fallback"]);
@@ -162,8 +162,8 @@ test("files are classified honestly and text is read within limits", () => {
   assert.equal(long.truncated, true);
   assert.equal(long.text.length, LIMITS.readChars);
 
-  assert.equal(statusLabel({ kind: "image", status: "attached" }), "仅附件 · 未识别图片内容");
-  assert.equal(statusLabel({ kind: "document", status: "attached" }), "仅附件 · 未解析文档");
+  assert.equal(statusLabel({ kind: "image", status: "attached" }), "仅附件");
+  assert.equal(statusLabel({ kind: "document", status: "attached" }), "仅附件");
   assert.equal(statusLabel({ kind: "text", status: "read", chars: 1240 }), "已读取 1,240 字");
   assert.deepEqual(wordsFromText("evacuate, Emergency evacuate an 备注 it's"), ["evacuate", "Emergency", "it's"]);
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, AudioLines, MicOff, Volume2, VolumeX, X } from "lucide-react";
 import { respond } from "../engine";
-import { AUDIO_ROUTE, buildRequest, checkSendable, classifyTask, MODEL_NAME, resolveRoute, routeTable, type RequestPayload } from "../routing";
+import { buildRequest, checkSendable, classifyTask, resolveRoute, routeTable, type RequestPayload } from "../routing";
 import { useStore } from "../store";
 import type { Block, Caption } from "../types";
 import { TraceGlyph } from "./icons";
@@ -67,7 +67,7 @@ export function VoiceStage({ conversationId }: { conversationId: string }) {
           request: buildRequest(route, { records: draft?.includeRecords ?? true, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [] }),
         };
       }
-      reply = rest.length ? `${lead}卡片会在结束语音后放进对话。` : lead;
+      reply = lead;
     }
     setCaptions((value) => [...value, { speaker: "user", text: words }, { speaker: "ai", text: reply }]);
     setPhase("speaking");
@@ -87,14 +87,14 @@ export function VoiceStage({ conversationId }: { conversationId: string }) {
     <section className="voice-stage" aria-label="语音会话" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); end(); } }}>
       <header className="voice-top">
         <span className="voice-title"><AudioLines size={18} aria-hidden="true" />语音会话</span>
-        <span className="voice-badge"><MicOff size={13} aria-hidden="true" />演示 · 未接通语音，不使用麦克风</span>
+        <span className="voice-badge"><MicOff size={13} aria-hidden="true" />演示</span>
       </header>
       <div className="voice-lines" ref={lines} aria-live="polite">
         {captions.length === 0 ? (
           <div className="voice-hello">
             <TraceGlyph size={34} />
             <p className="voice-greeting">说说今天想练什么</p>
-            <p className="voice-note">在下方用文字代替说话，回答会以字幕出现在这里{canSpeak ? "，也会用系统朗读播放（可静音）" : ""}。结束后，整段字幕回到{conversation?.temporary ? "这段临时对话" : "当前对话"}。</p>
+            <p className="voice-note">用文字代替说话</p>
           </div>
         ) : (
           <ol className="voice-captions">
@@ -110,8 +110,7 @@ export function VoiceStage({ conversationId }: { conversationId: string }) {
       <div className="voice-bottom">
         <p className={`voice-state is-${phase}`} role="status">
           <span className="state-dot" aria-hidden="true" />
-          {phase === "speaking" ? (muted ? "AI 在回答 · 已静音，只看字幕" : "AI 在回答") : "轮到你说"}
-          <span className="voice-route">{AUDIO_ROUTE.label} · 文字任务{conversation?.model && conversation.model !== "auto" ? `用 ${MODEL_NAME[conversation.model]}` : "按任务自动选择模型"}</span>
+          {phase === "speaking" ? "AI 在回答" : "轮到你说"}
         </p>
         <ul className="suggestions compact voice-samples" aria-label="示例说法">
           {SAMPLES.map((text) => <li key={text}><button type="button" disabled={phase === "speaking"} onClick={() => say(text)}>{text}</button></li>)}

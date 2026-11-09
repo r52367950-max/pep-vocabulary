@@ -71,7 +71,6 @@ export function MiniPanel() {
         {empty ? (
           <div className="mini-empty">
             <p className="mini-greeting">{context ?? "在这一页问点什么"}</p>
-            <p className="hero-sub">{view === "reading" ? "也可以直接选中原文：翻译、词义、语法一键查看。" : "同一段对话可以随时展开成完整页面。"}</p>
             <ul className="suggestions compact">
               {CONTEXT_SUGGESTIONS[view].map((item) => <li key={item.label}><button type="button" onClick={() => send(active.id, { text: item.text, keepDraft: true })}>{item.label}</button></li>)}
             </ul>

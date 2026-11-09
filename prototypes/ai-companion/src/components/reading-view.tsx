@@ -60,7 +60,7 @@ export function ReadingView() {
     if (!range.intersectsNode(root)) { setTool(null); return; }
     const start = pointFrom(root, range.startContainer, range.startOffset);
     const end = pointFrom(root, range.endContainer, range.endOffset);
-    const result: QuoteResult = start && end ? quoteFromPoints(ARTICLE, start, end) : { ok: false, reason: "outside", message: "选区包含正文以外的内容（标题、说明或页面其他部分）。请只选择文章正文。" };
+    const result: QuoteResult = start && end ? quoteFromPoints(ARTICLE, start, end) : { ok: false, reason: "outside", message: "请只选择文章正文。" };
     const rects = range.getClientRects();
     const rect = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
     const first = rects.length ? rects[0] : rect;
@@ -148,7 +148,7 @@ export function ReadingView() {
         <p className="reading-meta">
           来源：<a href={ARTICLE.sourceUrl} target="_blank" rel="noreferrer">NOAA National Ocean Service</a> · {ARTICLE.rights.label}
         </p>
-        <p className="reading-hint">选中正文即可翻译、解释词义、分析语法或带着引用提问。键盘：聚焦段落后按 Enter 选中整段，Shift+Enter 把选区延伸到下一段。</p>
+        <p className="visually-hidden">键盘：聚焦段落后按 Enter 选中整段，Shift+Enter 延伸到下一段。</p>
       </header>
       <div className="reading-body" ref={body}>
         {ARTICLE.paragraphs.map((paragraph, index) => (

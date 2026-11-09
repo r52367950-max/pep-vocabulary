@@ -6,7 +6,7 @@
 import { ARTICLE, lookupWord, sentenceSpans } from "./data";
 import { englishTokens } from "./lexicon-match";
 import { buildPlan, itemFromWord, sampleStatus, type PlanScope, type PracticeItem } from "./practice";
-import { requestLabel, type Route } from "./routing";
+import type { Route } from "./routing";
 import { sentencesInQuote, type Quote } from "./selection";
 import { wordsFromText, type Attachment } from "./sources";
 import type { Action, Block, PracticeResult, Settings } from "./types";
@@ -73,7 +73,7 @@ function scopeFor(input: RespondInput, hasFile: boolean): { scope: PlanScope; no
   let scope: PlanScope = /错词|错的/.test(text) ? "mistakes" : /复习|到期/.test(text) ? "due" : /unit\s*4|第四单元|单元/i.test(text) ? "unit4" : input.settings.defaultScope;
   if (scope === "unit4" && hasFile && /听写/.test(text) && !/单元/.test(text)) scope = "file";
   if ((scope === "mistakes" || scope === "due") && !input.includeRecords) {
-    return { scope: "unit4", note: "你关闭了「学习记录」来源，所以这次没有按错词或到期词取词，改用必修第一册 Unit 4。" };
+    return { scope: "unit4", note: "学习记录没有附带，这次从必修第一册 Unit 4 取词。" };
   }
   return { scope };
 }
@@ -123,9 +123,9 @@ export function respond(input: RespondInput): Block[] {
       const touched = sentencesInQuote(ARTICLE, quote);
       const partial = touched.some((sentence) => sentence.partial);
       const lead = route.task === "translate"
-        ? partial ? "你选中的是句子的一部分，下面给出所在整句的译文，保留语境。" : "下面是选文的译文。"
-        : route.task === "define" ? "按选文里的词查词迹词库；词库没有收录的词会如实标出。"
-          : focus ? `结合你问的「${focus}」，先看所在句的结构。` : "下面是选文所在句的结构。";
+        ? partial ? "所在整句的译文：" : "译文："
+        : route.task === "define" ? "选文里的词："
+          : focus ? `关于「${focus}」，先看所在句的结构：` : "所在句的结构：";
       return [{ type: "text", text: lead }, { type: "quote-answer", mode: route.task, quote, focus }];
     }
     case "practice-feedback":
@@ -137,9 +137,9 @@ export function respond(input: RespondInput): Block[] {
       const minutes = parseMinutes(input.text) ?? input.settings.dailyMinutes;
       const spec = { minutes, scope, ...(scope === "file" && file ? { fileName: file.name, fileItems: file.items } : {}) };
       const steps = buildPlan(spec);
-      const lines = [`按 ${minutes} 分钟，先用听写找出真正没记住的词，再读一小段，最后只重练写错的词。卡片里的时间和范围可以直接调整。`];
+      const lines = [`按 ${minutes} 分钟安排：先听写，再读一小段，最后只重练写错的词。`];
       if (note) lines.push(note);
-      if (scope === "file" && file) lines.push(`听写词来自「${file.name}」中读取到的 ${file.items.length} 个英文词。`);
+      if (scope === "file" && file) lines.push(`听写词来自「${file.name}」。`);
       if (steps[0].items && steps[0].items.length === 0) lines.push("这个范围里暂时没有可用的词，换一个范围试试。");
       return [{ type: "text", text: lines.join("\n\n") }, { type: "plan", spec }];
     }
@@ -150,7 +150,7 @@ export function respond(input: RespondInput): Block[] {
       return [
         {
           type: "text",
-          text: `这是 ${plan.days} 天的整段安排（草稿）：每天 ${plan.minutes} 分钟${rest ? `，${rest}休息` : ""}，${plan.order === "review-first" ? "前段先复习错词和到期词，再学新词" : "前段先学新词，后段集中复习"}，最后两天自测。\n\n整段安排只定节奏和重点；每天具体练哪些词，会在当天按前一天的练习表现重新挑选。今天的第一步单独列在下面，可以直接开始。`,
+          text: `${plan.days} 天安排：每天 ${plan.minutes} 分钟${rest ? `，${rest}休息` : ""}，${plan.order === "review-first" ? "先复习错词和到期词，再学新词" : "先学新词，再集中复习"}，最后两天自测。今天的第一步在下面。`,
         },
         { type: "long-plan", ...plan, startedAt: input.now ?? Date.now() },
         { type: "plan", spec: { minutes: plan.minutes, scope: recordsScope } },
@@ -158,42 +158,41 @@ export function respond(input: RespondInput): Block[] {
     }
     case "status": {
       if (!input.includeRecords) {
-        return [{ type: "text", text: "你关闭了「学习记录」来源，这次看不到练习表现，所以不判断学习状态。可以在输入框的「来源」里重新打开。" }];
+        return [{ type: "text", text: "学习记录没有附带，可以在「来源」里打开后再看。" }];
       }
       const status = sampleStatus();
       const actions: Action[] = status.nearMissWords.length
         ? [{ id: actionId(), label: `重练 ${status.nearMissWords.length} 个“差一点”的词`, intent: "start-dictation", items: status.nearMissWords.map(itemFromWord), title: "差一点的词" }]
         : [];
       return [
-        { type: "text", text: "按这周的练习表现整理如下。依据是作答对错和错误类型，不按聊天次数打分。注意：这里用的是原型示例记录。" },
+        { type: "text", text: "这周的练习情况：" },
         { type: "status" },
         ...(actions.length ? [{ type: "actions", actions } as Block] : []),
       ];
     }
     case "essay-feedback":
       return [
-        { type: "notice", tone: "info", text: `作文反馈需要模型完成（正式接入时用 ${requestLabel(route.model, route.effort)}）。演示中不生成批改，避免把示例内容当成对你作文的评价。` },
+        { type: "notice", tone: "info", text: "作文批改需要连接模型后使用。" },
         ...(sourcesBlock(input) ? [sourcesBlock(input)!] : []),
       ];
     default:
       break;
   }
 
-  // Open questions: say what is known locally and what a real request would carry.
+  // Open questions: answer what is known locally and offer what can be done now.
   const blocks: Block[] = [];
   if (quote) {
-    blocks.push({ type: "text", text: "按你引用的原文回答。演示模式没有连接模型，先给出可以直接确定的部分：" });
+    blocks.push({ type: "text", text: "这段原文的意思和结构：" });
     blocks.push({ type: "quote-answer", mode: "context", quote, focus });
   } else if (/读|阅读|文章/.test(input.text)) {
-    blocks.push({ type: "text", text: `可以一起读「${ARTICLE.title}」（${ARTICLE.author}，${ARTICLE.paragraphs.length} 段）。打开后选中任意句子，就能一键翻译、查词义、分析语法，或带着引用继续问。` });
+    blocks.push({ type: "text", text: `一起读「${ARTICLE.title}」吧。选中任意句子就能翻译、查词义、分析语法或继续问。` });
     blocks.push({ type: "actions", actions: [{ id: actionId(), label: `打开 ${ARTICLE.title}`, intent: "open-reading" }] });
     return blocks;
   } else {
-    blocks.push({ type: "text", text: "演示模式没有连接模型，这类开放问题不会得到真实回答。下面这些可以在本地完整走通：" });
+    blocks.push({ type: "text", text: "这个问题需要连接模型后回答。可以先试试：" });
   }
   const sources = sourcesBlock(input);
   if (sources) blocks.push(sources);
-  blocks.push({ type: "notice", tone: "info", text: `正式接入后，这条消息会以 ${requestLabel(route.model, route.effort)} 发送${quote ? "，并附上你的引用" : ""}。` });
   if (!quote) {
     blocks.push({
       type: "actions",

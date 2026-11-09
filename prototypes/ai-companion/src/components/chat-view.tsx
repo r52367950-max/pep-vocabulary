@@ -93,8 +93,8 @@ export function ChatView() {
                 <div className="hero">
                   <h1 className="greeting">{active.temporary ? "临时对话" : "今天想学什么？"}</h1>
                   {active.temporary
-                    ? <p className="hero-sub">这段对话不进入历史，离开或关闭页面后清除；附件和引用同样不保存。</p>
-                    : <p className="hero-sub">说出目标，我会按你的练习表现安排下一步。</p>}
+                    ? <p className="hero-sub">不会保存</p>
+                    : null}
                   <Composer conversationId={active.id} variant="hero" />
                   <ul className="suggestions" aria-label="可以这样开始">
                     {SUGGESTIONS.map(({ icon: Icon, label, text }) => (
@@ -111,7 +111,6 @@ export function ChatView() {
                 <Composer conversationId={active.id} variant="dock" />
               </div>
             )}
-            <p className="demo-foot">演示原型：本地规则回答，未连接模型；语音不使用麦克风</p>
           </>
         )}
       </div>
@@ -119,7 +118,6 @@ export function ChatView() {
         <div className="confirm-layer" role="alertdialog" aria-modal="false" aria-labelledby="leave-temp-title">
           <div className="confirm-box">
             <h2 id="leave-temp-title">{pending.label}，并清除这段临时对话？</h2>
-            <p>临时对话不保存。离开后，其中的消息、引用和附件都会清除，无法找回。</p>
             <div className="confirm-actions">
               <button type="button" className="button button-quiet" autoFocus onClick={() => setPending(null)}>留在这里</button>
               <button type="button" className="button button-danger" onClick={() => { const run = pending.run; setPending(null); run(); }}>清除并离开</button>
@@ -191,7 +189,7 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
         </label>
         {active.temporary && (
           <button type="button" className="conv-row is-current is-temp" onClick={onClose}>
-            <TemporaryIcon size={16} /><span className="conv-title">临时对话<small>进行中 · 不保存</small></span>
+            <TemporaryIcon size={16} /><span className="conv-title">临时对话</span>
           </button>
         )}
         <p id="conv-delete-hint" className="visually-hidden">长按、右键或按 Delete 键可以删除对话</p>

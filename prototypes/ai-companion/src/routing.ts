@@ -117,8 +117,8 @@ export function classifyTask(input: ClassifyInput): Classification {
 export type ModelChoice = "auto" | ModelId;
 export const MODEL_IDS: ModelId[] = ["gpt-6.1-sol", "gpt-6.1-terra"];
 export const MODEL_USE: Record<ModelId, string> = {
-  "gpt-6.1-sol": "对话、学习计划、状态总结和作文反馈",
-  "gpt-6.1-terra": "阅读中的翻译、词义和语法",
+  "gpt-6.1-sol": "对话与学习计划",
+  "gpt-6.1-terra": "阅读与语法",
 };
 export function isModelChoice(value: unknown): value is ModelChoice {
   return value === "auto" || MODEL_IDS.includes(value as ModelId);
@@ -173,13 +173,13 @@ export type SendCheck =
 
 export function checkSendable(route: Route, service: ServiceState): SendCheck {
   if (service === "budget-exhausted") {
-    return { ok: false, problem: "budget", message: "今日 AI 额度已用完（模拟）。这条消息没有发出，草稿已保留；听写判分等本地功能不受影响。", alternatives: [] };
+    return { ok: false, problem: "budget", message: "今天的额度已用完，消息没有发出。", alternatives: [] };
   }
   if (service === "budget-low" && route.effort === "high") {
-    return { ok: false, problem: "budget", message: `剩余额度不够完成 ${requestLabel(route.model, route.effort)} 的预计用量（模拟）。可以只把这条降为中等思考发送。`, alternatives: [{ model: route.model, effort: "medium", label: "只把这条降为中等思考发送" }] };
+    return { ok: false, problem: "budget", message: "剩余额度不够，消息没有发出。", alternatives: [{ model: route.model, effort: "medium", label: "用较少额度发送" }] };
   }
   if (service === "sol-unavailable" && route.model === "gpt-6.1-sol") {
-    return { ok: false, problem: "unavailable", message: `${MODEL_NAME[route.model]} 暂时不可用（模拟）。这条消息没有发出，也不会自动换模型重试。`, alternatives: [{ model: "gpt-6.1-terra", label: "只把这条改用 Terra 发送" }] };
+    return { ok: false, problem: "unavailable", message: `${MODEL_NAME[route.model]} 暂时不可用，消息没有发出。`, alternatives: [{ model: "gpt-6.1-terra", label: "改用 Terra 发送" }] };
   }
   return { ok: true };
 }

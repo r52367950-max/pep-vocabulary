@@ -68,8 +68,8 @@ export function scoreAnswer(item: PracticeItem, answer: string): Score {
 /** Word pools a plan can draw from. */
 export type PlanScope = "mistakes" | "due" | "unit4" | "file";
 export const SCOPE_LABEL: Record<PlanScope, string> = {
-  mistakes: "最近错词（示例记录）",
-  due: "到期复习（示例记录）",
+  mistakes: "最近错词",
+  due: "到期复习",
   unit4: "必修第一册 · Unit 4",
   file: "你的文件中的词",
 };
@@ -113,9 +113,9 @@ export function buildPlan(spec: PlanSpec): PlanStep[] {
     detail: `${SCOPE_LABEL[spec.scope]}${spec.scope === "file" && spec.fileName ? `：${spec.fileName}` : ""}`,
   }];
   if (readingMinutes) {
-    steps.push({ id: "reading", kind: "reading", minutes: readingMinutes, title: "读 Mangrove Forests 第 1–2 段", detail: "遇到难句就选中提问；词义和翻译可以一次点击查看" });
+    steps.push({ id: "reading", kind: "reading", minutes: readingMinutes, title: "读 Mangrove Forests 第 1–2 段", detail: "选中难句即可提问" });
   }
-  steps.push({ id: "review", kind: "review", minutes: reviewMinutes, title: "只重练今天写错的词", detail: "听写结束后按真实对错生成，没有错项就跳过" });
+  steps.push({ id: "review", kind: "review", minutes: reviewMinutes, title: "只重练今天写错的词", detail: "听写后按错项生成" });
   return steps;
 }
 

@@ -81,7 +81,7 @@ function sampleConversations(): Conversation[] {
       { id: "sample-status-u", role: "user", at: now - 2 * day, text: "看看我这周的学习状态", quotes: [], attachments: [], via: "text" },
       {
         id: "sample-status-a", role: "assistant", at: now - 2 * day, status: "done", revealed: 0, ...status,
-        blocks: [{ type: "text", text: "按这周的练习表现整理如下。依据是作答对错和错误类型，不按聊天次数打分。注意：这里用的是原型示例记录。" }, { type: "status" }],
+        blocks: [{ type: "text", text: "这周的练习情况：" }, { type: "status" }],
       },
     ],
   }];
@@ -503,7 +503,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const notice: AssistantMessage = {
         id: newId("a"), role: "assistant", at: Date.now(), status: "done", revealed: 0, routeReason: "提示",
         request: buildRequest(resolveRoute({ task: "practice-feedback", signals: [] }, { preference: "auto" }, routeTable(current.settings.complexPlanTier)), { records: false, article: "none", quotes: 0, quoteChars: 0, readFiles: [], attachmentsOnly: [] }),
-        blocks: [{ type: "notice", tone: "warn", text: "原来的对话已经不在了（临时对话会在离开时清除），结果放在这段新对话里。" }],
+        blocks: [{ type: "notice", tone: "warn", text: "原来的对话已不存在，结果放在这段新对话里。" }],
       };
       dispatch({ type: "append", id: conversationId, messages: [notice] });
     }

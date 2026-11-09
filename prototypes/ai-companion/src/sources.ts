@@ -59,14 +59,7 @@ export function statusLabel(attachment: Pick<Attachment, "kind" | "status" | "ch
   if (attachment.status === "read") {
     return attachment.truncated ? `已读取前 ${LIMITS.readChars.toLocaleString("zh-CN")} 字` : `已读取 ${(attachment.chars ?? 0).toLocaleString("zh-CN")} 字`;
   }
-  return attachment.kind === "image" ? "仅附件 · 未识别图片内容" : "仅附件 · 未解析文档";
-}
-
-export function statusDetail(attachment: Pick<Attachment, "kind" | "status">) {
-  if (attachment.status === "read") return "文字已在本机读取，发送时作为这条消息的内容。不会写入浏览器存储。";
-  if (attachment.status === "attached" && attachment.kind === "image") return "原型没有接入 OCR 或视觉模型，不会看图片内容；发送后只记录文件名、类型和大小。";
-  if (attachment.status === "attached") return "原型没有接入 PDF/DOCX 解析，不会读取其中的文字；发送后只记录文件名、类型和大小。";
-  return "";
+  return "仅附件";
 }
 
 /** In-memory contents keyed by attachment id. Never serialized. */

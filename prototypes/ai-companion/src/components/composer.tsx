@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
 import { ArrowUp, AudioLines, Check, ChevronDown, FileText, Image as ImageIcon, Plus, Quote as QuoteIcon, Square, X } from "lucide-react";
-import { classifyTask, MODEL_IDS, MODEL_NAME, MODEL_USE, requestLabel, resolveRoute, routeTable, TASK_LABEL, TIERS, type Effort, type Fallback, type ModelChoice, type ModelId } from "../routing";
+import { classifyTask, MODEL_IDS, MODEL_NAME, MODEL_USE, resolveRoute, routeTable, type Fallback, type ModelChoice } from "../routing";
 import { paragraphLabel, quoteContext, type Quote } from "../selection";
 import { ARTICLE } from "../data";
-import { attachmentText, checkFile, decodeText, formatBytes, LIMITS, statusDetail, statusLabel, type Attachment } from "../sources";
+import { attachmentText, checkFile, decodeText, formatBytes, statusLabel, type Attachment } from "../sources";
 import { newId, useStore } from "../store";
 import { Popover } from "./popover";
 import { Modal } from "./modal";
@@ -190,21 +190,20 @@ export function Composer({ conversationId, variant, placeholder }: {
             <div className="source-menu">
               <p className="menu-title">添加到这条消息</p>
               <div className="menu-actions">
-                <button type="button" className="menu-item" onClick={() => { close(); pick("image"); }}><ImageIcon size={17} aria-hidden="true" /><span>图片<small>作为附件，不识别内容</small></span></button>
-                <button type="button" className="menu-item" onClick={() => { close(); pick("file"); }}><FileText size={17} aria-hidden="true" /><span>文件<small>TXT/MD/CSV 读取文字；PDF/DOCX 只作附件</small></span></button>
+                <button type="button" className="menu-item" onClick={() => { close(); pick("image"); }}><ImageIcon size={17} aria-hidden="true" /><span>图片</span></button>
+                <button type="button" className="menu-item" onClick={() => { close(); pick("file"); }}><FileText size={17} aria-hidden="true" /><span>文件</span></button>
               </div>
               <p className="menu-title">附带的学习资料</p>
               <label className="switch-row">
-                <span>学习记录<small>示例记录 · 练习对错与错误类型</small></span>
+                <span>学习记录</span>
                 <input type="checkbox" role="switch" checked={draft.includeRecords} onChange={(event) => dispatch({ type: "draft", id: conversationId, patch: { includeRecords: event.target.checked } })} />
                 <span className="switch" aria-hidden="true" />
               </label>
               <label className={`switch-row${available ? "" : " is-disabled"}`}>
-                <span>当前文章全文<small>{available ? `${ARTICLE.title} · ${draft.includeArticle ? "整篇附带" : "已关闭，只发送你选中的引用"}` : "打开阅读页或引用文章后可用"}</small></span>
+                <span>当前文章全文{available && <small>{ARTICLE.title}</small>}</span>
                 <input type="checkbox" role="switch" disabled={!available} checked={available && draft.includeArticle} onChange={(event) => dispatch({ type: "draft", id: conversationId, patch: { includeArticle: event.target.checked } })} />
                 <span className="switch" aria-hidden="true" />
               </label>
-              <p className="menu-foot">最多 {LIMITS.count} 个附件。附件内容只留在这个页面里，不写入浏览器存储。</p>
             </div>
           )}
         </Popover>
@@ -212,7 +211,7 @@ export function Composer({ conversationId, variant, placeholder }: {
         <Popover label="模型" placement={variant === "hero" ? "bottom" : "top"} align="end" triggerClass={`bar-button route-button route-${route.source}`}
           triggerLabel={route.source === "auto" ? "模型：自动" : `模型：${MODEL_NAME[route.model]}`}
           trigger={<><span>{route.source === "auto" ? "自动" : MODEL_NAME[route.model]}</span><ChevronDown size={14} aria-hidden="true" /></>}>
-          {(close) => <RouteMenu conversationId={conversationId} selected={conversation.model ?? state.settings.routePreference} automatic={TIERS[table[classification.task]]} reason={`${TASK_LABEL[classification.task]}${classification.signals.length ? `（${classification.signals.join("、")}）` : ""}`} close={close} />}
+          {(close) => <RouteMenu conversationId={conversationId} selected={conversation.model ?? state.settings.routePreference} close={close} />}
         </Popover>
         {/* One round button: stop while answering, send when there is something to send, otherwise voice. */}
         {streaming ? (
@@ -220,10 +219,9 @@ export function Composer({ conversationId, variant, placeholder }: {
         ) : hasContent ? (
           <button type="button" className="send-button" aria-label="发送" onClick={() => submit()}><ArrowUp size={18} aria-hidden="true" /></button>
         ) : (
-          <button type="button" className="send-button is-voice" aria-label="语音会话（演示，不使用麦克风）" title="语音会话（演示，不使用麦克风）" onClick={() => dispatch({ type: "voice-open", open: true })}><AudioLines size={18} aria-hidden="true" /></button>
+          <button type="button" className="send-button is-voice" aria-label="语音会话" title="语音会话" onClick={() => dispatch({ type: "voice-open", open: true })}><AudioLines size={18} aria-hidden="true" /></button>
         )}
       </div>
-      {streaming && hasContent && <p className="composer-hint" role="status">正在回答。可以继续输入，回答结束后再发送。</p>}
       <input ref={fileInput} type="file" multiple hidden accept={accept} onChange={(event) => { void addFiles([...(event.target.files ?? [])]); event.target.value = ""; }} />
       <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.kind === "quote" ? "引用" : "附件"}>
         {preview?.kind === "quote" && <QuotePreview quote={preview.quote} />}
@@ -233,7 +231,7 @@ export function Composer({ conversationId, variant, placeholder }: {
   );
 }
 
-function RouteMenu({ conversationId, selected, reason, automatic, close }: { conversationId: string; selected: ModelChoice; reason: string; automatic: { model: ModelId; effort: Effort }; close: () => void }) {
+function RouteMenu({ conversationId, selected, close }: { conversationId: string; selected: ModelChoice; close: () => void }) {
   const { dispatch } = useStore();
   const choose = (choice: ModelChoice) => {
     dispatch({ type: "conversation-model", id: conversationId, model: choice });
@@ -243,19 +241,16 @@ function RouteMenu({ conversationId, selected, reason, automatic, close }: { con
   return (
     <div className="route-menu">
       <p className="menu-title">模型</p>
-      <p className="route-reason">这条自动会用 {requestLabel(automatic.model, automatic.effort)}：{reason}</p>
       <div className="route-options" role="radiogroup" aria-label="这段对话的模型">
         <button type="button" role="radio" aria-checked={selected === "auto"} className="route-option" onClick={() => choose("auto")}>
-          <span><strong>自动</strong><small>按任务选择模型（推荐）</small></span>{selected === "auto" && <Check size={16} aria-hidden="true" />}
+          <span><strong>自动</strong><small>按问题选择</small></span>{selected === "auto" && <Check size={16} aria-hidden="true" />}
         </button>
         {MODEL_IDS.map((model) => (
           <button key={model} type="button" role="radio" aria-checked={selected === model} className="route-option" onClick={() => choose(model)}>
-            <span><strong>{MODEL_NAME[model]}</strong><small>适合{MODEL_USE[model]}</small></span>{selected === model && <Check size={16} aria-hidden="true" />}
+            <span><strong>{MODEL_NAME[model]}</strong><small>{MODEL_USE[model]}</small></span>{selected === model && <Check size={16} aria-hidden="true" />}
           </button>
         ))}
       </div>
-      <p className="menu-foot">思考强度始终按任务自动决定。这里的选择只用于这段对话；新对话的默认模型在设置里。</p>
-      <button type="button" className="link-button" onClick={() => { close(); dispatch({ type: "settings-open", section: "model" }); }}>在设置中修改默认模型</button>
     </div>
   );
 }
@@ -270,7 +265,6 @@ export function QuotePreview({ quote }: { quote: Quote }) {
         <mark>{quote.text}</mark>
         {context.after && <span className="context">{context.after}</span>}
       </blockquote>
-      <p className="preview-note">高亮部分是你选中的原文；前后灰字是所在句的其余部分，作为局部语境一起显示。发送时只附带高亮部分{quote.carried ? "，这是上一个问题沿用下来的引用" : ""}。</p>
     </div>
   );
 }
@@ -289,8 +283,6 @@ export function AttachmentPreview({ attachment }: { attachment: Attachment }) {
         </>
       )}
       {!attachment.previewUrl && attachment.status !== "read" && attachment.kind !== "text" && <p className="preview-note">没有可显示的预览。</p>}
-      {attachment.status === "read" && !text && <p className="preview-note">内容只在发送时的页面里保留，刷新后无法再次查看。</p>}
-      <p className="preview-note">{statusDetail(attachment)}</p>
     </div>
   );
 }

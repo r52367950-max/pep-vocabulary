@@ -57,6 +57,14 @@ async function openPanel(page) {
   if (!(await page.locator(".conv-panel:not([hidden])").count())) await page.locator(".chat-top [aria-label='展开对话列表']").click();
   await page.waitForSelector(".conv-panel:not([hidden])");
 }
+const MODEL_SHORT = { "gpt-6.1-sol": "Sol", "gpt-6.1-terra": "Terra" };
+const EFFORT_SHORT = { low: "低", medium: "中", high: "高" };
+// The reply carries the request it answered as data attributes; the screen shows only the model name.
+async function routeOf(reply) {
+  const turn = reply.locator(".ai-turn");
+  const [model, effort] = await Promise.all([turn.getAttribute("data-model"), turn.getAttribute("data-effort")]);
+  return `${MODEL_SHORT[model]} · ${EFFORT_SHORT[effort]}`;
+}
 async function overflow(page) {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
@@ -137,7 +145,8 @@ async function pathConversation(page, viewport) {
   await send(page, "我今天只有 15 分钟");
   check("首条消息进入会话布局", await page.locator(".chat-dock .composer").count() === 1 && await page.locator(".hero").count() === 0);
   check("计划卡出现", await page.locator(".plan-card").count() === 1);
-  check("短计划路由 Sol · 中", (await lastReply(page).locator(".meta-model").innerText()) === "Sol · 中");
+  check("短计划路由 Sol · 中", (await routeOf(lastReply(page))) === "Sol · 中");
+  check("回答下只显示模型名", (await lastReply(page).locator(".meta-model").innerText()) === "Sol" && await page.locator(".request-detail, .meta-reason").count() === 0);
   await send(page, "看看我这周的学习状态");
   check("连续对话：状态卡来自示例记录", await lastReply(page).locator(".status-card .sample-tag").count() === 1);
   const title = await page.locator(".title-text").innerText();
@@ -210,14 +219,13 @@ async function pathReading(page, viewport) {
   await page.waitForSelector(".mini-panel");
   await waitIdle(page);
   const reply = lastReply(page, ".mini-panel");
-  check("翻译路由 Terra · 低", (await reply.locator(".meta-model").innerText()) === "Terra · 低");
+  check("翻译路由 Terra · 低", (await routeOf(reply)) === "Terra · 低");
   check("译文对应选区所在句", (await reply.locator(".zh").first().innerText()) === zhOf("1-1"));
-  check("标明选区是句子的一部分", (await reply.innerText()).includes("选区是这句的一部分"));
   check("高亮的正是选中的原文", (await reply.locator("mark").first().innerText()) === phrase);
   check("继续追问引用留在输入框", (await page.locator(".mini-panel .quote-chip").innerText()).includes("继续追问"));
   await send(page, "这里为什么用 that？", ".mini-panel");
   const grammar = lastReply(page, ".mini-panel");
-  check("追问语法路由 Terra · 中", (await grammar.locator(".meta-model").innerText()) === "Terra · 中");
+  check("追问语法路由 Terra · 中", (await routeOf(grammar)) === "Terra · 中");
   check("追问回答聚焦 that", (await grammar.locator(".grammar-points li.is-focus").first().innerText()).includes("that"));
   await page.screenshot({ path: `${shots}/${viewport.name}-05-mini-answer.png` });
 
@@ -240,7 +248,7 @@ async function pathReading(page, viewport) {
   await waitIdle(page);
   const cross = lastReply(page, ".mini-panel");
   check("跨段选区覆盖两段", (await cross.locator(".sentence-label").allInnerTexts()).join("|").match(/第 4 段.*第 5 段/) !== null);
-  check("跨段语法路由 Terra · 中", (await cross.locator(".meta-model").innerText()) === "Terra · 中");
+  check("跨段语法路由 Terra · 中", (await routeOf(cross)) === "Terra · 中");
   if (viewport.mobile) await page.locator(".mini-panel [aria-label='收起小窗']").click();
 
   await page.evaluate(() => {
@@ -252,7 +260,7 @@ async function pathReading(page, viewport) {
     getSelection().addRange(range);
   });
   await page.waitForSelector(".select-toolbar.is-error");
-  check("选区跨出正文给出提示", (await page.locator(".select-toolbar").innerText()).includes("正文以外"));
+  check("选区跨出正文给出提示", (await page.locator(".select-toolbar").innerText()).includes("只选择文章正文"));
   const last = sample.article.paragraphs.length - 1;
   await selectArticle(page, 0, 0, last, sample.article.paragraphs[last].text.length);
   check("超长选区给出提示", (await page.locator(".select-toolbar").innerText()).includes("超过 800"));
@@ -271,7 +279,7 @@ async function pathReading(page, viewport) {
     await page.waitForSelector(".select-toolbar");
     await page.locator(".select-toolbar button", { hasText: "解释词义" }).click();
     await waitIdle(page);
-    check("双击取词后释义来自词库", (await lastReply(page, ".mini-panel").innerText()).includes("词迹词库"));
+    check("双击取词后显示词库释义", await lastReply(page, ".mini-panel").locator(".word-list li, .word-missing li").count() > 0);
   }
 
   // Whole-article source switched off: the learner's own quote still goes, the article does not.
@@ -289,8 +297,8 @@ async function pathReading(page, viewport) {
   check("问问 AI 后光标在输入框", await page.evaluate(() => document.activeElement?.tagName === "TEXTAREA"));
   await composer(page, ".mini-panel").press("Enter");
   await waitIdle(page);
-  await lastReply(page, ".mini-panel").locator(".meta-route").click();
-  const detail = await lastReply(page, ".mini-panel").locator(".request-detail").innerText();
+  const sent = lastReply(page, ".mini-panel").locator(".ai-turn");
+  const detail = `文章全文：${{ full: "已附带", off: "已关闭", none: "无" }[await sent.getAttribute("data-article")]} 引用 ${await sent.getAttribute("data-quotes")} 段`;
   check("关闭整篇后只发送引用", detail.includes("文章全文：已关闭") && detail.includes("引用 1 段"), detail);
   await page.screenshot({ path: `${shots}/${viewport.name}-06-article-off.png` });
   if (viewport.mobile) await page.locator(".mini-panel [aria-label='收起小窗']").click();
@@ -312,8 +320,8 @@ async function pathSources(page, viewport) {
   await page.waitForFunction(() => [...document.querySelectorAll(".mini-panel .file-chip")].some((chip) => chip.textContent.includes("已读取")));
   const chips = await page.locator(".mini-panel .file-chip").allInnerTexts();
   check("文本文件显示已读取", chips.some((text) => text.includes("已读取") && text.includes("my-words.txt")));
-  check("图片标为仅附件", chips.some((text) => text.includes("未识别图片内容") && text.includes("notes.png")));
-  check("PDF 标为未解析", chips.some((text) => text.includes("未解析文档") && text.includes("unit4.pdf")));
+  check("图片标为仅附件", chips.some((text) => text.includes("仅附件") && text.includes("notes.png")));
+  check("PDF 标为仅附件", chips.some((text) => text.includes("仅附件") && text.includes("unit4.pdf")));
   await input.setInputFiles([{ name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") }]);
   check("不支持的类型给出提示", (await page.locator(".mini-panel .composer-notice").innerText()).includes("暂不支持"));
   await page.locator(".mini-panel .file-chip", { hasText: "my-words.txt" }).locator(".chip-main").click();
@@ -395,7 +403,7 @@ async function pathPractice(page, viewport) {
   check("回到同一会话", (await page.locator(".title-text").innerText()) === conversationTitle);
   const feedback = await lastReply(page).innerText();
   check("反馈依据真实作答", feedback.includes("对 3 个") && feedback.includes("错项都已写对"), feedback.slice(0, 120));
-  check("反馈路由 Sol · 中", (await lastReply(page).locator(".meta-model").innerText()) === "Sol · 中");
+  check("反馈路由 Sol · 中", (await routeOf(lastReply(page))) === "Sol · 中");
   await page.screenshot({ path: `${shots}/${viewport.name}-10-feedback.png` });
 }
 
@@ -408,36 +416,34 @@ async function pathRouting(page, viewport) {
   await box.fill("帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词");
   check("自动模式只显示「自动」", await chipText() === "自动");
   await chip.click();
-  check("菜单里解释自动的判断", (await page.locator(".route-menu .route-reason").innerText()).includes("Sol · 高"));
+  check("菜单里没有路由规则或思考强度说明", !/思考强度|自动会用|路由/.test(await page.locator(".route-menu").innerText()));
   check("菜单只有自动、Sol、Terra", (await page.locator(".route-menu .route-option strong").allInnerTexts()).join("|") === "自动|Sol|Terra");
   check("没有「仅下一条」或「后续默认」", !/仅下一条|后续默认/.test(await page.locator(".route-menu").innerText()));
   await page.keyboard.press("Escape");
   const draft = await box.inputValue();
 
   await openSettings(page, viewport);
-  await settingsSection(page, "模型");
+  await settingsSection(page, "关于原型");
   await page.locator("#service-state").selectOption("sol-unavailable");
   await closeSettings(page);
   await box.fill(draft);
   await box.press("Enter");
-  check("模型不可用时拒绝发送并说明", (await page.locator(".chat-dock .composer-notice").innerText()).includes("不会自动换模型"));
+  check("模型不可用时拒绝发送并说明", (await page.locator(".chat-dock .composer-notice").innerText()).includes("没有发出"));
   check("被拒绝时草稿保留", (await box.inputValue()) === draft);
-  await page.locator(".chat-dock .composer-notice button", { hasText: "只把这条改用 Terra 发送" }).click();
+  await page.locator(".chat-dock .composer-notice button", { hasText: "改用 Terra 发送" }).click();
   await waitIdle(page);
-  check("备选只用于这一条", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 高");
-  check("说明自动原本的选择", (await lastReply(page).locator(".meta-reason").innerText()).includes("自动会用 Sol · 高"));
+  check("备选只用于这一条", (await routeOf(lastReply(page))) === "Terra · 高");
   check("备选之后仍是自动", await chipText() === "自动");
   await openSettings(page, viewport);
-  await settingsSection(page, "模型");
+  await settingsSection(page, "关于原型");
   await page.locator("#service-state").selectOption("normal");
   await closeSettings(page);
   await box.fill(draft);
   await box.press("Enter");
   await waitIdle(page);
-  check("自动模式按任务给出模型与思考强度", (await lastReply(page).locator(".meta-model").innerText()) === "Sol · 高");
+  check("自动模式按任务给出模型与思考强度", (await routeOf(lastReply(page))) === "Sol · 高");
   check("长期计划分清整段与今天第一步", await lastReply(page).locator(".long-plan").count() === 1 && await lastReply(page).locator(".plan-card.is-first-step").count() === 1);
-  await lastReply(page).locator(".meta-route").click();
-  check("请求里的 model 与 effort 与标签一致", (await lastReply(page).locator(".request-detail").innerText()).match(/model: gpt-6\.1-sol[\s\S]*reasoning\.effort: high/) !== null);
+  check("请求里的 model 与 effort 与路由一致", (await routeOf(lastReply(page))) === "Sol · 高" && (await lastReply(page).locator(".meta-model").innerText()) === "Sol");
   await page.screenshot({ path: `${shots}/${viewport.name}-11-long-plan.png` });
   await lastReply(page).locator("button", { hasText: "加入学习安排" }).click();
   check("加入安排前需要确认", (await lastReply(page).locator(".schedule-row").innerText()).includes("确认加入"));
@@ -447,9 +453,9 @@ async function pathRouting(page, viewport) {
   await page.locator(".route-menu .route-option", { hasText: "Terra" }).click();
   check("选中的模型显示在输入框", await chipText() === "Terra");
   await send(page, "我今天只有 15 分钟");
-  check("这段对话用所选模型，思考强度按任务", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中");
+  check("这段对话用所选模型，思考强度按任务", (await routeOf(lastReply(page))) === "Terra · 中");
   await send(page, "看看我这周的学习状态");
-  check("选择在这段对话里保持", (await lastReply(page).locator(".meta-model").innerText()) === "Terra · 中" && await chipText() === "Terra");
+  check("选择在这段对话里保持", (await routeOf(lastReply(page))) === "Terra · 中" && await chipText() === "Terra");
   const conversationTitle = await page.locator(".title-text").innerText();
   await page.locator(".chat-top [aria-label='新对话']").click();
   check("新对话回到默认的自动", await chipText() === "自动");
@@ -461,7 +467,7 @@ async function pathRouting(page, viewport) {
   check("设置默认后新对话显示 Terra", await chipText() === "Terra");
   await openSettings(page, viewport);
   await settingsSection(page, "模型");
-  await page.locator(".settings-routes .route-option", { hasText: "自动（推荐）" }).click();
+  await page.locator(".settings-routes .route-option", { hasText: "自动" }).click();
   await closeSettings(page);
   check("在设置中恢复自动", await chipText() === "自动");
   await openPanel(page);
@@ -513,7 +519,7 @@ async function pathVoice(page, viewport) {
   await page.waitForSelector(".voice-stage");
   const [stage, main] = await Promise.all([page.locator(".voice-stage").boundingBox(), page.locator(".chat-main").boundingBox()]);
   check("语音会话占满整个对话区域", Math.abs(stage.width - main.width) < 2 && Math.abs(stage.height - main.height) < 2, JSON.stringify([stage, main]));
-  check("说明未接通语音、不使用麦克风", (await page.locator(".voice-badge").innerText()).includes("不使用麦克风"));
+  check("标明是演示", (await page.locator(".voice-badge").innerText()).includes("演示"));
   check("打开后可以直接用文字代替说话", await page.evaluate(() => document.activeElement?.id === "voice-typed"));
   await page.locator(".voice-samples button", { hasText: "我今天只有 15 分钟" }).click();
   await page.waitForSelector(".voice-line.line-ai");

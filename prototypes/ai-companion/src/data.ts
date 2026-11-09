@@ -47,8 +47,7 @@ export function sentenceSpans(paragraph: Paragraph) {
   });
 }
 
-export const SAMPLE_LABEL = "示例记录";
-export const SAMPLE_NOTE = "原型示例数据，不是你的真实学习记录";
+export const SAMPLE_LABEL = "示例数据";
 
 /** Example practice history: every attempt names a real lexicon word; answers are invented for the demo. */
 export type SampleAttempt = { daysAgo: number; kind: "dictation" | "review"; wordId: string; answer: string };

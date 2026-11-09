@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { AudioLines, BookOpen, Check, ChevronDown, Copy, FileText, Image as ImageIcon, Quote as QuoteIcon } from "lucide-react";
-import { ARTICLE, dayLabel, lookupWord, SAMPLE_LABEL, SAMPLE_NOTE, sentenceSpans, sourceLabel, WEEKDAYS } from "../data";
-import { MANGROVE_NOTES, NOTES_LABEL } from "../data/mangrove-notes";
+import { ARTICLE, dayLabel, lookupWord, SAMPLE_LABEL, sentenceSpans, sourceLabel, WEEKDAYS } from "../data";
+import { MANGROVE_NOTES } from "../data/mangrove-notes";
 import { sentenceIndexLabel } from "../engine";
 import { englishTokens } from "../lexicon-match";
 import { buildPlan, MISTAKE_TITLE, sampleStatus, SCOPE_LABEL, type MistakeKind, type PlanScope, type PlanSpec } from "../practice";
-import { AUDIO_ROUTE, PROGRAM_ROUTE, requestLabel, TASK_LABEL } from "../routing";
+import { MODEL_NAME } from "../routing";
 import { paragraphLabel, sentencesInQuote, type Quote } from "../selection";
 import { statusLabel } from "../sources";
 import { useStore } from "../store";
@@ -48,7 +48,7 @@ function UserBubble({ message }: { message: UserMessage }) {
           {message.attachments.map((attachment) => (
             <li key={attachment.id} className={`sent-file status-${attachment.status}`}>
               {attachment.previewUrl ? <Thumb src={attachment.previewUrl} alt="" className="chip-thumb" /> : attachment.kind === "image" ? <ImageIcon size={15} aria-hidden="true" /> : <FileText size={15} aria-hidden="true" />}
-              <span><strong>{attachment.name}</strong><small>{statusLabel(attachment)}{!attachment.previewUrl && attachment.kind === "image" ? " · 预览未保存" : ""}</small></span>
+              <span><strong>{attachment.name}</strong><small>{statusLabel(attachment)}</small></span>
             </li>
           ))}
         </ul>
@@ -73,57 +73,39 @@ function RichText({ text }: { text: string }) {
 
 function AssistantReply({ message, conversationId, place }: { message: AssistantMessage; conversationId: string; place: Place }) {
   const { state, continueReply } = useStore();
-  const [details, setDetails] = useState(false);
   const [copied, setCopied] = useState(false);
   const streaming = message.status === "streaming";
   const lead = message.blocks[0];
   const shown = streaming && lead?.type === "text" ? [{ ...lead, text: lead.text.slice(0, message.revealed) }] : message.blocks;
-  const label = requestLabel(message.request.model, message.request.reasoning.effort);
   const copy = async () => {
     const text = message.blocks.filter((block): block is Extract<Block, { type: "text" }> => block.type === "text").map((block) => block.text).join("\n\n");
     try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { setCopied(false); }
   };
   const context = message.request.context;
+  // The request travels with the reply as data for tooling; the screen shows only the model name.
   return (
-    <div className="ai-turn" aria-busy={streaming}>
+    <div className="ai-turn" aria-busy={streaming} data-model={message.request.model} data-effort={message.request.reasoning.effort}
+      data-article={context.article} data-quotes={context.quotes}>
       <span className="ai-mark" aria-hidden="true"><TraceGlyph size={18} /></span>
       <div className="ai-body">
         {shown.map((block, index) => <BlockView key={index} block={block} index={index} message={message} conversationId={conversationId} place={place} />)}
-        {message.status === "stopped" && <p className="status-note">已停止。已显示的内容保留；可以修改问题后再发送。</p>}
+        {message.status === "stopped" && <p className="status-note">已停止</p>}
         {message.status === "incomplete" && (
           <div className="inline-notice tone-warn">
-            <p>回答在中途结束（模拟输出上限）。已收到的内容保留，没有自动重试。</p>
+            <p>回答没有完整生成。</p>
             {message.remainder && (
               <button type="button" className="button button-quiet" disabled={state.conversations.find((item) => item.id === conversationId)?.messages.some((item) => item.role === "assistant" && item.status === "streaming")}
-                onClick={() => continueReply(conversationId, message.id)}>继续回答（另发一次 {label} 请求）</button>
+                onClick={() => continueReply(conversationId, message.id)}>继续回答</button>
             )}
           </div>
         )}
         {!streaming && (
           <div className="msg-meta">
-            <button type="button" className="meta-route" aria-expanded={details} onClick={() => setDetails((value) => !value)}>
-              <span className="meta-model">{label}</span>
-              <span className="meta-reason">{message.routeReason}</span>
-              <ChevronDown size={14} aria-hidden="true" className={details ? "is-open" : ""} />
-            </button>
+            <span className="meta-model">{MODEL_NAME[message.request.model]}</span>
             <button type="button" className="icon-button small" aria-label={copied ? "已复制" : "复制回答文字"} onClick={() => void copy()}>
               {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
             </button>
           </div>
-        )}
-        {details && !streaming && (
-          <dl className="request-detail">
-            <div><dt>任务</dt><dd>{TASK_LABEL[message.request.metadata.task]}</dd></div>
-            <div><dt>请求</dt><dd><code>model: {message.request.model}</code> <code>reasoning.effort: {message.request.reasoning.effort}</code></dd></div>
-            <div><dt>来源</dt><dd>{{ auto: "自动选择", conversation: "这段对话指定的模型", default: "设置中的默认模型", fallback: "只用于这一条的备选" }[message.request.metadata.routeSource]}</dd></div>
-            <div><dt>附带</dt><dd>
-              学习记录{context.records ? "（示例）" : "：未附带"}；文章全文：{context.article === "full" ? "已附带" : context.article === "off" ? "已关闭" : "无"}；
-              引用 {context.quotes} 段{context.quotes ? `（${context.quoteChars} 字符）` : ""}
-              {context.readFiles.map((file) => `；已读取「${file.name}」${file.chars} 字`).join("")}
-              {context.attachmentsOnly.map((file) => `；「${file.name}」仅附件`).join("")}
-            </dd></div>
-            <div><dt>说明</dt><dd>演示中这份请求没有发出；回答由本地规则生成。正式接入时，按这里的 model 与 effort 原样发送。</dd></div>
-          </dl>
         )}
       </div>
     </div>
@@ -157,7 +139,8 @@ const STOP = new Set("the a an and or of to in on at by for with from as is are 
 
 function QuoteAnswer({ quote, mode, focus }: { quote: Quote; mode: "translate" | "define" | "grammar" | "context"; focus?: string }) {
   const sentences = sentencesInQuote(ARTICLE, quote);
-  const source = <p className="answer-source"><BookOpen size={13} aria-hidden="true" />{quote.title} · {quote.author} · {paragraphLabel(quote)}</p>;
+  // Translations and notes are written for the prototype; a two-word tag keeps them apart from the source text.
+  const source = <p className="answer-source"><BookOpen size={13} aria-hidden="true" />{quote.title} · {paragraphLabel(quote)}{mode === "define" ? "" : " · 原型译注"}</p>;
   if (mode === "define") {
     const tokens = englishTokens(quote.text);
     const seen = new Set<string>();
@@ -190,11 +173,10 @@ function QuoteAnswer({ quote, mode, focus }: { quote: Quote; mode: "translate" |
         )}
         {missing.length > 0 && (
           <div className="word-missing">
-            <p className="label">词迹词库未收录</p>
-            <ul>{missing.slice(0, 6).map((item) => <li key={item.token}><strong>{item.token}</strong>{item.gloss ? ` · ${item.gloss}` : " · 可继续追问，正式接入后由 Terra 结合语境解释"}</li>)}</ul>
+            <p className="label">词库未收录</p>
+            <ul>{missing.slice(0, 6).map((item) => <li key={item.token}><strong>{item.token}</strong>{item.gloss ? ` · ${item.gloss}` : ""}</li>)}</ul>
           </div>
         )}
-        <p className="answer-foot">释义来自词迹词库（教材与课程标准来源，含稳定词条 ID）。</p>
       </section>
     );
   }
@@ -207,7 +189,7 @@ function QuoteAnswer({ quote, mode, focus }: { quote: Quote; mode: "translate" |
           const points = note ? (focus ? [...note.points].sort((a, b) => Number(b.includes(focus)) - Number(a.includes(focus))) : note.points) : [];
           return (
             <li key={`${item.paragraph}-${item.sentence}`}>
-              <p className="sentence-label">{sentenceIndexLabel(item.paragraph, item.sentence)}{item.partial ? " · 选区是这句的一部分" : ""}</p>
+              <p className="sentence-label">{sentenceIndexLabel(item.paragraph, item.sentence)}</p>
               <p className="reading-text"><SentenceText quote={quote} paragraph={item.paragraph} sentence={item.sentence} /></p>
               {note && (mode === "translate" || mode === "context") && <p className="zh">{note.zh}</p>}
               {note && (mode === "grammar" || mode === "context") && <p className="grammar-core">{note.core}</p>}
@@ -218,7 +200,6 @@ function QuoteAnswer({ quote, mode, focus }: { quote: Quote; mode: "translate" |
           );
         })}
       </ol>
-      <p className="answer-foot">{NOTES_LABEL}</p>
     </section>
   );
 }
@@ -232,7 +213,6 @@ function PlanCard({ spec, index, message, conversationId, place }: { spec: PlanS
   const update = (patch: Partial<PlanSpec>) => dispatch({ type: "block", id: conversationId, messageId: message.id, index, block: { type: "plan", spec: { ...spec, ...patch } } });
   const scopes: PlanScope[] = spec.fileItems?.length ? ["file", "mistakes", "due", "unit4"] : ["mistakes", "due", "unit4"];
   const recordsOff = message.request.context.records === false;
-  const dictation = steps[0];
   const longPlan = message.blocks.some((block) => block.type === "long-plan");
   return (
     <section className={`plan-card${longPlan ? " is-first-step" : ""}`} aria-label={longPlan ? "今天第一步" : "今天的练习安排"}>
@@ -273,7 +253,6 @@ function PlanCard({ spec, index, message, conversationId, place }: { spec: PlanS
           </li>
         ))}
       </ol>
-      <p className="plan-foot">由本地规则按时间拆分；听写词来自{SCOPE_LABEL[spec.scope]}{dictation.items?.length ? `，共 ${dictation.items.length} 词` : ""}。</p>
     </section>
   );
 }
@@ -297,7 +276,7 @@ function LongPlan({ block, index, message, conversationId }: { block: Extract<Bl
     <section className="long-plan" aria-label="整段安排">
       <header className="plan-head">
         <div>
-          <p className="plan-kicker">整段安排 · 草稿</p>
+          <p className="plan-kicker">整段安排</p>
           <h3>{block.days} 天 · 每天 {block.minutes} 分钟</h3>
         </div>
         <p className="long-plan-sub">{active.length} 个学习日{block.restWeekdays.length ? ` · 周${block.restWeekdays.map((day) => WEEKDAYS[day]).join("、")}休息` : ""}</p>
@@ -314,16 +293,15 @@ function LongPlan({ block, index, message, conversationId }: { block: Extract<Bl
           );
         })}
       </ol>
-      <p className="plan-foot">整段安排只定节奏；每天的词在当天按练习表现重新挑选。</p>
       <div className="schedule-row" aria-live="polite">
         {block.added === "added" ? (
           <>
-            <p className="ok-text"><Check size={15} aria-hidden="true" />已加入学习安排。原型只记在这段对话里，不写入正式的今日学习。</p>
+            <p className="ok-text"><Check size={15} aria-hidden="true" />已加入学习安排</p>
             <button type="button" className="button button-quiet" onClick={() => set(undefined)}>撤销</button>
           </>
         ) : block.added === "pending" ? (
           <>
-            <p>加入后，接下来 {block.days} 天的今日学习会按这份节奏安排。确认加入吗？</p>
+            <p>加入接下来 {block.days} 天的学习安排？</p>
             <button type="button" className="button button-primary" onClick={() => set("added")}>确认加入</button>
             <button type="button" className="button button-quiet" onClick={() => set(undefined)}>取消</button>
           </>
@@ -341,7 +319,7 @@ function StatusCard() {
   const max = Math.max(1, ...kinds.map(([, count]) => count));
   return (
     <section className="status-card" aria-label="这周的练习表现">
-      <p className="sample-tag">{SAMPLE_LABEL} · {SAMPLE_NOTE}</p>
+      <p className="sample-tag">{SAMPLE_LABEL}</p>
       <dl className="stat-grid">
         <div><dt>有练习的天数</dt><dd>{status.practiceDays}<small> / 7 天</small></dd></div>
         <div><dt>听写正确</dt><dd>{status.dictationCorrect}<small> / {status.dictationTotal} 词</small></dd></div>
@@ -368,7 +346,7 @@ function SourcesCard({ block }: { block: Extract<Block, { type: "sources" }> }) 
         {block.read.map((item) => <li key={item.name}><FileText size={14} aria-hidden="true" /><span><strong>{item.name}</strong> · 已读取{item.truncated ? "前 20,000 字" : ` ${item.chars} 字`}<small>开头：{item.excerpt}{item.excerpt.length >= 80 ? "…" : ""}</small></span></li>)}
         {block.attached.map((item) => <li key={item.name} className="is-attached"><ImageIcon size={14} aria-hidden="true" /><span><strong>{item.name}</strong> · 仅附件（{item.kind}内容没有被读取）</span></li>)}
         {block.quotes > 0 && <li><QuoteIcon size={14} aria-hidden="true" /><span>你的引用 {block.quotes} 段</span></li>}
-        <li className={block.records ? "" : "is-off"}><span>学习记录：{block.records ? "已附带（示例）" : "未附带"}</span></li>
+        <li className={block.records ? "" : "is-off"}><span>学习记录：{block.records ? "已附带" : "未附带"}</span></li>
         <li className={block.article === "full" ? "" : "is-off"}><span>文章全文：{block.article === "full" ? "已附带" : block.article === "off" ? "已关闭" : "当前没有文章"}</span></li>
       </ul>
     </section>
@@ -396,7 +374,7 @@ function ResultCard({ message }: { message: ResultMessage }) {
   return (
     <section className="result-card" aria-label="练习结果">
       <header>
-        <p className="plan-kicker">练习结果 · {PROGRAM_ROUTE.label}</p>
+        <p className="plan-kicker">练习结果</p>
         <h3>{message.result.title}</h3>
       </header>
       <ul className="round-list">
@@ -414,7 +392,6 @@ function ResultCard({ message }: { message: ResultMessage }) {
           );
         })}
       </ul>
-      <p className="plan-foot">{PROGRAM_ROUTE.detail}。</p>
     </section>
   );
 }
@@ -426,7 +403,7 @@ function VoiceTranscript({ message }: { message: VoiceMessage }) {
     <section className="voice-card" aria-label="语音会话记录">
       <button type="button" className="voice-head" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <AudioLines size={15} aria-hidden="true" />
-        <span>语音会话 · 演示 · {message.captions.length} 句 · {minutes}:{String(message.seconds % 60).padStart(2, "0")}</span>
+        <span>语音会话 · {message.captions.length} 句 · {minutes}:{String(message.seconds % 60).padStart(2, "0")}</span>
         <ChevronDown size={14} aria-hidden="true" className={open ? "is-open" : ""} />
       </button>
       {open && (
@@ -434,7 +411,6 @@ function VoiceTranscript({ message }: { message: VoiceMessage }) {
           {message.captions.map((caption, index) => <li key={index} className={`caption caption-${caption.speaker}`}><span className="who">{caption.speaker === "user" ? "你" : "AI"}</span>{caption.text}</li>)}
         </ol>
       )}
-      <p className="plan-foot">{AUDIO_ROUTE.label}（演示中未调用）；字幕是你输入的文字与本地回答。</p>
     </section>
   );
 }
