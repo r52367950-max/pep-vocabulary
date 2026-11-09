@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "browser": "156.0.8078.79",
+  "results": [
+    {
+      "test": "DOCX ordinary/strict/table/textbox/CDATA/entities plus hostile paragraphs/text/quotas",
+      "normal": "Hello & welcome.\n\nTable <text>.",
+      "strict": "Hello & welcome.\n\nTable <text>.",
+      "textbox": "Outside.\n\nInside.",
+      "textNodes": "First inner last.",
+      "originalCharacters": 10000,
+      "oldCharacters": 800158,
+      "fixedCharacters": 10000,
+      "durationMs": 1.1000000000931323,
+      "rejected": [
+        "depth",
+        "output",
+        "paragraphs",
+        "markup",
+        "malformed"
+      ]
+    },
+    {
+      "test": "Personal article clear removes open body/export/list locally and in retained hidden second tab",
+      "status": "passed"
+    },
+    {
+      "test": "Real confirmed clear-local-data flow removes a previously mounted private reader",
+      "status": "passed"
+    }
+  ],
+  "errors": []
+}

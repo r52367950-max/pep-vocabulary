@@ -1,0 +1,231 @@
+{
+  "outcome": "fixed",
+  "repository": "r52367950-max/pep-vocabulary",
+  "scan": {
+    "runId": "wfr_7816e474bb49c6bbe0070476c20822b67b4bb737663a8833e6f4ba8e029a6329",
+    "targetCommit": "466188b36e7e5e16d8c173522dbfb6a48f06aa67",
+    "status": "completed",
+    "completedAt": "2026-11-09T05:19:39.589730Z",
+    "completedAtAsiaShanghai": "2026-11-09 13:19",
+    "counts": {
+      "high": 1,
+      "medium": 3,
+      "low": 3
+    }
+  },
+  "codeCommit": "ae999084de0df6692c1664c5524528659edee1a2",
+  "branch": "codex/security-cloud-20261109",
+  "findings": [
+    {
+      "id": "csf_f147fb8df79fcdd25415b4ac",
+      "occurrenceId": "occ_63e27ee73d368e3041666a93",
+      "title": "Release packaging accepts executable output that is not bound to the reviewed commit",
+      "severity": "high",
+      "outcome": "fixed",
+      "changedFiles": [
+        "scripts/package-site.sh",
+        "tests/release-tool-security.test.mjs",
+        "docs/DEVELOPMENT.md"
+      ],
+      "originalTrigger": "Ignored stale dist could be archived as current HEAD.",
+      "proofNoLongerReproduces": "Fresh committed-source rebuild replaces stale Worker and client assets; failed build produces no archive.",
+      "legitimateControl": "Default/custom archive locations and ordinary migration files remain supported."
+    },
+    {
+      "id": "csf_64f46dac58c56a3adb0aa774",
+      "occurrenceId": "occ_5107074f61a7a0f2301e7e88",
+      "title": "Benchmark tools execute TypeScript selected by a Git ref with ambient Node authority",
+      "severity": "medium",
+      "outcome": "fixed",
+      "changedFiles": [
+        "scripts/benchmark-baseline.mjs",
+        "scripts/benchmark-core.mjs",
+        "scripts/benchmark-backend.mjs",
+        "scripts/benchmark-reading-lookup.mjs",
+        "tests/release-tool-security.test.mjs"
+      ],
+      "originalTrigger": "Unreviewed Git-selected TypeScript could execute top-level Node code.",
+      "proofNoLongerReproduces": "All three entry points reject malicious commit IDs and aliases before source execution; Git replacements are disabled.",
+      "legitimateControl": "Reviewed default core/backend and both historical reading comparisons retain equivalent results."
+    },
+    {
+      "id": "csf_b95d3614eb5f71863e6eb250",
+      "occurrenceId": "occ_541787bbf8f647e5cd0da0e3",
+      "title": "Learning-journal tombstones can grow shared D1 storage without an account-level quota",
+      "severity": "medium",
+      "outcome": "fixed",
+      "changedFiles": [
+        "lib/learning-journal/store.ts",
+        "lib/learning-journal-client.ts",
+        "db/schema.ts",
+        "drizzle/0009_learning_journal_quota.sql",
+        "tests/learning-journal-quota.test.mjs",
+        "tests/learning-journal-client.test.mjs",
+        "scripts/smoke-worker.mjs"
+      ],
+      "originalTrigger": "Deleted event rows bypassed live-row caps and nonexistent date deletion allocated hidden days.",
+      "proofNoLongerReproduces": "100000 retained event IDs and 64 MiB accounted storage enforced atomically; empty-date deletion rejected; quota failures fully roll back.",
+      "legitimateControl": "Idempotency, account isolation, migration backfill and privacy deletion/replay protection pass, including full-capacity cases."
+    },
+    {
+      "id": "csf_f704f147a355587f758f7c10",
+      "occurrenceId": "occ_79b86d733fe95c96215eac1f",
+      "title": "Nested DOCX paragraphs can amplify text on the browser main thread",
+      "severity": "medium",
+      "outcome": "fixed",
+      "changedFiles": [
+        "lib/reading-import.ts",
+        "tests/docx-import-security.test.mjs"
+      ],
+      "originalTrigger": "Nested DOCX paragraphs/text nodes repeatedly copied descendants on the browser UI thread.",
+      "proofNoLongerReproduces": "Bounded markup preflight and one-pass nearest-paragraph extraction; constructed nested input is no longer amplified.",
+      "legitimateControl": "Normal/strict Word XML, tables, text boxes, CDATA and entities retained."
+    },
+    {
+      "id": "csf_ae65e27655121bc6ea8b57df",
+      "occurrenceId": "occ_71d77cc43e5853c096ba339e",
+      "title": "Public provenance outputs disclose metadata and a share URL for private project material",
+      "severity": "low",
+      "outcome": "fixed",
+      "changedFiles": [
+        "scripts/build-source-manifest.mjs",
+        "source_manifest.json",
+        "SOURCE_MANIFEST.md"
+      ],
+      "originalTrigger": "Private project brief metadata appeared in the public generator and both manifests.",
+      "proofNoLongerReproduces": "Private hard-coded object and both output copies removed; targeted inspection finds no private brief/share metadata.",
+      "legitimateControl": "19 public vocabulary sources, 12 textbooks and all 18 pinned source records remain."
+    },
+    {
+      "id": "csf_86e5e363c9ef0c51defd686f",
+      "occurrenceId": "occ_73d7dc6d2f75fd871ba694ba",
+      "title": "Vendored agent guidance recommends executing an unlocked registry package",
+      "severity": "low",
+      "outcome": "fixed",
+      "changedFiles": [
+        ".claude/skills/vercel-react-best-practices/AGENTS.md",
+        ".claude/skills/vercel-react-best-practices/rules/rendering-svg-precision.md"
+      ],
+      "originalTrigger": "Two vendored skill copies recommended executing an unlocked registry optimizer.",
+      "proofNoLongerReproduces": "Both executable recommendations replaced by reviewed/locked local-tool guidance.",
+      "legitimateControl": "Manual precision examples retained; no new application dependencies."
+    },
+    {
+      "id": "csf_4816464567f069bddd53fbe4",
+      "occurrenceId": "occ_b04e095b6549de3cfc986982",
+      "title": "Cleared personal articles remain readable and exportable in the current tab",
+      "severity": "low",
+      "outcome": "fixed",
+      "changedFiles": [
+        "lib/personal-readings.ts",
+        "components/studio/reading.tsx",
+        "tests/personal-readings.test.mjs"
+      ],
+      "originalTrigger": "Clearing IndexedDB left mounted reader body/list/export and import state alive.",
+      "proofNoLongerReproduces": "Committed personal-library replacement invalidates reader state in current and hidden second tabs; stale saves remain fenced.",
+      "legitimateControl": "Normal reading/import controls pass and unrelated learning-backup restoration does not clear personal library."
+    }
+  ],
+  "verificationGates": [
+    {
+      "gate": 1,
+      "name": "syntax, types and static checks",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "result": "pass"
+        },
+        {
+          "command": "npm run lint",
+          "result": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "gate": 2,
+      "name": "security triggers, alternate inputs and legitimate controls",
+      "commands": [
+        {
+          "command": "node --import ./tests/register.mjs --test tests/release-tool-security.test.mjs",
+          "result": "pass",
+          "tests": 3
+        },
+        {
+          "command": "node --import ./tests/register.mjs --test tests/learning-journal-quota.test.mjs tests/learning-journal.test.mjs tests/learning-journal-client.test.mjs",
+          "result": "pass",
+          "tests": 24
+        },
+        {
+          "command": "node --import ./tests/register.mjs --test tests/docx-import-security.test.mjs tests/personal-readings.test.mjs",
+          "result": "pass",
+          "tests": 20
+        }
+      ],
+      "browserEvidence": "reading-security-browser.json",
+      "review": "One fresh independent read-only review completed; confirmed quota rollback issue remediated and covered by an additional assertion."
+    },
+    {
+      "gate": 3,
+      "name": "repository and runtime validation",
+      "commands": [
+        {
+          "command": "npm run test:unit",
+          "result": "pass",
+          "tests": 594,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "command": "npm run data:audit",
+          "result": "pass",
+          "sources": 19,
+          "textbooks": 12,
+          "entries": 4681,
+          "declaredDataGapsPreserved": true,
+          "auditStatus": "release-candidate-with-declared-gaps"
+        },
+        {
+          "command": "npm run audit:prod",
+          "result": "pass",
+          "vulnerabilities": 0
+        },
+        {
+          "command": "npm run build",
+          "result": "pass"
+        },
+        {
+          "command": "bash scripts/package-site.sh <archive>",
+          "result": "pass",
+          "builtFromCommit": "ae999084de0df6692c1664c5524528659edee1a2"
+        },
+        {
+          "command": "npm run test:runtime",
+          "result": "pass",
+          "environment": "local workerd/D1; includes migration 0009 and actual quota trigger rollback",
+          "checks": 50
+        }
+      ]
+    }
+  ],
+  "additionalFinding": {
+    "status": "not_changed",
+    "title": "Single-article removal lacks per-ID cross-tab invalidation and a deletion fence against delayed saves of the same ID.",
+    "paths": [
+      "lib/personal-readings.ts:removePersonalArticle",
+      "lib/personal-readings.ts:savePersonalArticle"
+    ],
+    "scope": "Separate from whole-library clear; requires an article-specific lifecycle change to preserve unrelated in-progress imports."
+  },
+  "deliveryState": {
+    "code": "committed on fix branch",
+    "site": "not deployed",
+    "securityCloudFindings": "not closed",
+    "privateDriveSharing": "not modified; historical commits may retain prior metadata",
+    "paidAI": "not called",
+    "physicalDevices": "not tested"
+  }
+}
