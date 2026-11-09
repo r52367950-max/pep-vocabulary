@@ -10,10 +10,11 @@
   "production_dependency_audit": "0 vulnerabilities",
   "data_audit": "passed with the existing declared content gaps",
   "unit_and_regression": {
-    "status": "passed after focused revalidation",
-    "full_suite_cases": 626,
-    "affected_suite_cases": 24,
-    "strategy": "Reuse unchanged passing results; independently rerun the affected files and added state, voice, reading and backend checks."
+    "status": "passed",
+    "full_suite_cases": 627,
+    "passed": 627,
+    "failed": 0,
+    "evidence": "GitHub Actions CI #8 on code commit 5f5f767e1956d5bdcd3153730efee02de522ebaf; full npm test completed successfully."
   },
   "browser_integration": {
     "status": "passed",
@@ -33,5 +34,10 @@
     "AI HTTP and WebRTC transports use deterministic fixtures; no paid provider call or real microphone capture.",
     "This PR preserves existing database migrations, word IDs and backup schema.",
     "Production site deployment is separate from PR delivery."
-  ]
+  ],
+  "github_ci": {
+    "status": "success",
+    "code_commit": "5f5f767e1956d5bdcd3153730efee02de522ebaf",
+    "run_url": "https://github.com/r52367950-max/pep-vocabulary/actions/runs/42623765095"
+  }
 }

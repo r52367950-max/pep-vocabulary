@@ -29,3 +29,7 @@ AI 对话在学习导航中独立进入；其他学习页通过圆形入口就�
 固定 30 天、90 条活动样本中，折叠日志的初始元素数从 668 降至 7，文本编辑框从 30 降至 0。该数值记录渲染工作量；实际命令和数据见 `artifacts/qa/claude-ai-20261109/learning-memory-performance.*`。
 
 本轮验证与报告存放于 `artifacts/qa/claude-ai-20261109/`。自动化使用本地数据、临时数据库及受控 AI/语音返回，不调用付费模型或真实麦克风。
+
+GitHub CI 全量 627 项单元测试、构建与 54 项 Worker 检查通过。浏览器覆盖 19 项页面交互与 7 项语音流程。
+
+[报告第 1 页 PNG](../artifacts/qa/claude-ai-20261109/report-page-1.png) · [第 2 页 PNG](../artifacts/qa/claude-ai-20261109/report-page-2.png) · [PDF](../artifacts/qa/claude-ai-20261109/report.pdf) · [可编辑 HTML](../artifacts/qa/claude-ai-20261109/report.html) · [PR #27](https://github.com/r52367950-max/pep-vocabulary/pull/27)
