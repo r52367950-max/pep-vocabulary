@@ -1,10 +1,10 @@
 # 项目状态入口
 
-核对日期：2026-11-10；当前版本 2.19.1 为现有对话接入有界学习工具，并修复附件文字边界与导入性能。详见 [2.19.1 版本说明](docs/RELEASE_2.19.1.md)。
+核对日期：2026-11-10；当前版本 2.19.2 增强学习工具查询与真实执行摘要，修复对话面板样式和重复计算。详见 [2.19.2 版本说明](docs/RELEASE_2.19.2.md)。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.19.1 | `package.json` |
+| 应用版本 | 2.19.2 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0；索引 `pep-lexicon-index/2` 行编码 | `public/data/v1/manifest.json`、`lib/lexicon-index-codec.mjs` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |

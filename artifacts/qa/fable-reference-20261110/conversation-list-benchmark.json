@@ -1,0 +1,10 @@
+{
+  "baseline": "d148c35",
+  "node": "v24.22.1",
+  "measuredAt": "2026-11-10T04:48:49.233Z",
+  "scope": "Saved-conversation list derivation only, warm cache, 50 conversations and 142 active-draft edits; excludes React rendering, browser layout and network",
+  "samples": 9,
+  "beforeMedianMs": 401.4899959999998,
+  "afterMedianMs": 0.03148600000031365,
+  "rowsConsumed": 127800
+}

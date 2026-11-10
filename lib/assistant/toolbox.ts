@@ -1,7 +1,7 @@
 import type { LexiconEvidence } from "./core";
 
 /** Tools deliberately operate only on published vocabulary and this request's selected materials. */
-export type ToolLexiconRow = LexiconEvidence & { flags?: { formalReleaseEligible?: boolean } };
+export type ToolLexiconRow = LexiconEvidence & { lookup?: string; flags?: { formalReleaseEligible?: boolean } };
 export type ToolSources = {
   article: { title: string; text: string } | null;
   files: { name: string; text: string }[];
@@ -16,7 +16,8 @@ export type ToolResult = {
 export const MAX_TOOL_OUTPUT_CHARS = 12000;
 
 export const TOOL_DEFINITIONS = [
-  { name: "search_lexicon", description: "搜索正式词库中的英文词头或中文释义，返回可引用的词条 ID 与教材出处。", parameters: { type: "object", properties: { query: { type: "string", maxLength: 100 }, limit: { type: "integer", minimum: 1, maximum: 8 } }, required: ["query"], additionalProperties: false } },
+  { name: "lookup_words", description: "核对最多八个英文词或短语的教材释义与出处。精确词头优先；括号简写与可能的屈折词形会明确标记，词形候选须结合语境核对。没查到时给出词头建议。", parameters: { type: "object", properties: { words: { type: "array", minItems: 1, maxItems: 8, items: { type: "string", maxLength: 60 } } }, required: ["words"], additionalProperties: false } },
+  { name: "search_lexicon", description: "按英文或中文 query、册名/教材代号 book、单元 unit、词头 prefix、中文 meaning 筛选正式词库，至少提供一项。book 如 必修第一册 或 HS-R1，unit 如 Unit 2；无效名称返回可用名称。返回词条 ID、出处和匹配总数。", parameters: { type: "object", properties: { query: { type: "string", maxLength: 100 }, book: { type: "string", maxLength: 40 }, unit: { type: "string", maxLength: 40 }, prefix: { type: "string", maxLength: 20 }, meaning: { type: "string", maxLength: 40 }, limit: { type: "integer", minimum: 1, maximum: 8 } }, anyOf: [{ required: ["query"] }, { required: ["book"] }, { required: ["unit"] }, { required: ["prefix"] }, { required: ["meaning"] }], additionalProperties: false } },
   { name: "calculate", description: "计算学习时长、数量与比例。支持数字、小数、科学计数法、括号及 + - * / % ^，不运行代码。", parameters: { type: "object", properties: { expression: { type: "string", maxLength: 300 } }, required: ["expression"], additionalProperties: false } },
   { name: "text_stats", description: "统计英文词数、不同词数、句数与字符数；连字符与英文撇号连接的词计为一个。提供 text，或提供材料的 kind 与 index；已有材料优先用索引，无需复制正文。", parameters: { type: "object", properties: { text: { type: "string", maxLength: 12000 }, kind: { type: "string", enum: ["article", "file", "quote"] }, index: { type: "integer", minimum: 0, maximum: 3 } }, oneOf: [{ required: ["text"] }, { required: ["kind", "index"] }], additionalProperties: false } },
   { name: "read_source", description: "按材料清单读取本轮已选文章、文件或引用的片段。offset、length 按 JavaScript 字符索引计算；返回 totalChars 与 nextOffset。", parameters: { type: "object", properties: { kind: { type: "string", enum: ["article", "file", "quote"] }, index: { type: "integer", minimum: 0 }, offset: { type: "integer", minimum: 0 }, length: { type: "integer", minimum: 1, maximum: 2400 } }, required: ["kind", "index"], additionalProperties: false } },
@@ -129,8 +130,67 @@ function calculate(expression: string): number {
   return Object.is(value, -0) ? 0 : value;
 }
 
-const searchIndexes = new WeakMap<ToolLexiconRow[], { row: ToolLexiconRow; headword: string; meaning: string }[]>();
-const normalized = (value: string) => value.normalize("NFKC").toLowerCase().trim();
+type LexiconIndex = {
+  entries: { row: ToolLexiconRow; headword: string; meaning: string }[];
+  exact: Map<string, ToolLexiconRow[]>;
+  aliases: Map<string, ToolLexiconRow[]>;
+  books: { bookId: string; volume: string; units: string[] }[];
+};
+const searchIndexes = new WeakMap<ToolLexiconRow[], LexiconIndex>();
+const normalized = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim();
+function lexiconIndex(rows: ToolLexiconRow[]): LexiconIndex {
+  let index = searchIndexes.get(rows);
+  if (index) return index;
+  const entries = rows.filter(row => row.flags?.formalReleaseEligible === true).map(row => ({ row, headword: normalized(row.headword), meaning: normalized(row.chineseCore) }));
+  const exact = new Map<string, ToolLexiconRow[]>();
+  const aliases = new Map<string, ToolLexiconRow[]>();
+  const books = new Map<string, { bookId: string; volume: string; units: Set<string> }>();
+  const add = (map: Map<string, ToolLexiconRow[]>, key: string, row: ToolLexiconRow) => {
+    if (!key) return;
+    const existing = map.get(key);
+    if (existing) { if (!existing.includes(row)) existing.push(row); }
+    else map.set(key, [row]);
+  };
+  for (const { row, headword } of entries) {
+    add(exact, headword, row);
+    // Only complete parenthesized phrases produce aliases; preserve the printed headword in evidence.
+    for (const key of [normalized(row.lookup ?? row.headword), normalized(headword.replace(/\([^()]*\)/g, " ")), normalized(headword.replace(/\(([^()]*)\)/g, " $1 "))]) {
+      if (key !== headword) add(aliases, key, row);
+    }
+    for (const source of row.sources) {
+      let book = books.get(source.bookId);
+      if (!book) { book = { bookId: source.bookId, volume: source.volume, units: new Set() }; books.set(source.bookId, book); }
+      book.units.add(source.unit);
+    }
+  }
+  index = { entries, exact, aliases, books: [...books.values()].map(book => ({ ...book, units: [...book.units].sort((a, b) => a.localeCompare(b, "en", { numeric: true })) })) };
+  searchIndexes.set(rows, index);
+  return index;
+}
+
+/** Orthographic candidates, never a claim that a word is the queried lemma. */
+function possibleBaseForms(word: string): string[] {
+  if (!/^[a-z]{3,60}$/.test(word)) return [];
+  const forms = new Set<string>();
+  const addStem = (stem: string) => {
+    if (stem.length < 2) return;
+    forms.add(stem);
+    if (/([b-df-hj-np-tv-z])\1$/.test(stem)) forms.add(stem.slice(0, -1));
+  };
+  if (/i(?:es|ed)$/.test(word)) forms.add(`${word.slice(0, -3)}y`);
+  if (word.endsWith("ing")) { addStem(word.slice(0, -3)); forms.add(`${word.slice(0, -3)}e`); }
+  if (word.endsWith("ed")) { addStem(word.slice(0, -2)); forms.add(word.slice(0, -1)); }
+  if (word.endsWith("es")) forms.add(word.slice(0, -2));
+  if (word.endsWith("s") && !word.endsWith("ss")) forms.add(word.slice(0, -1));
+  return [...forms].filter(form => form.length >= 2 && form !== word);
+}
+
+function bookSuggestions(books: LexiconIndex["books"], includeUnits: boolean) {
+  const suggestions = books.slice(0, 16).map(book => ({ bookId: book.bookId.slice(0, 80), volume: book.volume.slice(0, 80),
+    ...(includeUnits ? { units: book.units.slice(0, 16).map(unit => unit.slice(0, 40)) } : {}) }));
+  while (JSON.stringify(suggestions).length > 4000) suggestions.pop();
+  return suggestions;
+}
 function evidenceFor(row: ToolLexiconRow): LexiconEvidence {
   return {
     id: row.id, headword: row.headword.slice(0, 128), chineseCore: row.chineseCore.slice(0, 400),
@@ -187,23 +247,62 @@ export async function executeTool(call: ToolCall, context: ToolContext): Promise
           offset, totalChars: source.text.length, nextOffset: end < source.text.length ? end : null };
         break;
       }
-      case "search_lexicon": {
-        const input = args(call.arguments, ["query", "limit"], ["query"]);
-        const query = normalized(boundedText(input.query, 100));
-        const limit = integer(input.limit, 5, 1, 8);
-        const rows = await context.loadLexicon();
-        let index = searchIndexes.get(rows);
-        if (!index) {
-          index = rows.filter(row => row.flags?.formalReleaseEligible === true).map(row => ({ row, headword: normalized(row.headword), meaning: normalized(row.chineseCore) }));
-          searchIndexes.set(rows, index);
+      case "lookup_words": {
+        const input = args(call.arguments, ["words"], ["words"]);
+        if (!Array.isArray(input.words) || !input.words.length || input.words.length > 8) return invalid();
+        const queries = [...new Set(input.words.map(word => normalized(boundedText(word, 60))))];
+        const index = lexiconIndex(await context.loadLexicon());
+        const results = queries.map(query => {
+          const exact = index.exact.get(query);
+          const alias = exact ? undefined : index.aliases.get(query);
+          const candidates = exact || alias ? [] : possibleBaseForms(query).flatMap(form => index.exact.get(form) ?? []);
+          const rows = [...new Map((exact ?? alias ?? candidates).map(row => [row.id, row])).values()];
+          const match = exact ? "exact" : alias ? "normalized" : candidates.length ? "possible_inflection" : "not_found";
+          const stem = query.slice(0, Math.min(4, query.length - 1));
+          const suggestions = !rows.length && stem.length >= 3
+            ? index.entries.filter(item => item.headword.startsWith(stem)).slice(0, 4).map(item => item.row.headword.slice(0, 128)) : [];
+          return { query, match, matches: rows.slice(0, 3).map(evidenceFor), truncated: rows.length > 3,
+            ...(match === "possible_inflection" ? { note: "未匹配精确词头；这些是可能的词形候选，请结合语境核对。" } : {}),
+            ...(suggestions.length ? { suggestions } : {}) };
+        });
+        // Retain every query's status when a large multi-word lookup reaches the result budget.
+        while (JSON.stringify(results).length > MAX_TOOL_OUTPUT_CHARS - 200) {
+          const largest = results.reduce((left, right) => JSON.stringify(left.matches).length >= JSON.stringify(right.matches).length ? left : right);
+          if (!largest.matches.length) return invalid();
+          largest.matches.pop(); largest.truncated = true;
         }
+        evidence = [...new Map(results.flatMap(result => result.matches).map(row => [row.id, row])).values()];
+        data = { results };
+        break;
+      }
+      case "search_lexicon": {
+        const input = args(call.arguments, ["query", "book", "unit", "prefix", "meaning", "limit"], []);
+        const optional = (name: string, maximum: number) => input[name] === undefined ? undefined : normalized(boundedText(input[name], maximum));
+        const query = optional("query", 100), book = optional("book", 40), unitText = optional("unit", 40), prefix = optional("prefix", 20), meaning = optional("meaning", 40);
+        if (!query && !book && !unitText && !prefix && !meaning) return invalid();
+        const unit = unitText && /^\d+$/.test(unitText) ? `unit ${Number(unitText)}` : unitText;
+        const limit = integer(input.limit, 5, 1, 8);
+        const index = lexiconIndex(await context.loadLexicon());
+        const exactBooks = book ? index.books.filter(item => normalized(item.bookId) === book || normalized(item.volume) === book) : index.books;
+        const chosen = book && !exactBooks.length ? index.books.filter(item => normalized(item.volume).includes(book)) : exactBooks;
+        if (book && chosen.length !== 1) {
+          return { ...base, ok: false, error: { code: chosen.length ? "ambiguous_book" : "unknown_book", message: chosen.length ? "有多本教材符合，请使用完整册名或教材代号。" : "没有这本教材，请从可用名称中选择。" }, data: { books: bookSuggestions(chosen.length ? chosen : index.books, false) }, evidence: [] };
+        }
+        if (unit && !chosen.some(item => item.units.some(name => normalized(name) === unit))) {
+          return { ...base, ok: false, error: { code: "unknown_unit", message: "所选教材没有这个单元，请从可用名称中选择。" }, data: { books: bookSuggestions(chosen, true) }, evidence: [] };
+        }
+        const bookIds = new Set(chosen.map(item => item.bookId));
+        const sourceMatches = (source: ToolLexiconRow["sources"][number]) => bookIds.has(source.bookId) && (!unit || normalized(source.unit) === unit);
         const matches: ToolLexiconRow[][] = [[], [], []];
-        for (const item of index) {
-          const rank = item.headword === query ? 0 : item.headword.startsWith(query) ? 1 : item.headword.includes(query) || item.meaning.includes(query) ? 2 : -1;
+        for (const item of index.entries) {
+          if ((book || unit) && !item.row.sources.some(sourceMatches)) continue;
+          if (prefix && !item.headword.startsWith(prefix) || meaning && !item.meaning.includes(meaning)) continue;
+          const rank = !query || item.headword === query ? 0 : item.headword.startsWith(query) ? 1 : item.headword.includes(query) || item.meaning.includes(query) ? 2 : -1;
           if (rank >= 0) matches[rank].push(item.row);
         }
         const ordered = matches.flat();
-        evidence = ordered.slice(0, limit).map(evidenceFor);
+        evidence = ordered.slice(0, limit).map(row => evidenceFor(book || unit
+          ? { ...row, sources: [...row.sources].sort((left, right) => Number(sourceMatches(right)) - Number(sourceMatches(left))) } : row));
         while (JSON.stringify(evidence).length > MAX_TOOL_OUTPUT_CHARS - 500) evidence.pop();
         data = { matches: evidence, totalMatches: ordered.length, hasMore: ordered.length > evidence.length };
         break;

@@ -1,0 +1,26 @@
+{
+  "metrics": [
+    {
+      "label": "已保存对话列表推导 / 142 次草稿更新",
+      "value": "401.49 → 0.03 ms",
+      "detail": "50 段已保存对话，9 轮交替采样，预热缓存中位数。仅测过滤、排序、分组与日期标签；不含 React 渲染、浏览器布局或网络。"
+    }
+  ],
+  "checks": [
+    {
+      "title": "全量与定点回归",
+      "detail": "完整单测 664 / 664 通过；对话列表 5 项定点回归通过，含旧历史时间戳处理。"
+    },
+    {
+      "title": "类型、静态与产物",
+      "detail": "TypeScript、ESLint、生产构建与产物校验通过。"
+    },
+    {
+      "title": "运行时与独立复核",
+      "detail": "本地 Worker / D1 检查通过；独立复核无阻塞项。本次无数据库迁移。"
+    }
+  ],
+  "limitations": "验证使用受控模型返回，未调用付费模型。托管预览监听遇到 EPERM，本轮浏览器交互检查未完成。",
+  "delivery": "以新 PR 整合已验证的 harness 基线与本次 Fable 改进；报告生成时，源码提交与部署待执行。",
+  "provenance": "参考：用户提供的 ciji-harness-backend；Fable 前端 PR #29（b09f15a）。基准：d148c35 / Node v24.22.1；原始测量：conversation-list-benchmark.json。复现：scripts/benchmark-conversation-list.mjs。"
+}
