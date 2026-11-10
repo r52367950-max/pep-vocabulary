@@ -123,9 +123,10 @@ function LearningJournalPanel({ disabled }: { disabled: boolean }) {
   }
   const blocked = disabled || busy;
   return <section aria-label="自动学习日志">
-    <label className="voice-memory-switch"><span>自动整理学习记录<small>按账户整理练习内容、次数与进展。关闭后停止新增；已有日志可在下方管理。</small></span><input type="checkbox" checked={journal?.enabled ?? false} disabled={blocked || !journal} onChange={(event) => void action(() => updateLearningJournal({ enabled: event.target.checked }))} /></label>
+    <label className="voice-memory-switch"><span>自动整理学习记录<small>按账户保存练习类型、次数、时长与作答统计，供后续个性化练习使用。口语、复盘、阅读和听写不自动保存原文；个人文章阅读不上传。关闭后停止新增。</small></span><input type="checkbox" checked={journal?.enabled ?? false} disabled={blocked || !journal} onChange={(event) => void action(() => updateLearningJournal({ enabled: event.target.checked }))} /></label>
     {(error || syncError) && <p className="voice-notice" role="alert">{error || syncError} <button className="text-button" disabled={blocked} onClick={() => void action(refreshLearningJournal)}>重试</button></p>}
     {pending > 0 && <p className="voice-muted" role="status">{pending} 条记录待同步，请保持页面打开。</p>}
+    {journal && <button className="text-button" disabled={blocked} onClick={() => { if (window.confirm("清空账户中的全部学习日志和你编辑的摘要？此操作无法撤销，本机练习记录保留。")) void action(async () => { await deleteLearningJournal({ all: true }); setDrafts({}); }); }}>清空全部学习日志</button>}
     {!journal && !error && <p className="voice-muted">正在读取学习日志…</p>}
     {journal && <details className="voice-disclosure" open={daysOpen} onToggle={(event) => setDaysOpen(event.currentTarget.open)}><summary>每日日志 · {journal.days.length} 天</summary>
       {!journal.days.length && <p className="voice-empty-note">完成练习后，这里会自动整理当天学习内容。</p>}

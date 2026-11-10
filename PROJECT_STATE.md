@@ -1,16 +1,18 @@
 # 项目状态入口
 
-核对日期：2026-11-10；当前版本 2.19.2 增强学习工具查询与真实执行摘要，修复对话面板样式和重复计算。详见 [2.19.2 版本说明](docs/RELEASE_2.19.2.md)。
+核对日期：2026-11-10；当前版本 2.19.3 修复发布边界、AI 教材来源声明及自动日志隐私，优化词库工具查询，并完善对话进度、公开推理摘要、渐进显示和滚动体验。详见 [版本说明](docs/RELEASE_2.19.3.md)、[安全报告](artifacts/qa/security-20261110/report.html)与[对话体验报告](artifacts/qa/chat-experience-20261110/report.html)。本次发布包含 0010 隐私迁移；实际线上版本以 Sites 保存版本绑定的源码提交与部署结果为准，报告保留验证当时的交付状态。
+
+线上已将 `pep-vocab.namizore.chatgpt.site` 加入身份可信域名并更新 canonical origin，重新部署既有保存版本 v50，环境修订为 4。部署成功后真实账户的 `/api/learning-memory` 请求恢复 200；保留原访问范围和身份网关校验。
 
 | 信息 | 本次核对值 | 持续维护的依据 |
 | --- | --- | --- |
-| 应用版本 | 2.19.2 | `package.json` |
+| 应用版本 | 2.19.3 | `package.json` |
 | 词库版本 / 词条 schema | 1.0.0-rc.1 / 1.0.0；索引 `pep-lexicon-index/2` 行编码 | `public/data/v1/manifest.json`、`lib/lexicon-index-codec.mjs` |
 | 学习备份 schema | 1.2.0（新增 `writings`；兼容导入 1.0.0 / 1.1.0） | `lib/backup.ts` 的 `USER_DATA_SCHEMA_VERSION` |
 | AI 回答缓存 | 独立 IndexedDB `pep-vocab-ai-cache`；不进入备份 | `lib/ai-client.ts` |
 | 本机个人文章 | 独立 IndexedDB；不包含在学习 JSON 备份中 | `lib/personal-readings.ts`、`lib/storage.ts` |
 | 云端备份 | 手动完整快照，上传时可确认合并其他设备的记录；学习活动另经账户日志自动同步，日常日志不替代完整备份 | `app/api/sync/route.ts`、`lib/sync-merge.ts` |
-| 数据库迁移 | 0000–0009（保留旧迁移；0007 配置删除代际，0008 账户学习日志，0009 日志计量预算） | `drizzle/` 与迁移 journal |
+| 数据库迁移 | 0000–0010（0010 清理自动日志私人文本与派生摘要，并递增隐私版本；保留用户主动编辑） | `drizzle/` 与迁移 journal |
 
 当前仓库功能见 [README](README.md)，开发约定见 [AGENTS.md](AGENTS.md)。版本、测试数量和数据缺口以后以对应代码、生成数据与本次执行结果为准，不把这里的快照作为永久常量。
 

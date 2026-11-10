@@ -1,0 +1,54 @@
+{
+  "status": "passed",
+  "completedAtUtc": "2026-11-10T05:42:21.994040+00:00",
+  "version": "2.19.3",
+  "command": "bash scripts/package-site.sh /workspace/pep-vocabulary/outputs/site-security-2.19.3.tar.gz",
+  "verificationCheckout": "/tmp/ciji-release-final-ckeld14r",
+  "temporaryVerificationCommit": "631320dac1e6e9e1687df97dd329be9f48fb24c5",
+  "sharedBranchCommitted": false,
+  "deployed": false,
+  "sourceComparison": {
+    "status": "byte-for-byte match",
+    "files": 760,
+    "scope": [
+      "app/",
+      "build/",
+      "components/",
+      "config/",
+      "data/",
+      "db/",
+      "drizzle/",
+      "hooks/",
+      "lib/",
+      "public/",
+      "scripts/",
+      "tests/",
+      "worker/",
+      ".openai/",
+      ".npmrc",
+      "drizzle.config.ts",
+      "next.config.ts",
+      "package-lock.json",
+      "package.json",
+      "postcss.config.mjs",
+      "tsconfig.json",
+      "vite.config.ts",
+      "worker-env.d.ts"
+    ],
+    "excludedNonBuildTestScripts": {
+      "scripts/smoke-worker.mjs": "Additional final runtime assertions were added after the snapshot; not consumed by build or included in archive. Parent runs current script against final built application."
+    }
+  },
+  "dependencyInstall": "added 513 packages in 23s",
+  "build": "passed; lexicon release and Worker/D1 artifact checks passed",
+  "archive": {
+    "path": "outputs/site-security-2.19.3.tar.gz",
+    "regularMembers": 552,
+    "bytes": 11069873,
+    "readback": "exact path/type/size/SHA-256 verification passed",
+    "migrationFiles": 22,
+    "migrationCopies": "drizzle, migrations, dist/.openai/drizzle; all match final workspace"
+  },
+  "runtimeValidation": "Parent final npm test runs local workerd/D1 against final application source; this check verifies the separate clean-install release chain.",
+  "log": "artifacts/qa/security-20261110/release-package.log"
+}

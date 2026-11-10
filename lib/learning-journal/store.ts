@@ -71,10 +71,12 @@ export async function mutateJournal(key: string, body: Record<string, unknown>, 
   if (!Number.isSafeInteger(body.revision) || Number(body.revision)<0) return invalid("学习记录版本无效。");
   const db=memoryDatabase(), token=crypto.randomUUID(), now=new Date().toISOString();
   const eventId=body.eventId===undefined?null:text(body.eventId,128), date=body.date===undefined?null:dateKey(body.date);
+  const all=body.all===true;
+  if (body.all!==undefined && (!all || method!=="DELETE" || eventId || date || body.enabled!==undefined)) return invalid("清空日志参数无效。");
   if (eventId && date) return invalid("请一次操作一条记录或一天。");
   const setting = method==="PUT" && body.enabled!==undefined;
   if (setting && (typeof body.enabled!=="boolean" || eventId || date)) return invalid("自动记录设置无效。");
-  if (!setting && !eventId && !date) return invalid("请选择需要更改的学习记录。");
+  if (!setting && !eventId && !date && !all) return invalid("请选择需要更改的学习记录。");
   const event = eventId ? await db.prepare("SELECT date,deleted FROM learning_journal_events WHERE user_key=? AND event_id=?").bind(key,eventId).first<{date:string;deleted:number}>():null;
   if (eventId && (!event || event.deleted)) throw new AssistantInputError("journal_not_found","学习记录已删除或不存在。",404);
   const day=date??event?.date??null;
@@ -85,8 +87,12 @@ export async function mutateJournal(key: string, body: Record<string, unknown>, 
   const summary=method==="PUT"&&!setting?text(body.summary,1200,true):null;
   const title=method==="PUT"&&eventId?text(body.title,160):null;
   const guard="EXISTS(SELECT 1 FROM learning_journal_settings WHERE user_key=? AND write_token=?)";
-  const statements=[ensureSettings(key),db.prepare(`UPDATE learning_journal_settings SET revision=revision+1, privacy_revision=privacy_revision+1, write_token=?${setting?",enabled=?,suppressed_before=?":""} WHERE user_key=? AND revision=? RETURNING revision`).bind(token,...(setting?[body.enabled?1:0,now]:[]),key,body.revision)];
+  const statements=[ensureSettings(key),db.prepare(`UPDATE learning_journal_settings SET revision=revision+1, privacy_revision=privacy_revision+1, write_token=?${setting?",enabled=?,suppressed_before=MAX(suppressed_before,?)":all?",suppressed_before=MAX(suppressed_before,?,COALESCE((SELECT MAX(occurred_at) FROM learning_journal_events WHERE user_key=?),''))":""} WHERE user_key=? AND revision=? RETURNING revision`).bind(token,...(setting?[body.enabled?1:0,now]:all?[now,key]:[]),key,body.revision)];
   if (setting) { /* Disabling and re-enabling fence queued events from the previous policy. */ }
+  else if(all) {
+    statements.push(db.prepare(`DELETE FROM learning_journal_events WHERE user_key=? AND ${guard}`).bind(key,key,token));
+    statements.push(db.prepare(`DELETE FROM learning_journal_days WHERE user_key=? AND ${guard}`).bind(key,key,token));
+  }
   else if(method==="DELETE") {
     statements.push(db.prepare(`UPDATE learning_journal_events SET deleted=1,title='',summary='',ref_ids='[]',counts='{}',content_hash='' WHERE user_key=? AND ${eventId?"event_id=?":"date=?"} AND ${guard}`).bind(key,eventId??day,key,token));
     if(date) statements.push(db.prepare(`UPDATE learning_journal_days SET edited_summary=NULL,deleted_before=?,facts_summary='',updated_at=? WHERE user_key=? AND date=? AND ${guard}`).bind(now,now,key,date,key,token));

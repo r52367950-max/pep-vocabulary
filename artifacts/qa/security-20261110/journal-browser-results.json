@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "backend": "intercepted account/journal fixtures; validates UI and client CAS, not production D1",
+  "results": [
+    {
+      "width": 1440,
+      "status": "passed",
+      "checks": [
+        "cancel sends no DELETE",
+        "stale displayed revision blocks DELETE",
+        "confirmed fresh revision sends all/accountScope/revision",
+        "empty journal rendered after deletion",
+        "no uncaught browser errors"
+      ],
+      "request": {
+        "all": true,
+        "accountScope": "journal-ui-fixture",
+        "revision": 5
+      }
+    },
+    {
+      "width": 390,
+      "status": "passed",
+      "checks": [
+        "cancel sends no DELETE",
+        "stale displayed revision blocks DELETE",
+        "confirmed fresh revision sends all/accountScope/revision",
+        "empty journal rendered after deletion",
+        "no uncaught browser errors"
+      ],
+      "request": {
+        "all": true,
+        "accountScope": "journal-ui-fixture",
+        "revision": 5
+      }
+    }
+  ]
+}

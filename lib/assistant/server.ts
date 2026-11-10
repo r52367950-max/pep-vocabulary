@@ -43,6 +43,7 @@ import {
 import { parseLearnerProfile, ProfileInputError } from "./profile";
 import { chatMessages, parseChatRequest, resolveChatRoute } from "./chat-core";
 import { runChatHarness } from "./harness";
+import type { ChatProgress } from "./chat-contract";
 
 const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
@@ -513,6 +514,7 @@ export async function handleChatRequest(request: Request): Promise<Response> {
       ...generationParameters(route.model, config.baseUrl, maximum, 0.4),
       response_format: { type: "json_object" }, stream: true,
       ...(route.effort ? { reasoning_effort: route.effort } : {}),
+      ...(usesOpenAIResponses(config.baseUrl) ? { reasoning_summary: true } : {}),
       ...(config.provider === "deepseek" || usesOpenAIResponses(config.baseUrl) ? { stream_options: { include_usage: true } } : {}),
       ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
     };
@@ -520,24 +522,71 @@ export async function handleChatRequest(request: Request): Promise<Response> {
       await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
     };
     let toolRows: Promise<ReleaseIndexRow[]> | undefined;
-    const { result, usage, today, trace } = await runChatHarness({
-      messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)), evidence,
-      context: {
-        sources: { article: parsed.article, files: parsed.files, quotes: parsed.quotes },
-        loadLexicon: () => toolRows ??= rows.length ? Promise.resolve(rows) : releaseIndex(request),
-      },
-      signal: request.signal, verifyContext,
-      generate: (messages, remainingMs) => complete(runtime, request, { ...payload, messages }, {
-        totalMs: remainingMs,
-        minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
-      }),
-    });
-    return Response.json({
-      ok: true, result, model: route.model, effort: route.effort, harness: trace,
-      ...contextMetadata(context), temporary: parsed.temporary,
-      usage: { ...usage, today, budget: config.dailyTokenBudget },
-    }, { headers: responseHeaders() });
+    const run = async (generationRequest: Request, onProgress?: (progress: ChatProgress) => void) => {
+      const { result, usage, today, trace, reasoningSummary } = await runChatHarness({
+        messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)), evidence,
+        userText: parsed.messages.filter(message => message.role === "user").map(message => message.text).join("\n"),
+        context: {
+          sources: { article: parsed.article, files: parsed.files, quotes: parsed.quotes },
+          loadLexicon: () => toolRows ??= rows.length ? Promise.resolve(rows) : releaseIndex(request),
+        },
+        signal: generationRequest.signal, verifyContext, onProgress,
+        generate: (messages, remainingMs) => complete(runtime, generationRequest, { ...payload, messages }, {
+          totalMs: remainingMs,
+          minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
+        }),
+      });
+      return {
+        ok: true, result, model: route.model, effort: route.effort, harness: trace,
+        ...(reasoningSummary ? { reasoningSummary } : {}),
+        ...contextMetadata(context), temporary: parsed.temporary,
+        usage: { ...usage, today, budget: config.dailyTokenBudget },
+      };
+    };
+    if (/\btext\/event-stream\b/i.test(request.headers.get("accept") ?? "")) {
+      return chatProgressResponse(request, run);
+    }
+    return Response.json(await run(request), { headers: responseHeaders() });
   } catch (error) { return assistantErrorResponse(error); }
+}
+
+/** Progress is safe metadata; answer and summary leave only after harness validation. */
+function chatProgressResponse(request: Request, run: (request: Request, onProgress: (progress: ChatProgress) => void) => Promise<unknown>): Response {
+  const controller = new AbortController();
+  const abort = () => controller.abort(request.signal.reason);
+  request.signal.addEventListener("abort", abort, { once: true });
+  if (request.signal.aborted) abort();
+  // The input body was already parsed in preflight. Only headers and cancellation
+  // are required by the metered generation path.
+  const generationRequest = new Request(request.url, { method: request.method, headers: request.headers, signal: controller.signal });
+  const encoder = new TextEncoder();
+  let closed = false;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const stream = new ReadableStream<Uint8Array>({
+    start(streamController) {
+      const emit = (event: string, value: unknown) => {
+        if (!closed && !controller.signal.aborted) streamController.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(value)}\n\n`));
+      };
+      heartbeat = setInterval(() => {
+        if (!closed && !controller.signal.aborted) streamController.enqueue(encoder.encode(": keep-alive\n\n"));
+      }, 15_000);
+      void run(generationRequest, progress => emit("status", progress)).then(
+        value => emit("result", value),
+        async error => emit("error", await assistantErrorResponse(error).json()),
+      ).finally(() => {
+        clearInterval(heartbeat);
+        request.signal.removeEventListener("abort", abort);
+        if (!closed) { closed = true; streamController.close(); }
+      });
+    },
+    cancel(reason) {
+      closed = true;
+      clearInterval(heartbeat);
+      controller.abort(reason);
+      request.signal.removeEventListener("abort", abort);
+    },
+  });
+  return new Response(stream, { headers: responseHeaders({ "content-type": "text/event-stream; charset=utf-8" }) });
 }
 
 let releaseWordsCache: { rows: ReleaseIndexRow[]; words: Map<string, { headword: string }> } | null = null;

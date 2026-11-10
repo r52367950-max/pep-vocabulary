@@ -2,7 +2,7 @@
 
 ## 环境与命令
 
-Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准。普通开发使用 `npm ci`、`npm run dev`。dev 服务器只监听 `127.0.0.1`；需要从其他主机或容器预览（如经 `terminal.local`）时显式运行 `npm run dev -- --host 0.0.0.0`，并只在可信网络中使用。`npm start` 在本地 workerd 中预览 `npm run build` 的产物。构建脚本依赖 Bash 与 GNU `timeout`，Windows 可在 WSL 中运行。
+Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准。普通开发使用 `npm ci`、`npm run dev`。dev 服务器只监听 `127.0.0.1`；需要从其他主机或容器预览（如经 `terminal.local`）时显式运行 `npm run dev -- --host 0.0.0.0`，并只在可信网络中使用。`npm start` 在本地 workerd 中预览 `npm run build` 的产物。构建脚本依赖 Bash 与 GNU `timeout`；Sites 发布打包另需 Python 3.11+ 标准库，Windows 可在 WSL 中运行。
 
 | 目的 | 命令或说明 |
 | --- | --- |
@@ -12,7 +12,7 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | 全部单元/回归测试 | `npm run test:unit` |
 | 指定回归测试 | `node --import ./tests/register.mjs --test tests/sync.test.mjs`，替换为受影响的测试文件 |
 | 生产构建及产物校验 | `npm run build` |
-| Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`；每次清除旧 `dist/` 并重建，构建失败即停止。默认输出 `outputs/site.tar.gz`，包含 Worker、完整迁移目录与托管配置 |
+| Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`；检查发布输入后，在私有临时目录导出该提交、按锁文件执行有界 `npm ci` 并构建；完整回读验证归档后输出 `outputs/site.tar.gz`。包含 Worker、完整迁移与托管配置 |
 | 本地 Worker/D1 检查 | 构建后执行 `npm run test:runtime` |
 | 完整验收 | `npm test`：数据审计、类型检查、ESLint、单元测试、构建、Worker 检查 |
 | 持续集成 | `.github/workflows/ci.yml` 在推送到 main 与拉取请求时运行 `npm ci`、`npm run audit:prod` 和 `npm test`；Actions 固定到已审核的提交 |
@@ -48,6 +48,8 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 
 ### 版本分级
 
+一个 PR 的更新周期使用一个候选版本。从开始修改到推送该 PR 前，追加的修复、交互调整、优化和复测均合并到同一版本，不按对话轮次递增。推送时依据整个 PR 的最终改动定稿版本与说明；后续新 PR 再进入下一版本周期。
+
 采用 `主版本.次版本.补丁版本`，按用户可感知的产品变化与兼容性判定。每次发布先说明升档依据；修复数量、代码行数和内部重构规模不自动提高版本级别。
 
 | 级别 | 适用变化 | 示例 |
@@ -65,6 +67,8 @@ GitHub 提交与 Sites 部署分别记录，线上状态以实际部署结果核
 ### 修复报告交付
 
 默认使用灰白纸面、炭黑无衬线、等宽编号和细线列网格，延续早期灰色技术报告。用 HTML/CSS 精确排版后导出 PDF 与逐页高清 PNG；在会话中直接附上 PNG，并提供可下载入口，保留可编辑设计源。修复、正常对照、验证命令、真实结果和剩余范围明确；性能图只表达实际测量关系。报告样式调整不升级应用版本。
+
+打包拒绝 `public/`、`drizzle/` 中未跟踪或被忽略的额外文件、私密文件名和符号链接；构建只消费提交中的普通文件与新安装的锁定依赖，不执行原工作区的 `node_modules`。最终归档逐项核对路径、普通文件类型、大小和内容摘要，通过后原子替换目标；安装或构建失败保留原工作区和旧归档。
 
 发布包保留 `dist/server` 入口、源 `drizzle/` 及其 journal，并按生成的 Wrangler 路径提供根 `migrations/`。打包使用普通文件，避免 tar 硬链接被发布器拒绝。同一提交已保存的 Sites 版本会复用原部署包；修正打包流程后应提交修正并发布新版本。发布完成后核对实际数据库迁移，不能仅以发布器返回成功代替迁移验收。
 

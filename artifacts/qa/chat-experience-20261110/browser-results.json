@@ -1,0 +1,111 @@
+{
+  "status": "passed",
+  "base": "http://127.0.0.1:5173/",
+  "generatedAt": "2026-11-10T05:59:25.055Z",
+  "scope": "Real Chromium/client parser/React/storage; phased Web ReadableStream API fixtures; no paid provider or production calls",
+  "results": [
+    {
+      "width": 1440,
+      "check": "phased SSE thinking/tool/verifying, visible animated status, successive grapheme-safe answer prefixes",
+      "status": "passed",
+      "samples": 101,
+      "animation": "companion-thinking"
+    },
+    {
+      "width": 1440,
+      "check": "summary starts collapsed, expands safely as text, closes",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "saved history restored whole without replaying animation",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "scroll up pauses follow; jump resumes; Stop freezes visible answer prefix",
+      "status": "passed",
+      "stoppedChars": 780
+    },
+    {
+      "width": 1440,
+      "check": "mini-window streaming preserves upward scroll; jump restores follow",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "reload during reveal restores nonempty visible-prefix checkpoint as stopped, without hidden suffix or replay",
+      "status": "passed",
+      "restoredChars": 118
+    },
+    {
+      "width": 1440,
+      "check": "reduced motion displays full answer without animated stepping",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "visible animation preference persists; disabled reveal instant; IME Enter safe; Ctrl+Enter sends and Enter inserts newline",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "deleted in-flight conversation cannot receive late result",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "no horizontal overflow or uncaught browser errors",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "phased SSE thinking/tool/verifying, visible animated status, successive grapheme-safe answer prefixes",
+      "status": "passed",
+      "samples": 101,
+      "animation": "companion-thinking"
+    },
+    {
+      "width": 390,
+      "check": "summary starts collapsed, expands safely as text, closes",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "saved history restored whole without replaying animation",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "scroll up pauses follow; jump resumes; Stop freezes visible answer prefix",
+      "status": "passed",
+      "stoppedChars": 683
+    },
+    {
+      "width": 390,
+      "check": "mini-window streaming preserves upward scroll; jump restores follow",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "reload during reveal restores nonempty visible-prefix checkpoint as stopped, without hidden suffix or replay",
+      "status": "passed",
+      "restoredChars": 118
+    },
+    {
+      "width": 390,
+      "check": "reduced motion displays full answer without animated stepping",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "deleted in-flight conversation cannot receive late result",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "no horizontal overflow or uncaught browser errors",
+      "status": "passed"
+    }
+  ]
+}
