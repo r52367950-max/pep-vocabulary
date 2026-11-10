@@ -1,0 +1,32 @@
+{
+ "closed": {
+  "rows": 50,
+  "keystrokes": 142,
+  "scriptMs": 1412.5,
+  "layoutMs": 42.5,
+  "styleMs": 40.9,
+  "taskMs": 1756.5,
+  "runs": [
+   1480.9,
+   1448.7,
+   1412.5,
+   1336.7,
+   1367.8
+  ]
+ },
+ "open": {
+  "rows": 50,
+  "keystrokes": 142,
+  "scriptMs": 1509.1,
+  "layoutMs": 51.1,
+  "styleMs": 49.4,
+  "taskMs": 1905.5,
+  "runs": [
+   1345.8,
+   1472.2,
+   1741.6,
+   1985.4,
+   1509.1
+  ]
+ }
+}

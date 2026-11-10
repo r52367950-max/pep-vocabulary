@@ -1,0 +1,44 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>词迹 · harness 与对话界面</title>
+<style>
+@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#e9e9e7;font:13px/1.65 -apple-system,"PingFang SC","Noto Sans CJK SC","Helvetica Neue",sans-serif;color:#1d1d1f}
+.page{width:794px;min-height:1123px;margin:0 auto;padding:46px 52px;background:#f6f6f4}
+h1{font-size:24px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}.sub{color:#6b6b6b;margin:0 0 22px;font-size:12px}
+h2{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#6b6b6b;margin:24px 0 8px;padding-top:10px;border-top:1px solid #cfcfcb}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}p{margin:0 0 6px}ul{margin:0;padding-left:1.1em}li{margin:2px 0}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-top:1px solid #d9d9d5;padding:5px 6px;text-align:left}th{font-weight:600;color:#555}
+td.n{font:12px ui-monospace,Menlo,monospace;text-align:right}.bar{height:8px;background:#2b2b2b;display:inline-block;vertical-align:middle}.bar.b{background:#b5b5b0}
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}.shots img{width:100%;border:1px solid #cfcfcb}.cap{font-size:11px;color:#6b6b6b}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+</style></head><body><div class="page">
+<h1>AI 对话：harness 接入与界面修复</h1>
+<p class="sub">2026-11-10 · 分支 claude/great-dirac-prol0i · 未发版，应用版本仍为 2.19.0</p>
+
+<h2>01 参考与设计</h2>
+<div class="grid"><div>
+<p>参考 Codex CLI（沙箱与审批分离、前缀缓存顺序）、Claude Code / Agent SDK（模型→工具→回传循环、轮次与预算上限、被拒调用作为结果回传）、DeepSeek Harness（工具 schema 与宿主字段分离、只追加会话日志）。</p>
+</div><div><ul>
+<li>工具只读：lookup_words、search_lexicon、python（自写 Python 子集解释器，无 eval，有步数/内存/输出上限）</li>
+<li>每回合 ≤4 次模型调用，最后一次禁用工具；每次调用都经过原有 token 预留、结算与限流</li>
+<li>服务商拒绝 tools 字段时降级为单次回答</li></ul></div></div>
+
+<h2>02 界面问题与修复</h2>
+<table><tr><th>问题</th><th>原因</th><th>修复</th></tr>
+<tr><td>对话列表搜索框高 309–414 px</td><td>全局 <span class="mono">.search-field{flex:1}</span> 在纵向面板里撑满高度</td><td>面板内重置，38 px（触屏 44 px）；少于 6 段对话时不显示；触屏打开不弹键盘</td></tr>
+<tr><td>全局样式泄漏</td><td>全局 input/textarea/button/h1/.switch/.small 规则作用于对话区</td><td>在对话样式表内统一复位</td></tr>
+<tr><td>文案与回答的 AI 腔</td><td>泛化开场白、装饰图标、模型名突出、Markdown 符号</td><td>开场白用学习记录事实；学习者口吻的起步建议；回答上方显示“查了词库 · 算了一下”；提示词禁止开场白/总结/自称 AI；服务端清除 Markdown</td></tr></table>
+
+<h2>03 性能（实际测量）</h2>
+<p>50 段已保存对话，桌面 1440×900，在输入框连续输入 142 个字符，Chromium CDP 指标，各 5 次取中位数。</p>
+<table><tr><th>状态</th><th>脚本耗时 前</th><th>后</th><th></th></tr>
+<tr><td>列表收起</td><td class="n">1413 ms</td><td class="n">428 ms</td><td><span class="bar b" style="width:141px"></span><br><span class="bar" style="width:43px"></span></td></tr>
+<tr><td>列表展开</td><td class="n">1509 ms</td><td class="n">634 ms</td><td><span class="bar b" style="width:151px"></span><br><span class="bar" style="width:63px"></span></td></tr></table>
+<p class="cap">原因：每次按键都重建并排序整个对话列表。现在列表关闭时不渲染，展开时只在保存的对话或其他草稿变化时重算。浅灰为改前，深色为改后。</p>
+
+<h2>04 截图</h2>
+<div class="shots"><div><img src="before-panel.png"><div class="cap">改前 · iPad 横屏</div></div><div><img src="after-panel.png"><div class="cap">改后 · 同尺寸，8 段对话</div></div></div>
+
+<h2>05 验证与剩余</h2>
+<ul><li>类型检查、相关文件 ESLint 通过；单元测试 54 项通过（新增 harness 15 项、对话、界面契约、性能等）</li>
+<li>未跑：完整 <span class="mono">npm test</span>、构建与 Worker 检查、真实服务商工具调用（会产生费用）</li>
+<li>后端剩余工作见 <span class="mono">docs/HARNESS_HANDOFF.md</span>，已交他人</li></ul>
+</div></body></html>

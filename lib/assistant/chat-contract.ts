@@ -25,6 +25,8 @@ export type ChatActivityAction =
   | { type: "open-reading"; title: string }
   | { type: "start-dictation" | "start-review"; title: string; wordIds: string[]; minutes: number };
 export type ChatResult = { text: string; actions: ChatActivityAction[] };
+/** A tool the assistant used for this answer, named for the learner. */
+export type ChatStep = { tool: string; label: string };
 
 export const CHAT_LIMITS = {
   messages: 24,

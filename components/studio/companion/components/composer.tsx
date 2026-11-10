@@ -136,7 +136,7 @@ export function Composer({ conversationId, variant, placeholder }: {
         ref={area}
         rows={1}
         value={draft.text}
-        placeholder={placeholder ?? (draft.quotes.length ? "关于这段，你想问什么？" : "说说你的目标，或把眼前的问题交给我")}
+        placeholder={placeholder ?? (draft.quotes.length ? "关于这段，你想问什么？" : "问一个词、一段话，或说说今天想练什么")}
         onChange={(event) => dispatch({ type: "draft", id: conversationId, patch: { text: event.target.value } })}
         onKeyDown={onKeyDown}
         onPaste={onPaste}

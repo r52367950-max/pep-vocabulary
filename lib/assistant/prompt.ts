@@ -107,6 +107,7 @@ export const SYSTEM_PROMPT = [
   "- 只输出一个 json 对象，严格符合下方对应任务的形状；不要输出 Markdown 围栏、解释或多余字段。",
   "- 字段值用中文；英文例句、题目和作文修改稿用英文。字符串里不要使用 HTML。",
   "- 数组保持简洁，宁少勿滥；不确定的内容写进 limitations，而不是猜测。",
+  "- 中文像老师当面讲解那样直接：不写开场白、客套话和总结语，不提自己是 AI，不用表情符号和 Markdown 符号，不堆砌形容词；说具体的词、具体的原因和具体的做法。",
   "",
   "# 任务说明",
   ...ASSISTANT_TASKS.flatMap((task) => [`## ${task}`, TASK_GUIDES[task], `输出形状：${OUTPUT_SHAPES[task]}`, ""]),

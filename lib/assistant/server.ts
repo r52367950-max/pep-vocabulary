@@ -42,6 +42,8 @@ import {
 } from "./core";
 import { parseLearnerProfile, ProfileInputError } from "./profile";
 import { chatMessages, parseChatRequest, resolveChatRoute, sanitizeChatResult } from "./chat-core";
+import { HARNESS_LIMITS, HarnessDeadlineError, runHarness, toolSchemas, type HarnessMessage, type ToolMode } from "./harness/loop";
+import { CHAT_TOOLS, type ToolContext } from "./harness/tools";
 
 const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
@@ -52,7 +54,8 @@ import { DEFAULT_TOKEN_BUDGET, providerRejectedBeforeGeneration, releaseOutputRe
 export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string; minimumOutputTokens?: number } = {}) {
   if (request.signal.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
   const outputCap = Number(payload.max_tokens ?? payload.max_completion_tokens);
-  const prompt = JSON.stringify(payload.messages);
+  // Tool definitions are billed as prompt tokens on every call that carries them.
+  const prompt = JSON.stringify(payload.messages) + (payload.tools ? JSON.stringify(payload.tools) : "");
   const reservation = await reserveTokens(config.userKey, config.dailyTokenBudget, prompt, outputCap, Date.now(), options.minimumOutputTokens);
   const body = { ...payload };
   delete body.max_tokens;
@@ -72,7 +75,7 @@ export async function complete(config: UserRuntimeConfig, request: Request, payl
     if (error instanceof AssistantUpstreamError && providerRejectedBeforeGeneration(error.providerStatus)) await releaseOutputReservation(reservation);
     throw error;
   }
-  const { today, usage } = await settleTokens(reservation, completion.usage, completion.content);
+  const { today, usage } = await settleTokens(reservation, completion.usage, completion.content + (completion.toolCalls ?? []).map((call) => call.arguments).join(""));
   completion.usage = usage;
   return { completion, today };
 }
@@ -486,6 +489,9 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
   }
 }
 
+/** Hosts that refused tool definitions keep answering in one step for the life of this isolate. */
+const toollessHosts = new Set<string>();
+
 /** Conversational UI shares the same authenticated, metered provider boundary as every learning tool. */
 export async function handleChatRequest(request: Request): Promise<Response> {
   try {
@@ -495,7 +501,8 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     const config = await authenticatedRuntime(request);
     const contextInput = { ...body, temporary: parsed.temporary || !parsed.includeRecords };
     const context = await resolveLearningContext(config.userKey, contextInput);
-    const rows = parsed.wordIds.length || (context.enabled && body.profile) ? await releaseIndex(request) : [];
+    // Tools read the published lexicon, so it is loaded for every turn; the Worker caches it.
+    const rows = await releaseIndex(request);
     let profile;
     try { profile = context.enabled ? parseLearnerProfile(body.profile, releaseWords(rows)) : null; }
     catch (error) {
@@ -507,26 +514,50 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     const route = resolveChatRoute(parsed, config);
     const maximum = Math.min(route.maxOutputTokens, resolveMaxOutputTokens(route.model, config.maxOutputTokens));
     const runtime = { ...config, model: route.model };
-    const payload = {
-      model: route.model,
-      messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)),
-      ...generationParameters(route.model, config.baseUrl, maximum, 0.4),
-      response_format: { type: "json_object" }, stream: true,
-      ...(route.effort ? { reasoning_effort: route.effort } : {}),
-      ...(config.provider === "deepseek" || usesOpenAIResponses(config.baseUrl) ? { stream_options: { include_usage: true } } : {}),
-      ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
-    };
-    const { completion, today } = await complete(runtime, request, payload, {
-      minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
+    const today = budgetDay(Date.now()).label, memory = learningContextData(context.memory);
+    const toolContext: ToolContext = { rows, today, evidence: new Map(evidence.map(item => [item.id, item])) };
+    const host = `${config.baseUrl}\n${route.model}`;
+    let spent = { prompt: 0, completion: 0, cacheHit: 0, total: 0, estimated: false }, usedToday: number | null = null;
+    const turn = async (withTools: boolean) => runHarness({
+      messages: chatMessages(parsed, evidence, profile, memory, { today, tools: withTools }),
+      tools: withTools ? CHAT_TOOLS : [], context: toolContext,
+      callModel: async (messages: HarnessMessage[], toolMode: ToolMode, remainingMs: number) => {
+        const { completion, today: used } = await complete(runtime, request, {
+          model: route.model, messages,
+          ...(withTools ? { tools: toolSchemas(CHAT_TOOLS), tool_choice: toolMode } : {}),
+          ...generationParameters(route.model, config.baseUrl, maximum, 0.4),
+          response_format: { type: "json_object" }, stream: true,
+          ...(route.effort ? { reasoning_effort: route.effort } : {}),
+          ...(config.provider === "deepseek" || usesOpenAIResponses(config.baseUrl) ? { stream_options: { include_usage: true } } : {}),
+          ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
+        }, {
+          totalMs: Math.min(MAX_GENERATION_MS, remainingMs),
+          minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
+        });
+        spent = { prompt: spent.prompt + completion.usage.prompt, completion: spent.completion + completion.usage.completion, cacheHit: spent.cacheHit + completion.usage.cacheHit,
+          total: spent.total + completion.usage.total, estimated: spent.estimated || completion.usage.estimated };
+        usedToday = used;
+        return { content: completion.content, toolCalls: completion.toolCalls ?? [], finishReason: completion.finishReason };
+      },
     });
-    if (completion.finishReason === "length") throw new AssistantUpstreamError("output_truncated", "回答达到输出上限，请缩短问题或调整输出设置。", 502, false);
-    const result = sanitizeChatResult(completion.content, evidence);
+    let outcome;
+    try { outcome = await turn(!toollessHosts.has(host)); }
+    catch (error) {
+      if (error instanceof HarnessDeadlineError) throw new AssistantUpstreamError("upstream_timeout", "模型服务响应超时，请稍后重试。", 504, true);
+      // A compatible host that rejects tool definitions before generating anything still answers without them.
+      if (!(error instanceof AssistantUpstreamError) || error.code !== "provider_rejected_request" || toollessHosts.has(host) || spent.total > 0) throw error;
+      outcome = await turn(false);
+      toollessHosts.add(host);
+    }
+    if (outcome.finishReason === "length") throw new AssistantUpstreamError("output_truncated", "回答达到输出上限，请缩短问题或调整输出设置。", 502, false);
+    const result = sanitizeChatResult(outcome.content, [...toolContext.evidence.values()]);
     // Another tab or device may have changed memory/account settings while generation was running.
     await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
+    const steps = outcome.steps.filter(step => step.ok && step.label).slice(0, HARNESS_LIMITS.modelCalls * HARNESS_LIMITS.toolCallsPerStep).map(step => ({ tool: step.tool, label: step.label }));
     return Response.json({
-      ok: true, result, model: route.model, effort: route.effort,
+      ok: true, result, model: route.model, effort: route.effort, steps,
       ...contextMetadata(context), temporary: parsed.temporary,
-      usage: { ...completion.usage, today, budget: config.dailyTokenBudget },
+      usage: { ...spent, today: usedToday, budget: config.dailyTokenBudget },
     }, { headers: responseHeaders() });
   } catch (error) { return assistantErrorResponse(error); }
 }

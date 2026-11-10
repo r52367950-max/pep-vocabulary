@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { BarChart3, BookOpen, CalendarRange, Clock, CircleUserRound, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { CircleUserRound, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
 import { hasDraftContent, useStore } from "../store";
-import type { Conversation } from "../types";
 import { Composer } from "./composer";
 import { MessageList } from "./messages";
 import { TemporaryIcon } from "./icons";
@@ -9,17 +8,29 @@ import { useDismiss } from "./popover";
 import { withTransition } from "./transition";
 import { VoiceStage } from "./live-voice-stage";
 
+/** Openers written the way a learner would say them. */
 export const SUGGESTIONS = [
-  { icon: Clock, label: "安排 15 分钟听写", text: "我今天只有 15 分钟，帮我安排听写和复习" },
-  { icon: BarChart3, label: "看看这周学习", text: "看看我这周的学习状态" },
-  { icon: BookOpen, label: "陪我读一篇文章", text: "陪我读一篇文章" },
-  { icon: CalendarRange, label: "安排两周复习", text: "帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词" },
+  { label: "今天只有 15 分钟，怎么练", text: "我今天只有 15 分钟，帮我安排听写和复习" },
+  { label: "这周哪些词老是错", text: "看看我这周的学习状态，哪些词反复出错" },
+  { label: "陪我读一篇文章", text: "陪我读一篇文章" },
+  { label: "两周后考试，排个复习表", text: "帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词" },
 ] as const;
 
+/** The opening line states what the learner's own records say is waiting, when anything is. */
+export function openingLine(study: { due: number; weak: number } | undefined): string {
+  if (study && study.due > 0) return `今天有 ${study.due} 个词该复习了`;
+  if (study && study.weak > 0) return `还有 ${study.weak} 个词不太稳`;
+  return "想从哪儿开始？";
+}
+/** The list shows a search field once there is enough to search. */
+const SEARCH_FROM = 6;
+const dayLabel = new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" });
+const timeLabel = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+type ConversationRow = { id: string; title: string; note: string; current: boolean; today: boolean };
 
 export function ChatView() {
   const store = useStore();
-  const { state, active, newConversation, dispatch } = store;
+  const { state, active, newConversation, dispatch, study } = store;
   const [panelOpen, setPanelOpen] = useState(false);
   const [pending, setPending] = useState<null | { label: string; run: () => void }>(null);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -91,14 +102,14 @@ export function ChatView() {
             }}>
               {empty ? (
                 <div className="hero">
-                  <h1 className="greeting">{active.temporary ? "临时对话" : "今天想学什么？"}</h1>
+                  <h1 className="greeting">{active.temporary ? "临时对话" : openingLine(study)}</h1>
                   {active.temporary
                     ? <p className="hero-sub">不会保存</p>
                     : null}
                   <Composer conversationId={active.id} variant="hero" />
                   <ul className="suggestions" aria-label="可以这样开始">
-                    {SUGGESTIONS.map(({ icon: Icon, label, text }) => (
-                      <li key={label}><button type="button" onClick={(event) => send(text, event.detail === 0)}><Icon size={16} aria-hidden="true" />{label}</button></li>
+                    {SUGGESTIONS.map(({ label, text }) => (
+                      <li key={label}><button type="button" onClick={(event) => send(text, event.detail === 0)}>{label}</button></li>
                     ))}
                   </ul>
                 </div>
@@ -135,6 +146,7 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
   const [confirming, setConfirming] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
+  const collapse = useRef<HTMLButtonElement>(null);
   // Delete is a secondary action: long press (touch or mouse), right click, or the Delete key.
   const press = useRef<{ id: string; timer: ReturnType<typeof setTimeout>; x: number; y: number; fired: boolean } | null>(null);
   const endPress = () => { if (press.current) clearTimeout(press.current.timer); };
@@ -153,19 +165,6 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
   const restoreFocus = (id: string) => requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(`[data-conv="${id}"]`)?.focus({ preventScroll: true }));
   const overlay = () => !window.matchMedia("(min-width: 1280px)").matches;
   useDismiss(open, panel, () => { if (overlay()) onClose(); });
-  useEffect(() => {
-    if (open) search.current?.focus({ preventScroll: true });
-  }, [open]);
-
-  const visible = state.conversations.filter((conversation) => !conversation.temporary && (conversation.messages.length > 0 || (conversation.id !== active.id && hasDraftContent(state.drafts[conversation.id]))));
-  const term = query.trim().toLowerCase();
-  const matches = term ? visible.filter((conversation) => conversation.title.toLowerCase().includes(term) || conversation.messages.some((message) => message.role === "user" && message.text.toLowerCase().includes(term))) : visible;
-  const sorted = [...matches].sort((a, b) => b.updatedAt - a.updatedAt);
-  const today = new Date().toDateString();
-  const groups: [string, Conversation[]][] = [
-    ["今天", sorted.filter((conversation) => new Date(conversation.updatedAt).toDateString() === today)],
-    ["更早", sorted.filter((conversation) => new Date(conversation.updatedAt).toDateString() !== today)],
-  ];
   const choose = (id: string) => {
     if (id === active.id) { onClose(); return; }
     guard("切换到另一段对话", () => {
@@ -174,19 +173,51 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
     });
   };
 
+  // Typing changes the active draft on every key. The list depends only on saved conversations
+  // and on other conversations' unsent drafts, so it is rebuilt when one of those changes, and
+  // not at all while the panel is closed.
+  const term = query.trim().toLowerCase(), activeId = active.id;
+  const waitingDrafts = open ? state.conversations.filter((conversation) => !conversation.temporary && !conversation.messages.length && conversation.id !== activeId && hasDraftContent(state.drafts[conversation.id]))
+    .map((conversation) => `${conversation.id}\u0000${state.drafts[conversation.id]?.text.slice(0, 24) ?? ""}`).join("\u0001") : "";
+  const listed = useMemo(() => {
+    if (!open) return { rows: [] as ConversationRow[], saved: 0 };
+    const drafts = new Map(waitingDrafts ? waitingDrafts.split("\u0001").map((item) => item.split("\u0000") as [string, string]) : []);
+    const visible = state.conversations.filter((conversation) => !conversation.temporary && (conversation.messages.length > 0 || drafts.has(conversation.id)));
+    const matches = term ? visible.filter((conversation) => conversation.title.toLowerCase().includes(term) || conversation.messages.some((message) => message.role === "user" && message.text.toLowerCase().includes(term))) : visible;
+    const today = new Date().toDateString();
+    const rows = [...matches].sort((a, b) => b.updatedAt - a.updatedAt).map((conversation): ConversationRow => {
+      const draftOnly = conversation.messages.length === 0, current = conversation.id === activeId, sameDay = new Date(conversation.updatedAt).toDateString() === today;
+      return { id: conversation.id, current, today: sameDay,
+        title: draftOnly ? drafts.get(conversation.id) || "未发送的草稿" : conversation.title,
+        note: draftOnly ? "草稿" : current ? "当前" : (sameDay ? timeLabel : dayLabel).format(conversation.updatedAt) };
+    });
+    return { rows, saved: visible.length };
+  }, [open, state.conversations, waitingDrafts, term, activeId]);
+  const searchable = listed.saved >= SEARCH_FROM || term !== "";
+  // Focus moves into the panel when it opens. A touch keyboard should not cover the list, so
+  // only a keyboard-and-mouse device starts in the search field.
+  useEffect(() => {
+    if (!open) return;
+    const target = window.matchMedia("(hover: hover) and (pointer: fine)").matches ? search.current ?? collapse.current : collapse.current;
+    target?.focus({ preventScroll: true });
+  }, [open]);
+
+  if (!open) return null;
   return (
     <>
-      <div className="panel-scrim" hidden={!open} onClick={onClose} aria-hidden="true" />
-      <aside ref={panel} className="conv-panel" aria-label="对话列表" hidden={!open}>
+      <div className="panel-scrim" onClick={onClose} aria-hidden="true" />
+      <aside ref={panel} className="conv-panel" aria-label="对话列表">
         <div className="panel-head">
-          <button type="button" className="icon-button" aria-label="收起对话列表" onClick={onClose}><PanelLeft size={19} aria-hidden="true" /></button>
+          <button ref={collapse} type="button" className="icon-button" aria-label="收起对话列表" onClick={onClose}><PanelLeft size={19} aria-hidden="true" /></button>
           <span className="panel-title">对话</span>
           <button type="button" className="icon-button" aria-label="新对话" onClick={() => guard("开始新对话", () => { newConversation(false); if (overlay()) onClose(); })}><SquarePen size={18} aria-hidden="true" /></button>
         </div>
-        <label className="search-field">
-          <Search size={16} aria-hidden="true" />
-          <input ref={search} type="search" value={query} placeholder="搜索对话" aria-label="搜索对话" onChange={(event) => setQuery(event.target.value)} />
-        </label>
+        {searchable && (
+          <label className="search-field">
+            <Search size={16} aria-hidden="true" />
+            <input ref={search} type="search" value={query} placeholder="搜索对话" aria-label="搜索对话" onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        )}
         {active.temporary && (
           <button type="button" className="conv-row is-current is-temp" onClick={onClose}>
             <TemporaryIcon size={16} /><span className="conv-title">临时对话</span>
@@ -194,45 +225,40 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
         )}
         <p id="conv-delete-hint" className="visually-hidden">长按、右键或按 Delete 键可以删除对话</p>
         <div className="conv-groups">
-          {groups.map(([label, items]) => items.length > 0 && (
-            <section key={label}>
-              <h3>{label}</h3>
-              <ul>
-                {items.map((conversation) => {
-                  const draftOnly = conversation.messages.length === 0;
-                  return (
-                    <li key={conversation.id} className={conversation.id === active.id ? "is-current" : ""}>
-                      {confirming === conversation.id ? (
-                        <div className="conv-confirm" role="group" aria-label={`删除「${conversation.title}」`}>
-                          <span>删除这段对话？</span>
-                          <button type="button" className="button button-danger small" onClick={() => { remove(conversation.id); setConfirming(null); search.current?.focus({ preventScroll: true }); }}>删除</button>
-                          <button type="button" className="button button-quiet small" autoFocus onClick={() => { setConfirming(null); restoreFocus(conversation.id); }}>取消</button>
-                        </div>
-                      ) : (
-                        <button type="button" className="conv-row" data-conv={conversation.id} aria-current={conversation.id === active.id ? "true" : undefined}
-                          aria-keyshortcuts="Delete" aria-describedby="conv-delete-hint" title="长按或右键可删除"
-                          onPointerDown={(event) => startPress(conversation.id, event)} onPointerMove={movePress}
-                          onPointerUp={endPress} onPointerCancel={() => { endPress(); press.current = null; }} onPointerLeave={endPress}
-                          onContextMenu={(event) => { event.preventDefault(); endPress(); askDelete(conversation.id); }}
-                          onKeyDown={(event) => { if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); askDelete(conversation.id); } }}
-                          onClick={() => {
-                            // The click that ends a long press only opened the delete prompt.
-                            if (press.current?.fired) { press.current = null; return; }
-                            press.current = null;
-                            choose(conversation.id);
-                          }}>
-                          <span className="conv-title">{draftOnly ? state.drafts[conversation.id]?.text.slice(0, 24) || "未发送的草稿" : conversation.title}
-                            <small>{draftOnly ? "草稿" : conversation.id === active.id ? "当前" : new Date(conversation.updatedAt).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}</small>
-                          </span>
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+          {([["今天", listed.rows.filter((row) => row.today)], ["更早", listed.rows.filter((row) => !row.today)]] as const).map(([label, items]) => items.length > 0 && (
+      <section key={label}>
+        <h3>{label}</h3>
+        <ul>
+          {items.map((row) => (
+            <li key={row.id} className={row.current ? "is-current" : ""}>
+              {confirming === row.id ? (
+                <div className="conv-confirm" role="group" aria-label={`删除「${row.title}」`}>
+                  <span>删除这段对话？</span>
+                  <button type="button" className="button button-danger small" onClick={() => { remove(row.id); setConfirming(null); (search.current ?? collapse.current)?.focus({ preventScroll: true }); }}>删除</button>
+                  <button type="button" className="button button-quiet small" autoFocus onClick={() => { setConfirming(null); restoreFocus(row.id); }}>取消</button>
+                </div>
+              ) : (
+                <button type="button" className="conv-row" data-conv={row.id} aria-current={row.current ? "true" : undefined}
+                  aria-keyshortcuts="Delete" aria-describedby="conv-delete-hint" title="长按或右键可删除"
+                  onPointerDown={(event) => startPress(row.id, event)} onPointerMove={movePress}
+                  onPointerUp={endPress} onPointerCancel={() => { endPress(); press.current = null; }} onPointerLeave={endPress}
+                  onContextMenu={(event) => { event.preventDefault(); endPress(); askDelete(row.id); }}
+                  onKeyDown={(event) => { if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); askDelete(row.id); } }}
+                  onClick={() => {
+                    // The click that ends a long press only opened the delete prompt.
+                    if (press.current?.fired) { press.current = null; return; }
+                    press.current = null;
+                    choose(row.id);
+                  }}>
+                  <span className="conv-title">{row.title}<small>{row.note}</small></span>
+                </button>
+              )}
+            </li>
           ))}
-          {sorted.length === 0 && <p className="empty-note">{term ? "没有找到匹配的对话。" : "还没有保存的对话。"}</p>}
+        </ul>
+      </section>
+    ))}
+          {listed.rows.length === 0 && <p className="empty-note">{term ? "没有找到匹配的对话。" : "还没有保存的对话。"}</p>}
         </div>
         <button type="button" className="panel-account" onClick={() => { onClose(); dispatch({ type: "settings-open", section: "general" }); }}><CircleUserRound size={20} aria-hidden="true" /><span>我的学习</span></button>
       </aside>

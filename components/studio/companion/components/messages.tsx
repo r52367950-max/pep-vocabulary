@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { AudioLines, BookOpen, Check, Copy, FileText, Headphones, Image as ImageIcon, Quote as QuoteIcon, RotateCcw } from "lucide-react";
+import { AudioLines, BookOpen, Check, ChevronRight, Copy, FileText, Headphones, Image as ImageIcon, Quote as QuoteIcon, RotateCcw } from "lucide-react";
 import { MODEL_NAME } from "../routing";
 import { paragraphLabel, type Quote } from "../selection";
 import { statusLabel } from "../sources";
@@ -70,11 +70,12 @@ function AssistantReply({ message, conversationId, send, dispatch, runAction }: 
   return <div className="ai-turn" aria-busy={streaming} data-model={message.request.model} data-effort={message.request.reasoning.effort}>
     <span className="ai-mark" aria-hidden="true"><TraceGlyph size={18} /></span>
     <div className="ai-body">
-      {streaming && !message.blocks.some((block) => block.type === "text" && block.text) && <p className="reply-pending" role="status"><span aria-hidden="true">•••</span><span className="visually-hidden">正在思考</span></p>}
+      {streaming && !message.blocks.some((block) => block.type === "text" && block.text) && <p className="reply-pending" role="status">正在想…</p>}
       {message.blocks.map((block, index) => {
         if (block.type === "text") return <div className="ai-text" key={index}><RichText text={block.text} /></div>;
         if (block.type === "actions") return <div className="companion-actions" key={index}>{block.actions.map((action) => <ActionCard key={action.id} action={action} onRun={() => runAction(action)} />)}</div>;
         if (block.type === "notice") return <div key={index} className={`inline-notice tone-${block.tone}`}><p>{block.text}</p></div>;
+        if (block.type === "steps") return <p key={index} className="reply-steps">{block.labels.join(" · ")}</p>;
         return null;
       })}
       {message.status === "stopped" && <p className="status-note">已停止</p>}
@@ -87,7 +88,7 @@ function AssistantReply({ message, conversationId, send, dispatch, runAction }: 
 function ActionCard({ action, onRun }: { action: Action; onRun: () => void }) {
   const Icon = action.intent === "open-reading" ? BookOpen : action.intent === "start-dictation" ? Headphones : RotateCcw;
   return <button type="button" className="companion-action-card" onClick={onRun}>
-    <Icon size={20} aria-hidden="true" /><span><strong>{action.label}</strong>{"wordIds" in action && action.wordIds && <small>{action.wordIds.length} 个词</small>}</span><span className="action-arrow" aria-hidden="true">↗</span>
+    <Icon size={20} aria-hidden="true" /><span><strong>{action.label}</strong>{"wordIds" in action && action.wordIds && <small>{action.wordIds.length} 个词</small>}</span><ChevronRight size={16} className="action-arrow" aria-hidden="true" />
   </button>;
 }
 

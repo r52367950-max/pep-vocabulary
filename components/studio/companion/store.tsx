@@ -114,10 +114,12 @@ export type CompanionProviderProps = {
   children: ReactNode; data: Vocabulary; view: View; onNavigate: (view: View) => void;
   onOpenSettings: () => void; onPractice: (ids: string[], mode?: "dictation" | "review", title?: string, onResult?: (result: PracticeResult) => void) => void;
   onVoice?: () => void; article?: ArticleSelectionSource | null;
+  /** Words due and weak in the learner's current scope, for the opening line. */
+  study?: { due: number; weak: number };
   selectionRequest?: CompanionSelectionRequest | null; onSelectionConsumed?: (id: string) => void;
 };
 type Store = {
-  state: State; active: Conversation; draft: Draft; currentArticle: ArticleSelectionSource | null;
+  state: State; active: Conversation; draft: Draft; currentArticle: ArticleSelectionSource | null; study?: { due: number; weak: number };
   dispatch: (action: StoreAction) => void; send: (id: string, options?: SendOptions) => SendOutcome;
   stop: (id: string) => void; setView: (view: View) => void; openChat: (id?: string) => void;
   newConversation: (temporary: boolean) => void; remove: (id: string) => void; clearAll: () => void;
@@ -331,6 +333,7 @@ export function CompanionProvider(props: CompanionProviderProps) {
     void requestCompanion(request, controller.signal, scope).then((response) => {
       if (controller.signal.aborted || identity.current.scope !== scope || stateRef.current.generation !== generation) return;
       const blocks: Block[] = [{ type: "text", text: response.result.text }];
+      if (response.steps.length) blocks.unshift({ type: "steps", labels: [...new Set(response.steps.map((step) => step.label))] });
       if (response.result.actions.length) blocks.push({ type: "actions", actions: activityActions(response.result.actions) });
       dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "done", blocks, revealed: response.result.text.length, request: { ...metadata, model: response.model, reasoning: { effort: response.effort } } } });
       dispatchRaw({ type: "announce", text: "回答完成" });
@@ -428,7 +431,8 @@ export function CompanionProvider(props: CompanionProviderProps) {
   const active = state.conversations.find((c) => c.id === state.activeId) ?? state.conversations[0];
   const draft = state.drafts[active.id] ?? emptyDraft(state.settings, active.temporary);
   const article = props.article ?? currentArticle.current;
-  const value = useMemo<Store>(() => ({ state, active, draft, currentArticle: article, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment }), [state, active, draft, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment, article]);
+  const study = props.study;
+  const value = useMemo<Store>(() => ({ state, active, draft, currentArticle: article, study, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment }), [state, active, draft, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment, article, study]);
   return <StoreContext.Provider value={value}>{props.children}</StoreContext.Provider>;
 }
 export const StoreProvider = CompanionProvider;

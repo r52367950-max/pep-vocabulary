@@ -69,7 +69,7 @@ export function MiniPanel() {
       <div className="mini-scroll" ref={scroller}>
         {empty ? (
           <div className="mini-empty">
-            <p className="mini-greeting">{context ?? "在这一页问点什么"}</p>
+            <p className="mini-greeting">{context ?? "在这一页随时问"}</p>
             <ul className="suggestions compact">
               {CONTEXT_SUGGESTIONS[view].map((item) => <li key={item.label}><button type="button" onClick={() => send(active.id, { text: item.text, keepDraft: true })}>{item.label}</button></li>)}
             </ul>

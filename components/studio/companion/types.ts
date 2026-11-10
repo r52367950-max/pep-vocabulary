@@ -12,7 +12,9 @@ export type Action =
 export type Block =
   | { type: "text"; text: string }
   | { type: "actions"; actions: Action[] }
-  | { type: "notice"; tone: "info" | "warn"; text: string; continueFrom?: string };
+  | { type: "notice"; tone: "info" | "warn"; text: string; continueFrom?: string }
+  /** What the assistant checked before answering, in the learner's words. */
+  | { type: "steps"; labels: string[] };
 export type UserMessage = {
   id: string; role: "user"; at: number; text: string; quotes: Quote[]; attachments: Attachment[];
   via: "text" | "action" | "voice"; action?: SelectionAction;
