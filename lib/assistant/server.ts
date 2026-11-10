@@ -41,7 +41,8 @@ import {
   type LexiconEvidence,
 } from "./core";
 import { parseLearnerProfile, ProfileInputError } from "./profile";
-import { chatMessages, parseChatRequest, resolveChatRoute, sanitizeChatResult } from "./chat-core";
+import { chatMessages, parseChatRequest, resolveChatRoute } from "./chat-core";
+import { runChatHarness } from "./harness";
 
 const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
@@ -509,24 +510,32 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     const runtime = { ...config, model: route.model };
     const payload = {
       model: route.model,
-      messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)),
       ...generationParameters(route.model, config.baseUrl, maximum, 0.4),
       response_format: { type: "json_object" }, stream: true,
       ...(route.effort ? { reasoning_effort: route.effort } : {}),
       ...(config.provider === "deepseek" || usesOpenAIResponses(config.baseUrl) ? { stream_options: { include_usage: true } } : {}),
       ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
     };
-    const { completion, today } = await complete(runtime, request, payload, {
-      minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
+    const verifyContext = async () => {
+      await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
+    };
+    let toolRows: Promise<ReleaseIndexRow[]> | undefined;
+    const { result, usage, today, trace } = await runChatHarness({
+      messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)), evidence,
+      context: {
+        sources: { article: parsed.article, files: parsed.files, quotes: parsed.quotes },
+        loadLexicon: () => toolRows ??= rows.length ? Promise.resolve(rows) : releaseIndex(request),
+      },
+      signal: request.signal, verifyContext,
+      generate: (messages, remainingMs) => complete(runtime, request, { ...payload, messages }, {
+        totalMs: remainingMs,
+        minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
+      }),
     });
-    if (completion.finishReason === "length") throw new AssistantUpstreamError("output_truncated", "回答达到输出上限，请缩短问题或调整输出设置。", 502, false);
-    const result = sanitizeChatResult(completion.content, evidence);
-    // Another tab or device may have changed memory/account settings while generation was running.
-    await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
     return Response.json({
-      ok: true, result, model: route.model, effort: route.effort,
+      ok: true, result, model: route.model, effort: route.effort, harness: trace,
       ...contextMetadata(context), temporary: parsed.temporary,
-      usage: { ...completion.usage, today, budget: config.dailyTokenBudget },
+      usage: { ...usage, today, budget: config.dailyTokenBudget },
     }, { headers: responseHeaders() });
   } catch (error) { return assistantErrorResponse(error); }
 }

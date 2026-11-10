@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { BarChart3, BookOpen, CalendarRange, Clock, CircleUserRound, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { CircleUserRound, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
 import { hasDraftContent, useStore } from "../store";
-import type { Conversation } from "../types";
+import { conversationGroups, createConversationListSelector, type ConversationListRow } from "../conversation-list";
 import { Composer } from "./composer";
 import { MessageList } from "./messages";
 import { TemporaryIcon } from "./icons";
@@ -10,10 +10,10 @@ import { withTransition } from "./transition";
 import { VoiceStage } from "./live-voice-stage";
 
 export const SUGGESTIONS = [
-  { icon: Clock, label: "安排 15 分钟听写", text: "我今天只有 15 分钟，帮我安排听写和复习" },
-  { icon: BarChart3, label: "看看这周学习", text: "看看我这周的学习状态" },
-  { icon: BookOpen, label: "陪我读一篇文章", text: "陪我读一篇文章" },
-  { icon: CalendarRange, label: "安排两周复习", text: "帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词" },
+  { label: "今天只有 15 分钟，怎么练", text: "我今天只有 15 分钟，帮我安排听写和复习" },
+  { label: "这周哪些词老是错", text: "看看我这周的学习状态，哪些词反复出错" },
+  { label: "陪我读一篇文章", text: "陪我读一篇文章" },
+  { label: "两周后考试，排个复习表", text: "帮我安排两周的复习：每天 20 分钟，周三没空，先复习错词再学新词" },
 ] as const;
 
 
@@ -23,16 +23,18 @@ export function ChatView() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [pending, setPending] = useState<null | { label: string; run: () => void }>(null);
   const toggle = useRef<HTMLButtonElement>(null);
+  const [selectRows] = useState(createConversationListSelector);
+  const closePanel = useCallback(() => { setPanelOpen(false); toggle.current?.focus({ preventScroll: true }); }, []);
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const empty = active.messages.length === 0;
   const returnTo = state.conversations.find((conversation) => conversation.id === state.returnToId);
 
   /** Leaving a temporary conversation that has content asks first, because it is discarded. */
-  const guard = (label: string, run: () => void) => {
+  const guard = useCallback((label: string, run: () => void) => {
     if (active.temporary && active.messages.length > 0) setPending({ label, run });
     else run();
-  };
+  }, [active.temporary, active.messages.length]);
 
   const lastMessage = active.messages.at(-1);
   const revealed = lastMessage?.role === "assistant" ? lastMessage.revealed + lastMessage.blocks.length : 0;
@@ -50,7 +52,8 @@ export function ChatView() {
 
   return (
     <section className={`chat${panelOpen ? " panel-open" : ""}`} aria-label="AI 对话">
-      <ConversationPanel open={panelOpen} onClose={() => { setPanelOpen(false); toggle.current?.focus({ preventScroll: true }); }} guard={guard} />
+      {panelOpen && <ConversationPanel rows={selectRows(state.conversations, state.drafts, active.id)} activeId={active.id} temporary={active.temporary}
+        dispatch={dispatch} newConversation={newConversation} remove={store.remove} onClose={closePanel} guard={guard} />}
       <div className="chat-main">
         {state.voiceOpen ? <VoiceStage key={active.id} conversationId={active.id} /> : (
           <>
@@ -91,14 +94,14 @@ export function ChatView() {
             }}>
               {empty ? (
                 <div className="hero">
-                  <h1 className="greeting">{active.temporary ? "临时对话" : "今天想学什么？"}</h1>
+                  <h1 className="greeting">{active.temporary ? "临时对话" : "想从哪儿开始？"}</h1>
                   {active.temporary
                     ? <p className="hero-sub">不会保存</p>
                     : null}
                   <Composer conversationId={active.id} variant="hero" />
                   <ul className="suggestions" aria-label="可以这样开始">
-                    {SUGGESTIONS.map(({ icon: Icon, label, text }) => (
-                      <li key={label}><button type="button" onClick={(event) => send(text, event.detail === 0)}><Icon size={16} aria-hidden="true" />{label}</button></li>
+                    {SUGGESTIONS.map(({ label, text }) => (
+                      <li key={label}><button type="button" onClick={(event) => send(text, event.detail === 0)}>{label}</button></li>
                     ))}
                   </ul>
                 </div>
@@ -129,12 +132,16 @@ export function ChatView() {
   );
 }
 
-function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: () => void; guard: (label: string, run: () => void) => void }) {
-  const { state, active, dispatch, newConversation, remove } = useStore();
+type ConversationPanelProps = Pick<ReturnType<typeof useStore>, "dispatch" | "newConversation" | "remove"> & {
+  rows: ConversationListRow[]; activeId: string; temporary: boolean; onClose: () => void; guard: (label: string, run: () => void) => void;
+};
+const ConversationPanel = memo(function ConversationPanel({ rows, activeId, temporary, dispatch, newConversation, remove, onClose, guard }: ConversationPanelProps) {
   const [query, setQuery] = useState("");
+  const [wasSearchable, setWasSearchable] = useState(rows.length >= 6);
   const [confirming, setConfirming] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
+  const collapse = useRef<HTMLButtonElement>(null);
   // Delete is a secondary action: long press (touch or mouse), right click, or the Delete key.
   const press = useRef<{ id: string; timer: ReturnType<typeof setTimeout>; x: number; y: number; fired: boolean } | null>(null);
   const endPress = () => { if (press.current) clearTimeout(press.current.timer); };
@@ -152,22 +159,23 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
   };
   const restoreFocus = (id: string) => requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(`[data-conv="${id}"]`)?.focus({ preventScroll: true }));
   const overlay = () => !window.matchMedia("(min-width: 1280px)").matches;
-  useDismiss(open, panel, () => { if (overlay()) onClose(); });
+  useDismiss(true, panel, () => { if (overlay()) onClose(); });
   useEffect(() => {
-    if (open) search.current?.focus({ preventScroll: true });
-  }, [open]);
+    const target = window.matchMedia("(hover: hover) and (pointer: fine)").matches ? search.current ?? collapse.current : collapse.current;
+    target?.focus({ preventScroll: true });
+  }, []);
 
-  const visible = state.conversations.filter((conversation) => !conversation.temporary && (conversation.messages.length > 0 || (conversation.id !== active.id && hasDraftContent(state.drafts[conversation.id]))));
-  const term = query.trim().toLowerCase();
-  const matches = term ? visible.filter((conversation) => conversation.title.toLowerCase().includes(term) || conversation.messages.some((message) => message.role === "user" && message.text.toLowerCase().includes(term))) : visible;
-  const sorted = [...matches].sort((a, b) => b.updatedAt - a.updatedAt);
+  const showSearch = rows.length >= 6;
+  if (wasSearchable !== showSearch) {
+    setWasSearchable(showSearch);
+    if (!showSearch) setQuery("");
+  }
+  const term = showSearch ? query.trim().toLowerCase() : "";
   const today = new Date().toDateString();
-  const groups: [string, Conversation[]][] = [
-    ["今天", sorted.filter((conversation) => new Date(conversation.updatedAt).toDateString() === today)],
-    ["更早", sorted.filter((conversation) => new Date(conversation.updatedAt).toDateString() !== today)],
-  ];
+  const groups = useMemo(() => conversationGroups(rows, term, today), [rows, term, today]);
+  const emptyResults = groups.every(([, items]) => items.length === 0);
   const choose = (id: string) => {
-    if (id === active.id) { onClose(); return; }
+    if (id === activeId) { onClose(); return; }
     guard("切换到另一段对话", () => {
       dispatch({ type: "select", id });
       if (overlay()) onClose();
@@ -176,18 +184,18 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
 
   return (
     <>
-      <div className="panel-scrim" hidden={!open} onClick={onClose} aria-hidden="true" />
-      <aside ref={panel} className="conv-panel" aria-label="对话列表" hidden={!open}>
+      <div className="panel-scrim" onClick={onClose} aria-hidden="true" />
+      <aside ref={panel} className="conv-panel" aria-label="对话列表">
         <div className="panel-head">
-          <button type="button" className="icon-button" aria-label="收起对话列表" onClick={onClose}><PanelLeft size={19} aria-hidden="true" /></button>
+          <button ref={collapse} type="button" className="icon-button" aria-label="收起对话列表" onClick={onClose}><PanelLeft size={19} aria-hidden="true" /></button>
           <span className="panel-title">对话</span>
           <button type="button" className="icon-button" aria-label="新对话" onClick={() => guard("开始新对话", () => { newConversation(false); if (overlay()) onClose(); })}><SquarePen size={18} aria-hidden="true" /></button>
         </div>
-        <label className="search-field">
+        {showSearch && <label className="search-field">
           <Search size={16} aria-hidden="true" />
           <input ref={search} type="search" value={query} placeholder="搜索对话" aria-label="搜索对话" onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        {active.temporary && (
+        </label>}
+        {temporary && (
           <button type="button" className="conv-row is-current is-temp" onClick={onClose}>
             <TemporaryIcon size={16} /><span className="conv-title">临时对话</span>
           </button>
@@ -198,18 +206,17 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
             <section key={label}>
               <h3>{label}</h3>
               <ul>
-                {items.map((conversation) => {
-                  const draftOnly = conversation.messages.length === 0;
+                {items.map(({ conversation, draftOnly, title, dateLabel }) => {
                   return (
-                    <li key={conversation.id} className={conversation.id === active.id ? "is-current" : ""}>
+                    <li key={conversation.id} className={conversation.id === activeId ? "is-current" : ""}>
                       {confirming === conversation.id ? (
                         <div className="conv-confirm" role="group" aria-label={`删除「${conversation.title}」`}>
                           <span>删除这段对话？</span>
-                          <button type="button" className="button button-danger small" onClick={() => { remove(conversation.id); setConfirming(null); search.current?.focus({ preventScroll: true }); }}>删除</button>
+                          <button type="button" className="button button-danger small" onClick={() => { remove(conversation.id); setConfirming(null); panel.current?.querySelector<HTMLButtonElement>(".panel-head button")?.focus({ preventScroll: true }); }}>删除</button>
                           <button type="button" className="button button-quiet small" autoFocus onClick={() => { setConfirming(null); restoreFocus(conversation.id); }}>取消</button>
                         </div>
                       ) : (
-                        <button type="button" className="conv-row" data-conv={conversation.id} aria-current={conversation.id === active.id ? "true" : undefined}
+                        <button type="button" className="conv-row" data-conv={conversation.id} aria-current={conversation.id === activeId ? "true" : undefined}
                           aria-keyshortcuts="Delete" aria-describedby="conv-delete-hint" title="长按或右键可删除"
                           onPointerDown={(event) => startPress(conversation.id, event)} onPointerMove={movePress}
                           onPointerUp={endPress} onPointerCancel={() => { endPress(); press.current = null; }} onPointerLeave={endPress}
@@ -221,8 +228,8 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
                             press.current = null;
                             choose(conversation.id);
                           }}>
-                          <span className="conv-title">{draftOnly ? state.drafts[conversation.id]?.text.slice(0, 24) || "未发送的草稿" : conversation.title}
-                            <small>{draftOnly ? "草稿" : conversation.id === active.id ? "当前" : new Date(conversation.updatedAt).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}</small>
+                          <span className="conv-title">{title}
+                            <small>{draftOnly ? "草稿" : conversation.id === activeId ? "当前" : dateLabel}</small>
                           </span>
                         </button>
                       )}
@@ -232,10 +239,10 @@ function ConversationPanel({ open, onClose, guard }: { open: boolean; onClose: (
               </ul>
             </section>
           ))}
-          {sorted.length === 0 && <p className="empty-note">{term ? "没有找到匹配的对话。" : "还没有保存的对话。"}</p>}
+          {emptyResults && <p className="empty-note">{term ? "没有找到匹配的对话。" : "还没有保存的对话。"}</p>}
         </div>
         <button type="button" className="panel-account" onClick={() => { onClose(); dispatch({ type: "settings-open", section: "general" }); }}><CircleUserRound size={20} aria-hidden="true" /><span>我的学习</span></button>
       </aside>
     </>
   );
-}
+});

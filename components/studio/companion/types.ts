@@ -3,6 +3,7 @@ import type { Attachment } from "./sources";
 import type { RequestPayload, SelectionAction, ModelChoice, ComplexPlanTier } from "./routing";
 import type { PracticeItem, Score } from "./practice";
 import type { CompanionPreferences } from "@/lib/companion-preferences";
+import type { ChatToolStep } from "@/lib/assistant/tool-trace";
 
 export type Action =
   | { id: string; label: string; intent: "open-reading" }
@@ -20,6 +21,7 @@ export type UserMessage = {
 export type AssistantMessage = {
   id: string; role: "assistant"; at: number; status: "streaming" | "done" | "stopped" | "incomplete" | "error";
   blocks: Block[]; revealed: number; request: RequestPayload; routeReason: string;
+  toolSteps?: ChatToolStep[];
 };
 export type RoundAnswer = { item: PracticeItem; answer: string; score: Score };
 export type PracticeResult = { mode?: "dictation" | "review"; title: string; source: string; rounds: RoundAnswer[][] };

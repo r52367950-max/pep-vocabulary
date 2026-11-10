@@ -1,0 +1,24 @@
+{
+  "baseline": "d148c35",
+  "node": "v24.22.1",
+  "measuredAt": "2026-11-10T02:49:35.950Z",
+  "scope": "Node UTF-8 attachment decoding only; excludes browser I/O, document extraction and model latency",
+  "cases": [
+    {
+      "name": "2 MiB ASCII",
+      "bytes": 2097150,
+      "beforeMedianMs": 50.27413499999989,
+      "afterMedianMs": 2.3587499999998727,
+      "speedup": 21.313888712242758,
+      "samples": 15
+    },
+    {
+      "name": "1.8 MiB mixed Unicode",
+      "bytes": 1900000,
+      "beforeMedianMs": 29.236959999999954,
+      "afterMedianMs": 4.103223000000071,
+      "speedup": 7.125364621908059,
+      "samples": 15
+    }
+  ]
+}

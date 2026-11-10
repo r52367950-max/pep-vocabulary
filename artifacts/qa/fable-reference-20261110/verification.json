@@ -1,0 +1,26 @@
+{
+  "version": "2.19.2",
+  "date": "2026-11-10",
+  "referencePullRequest": 29,
+  "referenceCommit": "b09f15a52cd2f4ba88ea9fb52b7e8c55a0e0b06b",
+  "checks": {
+    "unit": {
+      "command": "npm run test:unit",
+      "passed": 664,
+      "failed": 0,
+      "durationMs": 80887.82013,
+      "execution": "outside sandbox to allow local subprocess capture"
+    },
+    "build": "passed",
+    "workerD1": "passed; isolated local database and mocked providers",
+    "independentReview": "passed",
+    "lint": "passed",
+    "typecheck": "passed"
+  },
+  "boundaries": {
+    "paidModelCalls": false,
+    "databaseMigrations": "unchanged",
+    "preview": "managed preview could not bind127.0.0.1 (EPERM)",
+    "performance": "warm saved-list derivation only; excludes React rendering, browser layout and network"
+  }
+}

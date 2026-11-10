@@ -2,8 +2,9 @@ import type { ChatRequest, ChatResult, ChatEffort } from "@/lib/assistant/chat-c
 import { AssistantError, usageStore, type AssistantUsage } from "@/lib/ai-client";
 import { contextStillCurrent, learningContextStore, refreshLearningContext } from "@/lib/learning-context-client";
 import { localPracticeGeneration, practiceGenerationCurrent } from "@/lib/local-practice-generation";
+import { parseChatToolSteps, type ChatToolStep } from "@/lib/assistant/tool-trace";
 
-export type CompanionResponse = { result: ChatResult; model: string; effort: ChatEffort | null };
+export type CompanionResponse = { result: ChatResult; model: string; effort: ChatEffort | null; toolSteps: ChatToolStep[] };
 export async function requestCompanion(request: ChatRequest, signal: AbortSignal, expectedScope: string): Promise<CompanionResponse> {
   const generation = localPracticeGeneration();
   const memory = await refreshLearningContext(signal);
@@ -33,6 +34,7 @@ export async function requestCompanion(request: ChatRequest, signal: AbortSignal
     const payload = await response.json().catch(() => ({})) as {
       ok?: boolean; result?: ChatResult; model?: string; effort?: ChatEffort | null; accountScope?: string;
       contextRevision?: number; contextVersion?: string; usage?: AssistantUsage; error?: { message?: string; code?: string };
+      harness?: { tools?: unknown };
     };
     current();
     if (!response.ok || !payload.ok || !payload.result || typeof payload.result.text !== "string") throw new AssistantError(payload.error?.message || "发送失败，请重试。", payload.error?.code || `http_${response.status}`);
@@ -40,6 +42,6 @@ export async function requestCompanion(request: ChatRequest, signal: AbortSignal
     await refreshLearningContext(controller.signal);
     current();
     if (payload.usage) usageStore.set(payload.usage);
-    return { result: payload.result, model: payload.model || "", effort: payload.effort ?? null };
+    return { result: payload.result, model: payload.model || "", effort: payload.effort ?? null, toolSteps: parseChatToolSteps(payload.harness?.tools) };
   } finally { clearTimeout(timer); unsubscribe(); signal.removeEventListener("abort", abort); }
 }

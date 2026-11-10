@@ -1,6 +1,8 @@
 /**
  * Sources the learner adds to a message. Raw content remains in this tab and is never persisted.
  */
+import { CHAT_LIMITS } from "@/lib/assistant/chat-contract";
+
 export type AttachmentKind = "image" | "text" | "document";
 export type AttachmentStatus = "reading" | "read" | "attached" | "error";
 export type Attachment = {
@@ -10,7 +12,7 @@ export type Attachment = {
   previewUrl?: string;
 };
 
-export const LIMITS = { count: 4, imageBytes: 10 * 1024 * 1024, textBytes: 2 * 1024 * 1024, documentBytes: 12 * 1024 * 1024, readChars: 12_000 };
+export const LIMITS = { count: 4, imageBytes: 10 * 1024 * 1024, textBytes: 2 * 1024 * 1024, documentBytes: 12 * 1024 * 1024, readChars: CHAT_LIMITS.fileChars };
 
 const TEXT_EXT = /\.(txt|md|markdown|csv)$/i;
 const IMAGE_EXT = /\.(png|jpe?g|webp|gif|heic|heif)$/i;
@@ -39,7 +41,20 @@ export function formatBytes(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Decodes UTF-8 text; refuses binary content and keeps the first LIMITS.readChars characters. */
+/** Match the request's UTF-16 limit without cutting a Unicode surrogate pair or expanding the whole file. */
+function boundedAttachmentText(source: string) {
+  let end = Math.min(source.length, LIMITS.readChars);
+  if (end < source.length && source.charCodeAt(end - 1) >= 0xd800 && source.charCodeAt(end - 1) <= 0xdbff && source.charCodeAt(end) >= 0xdc00 && source.charCodeAt(end) <= 0xdfff) end--;
+  const text = source.slice(0, end);
+  let chars = 0;
+  for (let index = 0; index < text.length; index++, chars++) {
+    const code = text.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff && text.charCodeAt(index + 1) >= 0xdc00 && text.charCodeAt(index + 1) <= 0xdfff) index++;
+  }
+  return { ok: true as const, text, chars, truncated: end < source.length };
+}
+
+/** Decodes UTF-8 text; refuses binary content and keeps a request-sized prefix. */
 export function decodeText(bytes: Uint8Array): { ok: true; text: string; chars: number; truncated: boolean } | { ok: false; message: string } {
   let text: string;
   try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return { ok: false, message: "请使用 UTF-8 编码的文本。" }; }
@@ -47,16 +62,14 @@ export function decodeText(bytes: Uint8Array): { ok: true; text: string; chars: 
   if (/\u0000/.test(text)) return { ok: false, message: "文件看起来不是纯文本，无法读取。" };
   const replacement = (text.match(/\uFFFD/g) ?? []).length;
   if (replacement > Math.max(8, text.length / 50)) return { ok: false, message: "文件不是 UTF-8 编码的文本，无法读取。" };
-  const chars = [...text].length;
-  const truncated = chars > LIMITS.readChars;
-  return { ok: true, text: truncated ? [...text].slice(0, LIMITS.readChars).join("") : text, chars, truncated };
+  return boundedAttachmentText(text);
 }
 
 export function statusLabel(attachment: Pick<Attachment, "kind" | "status" | "chars" | "truncated" | "error">) {
   if (attachment.status === "reading") return "读取中…";
   if (attachment.status === "error") return attachment.error ?? "读取失败";
   if (attachment.status === "read") {
-    return attachment.truncated ? `已读取前 ${LIMITS.readChars.toLocaleString("zh-CN")} 字` : `已读取 ${(attachment.chars ?? 0).toLocaleString("zh-CN")} 字`;
+    return attachment.truncated ? `已读取前 ${(attachment.chars ?? LIMITS.readChars).toLocaleString("zh-CN")} 字` : `已读取 ${(attachment.chars ?? 0).toLocaleString("zh-CN")} 字`;
   }
   return "仅附件";
 }
@@ -100,6 +113,5 @@ export async function readAttachment(file: File, kind: AttachmentKind, signal: A
   const text = await extractReadingFile(file, signal, () => undefined);
   signal.throwIfAborted();
   if (!text.trim()) throw new Error("没有提取到文字，请换一份清晰的文件。");
-  const characters = Array.from(text);
-  return { ok: true as const, text: characters.slice(0, LIMITS.readChars).join(""), chars: Math.min(characters.length, LIMITS.readChars), truncated: characters.length > LIMITS.readChars };
+  return boundedAttachmentText(text);
 }

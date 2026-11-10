@@ -332,7 +332,7 @@ export function CompanionProvider(props: CompanionProviderProps) {
       if (controller.signal.aborted || identity.current.scope !== scope || stateRef.current.generation !== generation) return;
       const blocks: Block[] = [{ type: "text", text: response.result.text }];
       if (response.result.actions.length) blocks.push({ type: "actions", actions: activityActions(response.result.actions) });
-      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "done", blocks, revealed: response.result.text.length, request: { ...metadata, model: response.model, reasoning: { effort: response.effort } } } });
+      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "done", blocks, toolSteps: response.toolSteps, revealed: response.result.text.length, request: { ...metadata, model: response.model, reasoning: { effort: response.effort } } } });
       dispatchRaw({ type: "announce", text: "回答完成" });
     }).catch((error: unknown) => {
       if (controller.signal.aborted || stateRef.current.generation !== generation || identity.current.scope !== scope) return;

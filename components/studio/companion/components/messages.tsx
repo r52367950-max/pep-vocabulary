@@ -9,6 +9,7 @@ import { TraceGlyph } from "./icons";
 import { Modal } from "./modal";
 import { Thumb } from "./thumb";
 import { QuotePreview } from "./composer";
+import { chatToolSummary } from "@/lib/assistant/tool-trace";
 
 type Place = "full" | "mini";
 type Actions = Pick<ReturnType<typeof useStore>, "send" | "dispatch" | "runAction">;
@@ -58,6 +59,8 @@ function AssistantReply({ message, conversationId, send, dispatch, runAction }: 
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
   const streaming = message.status === "streaming";
+  const toolSummary = chatToolSummary(message.toolSteps ?? []);
+  const modelName = MODEL_NAME[message.request.model] ?? message.request.model;
   const copy = async () => {
     const text = message.blocks.filter((block) => block.type === "text").map((block) => block.type === "text" ? block.text : "").join("\n\n");
     try {
@@ -70,7 +73,7 @@ function AssistantReply({ message, conversationId, send, dispatch, runAction }: 
   return <div className="ai-turn" aria-busy={streaming} data-model={message.request.model} data-effort={message.request.reasoning.effort}>
     <span className="ai-mark" aria-hidden="true"><TraceGlyph size={18} /></span>
     <div className="ai-body">
-      {streaming && !message.blocks.some((block) => block.type === "text" && block.text) && <p className="reply-pending" role="status"><span aria-hidden="true">•••</span><span className="visually-hidden">正在思考</span></p>}
+      {streaming && !message.blocks.some((block) => block.type === "text" && block.text) && <p className="reply-pending" role="status">正在思考</p>}
       {message.blocks.map((block, index) => {
         if (block.type === "text") return <div className="ai-text" key={index}><RichText text={block.text} /></div>;
         if (block.type === "actions") return <div className="companion-actions" key={index}>{block.actions.map((action) => <ActionCard key={action.id} action={action} onRun={() => runAction(action)} />)}</div>;
@@ -79,7 +82,7 @@ function AssistantReply({ message, conversationId, send, dispatch, runAction }: 
       })}
       {message.status === "stopped" && <p className="status-note">已停止</p>}
       {message.status === "incomplete" && <button type="button" className="link-button" onClick={() => send(conversationId, { text: "继续刚才的回答", keepDraft: true })}>继续回答</button>}
-      {!streaming && <div className="msg-meta"><span className="meta-model">{MODEL_NAME[message.request.model] ?? message.request.model}</span><button type="button" className="icon-button small" aria-label={copied ? "已复制" : "复制回答文字"} onClick={() => void copy()}>{copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}</button></div>}
+      {!streaming && <div className="msg-meta">{toolSummary && <span className="tool-summary">{toolSummary}</span>}<span className="meta-model" aria-label={`回答模型：${modelName}`}>{modelName}</span><button type="button" className="icon-button small" aria-label={copied ? "已复制" : "复制回答文字"} onClick={() => void copy()}>{copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}</button></div>}
     </div>
   </div>;
 }

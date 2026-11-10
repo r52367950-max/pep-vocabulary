@@ -1,5 +1,6 @@
 import { isModelChoice, type RequestPayload } from "./routing";
 import type { Action, Block, Conversation, Message } from "./types";
+import { parseChatToolSteps } from "@/lib/assistant/tool-trace";
 
 export const COMPANION_HISTORY_PREFIX = "vocab-companion-history-v1:";
 export const HISTORY_LIMITS = { conversations: 50, messages: 120, chars: 1_000_000 };
@@ -43,6 +44,7 @@ function message(value: unknown): Message | null {
   if (m.role === "assistant") return {
     id, at, role: "assistant", status: m.status === "done" ? "done" : m.status === "error" ? "error" : "stopped",
     blocks: blocks(m.blocks), revealed: Number.MAX_SAFE_INTEGER, request: request(m.request), routeReason: "",
+    toolSteps: parseChatToolSteps(m.toolSteps),
   };
   if (m.role === "result") {
     const r = record(m.result);
