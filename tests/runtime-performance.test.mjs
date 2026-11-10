@@ -85,7 +85,11 @@ test("code-split surfaces open without a loading step and keep their styles out 
     assert.doesNotMatch(source(path), /\blazy\(/, `${path} declares its own lazy surface`);
   }
   assert.doesNotMatch(surfaces, /\blazy\(/);
-  assert.equal(surfaces.match(/= preloadable\(styled\(/g).length, surfaces.match(/^export const /gm).length, "each surface loads with its stylesheet");
+  const sharedStyleSurfaces = surfaces.split("\n").filter(line => line.startsWith("export const ") && !line.startsWith("export const CompanionHost "));
+  assert.ok(sharedStyleSurfaces.every(line => line.includes("= preloadable(styled(")), "shared surfaces load with their stylesheet");
+  assert.match(surfaces, /export const CompanionHost = preloadable\(\(\) => import\("\.\/companion"\)\)/);
+  assert.match(source("components/studio/companion/index.tsx"), /import "\.\/styles\.css";/, "the companion carries its own scoped styles in the lazy entry");
+  assert.doesNotMatch(layout, /companion.*\.css/, "companion styles stay out of the render-blocking layout");
   assert.match(app, /preloadWhenIdle\(\[/, "the shell warms the next steps in idle time");
   assert.match(app, /onPointerEnter=\{\(\) => prepareSurface\(id\)\}/, "tab intent warms the tab");
   // Surface-only stylesheets load with the first surface instead of blocking the first paint.

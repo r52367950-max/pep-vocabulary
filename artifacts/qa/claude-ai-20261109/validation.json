@@ -1,0 +1,43 @@
+{
+  "typecheck": "passed",
+  "lint": "passed (0 errors, 0 warnings)",
+  "production_build": "passed",
+  "artifact_validation": "passed",
+  "worker_smoke": {
+    "status": "passed",
+    "checks": 54
+  },
+  "production_dependency_audit": "0 vulnerabilities",
+  "data_audit": "passed with the existing declared content gaps",
+  "unit_and_regression": {
+    "status": "passed",
+    "full_suite_cases": 627,
+    "passed": 627,
+    "failed": 0,
+    "evidence": "GitHub Actions CI #8 on code commit 5f5f767e1956d5bdcd3153730efee02de522ebaf; full npm test completed successfully."
+  },
+  "browser_integration": {
+    "status": "passed",
+    "checks": 19,
+    "viewports": [
+      1440,
+      1180,
+      820,
+      390
+    ]
+  },
+  "browser_live_voice": {
+    "status": "passed",
+    "checks": 7
+  },
+  "limits": [
+    "AI HTTP and WebRTC transports use deterministic fixtures; no paid provider call or real microphone capture.",
+    "This PR preserves existing database migrations, word IDs and backup schema.",
+    "Production site deployment is separate from PR delivery."
+  ],
+  "github_ci": {
+    "status": "success",
+    "code_commit": "5f5f767e1956d5bdcd3153730efee02de522ebaf",
+    "run_url": "https://github.com/r52367950-max/pep-vocabulary/actions/runs/42623765095"
+  }
+}

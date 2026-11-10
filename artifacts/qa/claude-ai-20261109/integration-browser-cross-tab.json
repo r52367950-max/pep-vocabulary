@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "browser": "156.0.8078.79",
+  "base": "http://127.0.0.1:5174",
+  "viewportSizes": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "ipad-landscape",
+      "width": 1180,
+      "height": 760,
+      "touch": true
+    },
+    {
+      "name": "ipad-portrait",
+      "width": 820,
+      "height": 1100,
+      "touch": true
+    },
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "mobile": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "Cross-tab deletion survives the released stale 250 ms save callback and a fresh page reload",
+      "status": "passed",
+      "tabs": 2,
+      "releasedStaleCallbacks": 1,
+      "actualProviderAndLocalStorage": true,
+      "timerControl": "Only A's 250 ms timers are captured; its pre-deletion callback is released after B's real UI deletion, even if cancelled, to exercise the commit guard."
+    }
+  ],
+  "screenshots": [],
+  "pageErrors": [],
+  "failure": null,
+  "limits": [
+    "HTTP fixture responses cover client transport and UI behavior; upstream model quality/latency is not measured.",
+    "Voice readiness fixture is unconfigured; no microphone or paid voice session is started.",
+    "Screenshots capture the real local app with controlled QA answers."
+  ]
+}

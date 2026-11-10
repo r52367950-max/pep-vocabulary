@@ -50,14 +50,14 @@ function tokenEstimate(text: string) {
  * Incomplete/failed calls retain their reservation until the budget day ends,
  * except the output part of a request the provider rejected before generating.
  */
-export async function reserveTokens(userKey: string, budget: number, prompt: string, outputCap: number, now = Date.now()): Promise<TokenReservation> {
+export async function reserveTokens(userKey: string, budget: number, prompt: string, outputCap: number, now = Date.now(), minimumOutputTokens = Math.min(256, outputCap)): Promise<TokenReservation> {
   const db = database();
   const keys = tokenKeys(userKey, now);
   const used = await readBucket(db, keys.total);
   const promptEstimate = tokenEstimate(prompt) + 256;
   const maxOutputTokens = Math.min(outputCap, budget - used - promptEstimate);
   const exhausted = () => new TokenBudgetError(Math.max(1, Math.ceil((keys.day.expiresAt - now) / 1000)));
-  if (maxOutputTokens < Math.min(256, outputCap)) throw exhausted();
+  if (maxOutputTokens < minimumOutputTokens) throw exhausted();
   const amount = promptEstimate + maxOutputTokens;
   const row = await db.prepare(
     `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at)

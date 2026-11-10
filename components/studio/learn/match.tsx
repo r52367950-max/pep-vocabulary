@@ -188,7 +188,6 @@ export default function Match({
             ? `共 ${preview.length} 轮，每轮 ${preview[0].pairs.length} 对左右。`
             : `这个范围可配对的词不足 ${MATCH_MIN_WORDS} 个，换一个单元试试。`
         }
-        note="配对是练习游戏，不会改变复习计划。"
         action={
           <button
             type="button"

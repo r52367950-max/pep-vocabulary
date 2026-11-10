@@ -133,7 +133,6 @@ export default function Flashcards({
             ? `可翻看 ${pool.length} 个词，其中 ${fresh} 个还没学过。每组 ${Math.min(FLASH_DECK_SIZE, pool.length)} 张。`
             : "这个范围没有可以翻看的词，换一个单元试试。"
         }
-        note="词卡只用来熟悉单词，不会改变复习计划。"
         action={
           <button
             type="button"

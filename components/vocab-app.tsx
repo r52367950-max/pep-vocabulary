@@ -34,9 +34,13 @@ import type { LearnMode } from "@/lib/learn";
 import Today from "./studio/today";
 import { Brand } from "./studio/shared";
 import { StudioSymbol } from "./studio/symbol";
+import { CompanionGlyph } from "./studio/companion-glyph";
+import type { ArticleSelectionSource, CompanionSelectionRequest } from "@/lib/companion-events";
+import type { View as CompanionView, PracticeResult, RoundAnswer } from "./studio/companion/types";
 import { preloadWhenIdle } from "./studio/preloadable";
 import {
   ActivityView,
+  CompanionHost,
   LearnActivity,
   Lexicon,
   Reading,
@@ -51,19 +55,23 @@ import type { CSSProperties, ReactNode } from "react";
 
 // Memoized: once visited, these stay mounted behind <Activity> and skip unrelated shell renders.
 const TodayView = memo(Today);
-type View = "today" | "practice" | "lexicon" | "reading" | "activity";
+type View = "today" | "practice" | "lexicon" | "reading" | "activity" | "chat";
 const navigation = [
   { id: "today", label: "今日学习", short: "今日", symbol: "today" },
   { id: "lexicon", label: "词库", short: "词库", symbol: "lexicon" },
+  { id: "chat", label: "AI 对话", short: "AI", symbol: "lexicon" },
   { id: "reading", label: "阅读", short: "阅读", symbol: "reading" },
   { id: "activity", label: "学习记录", short: "记录", symbol: "activity" },
   { id: "settings", label: "设置", short: "设置", symbol: "settings" },
 ] as const;
-const surfaceOf = { lexicon: Lexicon, reading: Reading, activity: ActivityView, settings: SettingsDialog } as const;
+const surfaceOf = { chat: CompanionHost, lexicon: Lexicon, reading: Reading, activity: ActivityView, settings: SettingsDialog } as const;
 // Pointer or focus intent on a tab starts its chunk a moment before the tap lands.
 function prepareSurface(id: (typeof navigation)[number]["id"]) {
   if (id !== "today") void surfaceOf[id].preload().catch(() => undefined);
 }
+const mobileNavigation = navigation.filter((item) => item.id !== "settings");
+const companionView: Record<View, CompanionView> = { today: "today", practice: "today", lexicon: "words", reading: "reading", activity: "records", chat: "chat" };
+const productView: Record<CompanionView, View> = { today: "today", words: "lexicon", reading: "reading", records: "activity", dictation: "practice", chat: "chat" };
 const modeTitle: Record<StudyMode, string> = {
   daily: "今日学习",
   review: "到期复习",
@@ -120,6 +128,38 @@ export default function VocabApp() {
   const data = useVocabulary();
   useEffect(() => { void refreshLearningContext().catch(() => undefined); }, []);
   const [view, setView] = useState<View>("today");
+  const [companionLoaded, setCompanionLoaded] = useState(false);
+  const [companionReady, setCompanionReady] = useState(false);
+  const [companionMini, setCompanionMini] = useState(false);
+  const [companionOpenRequest, setCompanionOpenRequest] = useState(0);
+  const [companionTarget, setCompanionTarget] = useState<HTMLElement | null>(null);
+  const [companionArticle, setCompanionArticle] = useState<ArticleSelectionSource | null>(null);
+  const [companionSelection, setCompanionSelection] = useState<CompanionSelectionRequest | null>(null);
+  const companionIsReady = useCallback(() => setCompanionReady(true), []);
+  const companionSelectionConsumed = useCallback((id: string) => setCompanionSelection((current) => current?.id === id ? null : current), []);
+  const openCompanionMini = useCallback(() => { setCompanionLoaded(true); setCompanionOpenRequest((value) => value + 1); }, []);
+  const articleChanged = useEffectEvent((article: ArticleSelectionSource | null) => {
+    // Leaving the reader keeps its context for the same conversation; returning to the shelf clears it.
+    if (article || view === "reading") setCompanionArticle(article);
+  });
+  useEffect(() => {
+    const selected = (event: Event) => {
+      const request = (event as CustomEvent<CompanionSelectionRequest>).detail;
+      if (!request?.article || !request.quote) return;
+      setCompanionLoaded(true);
+      setCompanionArticle(request.article);
+      setCompanionSelection(request);
+    };
+    const article = (event: Event) => articleChanged((event as CustomEvent<ArticleSelectionSource | null>).detail);
+    window.addEventListener("vocab-companion-selection", selected);
+    window.addEventListener("vocab-companion-article", article);
+    return () => {
+      window.removeEventListener("vocab-companion-selection", selected);
+      window.removeEventListener("vocab-companion-article", article);
+    };
+  }, []);
+
+  if (view === "chat" && !companionLoaded) setCompanionLoaded(true);
   const navigationView = view === "practice" ? "today" : view;
   // Views stay mounted once visited (hidden with <Activity>), keeping search, page and open article.
   const [visited, setVisited] = useState<ReadonlySet<View>>(() => new Set(["today"]));
@@ -131,6 +171,8 @@ export default function VocabApp() {
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
   const [session, setSession] = useState<StudySessionState | null>(null);
+  const [companionSessionId, setCompanionSessionId] = useState<string | null>(null);
+  const companionPractice = useRef<{ sessionId: string; generation: string; mode: "dictation" | "review"; title: string; rounds: RoundAnswer[][]; onResult: (result: PracticeResult) => void } | null>(null);
   const [learn, setLearn] = useState<LearnMode | null>(null);
   const [writing, setWriting] = useState<{ targets?: string[]; openId?: string | null } | null>(null);
   const [resume, setResume] = useState<StudySessionState | null>(null);
@@ -259,6 +301,8 @@ export default function VocabApp() {
   // Set when this page restores, merges or clears data itself; that action reports its own result.
   const replacingHere = useRef(false);
   const discardReplacedSession = useEffectEvent(() => {
+    companionPractice.current = null;
+    setCompanionSessionId(null);
     setResume(null);
     setSession(null);
     setLearn(null);
@@ -363,6 +407,7 @@ export default function VocabApp() {
     setSelected(null);
     setResume(null);
     checkpoint(next);
+    return next;
   }, [data.cards, data.index, dailyQueue, bookId, unit, scope, checkpoint]);
   const { updateSettings } = data;
   const onCourse = useCallback((book: string, nextUnit: string) => {
@@ -387,6 +432,7 @@ export default function VocabApp() {
     setWriting(options);
   }, []);
   const showLexicon = useCallback(() => setView("lexicon"), []);
+  const navigateCompanion = useCallback((next: CompanionView) => setView(productView[next]), []);
   const showPractice = useCallback(() => setView("practice"), []);
   const showToday = useCallback(() => setView("today"), []);
   const showVoice = useCallback((tab: "speaking" | "dictation" = "speaking") => { setVoiceInitialTab(tab); setVoiceOpen(true); }, []);
@@ -411,14 +457,43 @@ export default function VocabApp() {
         .length,
     [dailyQueue, data.cards],
   );
+  const resultRounds = (current: StudySessionState): RoundAnswer[][] => {
+    const rows = current.results.map((result) => ({
+      item: { id: result.wordId, text: data.byId.get(result.wordId)?.headword || result.expected, meaning: result.expected, source: "词迹练习" },
+      answer: result.answer,
+      score: { correct: result.correct, explanation: result.correct ? "回答正确" : `正确答案：${result.expected}` },
+      retry: result.retry,
+    }));
+    return [rows.filter((row) => !row.retry), rows.filter((row) => row.retry)].filter((round) => round.length > 0);
+  };
   const closeSession = () => {
+    const origin = companionPractice.current;
+    const samePractice = Boolean(session && origin && origin.sessionId === session.id && origin.generation === data.generation);
     if (session && session.position < session.queue.length) setResume(session);
     else setResume(null);
+    companionPractice.current = null;
+    setCompanionSessionId(null);
     setSession(null);
-    setView(current => current === "practice" ? "practice" : "today");
+    if (samePractice && session && origin) {
+      const rounds = [...origin.rounds, ...resultRounds(session)];
+      if (rounds.length) origin.onResult({ mode: origin.mode, title: origin.title, source: "词迹练习记录", rounds });
+      setView("chat");
+    } else setView(current => current === "practice" ? "practice" : "today");
+  };
+  const retrySession = (ids: string[]) => {
+    const wanted = new Set(ids);
+    const origin = companionPractice.current;
+    const samePractice = Boolean(origin && session && origin.sessionId === session.id && origin.generation === data.generation);
+    const next = startSession(samePractice && origin ? origin.mode : "mistakes", data.index.filter((entry) => wanted.has(entry.id)));
+    if (samePractice && origin && session && next) {
+      companionPractice.current = { ...origin, sessionId: next.id, rounds: [...origin.rounds, ...resultRounds(session)] };
+      setCompanionSessionId(next.id);
+    }
   };
   const onReplaced = () => {
     replacingHere.current = true;
+    companionPractice.current = null;
+    setCompanionSessionId(null);
     setResume(null);
     setSession(null);
   };
@@ -435,6 +510,16 @@ export default function VocabApp() {
       else setView("today");
     },
   );
+  const openCompanionSettings = useCallback(() => { setSettingsSection("ai"); setSettingsOpen(true); }, []);
+  const practiceCompanion = useCallback((ids: string[], mode: "dictation" | "review" = "dictation", title?: string, onResult?: (result: PracticeResult) => void) => {
+    const wanted = new Set(ids);
+    const entries = ids.length ? data.index.filter((entry) => wanted.has(entry.id)) : undefined;
+    const next = startSession(mode, entries);
+    if (next && onResult) {
+      companionPractice.current = { sessionId: next.id, generation: data.generation, mode, title: title || next.title, rounds: [], onResult };
+      setCompanionSessionId(next.id);
+    }
+  }, [data.generation, data.index, startSession]);
   const clear = async () => {
     if (
       !window.confirm(
@@ -458,6 +543,7 @@ export default function VocabApp() {
     }
   };
 
+  const renderContent = () => {
   if (data.loading)
     return (
       <main className="boot-screen">
@@ -488,14 +574,8 @@ export default function VocabApp() {
             session={session}
             onChange={checkpoint}
             onExit={closeSession}
-            onRetry={(ids) => {
-              // Keep lexicon order, as before, without an O(n·m) includes scan.
-              const wanted = new Set(ids);
-              startSession(
-                "mistakes",
-                data.index.filter((entry) => wanted.has(entry.id)),
-              );
-            }}
+            exitLabel={companionSessionId === session.id ? "带回对话" : undefined}
+            onRetry={retrySession}
           />
         </Suspense>
         {toast}
@@ -560,7 +640,7 @@ export default function VocabApp() {
       {toast}
     </>;
   return (
-    <div className="vocab-studio">
+    <div className={`vocab-studio${view === "chat" ? " companion-chat" : ""}${view === "chat" || companionMini ? " companion-compact" : ""}${companionMini ? " companion-mini-open" : ""}`}>
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
@@ -573,7 +653,7 @@ export default function VocabApp() {
           <Brand />
         </button>
         <nav className="desktop-nav" aria-label="主要导航">
-          {navigation.slice(0, 3).map(({ id, label, symbol }) => (
+          {navigation.slice(0, 4).map(({ id, label, symbol }) => (
             <button
               key={id}
               aria-label={label}
@@ -587,8 +667,8 @@ export default function VocabApp() {
               onPointerEnter={() => prepareSurface(id)}
               onFocus={() => prepareSurface(id)}
             >
-              <StudioSymbol name={symbol} size={21} />
-              {label}
+              {id === "chat" ? <CompanionGlyph size={21} /> : <StudioSymbol name={symbol} size={21} />}
+              <span className="nav-label">{label}</span>
             </button>
           ))}
         </nav>
@@ -611,7 +691,7 @@ export default function VocabApp() {
             </span>
           </button>
           <nav className="desktop-nav" aria-label="个人导航">
-            {navigation.slice(3).map(({ id, label, symbol }) => (
+            {navigation.slice(4).map(({ id, label, symbol }) => (
               <button
                 key={id}
                 aria-label={label}
@@ -625,8 +705,8 @@ export default function VocabApp() {
                 onPointerEnter={() => prepareSurface(id)}
                 onFocus={() => prepareSurface(id)}
               >
-                <StudioSymbol name={symbol} size={21} />
-                {label}
+                {id === "chat" ? <CompanionGlyph size={21} /> : <StudioSymbol name={symbol} size={21} />}
+                <span className="nav-label">{label}</span>
               </button>
             ))}
           </nav>
@@ -640,13 +720,13 @@ export default function VocabApp() {
         >
           <Brand />
         </button>
-        <button
+        <div className="mobile-header-actions"><button className="icon-button" aria-label="设置" onClick={() => setSettingsOpen(true)}><StudioSymbol name="settings" size={21} /></button><button
           className="icon-button"
           aria-label="搜索词库"
           onClick={() => setView("lexicon")}
         >
           <Search size={21} aria-hidden="true" />
-        </button>
+        </button></div>
       </header>
       <div className="studio-workspace">
         <main
@@ -655,7 +735,8 @@ export default function VocabApp() {
           ref={heading}
           tabIndex={-1}
         >
-          {!data.online && (
+          {view === "chat" && <section id="companion-page-slot" ref={setCompanionTarget} className="companion-page-slot" aria-label="AI 对话">{!companionReady && <Pending />}</section>}
+          {view !== "chat" && !data.online && (
             <div className="offline-banner" role="status">
               <CloudOff size={16} aria-hidden="true" />
               离线模式 · 已缓存词条仍可学习，作答会保存在本机。
@@ -730,9 +811,9 @@ export default function VocabApp() {
           )}
         </main>
       </div>
-      <nav className="mobile-nav" aria-label="移动导航" style={{ "--nav-index": navigation.findIndex(item => item.id === navigationView) } as CSSProperties}>
+      <nav className="mobile-nav" aria-label="移动导航" style={{ "--nav-index": mobileNavigation.findIndex(item => item.id === navigationView) } as CSSProperties}>
         <span className="nav-selection" aria-hidden="true" />
-        {navigation.map(({ id, short, symbol }) => (
+        {mobileNavigation.map(({ id, short, symbol }) => (
           <button
             key={id}
             aria-current={
@@ -740,11 +821,11 @@ export default function VocabApp() {
                 ? "page"
                 : undefined
             }
-            onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
+            onClick={() => setView(id)}
             onPointerEnter={() => prepareSurface(id)}
             onFocus={() => prepareSurface(id)}
           >
-            <StudioSymbol name={symbol} size={25} />
+            {id === "chat" ? <CompanionGlyph size={25} /> : <StudioSymbol name={symbol} size={25} />}
             <span>{short}</span>
           </button>
         ))}
@@ -764,4 +845,27 @@ export default function VocabApp() {
       {toast}
     </div>
   );
+  };
+  const companionActive = companionLoaded || view === "chat";
+  const companionVisible = !data.loading && !data.error && !session && !learn && !writing && !voiceOpen;
+  return <>
+    {renderContent()}
+    {companionActive && <Suspense fallback={null}><CompanionHost
+      data={data}
+      view={session ? "dictation" : companionView[view]}
+      article={companionArticle}
+      selectionRequest={companionSelection}
+      onSelectionConsumed={companionSelectionConsumed}
+      onNavigate={navigateCompanion}
+      onOpenSettings={openCompanionSettings}
+      onPractice={practiceCompanion}
+      onVoice={showVoice}
+      target={companionTarget}
+      visible={companionVisible}
+      openRequest={companionOpenRequest}
+      onReady={companionIsReady}
+      onMiniChange={setCompanionMini}
+    /></Suspense>}
+    {!companionReady && view !== "chat" && companionVisible && <button className="companion-launcher" type="button" aria-label="问 AI（在这一页提问）" title="问 AI" onPointerEnter={() => void CompanionHost.preload().catch(() => undefined)} onFocus={() => void CompanionHost.preload().catch(() => undefined)} onClick={openCompanionMini}><CompanionGlyph /></button>}
+  </>;
 }

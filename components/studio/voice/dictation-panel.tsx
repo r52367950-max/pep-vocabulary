@@ -14,12 +14,14 @@ import "./dictation.css";
 export type PreparedDictationPlan = { items: DictationItem[]; reason: string; clarification: string; selection?: 'theme' | 'grounded' };
 
 type Playback = "idle" | "loading" | "playing";
-export function DictationPanel({ entries, active = true, temporary = false, learningPreferences, spellingCapture: suppliedCapture, accountScope, contextEpoch = 0, onLiveActiveChange, onLiveUnconfirmedChange, preparedPlan, conversationContext = "" }: {
+export function DictationPanel({ entries, active = true, temporary = false, learningPreferences, spellingCapture: suppliedCapture, accountScope, contextEpoch = 0, onLiveActiveChange, onLiveUnconfirmedChange, onAttempt, preparedPlan, conversationContext = "" }: {
   entries: LexiconIndexEntry[]; active?: boolean; temporary?: boolean; preparedPlan?: PreparedDictationPlan | null; conversationContext?: string;
   learningPreferences?: DictationLearningPreferences; spellingCapture?: SpellingCaptureAdapter;
   accountScope?: string; contextEpoch?: number; onLiveActiveChange?: (active: boolean) => void; onLiveUnconfirmedChange?: (unconfirmed: boolean) => void;
+  onAttempt?: (attempt: { item: DictationItem; answer: string; correct: boolean; assisted: boolean }) => void;
 }) {
   const [suggestion, setSuggestion] = useState<PreparedDictationPlan | null>(null);
+  const [appliedPlan, setAppliedPlan] = useState<{ plan: PreparedDictationPlan | null; key: string } | null>(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [planError, setPlanError] = useState("");
   const [requestText, setRequestText] = useState("");
@@ -111,8 +113,9 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       const cancelOpening = () => { void transport.close(); };
       signal.addEventListener("abort", cancelOpening, { once: true });
       try {
+        const globalTemporary = learningContextStore.get().temporary;
         const memory = await refreshLearningContext(signal);
-        if (signal.aborted || !contextStillCurrent(memory, temporary) || (accountScope && accountScope !== memory.accountScope)) throw new Error("账户或学习模式已改变，请重新开始。");
+        if (signal.aborted || !contextStillCurrent(memory, globalTemporary) || (accountScope && accountScope !== memory.accountScope)) throw new Error("账户或学习模式已改变，请重新开始。");
         await transport.open(temporary, { accountScope: memory.accountScope, contextRevision: memory.revision, contextVersion: memory.contextVersion });
         if (signal.aborted) throw new Error("语音输入已取消。");
         return transport.begin(signal);
@@ -125,7 +128,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     stopMedia(); void live.current?.close(); planAbort.current?.abort(); planAttempted.current = ""; cache.current.clear(); roundGeneration.current = null;
     Promise.resolve().then(() => {
       if (!mounted) return;
-      setQueue([]); setHeardItemIds([]); setSuggestion(null); setPosition(0); setHistory([]); setHistoryOpen(false); setStorageError(false); setHintVisible(false); setRoundResults({}); exposed.current.clear(); setCommandDraft(null); setCommandListening(false); setPlayback("idle");
+      setQueue([]); setHeardItemIds([]); setSuggestion(null); setAppliedPlan(null); setPosition(0); setHistory([]); setHistoryOpen(false); setStorageError(false); setHintVisible(false); setRoundResults({}); exposed.current.clear(); setCommandDraft(null); setCommandListening(false); setPlayback("idle");
       const fresh = newDictationAttempt(crypto.randomUUID(), ""); attemptRef.current = fresh; setAttempt(fresh);
       if (temporary || !accountScope) return;
       void readLocalDictationHistory(accountScope).then((snapshot) => {
@@ -183,10 +186,11 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     planAbort.current?.abort(); const abort = new AbortController(); planAbort.current = abort;
     setPlanBusy(true); setPlanError("");
     try {
+      const globalTemporary = learningContextStore.get().temporary;
       const context = await refreshLearningContext(abort.signal);
       const plan = await voiceRequest<PreparedDictationPlan>("/api/voice/dictation-plan", { operationId: crypto.randomUUID(), text: (requestText.trim() || conversationContext).slice(-2000), allowTopicWords: mode === "words", accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion, temporary }, abort.signal);
       await refreshLearningContext(abort.signal);
-      if (!abort.signal.aborted && contextStillCurrent(context, temporary)) setSuggestion(plan);
+      if (!abort.signal.aborted && contextStillCurrent(context, globalTemporary)) setSuggestion(plan);
     } catch (error) { if (!abort.signal.aborted) setPlanError(error instanceof Error ? error.message : "推荐暂时未完成，请重试。"); }
     finally { if (planAbort.current === abort) setPlanBusy(false); }
   };
@@ -195,7 +199,6 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   // and again after the account, learning context or round changes.
   const incomingPlan = preparedPlan && !queue.length ? preparedPlan : null;
   const planKey = `${accountScope}:${contextEpoch}`;
-  const [appliedPlan, setAppliedPlan] = useState<{ plan: PreparedDictationPlan | null; key: string } | null>(null);
   if (!appliedPlan || appliedPlan.plan !== incomingPlan || appliedPlan.key !== planKey) {
     setAppliedPlan({ plan: incomingPlan, key: planKey });
     if (incomingPlan) setSuggestion(incomingPlan);
@@ -244,8 +247,10 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       const player = new Audio(); audio.current = player;
       let blob = cache.current.get(key);
       if (!blob) {
+        const globalTemporary = learningContextStore.get().temporary;
         const memory = await refreshLearningContext(abort.signal);
-        if (abort.signal.aborted || id !== requestId.current || !contextStillCurrent(memory, temporary) || (accountScope && accountScope !== memory.accountScope)) return;
+        if (abort.signal.aborted || id !== requestId.current) return;
+        if (!contextStillCurrent(memory, globalTemporary) || (accountScope && accountScope !== memory.accountScope)) throw new Error("账户或学习设置已改变，请重新播放。");
         const response = await fetch("/api/voice/speech", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: item.text, rate: 1, temporary, accountScope: memory.accountScope, contextRevision: memory.revision, contextVersion: memory.contextVersion }), signal: abort.signal });
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
@@ -270,7 +275,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     } catch (error) {
       if (id !== requestId.current || abort.signal.aborted) return;
       setPlayback("idle");
-      setNotice(error instanceof DOMException && error.name === "NotAllowedError" ? "浏览器暂时阻止了声音播放。请再次点播放；音频已缓存，不会重复请求。" : error instanceof Error ? error.message : "语音暂时不可用，可改用设备朗读。");
+      setNotice(error instanceof DOMException && error.name === "NotAllowedError" ? "请再点一次播放。音频已缓存。" : error instanceof Error ? error.message : "语音暂时不可用，可改用设备朗读。");
     }
   };
   const submit = async () => {
@@ -280,6 +285,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     if (accepted.phase !== "submitted" || accepted === current) return;
     stop();
     const correct = compareDictation(item.text, accepted.answer).correct;
+    onAttempt?.({ item, answer: accepted.answer, correct, assisted: accepted.assisted });
     if (!temporary && accountScope) void recordLearningActivity({ eventId: `dictation-${accepted.id}`, kind: "dictation", title: `听写练习 · ${item.text}`.slice(0, 160), summary: accepted.assisted ? "使用过提示，作为辅助练习" : correct ? "独立答对" : "需要再练", refIds: [item.wordId || item.id], counts: { total: 1, correct: correct && !accepted.assisted ? 1 : 0, assisted: accepted.assisted ? 1 : 0 } }, { accountScope });
     setRoundResults((previous) => ({ ...previous, [item.id]: correct && !accepted.assisted }));
     // Assisted answers can be reviewed, but never resolve a mistake or count as independent mastery.
@@ -321,7 +327,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       if (abort.signal.aborted || attemptRef.current.id !== attemptId || attemptRef.current.captureId !== captureId) return;
       const draft = spellingDraft(transcript);
       apply({ type: "captured", attemptId, captureId, answer: draft.answer });
-      setNotice(draft.uncertain ? "有些声音未能明确识别为字母。请根据自己的拼读修改下方文字，再确认；不会自动判错。" : "请核对识别出的字母。确认前不会判分。");
+      setNotice(draft.uncertain ? "请核对识别出的字母，修改标记为不确定的部分后确认。" : "核对识别出的字母后确认。");
     } catch (error) {
       if (!abort.signal.aborted && attemptRef.current.id === attemptId) {
         apply({ type: "capture-failed", attemptId, captureId });
@@ -415,7 +421,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
         {historyOpen && !temporary ? (
           <div className="dictation-history">
             <h2>听写错题</h2>
-            <p className="dictation-note">保留在此浏览器，最多300条练习记录；不影响单词复习进度。</p>
+            <p className="dictation-note">最近 300 条听写记录。</p>
             {mistakes.length ? (
               <>
                 <button
@@ -554,7 +560,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
             </div>
             <details className="dictation-live-options">
               <summary>Live 语音指令与拼读</summary>
-              <p className="dictation-note">题目由设备或核验过的 AI 音频播放，Live 只识别语音输入，不播题、不判分。开启后预留 5 分钟，等待与静音仍计时；提前结束不退还预留，实际费用以服务商为准。键盘作答无需开启。</p>
+              <p className="dictation-note">开启后可说指令或拼读作答，预留 5 分钟额度；等待与静音计时，提前结束不退还预留额度。</p>
               {!submitted && !revealed && (
                 <div className="dictation-actions">
                   {commandListening ? (
@@ -609,7 +615,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
                 )}
               </div>
             )}
-            {hintVisible && <p className="dictation-notice">提示：{item.hint || "当前题目没有额外提示。"} · 本题作为辅助练习，不计入独立掌握。</p>}
+            {hintVisible && <p className="dictation-notice">提示：{item.hint || "当前题目没有额外提示。"} · 辅助练习</p>}
             {paperMode ? (
               <div className="dictation-paper-progress">
                 <p className="dictation-note">在纸上写下第 {position + 1} 题。听完后可拍照，核对识别文字再批改。</p>
@@ -658,8 +664,8 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
                 {result && <h3>{result.correct ? "听写正确" : `匹配 ${result.matched} / ${result.total} 词`}</h3>}
                 <p className="dictation-target" lang="en">{item.text}</p>
                 <p className="dictation-note">{item.hint} · {item.source}</p>
-                {!submitted && <p className="dictation-note">本次已看答案，不记入掌握记录。可重新听写；本轮看过答案的题仍作为辅助练习。</p>}
-                {submitted && attempt.assisted && <p className="dictation-note">本题已使用提示或答案，记为辅助练习，掌握和错题记录保持不变。</p>}
+                {!submitted && <p className="dictation-note">已看答案 · 本轮记为辅助练习，可重新听写。</p>}
+                {submitted && attempt.assisted && <p className="dictation-note">已使用提示或答案 · 辅助练习。</p>}
                 {result && !result.correct && (
                   <>
                     <p className="dictation-note">逐词对照：划线为多写或写错，下方为应写内容。</p>
@@ -678,7 +684,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
                     </div>
                   </>
                 )}
-                <p className="dictation-note">忽略大小写和标点；接受已列明的常见缩写、英美拼写变体。含歧义的缩写按原文核对。此结果仅比较听写文字。</p>
+                <p className="dictation-note">忽略大小写和标点，接受常见缩写及英美拼写变体；有歧义时按原文核对。</p>
                 <div className="dictation-actions">
                   {submitted && (
                     <button

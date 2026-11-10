@@ -1014,3 +1014,28 @@ html[data-theme="dark"] {
     .security-callout, .study-choices button, .dictation-emblem, .dictation-play,
     .dictation-history li, .dictation-notice) { corner-shape: squircle; }
 }
+
+/* The companion is an added surface; learning pages keep their existing composition. */
+.mobile-header-actions { display: flex; align-items: center; gap: 4px; }
+.companion-launcher { position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 55; display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px #1018280f, 0 4px 14px #10182814; }
+.companion-page-slot { height: 100dvh; width: 100%; min-width: 0; }
+.vocab-studio.companion-chat .studio-workspace { padding: 0; }
+.vocab-studio.companion-chat .main-content { max-width: none; height: 100dvh; min-height: 0; padding: 0; overflow: hidden; }
+.vocab-studio.companion-chat .mobile-header { display: none; }
+@media (min-width: 761px) {
+  .vocab-studio.companion-compact .app-sidebar { width: 72px; padding: 18px 12px; align-items: center; }
+  .vocab-studio.companion-compact .studio-workspace { margin-left: 72px; }
+  .vocab-studio.companion-compact .brand-home { width: 48px; padding: 0; justify-content: center; }
+  .vocab-studio.companion-compact .brand-name, .vocab-studio.companion-compact .nav-label, .vocab-studio.companion-compact .sidebar-progress { display: none; }
+  .vocab-studio.companion-compact .desktop-nav button { width: 48px; min-height: 44px; padding: 0; justify-content: center; border-radius: 10px; }
+}
+@media (min-width: 1001px) {
+  .vocab-studio.companion-mini-open .studio-workspace { margin-right: 448px; padding-inline: 28px; }
+}
+@media (min-width: 761px) and (max-width: 1000px) {
+  .vocab-studio.companion-mini-open .main-content { padding-bottom: calc(52dvh + 32px); }
+}
+@media (max-width: 760px) {
+  .companion-launcher { right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); width: 48px; height: 48px; }
+  .vocab-studio.companion-chat .main-content, .companion-page-slot { height: calc(100dvh - 84px - env(safe-area-inset-bottom)); }
+}

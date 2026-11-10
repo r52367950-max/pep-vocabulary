@@ -1,0 +1,61 @@
+{
+  "status": "passed",
+  "browser": "156.0.8078.79",
+  "base": "http://127.0.0.1:5174",
+  "verificationMode": "Seven scenarios verified in focused runs; unchanged lifecycle evidence reused after the prepared-plan and local-temporary corrections.",
+  "checks": [
+    {
+      "name": "Natural end and restart retain each transcript once, and restart receives prior voice context",
+      "status": "passed"
+    },
+    {
+      "name": "Finishing while account context is pending cancels startup before requesting microphone",
+      "status": "passed"
+    },
+    {
+      "name": "Account invalidation rejects late old-session captions and stops every track",
+      "status": "passed"
+    },
+    {
+      "name": "Temporary voice stays in memory and sends the temporary scope",
+      "status": "passed"
+    },
+    {
+      "name": "Typed follow-up after voice includes each captured turn once in the real chat request",
+      "status": "passed"
+    },
+    {
+      "name": "Live tool prepares actual dictation, grades an answer and returns the result to the same conversation",
+      "status": "passed"
+    },
+    {
+      "name": "Temporary dictation uses the real request scope and recovers from AI speech failure",
+      "status": "passed"
+    }
+  ],
+  "evidenceGroups": [
+    {
+      "scope": "Lifecycle, restart context, startup cancellation, account invalidation and temporary privacy",
+      "scenarios": 4,
+      "rerunAfterDictationChange": false
+    },
+    {
+      "scope": "Typed follow-up contains actual voice context exactly once",
+      "scenarios": 1
+    },
+    {
+      "scope": "Live prepare_dictation → actual exercise → real answer comparison → same conversation result",
+      "scenarios": 1
+    },
+    {
+      "scope": "Temporary conversation → actual dictation → temporary AI speech request → controlled failure recovery → device playback and real grading, without persistence",
+      "scenarios": 1
+    }
+  ],
+  "pageErrors": [],
+  "unresolvedFindings": [],
+  "limits": [
+    "Actual browser, React integration and NativeLiveSession code exercised with fake RTCPeerConnection, tracks and speech synthesis.",
+    "Account/context/voice HTTP uses deterministic fixtures; no real mic, provider, quota spend or voice latency measurement."
+  ]
+}

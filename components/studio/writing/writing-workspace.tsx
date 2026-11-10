@@ -22,7 +22,7 @@ import type { WritingHandwritingAssessment } from "@/lib/writing-recognition";
 import { WRITING_TOPICS, recommendWritingTopic, randomWritingTopic, topicPrompt, validWritingTopic, type WritingTopic } from "@/lib/writing-topics";
 
 type View = { kind: "list" } | { kind: "setup" } | { kind: "edit"; id: string };
-const WRITING_LOAD_ERROR = "写作记录暂时无法读取，请检查浏览器存储权限后重试。请重新读取后确认最新状态。";
+const WRITING_LOAD_ERROR = "写作记录读取失败，请检查浏览器存储权限后重试。";
 
 export default function WritingWorkspace({ data, initialTargets, openId, onExit, onPractice, onWord }: {
   data: Vocabulary;
@@ -111,7 +111,7 @@ function WritingWorkspaceSession({ data, initialTargets, openId, onExit, onPract
         <span className="learn-header-spacer" />
         {view.kind === "list" && <button className="secondary writing-new" disabled={records === null} onClick={() => setView({ kind: "setup" })}><Plus size={16} aria-hidden="true" />新写一篇</button>}
       </header>
-      {temporary && <p className="ai-note writing-stage" style={{ paddingBottom: 8 }} role="status">临时写作：本次草稿与批改不保存，切换模式后不会补存。需要保留原文时请先复制。</p>}
+      {temporary && <p className="ai-note writing-stage" style={{ paddingBottom: 8 }} role="status">临时写作 · 退出前请复制需要保留的内容。</p>}
       {loadError && <div className="learn-pending" role="alert"><p>{loadError}</p><button className="secondary" onClick={() => void reload().catch(() => undefined)}>重新读取</button></div>}
       {records === null ? !loadError && <div className="learn-pending" role="status">正在读取写作记录…</div>
         : view.kind === "list" ? <WritingList records={records} data={data} onOpen={(id) => setView({ kind: "edit", id })} onDelete={async (record) => { try { await deleteWriting(record, generation); await reload(); } catch (cause) { data.notify(cause instanceof Error ? cause.message : "移除失败，请重试。"); await reload().catch(() => undefined); } }} />

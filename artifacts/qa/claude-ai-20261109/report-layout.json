@@ -1,0 +1,109 @@
+[
+  {
+    "page": 1,
+    "width": 793.6875,
+    "height": 1122.515625,
+    "scrollWidth": 794,
+    "scrollHeight": 1123,
+    "footerTop": 1042.859375,
+    "contentBottom": 943.625,
+    "children": [
+      {
+        "name": "top",
+        "top": 52.90625,
+        "bottom": 87.90625
+      },
+      {
+        "name": "eyebrow",
+        "top": 111.90625,
+        "bottom": 126.203125
+      },
+      {
+        "name": "headline",
+        "top": 141.203125,
+        "bottom": 253.609375
+      },
+      {
+        "name": "lead",
+        "top": 269.609375,
+        "bottom": 292.40625
+      },
+      {
+        "name": "screen",
+        "top": 316.40625,
+        "bottom": 767.015625
+      },
+      {
+        "name": "features",
+        "top": 792.015625,
+        "bottom": 911.109375
+      },
+      {
+        "name": "copy-note",
+        "top": 926.109375,
+        "bottom": 943.625
+      }
+    ]
+  },
+  {
+    "page": 2,
+    "width": 793.6875,
+    "height": 1122.515625,
+    "scrollWidth": 794,
+    "scrollHeight": 1123,
+    "footerTop": 1042.859375,
+    "contentBottom": 990.625,
+    "children": [
+      {
+        "name": "top",
+        "top": 52.90625,
+        "bottom": 87.90625
+      },
+      {
+        "name": "eyebrow",
+        "top": 111.90625,
+        "bottom": 126.203125
+      },
+      {
+        "name": "page-title",
+        "top": 141.203125,
+        "bottom": 238.234375
+      },
+      {
+        "name": "measure",
+        "top": 265.234375,
+        "bottom": 447.734375
+      },
+      {
+        "name": "load-grid",
+        "top": 467.734375,
+        "bottom": 550.328125
+      },
+      {
+        "name": "section-heading",
+        "top": 575.328125,
+        "bottom": 608.3125
+      },
+      {
+        "name": "evidence-list",
+        "top": 608.3125,
+        "bottom": 809.921875
+      },
+      {
+        "name": "delivery",
+        "top": 831.921875,
+        "bottom": 933.015625
+      },
+      {
+        "name": "method",
+        "top": 946.015625,
+        "bottom": 962.546875
+      },
+      {
+        "name": "provenance",
+        "top": 974.546875,
+        "bottom": 990.625
+      }
+    ]
+  }
+]

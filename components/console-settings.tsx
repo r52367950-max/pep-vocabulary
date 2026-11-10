@@ -15,7 +15,7 @@ import {
   KeyRound,
   Laptop,
   Link2,
-  LockKeyhole,
+  MessageCircle,
   Palette,
   PlugZap,
   RotateCcw,
@@ -25,13 +25,14 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { assistantCacheSize, clearAssistantCache } from "@/lib/ai-client";
 import { LearningMemoryPanel, useLearningMemory } from "./studio/voice/learning-memory";
 import type { AppSettings } from "@/lib/storage";
 import { ConnectionDiagnostic, type AIProvider, type ConnectionTestResult } from "./studio/ai-connection";
+import { companionPreferencesStore, updateCompanionPreferences } from "@/lib/companion-preferences";
 
-type Section = "general" | "learning" | "ai" | "privacy" | "about";
+type Section = "general" | "learning" | "chat" | "ai" | "privacy" | "about";
 type AIConfig = {
   accountScope?: string;
   generation?: string;
@@ -61,7 +62,7 @@ const providerDefaults: Record<
   },
   "openai-compatible": {
     baseUrl: "https://api.openai.com/v1",
-    model: "gpt-6.1-terra",
+    model: "gpt-6.1-sol",
   },
 };
 const defaultAIConfig: AIConfig = {
@@ -79,6 +80,7 @@ const defaultAIConfig: AIConfig = {
 const sections = [
   { id: "general" as const, label: "常规", icon: SlidersHorizontal },
   { id: "learning" as const, label: "学习", icon: BookOpenCheck },
+  { id: "chat" as const, label: "对话", icon: MessageCircle },
   { id: "ai" as const, label: "AI 接口", icon: Bot },
   { id: "privacy" as const, label: "数据与安全", icon: ShieldCheck },
   { id: "about" as const, label: "关于", icon: CircleAlert },
@@ -206,7 +208,7 @@ export default function ConsoleSettings({
       setAIConfig(result);
       if (!settings.aiEnabled) onUpdate({ aiEnabled: true });
       window.dispatchEvent(new Event("vocab-ai-config-changed"));
-      setMessage({ kind: "success", text: "API 配置已保存，密钥不会返回浏览器。" });
+      setMessage({ kind: "success", text: "API 配置已保存。" });
     });
   };
   const testAIConfig = () =>
@@ -314,7 +316,7 @@ export default function ConsoleSettings({
                       {aiConfig.requiresKeyReentry
                         ? "原有密钥需要在“AI 接口”中重新填写"
                         : aiConfig.hasApiKey
-                          ? "接口已就绪；关闭后不会发起模型请求"
+                          ? "接口已就绪"
                           : "可在“AI 接口”中查看或保存配置"}
                     </small>
                   </div>
@@ -409,6 +411,7 @@ export default function ConsoleSettings({
               </section>
             </>
           )}
+          {section === "chat" && <ConversationSettings />}
           {section === "ai" && (
             <>
               <section className="settings-card api-overview">
@@ -417,7 +420,7 @@ export default function ConsoleSettings({
                   <div>
                     <h2>模型 API</h2>
                     <p>
-                      支持 OpenAI、DeepSeek 与兼容接口；API Key 仅由站点服务端使用。
+                      连接 OpenAI、DeepSeek 或兼容接口。
                     </p>
                   </div>
                   <span
@@ -434,25 +437,16 @@ export default function ConsoleSettings({
                           : "待配置"}
                   </span>
                 </header>
-                <div className="security-callout">
-                  <LockKeyhole size={18} aria-hidden="true" />
-                  <div>
-                    <strong>服务端加密保存</strong>
-                    <p>
-                      API Key 经 HTTPS 送达服务端后加密保存，不写入本机备份。
-                    </p>
-                  </div>
-                </div>
               </section>
               <section className="settings-card api-form">
                 <div className="openai-setup-card">
-                  <div><strong>OpenAI 一次配置</strong><p>文字学习使用 GPT-6.1 Terra，口语使用 GPT-Live 1。选好推荐配置，填入你的 OpenAI API Key 并保存即可。</p></div>
+                  <div><strong>OpenAI 一次配置</strong><p>文字学习使用 Sol，口语使用 GPT-Live 1。填入 API Key 并保存即可。</p></div>
                   <button className="console-secondary" onClick={() => chooseProvider("openai-compatible")} disabled={saving || loadingConfig || !aiConfig.generation}>使用 OpenAI 推荐配置</button>
                   <small>语音与听写使用同一把密钥；已有其他服务商的配置会在你点击保存后替换。</small>
                 </div>
                 {aiConfig.requiresKeyReentry && (
                   <p className="settings-message error" role="status">
-                    原有密钥的加密格式缺少账号与接口地址绑定，已暂停使用。接口配置仍保留，请重新填写 API Key 并保存。
+                    请重新填写 API Key 并保存。
                   </p>
                 )}
                 <header>
@@ -460,8 +454,7 @@ export default function ConsoleSettings({
                   <div>
                     <h2>接口参数</h2>
                     <p>
-                      Base URL 必须使用
-                      HTTPS，且不能指向本机、私网或特殊用途地址。
+                      填写服务商提供的 HTTPS API 地址。
                     </p>
                   </div>
                 </header>
@@ -551,9 +544,9 @@ export default function ConsoleSettings({
                     </div>
                     <small>
                       {aiConfig.requiresKeyReentry
-                        ? "需要重新填写；服务器不会迁移或使用原有密钥。"
+                        ? "请重新填写 API Key。"
                         : aiConfig.hasApiKey
-                          ? "密钥已存在，服务器不会把它回传到此处。"
+                          ? "已保存，留空即可继续使用。"
                           : "首次保存时必填。"}
                     </small>
                   </label>
@@ -607,7 +600,7 @@ export default function ConsoleSettings({
                         }))
                       }
                     />
-                    <small>输入、输出和缓存命中都计入；北京时间 0 点重置。用完后 AI 暂停，本地学习不受影响。</small>
+                    <small>北京时间 0 点重置，达到预算后暂停 AI 请求。</small>
                   </label>
                   <label>
                     <span>单次输出上限</span>
@@ -665,7 +658,7 @@ export default function ConsoleSettings({
                   )}
                 </div>
                 <p className="connection-test-note">
-                  测试连接会发送少量真实请求，检查文字生成与 JSON 输出并产生服务商用量。语音权限在首次开始口语练习时单独验证。
+                  测试会调用服务商接口并产生少量用量。
                 </p>
                 {message && (
                   <p
@@ -700,11 +693,10 @@ export default function ConsoleSettings({
                   <div>
                     <h2>发送范围</h2>
                     <p>
-                      AI 请求会附带一份学习画像：最近的错误作答、错误类型、薄弱词、易混词、最近 12 条笔记和写作概况，用来做个性化讲解与出题。
-                      作文批改会发送作文全文与题目。教材信息只来自服务端重新读取的正式词库证据；不发送整份词库或完整学习记录。
+                      讲解与出题使用近期学习摘要；作文批改使用作文与题目。对话的学习记录、文章来源和附件在输入框「来源」中选择。
                     </p>
                     <p>
-                      口语练习会把麦克风音频发送给 OpenAI；结束后获取反馈时发送你确认过的对话转写。AI 听写只发送当前朗读文本，设备朗读不使用 API。
+                      口语使用麦克风音频，反馈使用确认后的转写；AI 听写使用当前朗读文本。
                     </p>
                   </div>
                 </header>
@@ -753,7 +745,7 @@ export default function ConsoleSettings({
                 <Laptop size={20} aria-hidden="true" />
                 <div>
                   <h2>词迹</h2>
-                  <p>人教版初高中英语词汇学习 · 本地优先</p>
+                  <p>人教版初高中英语词汇学习</p>
                 </div>
               </header>
               <dl>
@@ -767,11 +759,11 @@ export default function ConsoleSettings({
                 </div>
                 <div>
                   <dt>词库发布状态</dt>
-                  <dd>教材与课程词汇（含已标注缺项）</dd>
+                  <dd>教材与课程词汇</dd>
                 </div>
                 <div>
                   <dt>AI 密钥</dt>
-                  <dd>服务端加密，不随备份导出</dd>
+                  <dd>服务端加密保存</dd>
                 </div>
               </dl>
             </section>
@@ -780,6 +772,36 @@ export default function ConsoleSettings({
       </div>
     </div>
   );
+}
+
+function ConversationSettings() {
+  const preferences = useSyncExternalStore(companionPreferencesStore.subscribe, companionPreferencesStore.get, companionPreferencesStore.getServerSnapshot);
+  return <>
+    <section className="settings-card">
+      <header><MessageCircle size={20} aria-hidden="true" /><div><h2>新对话</h2><p>选择默认模型与输入方式。</p></div></header>
+      <div className="settings-row"><div><strong>默认模型</strong><small>对话中仍可单独选择</small></div>
+        <div className="segmented-control" role="group" aria-label="新对话默认模型">
+          {([['auto', '自动'], ['gpt-6.1-sol', 'Sol'], ['gpt-6.1-terra', 'Terra']] as const).map(([value, label]) =>
+            <button type="button" key={value} className={preferences.routePreference === value ? 'active' : ''}
+              aria-pressed={preferences.routePreference === value} onClick={() => updateCompanionPreferences({ routePreference: value })}>{label}</button>)}
+        </div>
+      </div>
+      <label className="settings-row"><div><strong>发送方式</strong><small>Shift + Enter 始终换行</small></div>
+        <select aria-label="发送方式" value={preferences.sendMode} onChange={(event) => updateCompanionPreferences({ sendMode: event.target.value as 'enter' | 'mod-enter' })}>
+          <option value="enter">Enter 发送</option><option value="mod-enter">⌘ / Ctrl + Enter 发送</option>
+        </select>
+      </label>
+    </section>
+    <section className="settings-card">
+      <header><Eye size={20} aria-hidden="true" /><div><h2>默认来源</h2><p>也可在每段对话的「来源」中调整。</p></div></header>
+      <label className="settings-row toggle-row"><div><strong>学习记录</strong><small>用于学习总结与安排</small></div>
+        <input type="checkbox" role="switch" aria-label="默认使用学习记录" checked={preferences.includeRecords} onChange={(event) => updateCompanionPreferences({ includeRecords: event.target.checked })} /><span className="switch" aria-hidden="true" />
+      </label>
+      <label className="settings-row toggle-row"><div><strong>当前文章</strong><small>阅读时结合文章回答</small></div>
+        <input type="checkbox" role="switch" aria-label="默认使用当前文章" checked={preferences.includeArticle} onChange={(event) => updateCompanionPreferences({ includeArticle: event.target.checked })} /><span className="switch" aria-hidden="true" />
+      </label>
+    </section>
+  </>;
 }
 
 /** Today's token use against the budget, and the answers kept on this device. */
@@ -804,7 +826,7 @@ function AiUsageCard({ config }: { config: AIConfig }) {
           今日预算占用 {used.toLocaleString()} / {config.dailyTokenBudget.toLocaleString()} token
           {usage ? `；其中缓存命中 ${usage.cacheHit.toLocaleString()}，输出 ${usage.output.toLocaleString()}` : ""}。
         </p>
-        <p className="ai-note">预算占用含正在生成及未能确认用量的请求预留；失败请求可能保留预留额度，次日重置。模型用量缺失时采用估算，实际费用以服务商账单为准。学习诊断按当前记录重新生成。</p>
+        <p className="ai-note">预算包含正在生成的请求预留，费用可在服务商账单中查看。</p>
         <p className="ai-note">
           本机保存了 {cached ?? "…"} 条 AI 回答。
           <button className="text-button" disabled={!cached} onClick={async () => {

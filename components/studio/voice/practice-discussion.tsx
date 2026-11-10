@@ -46,6 +46,6 @@ export function PracticeDiscussion({ sessionKey, topicId, level, transcript, mes
     {!temporary && suggestions.length > 0 && <div className="voice-memory-suggestions"><p>下次可以记住这些</p>{suggestions.map((note) => { const added = remembered.includes(note); return <button className="secondary" key={note} disabled={added || memoryBusy} onClick={async () => { if (await onRemember(note)) { setMemoryError(""); } else setMemoryError("未能保存这条记忆，请在学习记忆中重新读取后再试。"); }}>{added && <Check size={16} />}<span>{note}</span><small>{added ? "已记住" : "记住这条"}</small></button>; })}<small>由你确认后保存；你可以随时在学习记忆中编辑或删除。</small></div>}
     {(error || memoryError) && <p role="alert" className="voice-notice">{error || memoryError}</p>}
     <form className="voice-discussion-form" onSubmit={(event) => { event.preventDefault(); void ask(draft); }}><label className="learn-sr" htmlFor="voice-discussion-input">继续聊</label><div><textarea id="voice-discussion-input" rows={2} maxLength={1000} value={draft} disabled={busy} placeholder="问问刚才的表达，或聊聊想改进的地方…" onChange={(event) => setDraft(event.target.value)} /><button type="submit" className="primary" disabled={busy || !configured || !draft.trim()} aria-label="发送复盘问题" title="发送复盘问题"><Send size={18} /></button></div></form>
-    <p className="voice-muted">{temporary ? "仅使用本次转写与对话，不保存记录或记忆。" : "基于转写与已启用的学习记忆。"}使用文字模型额度；不评价发音。</p>
+    <p className="voice-muted">{temporary ? "临时对话 · " : ""}基于转写复盘表达，使用文字模型额度。</p>
   </section>;
 }

@@ -38,6 +38,7 @@ const validBodies = {
   '/api/sync': { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: '2026-09-24T00:00:00Z', payload: backup },
   '/api/ai/config': { provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-only-not-a-real-key-000000', dailyLimit: 30, timeoutSeconds: 25 },
   '/api/ai/test': {},
+  '/api/assistant/chat': { messages: [{ role: 'user', text: '安排今天的复习' }], model: 'auto', temporary: true },
   '/api/assistant/explain': { wordId: wordA },
   '/api/assistant/check-sentence': { wordId: wordA, sentence: 'They abandoned the plan.' },
   '/api/assistant/generate-practice': { wordIds: [wordA, wordB], count: 3 },

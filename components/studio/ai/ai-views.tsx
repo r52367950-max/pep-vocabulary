@@ -218,7 +218,7 @@ export function PracticeView({ result, words, onFinish }: { result: Record<strin
       </ol>
       {done && onFinish && (
         <div className="ai-finish">
-          <span>{wrong.length ? `答错的题涉及 ${wrong.length} 个词。` : "全部答对。"}这些练习不改变复习计划。</span>
+          <span>{wrong.length ? `答错的题涉及 ${wrong.length} 个词。` : "全部答对。"}</span>
           {wrong.length > 0 && <button className="primary" onClick={() => onFinish(wrong)}>把这些词加入练习</button>}
         </div>
       )}

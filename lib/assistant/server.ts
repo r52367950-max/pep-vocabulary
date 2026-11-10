@@ -41,6 +41,7 @@ import {
   type LexiconEvidence,
 } from "./core";
 import { parseLearnerProfile, ProfileInputError } from "./profile";
+import { chatMessages, parseChatRequest, resolveChatRoute, sanitizeChatResult } from "./chat-core";
 
 const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
@@ -48,11 +49,11 @@ const MAX_GENERATION_MS = 300_000;
 import { DEFAULT_TOKEN_BUDGET, providerRejectedBeforeGeneration, releaseOutputReservation, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
 
 /** Shared paid-generation boundary for learning, classification and connection tests. */
-export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string } = {}) {
+export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string; minimumOutputTokens?: number } = {}) {
   if (request.signal.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
   const outputCap = Number(payload.max_tokens ?? payload.max_completion_tokens);
   const prompt = JSON.stringify(payload.messages);
-  const reservation = await reserveTokens(config.userKey, config.dailyTokenBudget, prompt, outputCap);
+  const reservation = await reserveTokens(config.userKey, config.dailyTokenBudget, prompt, outputCap, Date.now(), options.minimumOutputTokens);
   const body = { ...payload };
   delete body.max_tokens;
   delete body.max_completion_tokens;
@@ -483,6 +484,51 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
   } catch (error) {
     return assistantErrorResponse(error);
   }
+}
+
+/** Conversational UI shares the same authenticated, metered provider boundary as every learning tool. */
+export async function handleChatRequest(request: Request): Promise<Response> {
+  try {
+    assertSameOrigin(request);
+    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const parsed = parseChatRequest(body);
+    const config = await authenticatedRuntime(request);
+    const contextInput = { ...body, temporary: parsed.temporary || !parsed.includeRecords };
+    const context = await resolveLearningContext(config.userKey, contextInput);
+    const rows = parsed.wordIds.length || (context.enabled && body.profile) ? await releaseIndex(request) : [];
+    let profile;
+    try { profile = context.enabled ? parseLearnerProfile(body.profile, releaseWords(rows)) : null; }
+    catch (error) {
+      if (error instanceof ProfileInputError) throw new AssistantInputError("invalid_request", "学习记录格式无效。");
+      throw error;
+    }
+    const ids = parsed.wordIds.length ? parsed.wordIds : profile?.weakWords.map(word => word.id).slice(0, 24) ?? [];
+    const evidence = resolveLexiconEvidence(rows, ids);
+    const route = resolveChatRoute(parsed, config);
+    const maximum = Math.min(route.maxOutputTokens, resolveMaxOutputTokens(route.model, config.maxOutputTokens));
+    const runtime = { ...config, model: route.model };
+    const payload = {
+      model: route.model,
+      messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)),
+      ...generationParameters(route.model, config.baseUrl, maximum, 0.4),
+      response_format: { type: "json_object" }, stream: true,
+      ...(route.effort ? { reasoning_effort: route.effort } : {}),
+      ...(config.provider === "deepseek" || usesOpenAIResponses(config.baseUrl) ? { stream_options: { include_usage: true } } : {}),
+      ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
+    };
+    const { completion, today } = await complete(runtime, request, payload, {
+      minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
+    });
+    if (completion.finishReason === "length") throw new AssistantUpstreamError("output_truncated", "回答达到输出上限，请缩短问题或调整输出设置。", 502, false);
+    const result = sanitizeChatResult(completion.content, evidence);
+    // Another tab or device may have changed memory/account settings while generation was running.
+    await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
+    return Response.json({
+      ok: true, result, model: route.model, effort: route.effort,
+      ...contextMetadata(context), temporary: parsed.temporary,
+      usage: { ...completion.usage, today, budget: config.dailyTokenBudget },
+    }, { headers: responseHeaders() });
+  } catch (error) { return assistantErrorResponse(error); }
 }
 
 let releaseWordsCache: { rows: ReleaseIndexRow[]; words: Map<string, { headword: string }> } | null = null;
