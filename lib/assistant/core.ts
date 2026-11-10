@@ -339,10 +339,31 @@ export function completionEndpoint(baseUrl: string, provider?: AiProvider): stri
   return usesOpenAIResponses(baseUrl) ? "https://api.openai.com/v1/responses" : chatCompletionsUrl(baseUrl, provider);
 }
 
+type WireToolCall = { id?: unknown; function?: { name?: unknown; arguments?: unknown } };
+type WireMessage = { role?: unknown; content?: unknown; tool_calls?: WireToolCall[]; tool_call_id?: unknown };
+type WireTool = { function?: { name?: unknown; description?: unknown; parameters?: unknown } };
+
+/** Chat Completions messages as Responses input items: tool calls and their results become their own items. */
+function responsesInput(messages: unknown): unknown {
+  if (!Array.isArray(messages)) return messages;
+  return (messages as WireMessage[]).flatMap((message): unknown[] => {
+    if (message?.role === "tool") return [{ type: "function_call_output", call_id: message.tool_call_id, output: message.content }];
+    if (message?.role === "assistant" && Array.isArray(message.tool_calls)) return [
+      ...(message.content ? [{ role: "assistant", content: message.content }] : []),
+      ...message.tool_calls.map((call) => ({ type: "function_call", call_id: call.id, name: call.function?.name, arguments: call.function?.arguments })),
+    ];
+    return [message];
+  });
+}
+
 export function responsesPayload(payload: Record<string, unknown>, maximum: number): Record<string, unknown> {
   return {
-    model: payload.model, input: payload.messages, max_output_tokens: maximum,
+    model: payload.model, input: responsesInput(payload.messages), max_output_tokens: maximum,
     stream: Boolean(payload.stream), store: false,
+    ...(Array.isArray(payload.tools) && payload.tools.length ? {
+      tools: (payload.tools as WireTool[]).map((tool) => ({ type: "function", name: tool.function?.name, description: tool.function?.description, parameters: tool.function?.parameters, strict: false })),
+      tool_choice: payload.tool_choice ?? "auto",
+    } : {}),
     ...(payload.response_format ? { text: { format: payload.response_format } } : {}),
     ...(payload.prompt_cache_key ? { prompt_cache_key: payload.prompt_cache_key } : {}),
     ...(/^gpt-[56]/.test(String(payload.model)) ? { reasoning: { effort: ["low", "medium", "high"].includes(String(payload.reasoning_effort)) ? payload.reasoning_effort : "low" } } : {}),
@@ -1019,7 +1040,29 @@ export function mappedUpstreamFailure(status: number): AssistantUpstreamError {
 }
 
 export type CompletionUsage = { prompt: number; completion: number; cacheHit: number; total: number; estimated: boolean };
-export type Completion = { content: string; usage: CompletionUsage; finishReason: string | null };
+export type CompletionToolCall = { id: string; name: string; arguments: string };
+export type Completion = { content: string; usage: CompletionUsage; finishReason: string | null; toolCalls?: CompletionToolCall[] };
+
+const MAX_TOOL_CALLS = 8;
+const MAX_TOOL_ARGUMENT_CHARS = 16_000;
+const invalidToolCall = () => new AssistantUpstreamError("invalid_provider_response", "模型服务返回了无法识别的工具调用。", 502, true);
+
+function completionToolCall(id: unknown, name: unknown, args: unknown): CompletionToolCall {
+  if (typeof name !== "string" || !/^[\w-]{1,64}$/.test(name)) throw invalidToolCall();
+  const text = typeof args === "string" ? args : args === undefined || args === null ? "" : JSON.stringify(args);
+  if (text.length > MAX_TOOL_ARGUMENT_CHARS) throw invalidToolCall();
+  return { id: typeof id === "string" ? id.slice(0, 128) : "", name, arguments: text };
+}
+function chatToolCalls(value: unknown): CompletionToolCall[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > MAX_TOOL_CALLS) throw invalidToolCall();
+  return (value as WireToolCall[]).map((call) => completionToolCall(call?.id, call?.function?.name, call?.function?.arguments));
+}
+/** A turn that only calls tools has no text; every other answer must have some. */
+function completionText(value: unknown, field: string, toolCalls: CompletionToolCall[]): string {
+  if (toolCalls.length && (value === null || value === undefined || (typeof value === "string" && !value.trim()))) return "";
+  return cleanOutputText(value, field, 300_000);
+}
 
 const tokenCount = (value: unknown) => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
 
@@ -1071,11 +1114,13 @@ export async function readChatCompletionDetailed(response: Response, signal?: Ab
   if (!Array.isArray(choices) || !choices.length) throw new AssistantUpstreamError("invalid_provider_response", "模型服务没有返回回答。", 502, true);
   const choice = outputRecord(choices[0], "choices[0]");
   const message = outputRecord(choice.message, "choices[0].message");
-  const content = cleanOutputText(message.content, "choices[0].message.content", 300_000);
+  const toolCalls = chatToolCalls(message.tool_calls);
+  const content = completionText(message.content, "choices[0].message.content", toolCalls);
   return {
     content,
-    usage: parseUsage((payload as Record<string, unknown>).usage) || estimateUsage(promptChars, content),
+    usage: parseUsage((payload as Record<string, unknown>).usage) || estimateUsage(promptChars, content + toolCalls.map((call) => call.arguments).join("")),
     finishReason: typeof choice.finish_reason === "string" ? choice.finish_reason : null,
+    ...(toolCalls.length ? { toolCalls } : {}),
   };
 }
 
@@ -1083,16 +1128,21 @@ export function parseResponsesCompletion(payload: Record<string, unknown>, promp
   if (payload.status === "failed" || payload.status === "cancelled") throw new AssistantUpstreamError("provider_unavailable", "模型未完成回答，请重试。", 502, true);
   const output = Array.isArray(payload.output) ? payload.output : [];
   let content = "";
+  const toolCalls: CompletionToolCall[] = [];
   for (const item of output) {
+    if (item && typeof item === "object" && item.type === "function_call") {
+      if (toolCalls.length >= MAX_TOOL_CALLS) throw invalidToolCall();
+      toolCalls.push(completionToolCall(item.call_id, item.name, item.arguments));
+    }
     if (!item || typeof item !== "object" || item.type !== "message" || !Array.isArray(item.content)) continue;
     for (const part of item.content) {
       if (part?.type === "refusal") throw new AssistantUpstreamError("model_refusal", "模型无法完成这个请求，请调整输入。", 422, false);
       if (part?.type === "output_text" && typeof part.text === "string") content += part.text;
     }
   }
-  const text = cleanOutputText(content, "output_text", 300_000);
-  return { content: text, usage: parseUsage(payload.usage) || estimateUsage(promptChars, text),
-    finishReason: payload.status === "incomplete" ? "length" : "stop" };
+  const text = completionText(content, "output_text", toolCalls);
+  return { content: text, usage: parseUsage(payload.usage) || estimateUsage(promptChars, text + toolCalls.map((call) => call.arguments).join("")),
+    finishReason: payload.status === "incomplete" ? "length" : toolCalls.length ? "tool_calls" : "stop", ...(toolCalls.length ? { toolCalls } : {}) };
 }
 
 const MAX_STREAM_BYTES = 6_000_000;
@@ -1118,6 +1168,8 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     else { onAbort = () => reject(abortError()); signal.addEventListener("abort", onAbort, { once: true }); }
   }) : null;
   let buffer = "", content = "", bytes = 0, finishReason: string | null = null, usage: CompletionUsage | null = null, done = false;
+  let toolCalls: CompletionToolCall[] = [], toolArgumentChars = 0;
+  const partialCalls = new Map<number, { id: unknown; name: string; arguments: string }>();
   const handle = (line: string) => {
     if (!line.startsWith("data:")) return;
     const data = line.slice(5).trim();
@@ -1130,12 +1182,22 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     if (chunk.type === "response.output_text.delta" && typeof chunk.delta === "string") content += chunk.delta;
     if (chunk.type === "response.completed" || chunk.type === "response.incomplete") {
       const final = parseResponsesCompletion(outputRecord(chunk.response), promptChars);
-      content = final.content; usage = final.usage; finishReason = final.finishReason; done = true;
+      content = final.content; usage = final.usage; finishReason = final.finishReason; toolCalls = final.toolCalls ?? []; done = true;
     }
     usage = parseUsage(chunk.usage) || usage;
     const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as Record<string, unknown> | undefined) : undefined;
     const delta = choice?.delta as Record<string, unknown> | undefined;
     if (typeof delta?.content === "string") content += delta.content;
+    if (Array.isArray(delta?.tool_calls)) for (const part of delta.tool_calls as (WireToolCall & { index?: unknown })[]) {
+      const index = typeof part?.index === "number" && Number.isInteger(part.index) ? part.index : 0;
+      if (index < 0 || index >= MAX_TOOL_CALLS) throw invalidToolCall();
+      const call = partialCalls.get(index) ?? { id: undefined, name: "", arguments: "" };
+      if (typeof part.id === "string") call.id = part.id;
+      if (typeof part.function?.name === "string") call.name += part.function.name;
+      if (typeof part.function?.arguments === "string") { call.arguments += part.function.arguments; toolArgumentChars += part.function.arguments.length; }
+      if (call.name.length > 64 || toolArgumentChars > MAX_TOOL_ARGUMENT_CHARS * MAX_TOOL_CALLS) throw invalidToolCall();
+      partialCalls.set(index, call);
+    }
     if (typeof choice?.finish_reason === "string") finishReason = choice.finish_reason;
     if (content.length > 300_000) throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
   };
@@ -1161,8 +1223,9 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     try { reader.releaseLock(); } catch { /* The aborted stream still owns the lock. */ }
   }
   if (!done && !finishReason) throw new AssistantUpstreamError("incomplete_stream", "模型回答传输中断，请重试。", 502, true);
-  const text = cleanOutputText(content, "choices[0].message.content", 300_000);
-  return { content: text, usage: usage || estimateUsage(promptChars, text), finishReason };
+  if (partialCalls.size) toolCalls = [...partialCalls].sort(([a], [b]) => a - b).map(([, call]) => completionToolCall(call.id, call.name, call.arguments));
+  const text = completionText(content, "choices[0].message.content", toolCalls);
+  return { content: text, usage: usage || estimateUsage(promptChars, text + toolCalls.map((call) => call.arguments).join("")), finishReason, ...(toolCalls.length ? { toolCalls } : {}) };
 }
 
 /**

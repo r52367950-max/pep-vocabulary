@@ -207,6 +207,7 @@ export default function VocabApp() {
       }),
     [data.index, planCards, bookId, unit, scope, clock],
   );
+  const companionStudy = useMemo(() => ({ due: summary.due, weak: summary.weak }), [summary.due, summary.weak]);
   const budget = Math.max(
     0,
     Math.min(
@@ -860,6 +861,7 @@ export default function VocabApp() {
       onOpenSettings={openCompanionSettings}
       onPractice={practiceCompanion}
       onVoice={showVoice}
+      study={companionStudy}
       target={companionTarget}
       visible={companionVisible}
       openRequest={companionOpenRequest}

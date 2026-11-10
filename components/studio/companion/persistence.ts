@@ -24,6 +24,7 @@ function blocks(value: unknown): Block[] {
     const b = record(item);
     if (b.type === "text") return [{ type: "text", text: text(b.text, 24000) }];
     if (b.type === "notice") return [{ type: "notice", tone: b.tone === "warn" ? "warn" : "info", text: text(b.text, 1000) }];
+    if (b.type === "steps" && Array.isArray(b.labels)) return [{ type: "steps", labels: b.labels.slice(0, 6).map((label) => text(label, 20)).filter(Boolean) }];
     if (b.type === "actions" && Array.isArray(b.actions)) return [{ type: "actions", actions: b.actions.slice(0, 3).map(action).filter((a): a is Action => a !== null) }];
     return [];
   });

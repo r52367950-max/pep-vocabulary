@@ -1,9 +1,9 @@
-import type { ChatRequest, ChatResult, ChatEffort } from "@/lib/assistant/chat-contract";
+import type { ChatRequest, ChatResult, ChatEffort, ChatStep } from "@/lib/assistant/chat-contract";
 import { AssistantError, usageStore, type AssistantUsage } from "@/lib/ai-client";
 import { contextStillCurrent, learningContextStore, refreshLearningContext } from "@/lib/learning-context-client";
 import { localPracticeGeneration, practiceGenerationCurrent } from "@/lib/local-practice-generation";
 
-export type CompanionResponse = { result: ChatResult; model: string; effort: ChatEffort | null };
+export type CompanionResponse = { result: ChatResult; model: string; effort: ChatEffort | null; steps: ChatStep[] };
 export async function requestCompanion(request: ChatRequest, signal: AbortSignal, expectedScope: string): Promise<CompanionResponse> {
   const generation = localPracticeGeneration();
   const memory = await refreshLearningContext(signal);
@@ -31,7 +31,7 @@ export async function requestCompanion(request: ChatRequest, signal: AbortSignal
       body: JSON.stringify({ ...request, temporary: request.temporary || globalTemporary, accountScope: memory.accountScope, contextRevision: memory.revision, contextVersion: memory.contextVersion }),
     });
     const payload = await response.json().catch(() => ({})) as {
-      ok?: boolean; result?: ChatResult; model?: string; effort?: ChatEffort | null; accountScope?: string;
+      ok?: boolean; result?: ChatResult; model?: string; effort?: ChatEffort | null; steps?: unknown; accountScope?: string;
       contextRevision?: number; contextVersion?: string; usage?: AssistantUsage; error?: { message?: string; code?: string };
     };
     current();
@@ -40,6 +40,7 @@ export async function requestCompanion(request: ChatRequest, signal: AbortSignal
     await refreshLearningContext(controller.signal);
     current();
     if (payload.usage) usageStore.set(payload.usage);
-    return { result: payload.result, model: payload.model || "", effort: payload.effort ?? null };
+    const steps = Array.isArray(payload.steps) ? payload.steps.filter((step): step is ChatStep => typeof step?.label === "string" && typeof step?.tool === "string").slice(0, 16).map((step) => ({ tool: step.tool.slice(0, 40), label: step.label.slice(0, 20) })) : [];
+    return { result: payload.result, model: payload.model || "", effort: payload.effort ?? null, steps };
   } finally { clearTimeout(timer); unsubscribe(); signal.removeEventListener("abort", abort); }
 }
