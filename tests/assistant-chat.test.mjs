@@ -197,3 +197,53 @@ test('verified context metadata accompanies responses for the client identity fe
   assert.equal(response.status, 200); const result = await response.json();
   assert.equal(result.accountScope, metadata.accountScope); assert.equal(result.contextRevision, metadata.revision); assert.equal(result.contextVersion, metadata.contextVersion);
 });
+
+test('chat endpoint runs a metered tool round, returns validated evidence actions and sums usage', async t => {
+  await setup(); const calls = [];
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const payload = JSON.parse(init.body); calls.push(payload);
+    if (calls.length === 1) return completion({ toolCalls: [{ id: 'lookup', name: 'search_lexicon', arguments: { query: 'abandon', limit: 1 } }] });
+    const results = JSON.parse(payload.input.at(-1).content).toolResults;
+    assert.equal(results[0].id, 'lookup');
+    assert.equal(results[0].ok, true);
+    assert.equal(results[0].data.matches[0].id, word.id);
+    return completion({ text: '从 abandon 开始复习。', actions: [{ type: 'start-review', wordIds: [word.id], minutes: 15 }] });
+  });
+  const response = await chat(request(body({ includeRecords: false })));
+  assert.equal(response.status, 200, await response.clone().text());
+  const result = await response.json();
+  assert.equal(calls.length, 2);
+  assert.equal(result.harness.modelCalls, 2);
+  assert.deepEqual(result.harness.tools, [{ name: 'search_lexicon', ok: true, cached: false }]);
+  assert.deepEqual(result.result.actions[0].wordIds, [word.id]);
+  assert.equal(result.usage.prompt, 3000);
+  assert.equal(result.usage.completion, 200);
+  assert.ok(result.usage.total >= 3200);
+  assert.equal(result.usage.today, result.usage.total);
+});
+
+test('privacy changes after a tool request prevent every subsequent provider call', async t => {
+  await setup(); const userKey = await authenticatedUserKey(); let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    await saveLearningMemory(userKey, { revision: 0, enabled: false, notes: [], recentTopics: [] });
+    return completion({ toolCalls: [{ id: 'stats', name: 'calculate', arguments: { expression: '15 * 7' } }] });
+  });
+  const response = await chat(request(body()));
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, 'learning_context_changed');
+  assert.equal(calls, 1);
+});
+
+test('a concurrent budget consumer blocks the next model round through the shared reservation', async t => {
+  await setup(); const userKey = await authenticatedUserKey(); let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    db.prepare('UPDATE ai_rate_limits SET request_count = ? WHERE bucket_key = ?').run(1_000_000, `tokens:day:${userKey}:${budgetDay().start}`);
+    return completion({ toolCalls: [{ id: 'stats', name: 'calculate', arguments: { expression: '15 * 7' } }] });
+  });
+  const response = await chat(request(body()));
+  assert.equal(response.status, 429, await response.clone().text());
+  assert.equal((await response.json()).error.code, 'token_budget_exhausted');
+  assert.equal(calls, 1);
+});

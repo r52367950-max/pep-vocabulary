@@ -1,0 +1,56 @@
+{
+  "version": "2.19.1",
+  "limits": [
+    {
+      "value": "3",
+      "label": "次模型生成上限"
+    },
+    {
+      "value": "6",
+      "label": "次工具调用上限"
+    },
+    {
+      "value": "300s",
+      "label": "整轮时间上限"
+    }
+  ],
+  "benchmark": {
+    "beforeMs": 50.27413499999989,
+    "afterMs": 2.3587499999998727,
+    "label": "2 MiB ASCII 附件 / UTF-8 解码中位数",
+    "sample": "固定输入，15 次交错采样。混合 Unicode 附件：29.24 → 4.10 ms；相同采样方法。",
+    "change": "去除全文字符数组分配；统一附件长度边界。",
+    "scope": "保留完整 emoji，截断结果符合服务端 12,000 长度上限。",
+    "command": "node --import ./tests/register.mjs scripts/benchmark-attachments.mjs",
+    "method": "Node v24.22.1 本地微基准；不含浏览器 I/O、文档提取与模型延迟。原始数据：attachment-benchmark.json。"
+  },
+  "checks": [
+    {
+      "title": "类型、静态与生产产物",
+      "detail": "TypeScript、ESLint、生产构建与产物校验通过；数据审计通过，既有词库缺项保留记录。",
+      "state": "通过"
+    },
+    {
+      "title": "单元与回归覆盖",
+      "detail": "89 个测试文件已覆盖：87 个首次通过；性能历史 6 项、供应链 3 项定向复验通过。",
+      "state": "89 文件"
+    },
+    {
+      "title": "新工具与对话入口",
+      "detail": "Harness 11 项、工具箱 6 项、附件边界 3 项、对话入口 3 项通过。覆盖取消、超限、错误参数与正常调用。",
+      "state": "通过"
+    },
+    {
+      "title": "Worker、D1 与独立复核",
+      "detail": "本地 Worker / D1 运行时检查通过；独立复核无阻塞项。本次无数据库迁移，线上 10 张预期表已核对。",
+      "state": "通过"
+    }
+  ],
+  "delivery": {
+    "summary": "代码与报告进入本次 PR 和 Sites 发布包。报告生成时，发布及 PR 创建待执行。",
+    "url": "https://pep-vocab-studio.namizore.chatgpt.site",
+    "label": "词迹 · 既有站点入口"
+  },
+  "limitation": "AI 使用受控返回，未调用付费模型。托管预览监听遇到 EPERM，浏览器交互检查未完成。",
+  "provenance": "对照基线：d148c35。两项定向复验分别在独立进程与获准的外层环境完成；性能历史用例 95.03 ms，阈值 150 ms。"
+}
