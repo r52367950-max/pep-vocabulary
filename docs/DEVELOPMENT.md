@@ -1,73 +1,44 @@
 # 开发与验证
 
-## 环境与命令
+## 运行
 
-Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准。普通开发使用 `npm ci`、`npm run dev`。dev 服务器只监听 `127.0.0.1`；需要从其他主机或容器预览（如经 `terminal.local`）时显式运行 `npm run dev -- --host 0.0.0.0`，并只在可信网络中使用。`npm start` 在本地 workerd 中预览 `npm run build` 的产物。构建脚本依赖 Bash 与 GNU `timeout`，Windows 可在 WSL 中运行。
+Node 版本见 `package.json#engines`，依赖以锁文件为准。`npm ci` 后运行 `npm run dev`；默认仅监听本机。可信网络预览可加 `-- --host 0.0.0.0`。构建依赖 Bash 与 GNU `timeout`，发布打包另需 Python 3.11+，Windows 使用 WSL。
 
-| 目的 | 命令或说明 |
+| 目的 | 命令 |
 | --- | --- |
-| 类型检查 | `npm run typecheck` |
-| 静态检查 | `npm run lint` |
-| 生产依赖安全审计 | `npm run audit:prod`；high/critical 漏洞使命令失败 |
-| 全部单元/回归测试 | `npm run test:unit` |
-| 指定回归测试 | `node --import ./tests/register.mjs --test tests/sync.test.mjs`，替换为受影响的测试文件 |
-| 生产构建及产物校验 | `npm run build` |
-| Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`；每次清除旧 `dist/` 并重建，构建失败即停止。默认输出 `outputs/site.tar.gz`，包含 Worker、完整迁移目录与托管配置 |
-| 本地 Worker/D1 检查 | 构建后执行 `npm run test:runtime` |
-| 完整验收 | `npm test`：数据审计、类型检查、ESLint、单元测试、构建、Worker 检查 |
-| 持续集成 | `.github/workflows/ci.yml` 在推送到 main 与拉取请求时运行 `npm ci`、`npm run audit:prod` 和 `npm test`；Actions 固定到已审核的提交 |
-| 词库数据审计 | `npm run data:audit`；会更新 `data/audit-summary.json`，留意生成差异 |
-| 阅读数据审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
-| 后端查词性能对照 | `npm run benchmark:backend`；使用已审核的 2.4.0 基线 `e2e9e25`，输出微基准中位数，不代表全站或模型延迟 |
-| 性能对照 | `npm run benchmark`；使用已审核历史基线 `3b12529`，本地需有相应提交 |
-| 词库索引解析对照 | `node artifacts/qa/lexicon-index-parse.mjs <baseline-ref>`；在 Chromium 中比较基线索引与当前行编码的解析耗时（含 4 倍 CPU 降速） |
+| 类型 / 静态检查 | `npm run typecheck` / `npm run lint` |
+| 回归 | `npm run test:unit`；定向用 `node --import ./tests/register.mjs --test tests/<name>.test.mjs` |
+| 构建 / 本地生产预览 | `npm run build` / `npm start` |
+| 完整验收 | `npm test`（数据、类型、lint、回归、构建、Worker/D1、安全矩阵） |
+| 依赖审计 | `npm run audit:deps`（含构建依赖）；`audit:prod` 仅查生产依赖 |
+| 阅读审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
+| 本地 HTTP 混合负载 | `node --import ./tests/register.mjs scripts/benchmark-workload.mjs --output <path>` |
+| 历史微基准 | `npm run benchmark` / `npm run benchmark:backend` |
 
-`test:runtime` 使用本地临时 D1 和测试凭据，不调用真实 AI 服务；不验证生产认证网关、真实服务商或物理设备行为。
+CI 执行 `npm ci`、`npm run audit:deps` 和 `npm test`。`install:ci` 提供锁和超时；单元测试默认并发 2。`.npmrc` 只关闭安装时自动审计，安全审计显式执行。
 
-三个比较脚本只执行 `scripts/benchmark-baseline.mjs` 中审核过的完整提交对应模块或切片；可传入解析到相同提交的短引用。阅读匹配基线保留 `0b8610b`（默认）和 `3eb1875`。其他引用在读取和执行历史代码前拒绝；新增基线须先审查其全部执行代码，再更新允许列表。Git replacement refs 不参与读取。
+## 验证选择
 
-`npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
+文档改动核对事实、链接和 diff；界面改动检查相关视口与操作；学习、存储、鉴权和同步改动验证行为、异常输入及并发；构建链或广泛重构执行完整验收。当前任务可要求更多轮次与覆盖，不以历史测试结果代替新证据。
 
-`.npmrc` 的 `audit=false` 只关闭安装时的自动审计；安全检查显式运行 `npm run audit:prod`，开发依赖用完整的 `npm audit` 核对。依赖升级使用已审核的精确版本和锁文件，并验证生产构建与 Worker smoke；审计通过不能代替运行兼容性验证。
+`test:runtime` 与 `test:security` 使用临时 D1 和测试凭据，不调用真实 AI。负载测试使用生产构建、workerd、D1 和合成学习记录；记录数据规模、并发、p50/p95/p99、吞吐与错误。真实服务商、网关和物理设备的验证单独说明。
 
-## 按影响选择验证
-
-| 改动 | 通常需要的证据 |
-| --- | --- |
-| 纯文档 | 核对命令/代码事实、本地链接和 `git diff --check`；无需安装依赖或全量构建 |
-| 界面或交互 | 相关静态/类型检查；在可用预览中检查受影响视口与操作，关注焦点、触控与减少动效 |
-| 学习、存储、同步、鉴权或密钥 | 相关行为回归；涉及 Worker、数据库或打包时构建并运行本地运行时检查 |
-| 词库或阅读数据 | 对应数据审计与来源检查；稳定 ID 或 schema 变化另验迁移及恢复 |
-| 广泛重构、依赖/构建链变更或发布 | 按影响运行完整验收及必要浏览器检查；纯静态资源发布可针对资源与构建验证 |
-
-验证范围取决于实际风险，不机械按版本号执行同一矩阵。相关检查足以支持结论后停止重复验证；新增失败先区分本次回归、原有问题与环境限制。历史测试数量、截图和某次工具故障不作为长期指令。
+历史比较脚本只执行 `scripts/benchmark-baseline.mjs` 已审核提交；新基线须审查后加入允许列表，读取时禁用 replacement refs。微基准不代表整站延迟。
 
 ## 数据与发布
 
-仓库已包含可运行词库，日常开发无需 `data:manifest` 或 `data:build`。调整来源/提取流程时才使用它们，并准备 `PEP_VOCAB_SOURCE_CACHE` 等脚本所需输入；缺少原始缓存时不要覆盖发布数据。发布来源记录时复查私有文件路径与标识。
+仓库包含发布词库，普通开发无需重建。修改来源流程才运行 `data:manifest` / `data:build`，并准备固定哈希的 `PEP_VOCAB_SOURCE_CACHE`；流程见 [SOURCE_BUILDS.md](SOURCE_BUILDS.md)。缺少来源时保留发布数据。
 
 ### 版本分级
 
-采用 `主版本.次版本.补丁版本`，按用户可感知的产品变化与兼容性判定。每次发布先说明升档依据；修复数量、代码行数和内部重构规模不自动提高版本级别。
+同一 PR 推送前的追加修复沿用一个候选版本；已发布版本之后的修复进入下一版本。
 
-| 级别 | 适用变化 | 示例 |
-| --- | --- | --- |
-| 补丁 `0.0.1` | 保持现有产品能力和兼容性的安全、bug、稳定性、性能及小范围交互修复；一批修复仍可作为一次补丁发布 | `2.18.0 → 2.18.1`：修复本轮安全边界与文章删除问题 |
-| 次版本 `0.1.0` | 成组增加用户可感知的新功能或完整工作流，并伴随安全、稳定性或缺陷治理的重大改进，形成清楚的功能里程碑 | `2.18.x → 2.19.0`：多个新学习能力及配套质量升级；零散小功能先归入后续功能批次 |
-| 主版本 `1.0.0` | 清晰的产品代际变化，或公共接口、用户数据格式、核心工作方式发生不兼容变化；须说明用户收益、兼容策略、迁移和回退安排 | `2.x.y → 3.0.0`：成体系的新产品体验与明确的代际迁移 |
+兼容的安全、缺陷和性能修复升补丁；成组产品新功能升次版本；产品代际或不兼容公共契约升主版本并提供迁移及回退。内部重构、修复数量和报告排版不决定升档；纯文档不升级应用。
 
-兼容迁移、框架替换和内部架构整理继续按实际外部影响分级。版本各段自然递增，不设 9、99 等进位上限；补丁可从 `2.18.99` 升到 `2.18.100`。纯文档、报告样式和发布说明整理不自动升级应用版本。
+发布前核对源码、产物来源、数据库迁移和阻塞项。`bash scripts/package-site.sh` 从已提交源码的隔离目录安装锁定依赖并重建，拒绝额外私密文件或符号链接，逐项回读归档后输出 `outputs/site.tar.gz`；包内保留 `dist/server`、`drizzle/` 及 journal、根 `migrations/`，使用普通文件。Sites 会复用同提交的已保存版本，打包修正须提交新版本。GitHub 与 Sites 状态分别记录，部署成功后验证实际迁移。
 
-版本号记录交付范围，发布质量按风险验收。安全与数据变更须在共享入口验证原始触发、等价输入与正常对照，并覆盖相关并发、跨标签页或迟到任务；独立复核后补齐回归。发布前核对实际源码提交、构建产物来源及数据库迁移，已确认的阻塞性安全或数据缺陷先修复再发布。相关检查与实际结果足以支持结论后停止重复验证，不以升版本替代修复，也不机械全量重建。
+### 修复报告
 
-GitHub 提交与 Sites 部署分别记录，线上状态以实际部署结果核实。
+沿用灰白、炭黑无衬线、细线网格；默认逐页高清 PNG，其他格式仅按用户要求提供。说明改动、触发条件、正常对照、验证命令、实测数据与剩余范围，图表仅表达真实测量。
 
-### 修复报告交付
-
-默认使用灰白纸面、炭黑无衬线、等宽编号和细线列网格，延续早期灰色技术报告。用 HTML/CSS 精确排版后导出 PDF 与逐页高清 PNG；在会话中直接附上 PNG，并提供可下载入口，保留可编辑设计源。修复、正常对照、验证命令、真实结果和剩余范围明确；性能图只表达实际测量关系。报告样式调整不升级应用版本。
-
-发布包保留 `dist/server` 入口、源 `drizzle/` 及其 journal，并按生成的 Wrangler 路径提供根 `migrations/`。打包使用普通文件，避免 tar 硬链接被发布器拒绝。同一提交已保存的 Sites 版本会复用原部署包；修正打包流程后应提交修正并发布新版本。发布完成后核对实际数据库迁移，不能仅以发布器返回成功代替迁移验收。
-
-## 指引维护
-
-项目规则集中在根 `AGENTS.md`；`CLAUDE.md` 仅导入它。模型提示指南及维护原则见 [prompt-guidance.md](prompt-guidance.md)。已有设计技能与 HIG 参考仍按界面任务需要查阅，历史设计报告不覆盖当前用户要求。
+项目约束见 [AGENTS.md](../AGENTS.md)，专题按需读取；历史报告仅供追溯。

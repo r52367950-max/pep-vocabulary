@@ -5,7 +5,7 @@ import { AssistantInputError, AssistantUpstreamError, usesOpenAIResponses, fetch
 import { assistantErrorResponse, assertSameOrigin, authenticatedRuntime, complete, readJsonRequest } from '../assistant/server';
 import { fetchAiProvider } from '../ai-config';
 import { reserveTokens, settleTokens } from '../assistant/usage';
-import { contextMetadata, resolveLearningContext, learningContextData } from '../learning-memory/context';
+import { contextMetadata, resolveLearningContext, verifyLearningContext, learningContextData } from '../learning-memory/context';
 import { retrieveReadingDictationCandidates } from './reading-candidates';
 import { journalDays, journalMetadata } from '../learning-journal/store';
 import type { LexiconIndexEntry } from '../lexicon';
@@ -42,13 +42,13 @@ export async function planDictation(request: Request): Promise<Response> {
     try { rows = decodeLexiconIndex(await response.json()) as LexiconIndexEntry[]; }
     catch { throw new AssistantInputError('unavailable', '正式词库格式无效。', 503); }
     const journal = context.enabled && (await journalMetadata(user)).enabled ? await journalDays(user, 7) : [];
-    await resolveLearningContext(user, { ...body, ...contextMetadata(context) });
+    await verifyLearningContext(user, context);
     const recentRefs = journal.flatMap(day => day.events.slice(0, 8).flatMap(event => event.refIds)).slice(0, 80);
     const reading = await retrieveReadingDictationCandidates(assets, request, {
       query: input.text || input.messages.filter(message => message.role === 'user').at(-1)?.text || input.topic,
       recentRefs,
     });
-    await resolveLearningContext(user, { ...body, ...contextMetadata(context) });
+    await verifyLearningContext(user, context);
     if (request.signal.aborted) throw new AssistantInputError('request_aborted', '请求已取消。', 499);
     // An explicit unavailable article must not silently turn into unrelated vocabulary.
     if (reading.articleRequested && !reading.items.length && !input.articleCandidates.length) {
@@ -70,10 +70,10 @@ export async function planDictation(request: Request): Promise<Response> {
           ? 'The learner requests vocabulary by theme, imagery or meaning. Select 8–12 relevant English words or short phrases, at most 20 total. Prefer suitable exact candidate IDs when available; you may also suggest words outside the candidate list. Use standard English spelling, at most six words per phrase, and concise accurate Chinese meanings (at most 140 characters). For a theme such as winter imagery, include relevant sensations, landscapes or moods, not merely literal keyword matches. Match the requested level and avoid obscure words unless requested. Do not claim you searched the web or that generated words are from a textbook. Return JSON {"itemIds":["exact candidate id"],"words":[{"word":"English word or short phrase","meaning":"中文词义"}],"reason":"brief Chinese reason","clarification":"empty, or one question with empty itemIds and words if the request is unclear"}.'
           : 'Choose only exact candidate IDs, never create or rewrite answers. If the intended book/article is ambiguous or unavailable, ask one short Chinese clarification and return no IDs; never silently choose another source. Return JSON {"itemIds":["exact candidate id"],"reason":"brief Chinese reason","clarification":"empty or one question"}. At most 20 IDs.',
       ].join(' ') }, { role: 'user', content: JSON.stringify({ ...input, articleCandidates: undefined, allowTopicWords: topicWords, candidates, memory: learningContextData(context.memory) }) }],
-    }, { totalMs: Math.min(config.timeoutMs, 60_000) });
+    }, { totalMs: Math.min(config.timeoutMs, 60_000), verifyContext: () => verifyLearningContext(user, context) });
     if (completion.finishReason === 'length') return upstreamInvalid();
     let result; try { result = parseDictationPlan(completion.content, candidates, { allowTopicWords: topicWords, rows: topicWords ? rows : undefined }); } catch { return upstreamInvalid(); }
-    await resolveLearningContext(user, { ...body, ...contextMetadata(context) });
+    await verifyLearningContext(user, context);
     if (request.signal.aborted) throw new AssistantInputError('request_aborted', '请求已取消。', 499);
     return privateJson({ operationId: id, ...result, selection: topicWords ? 'theme' : 'grounded', ...contextMetadata(context) });
   } catch (error) { return assistantErrorResponse(error); }

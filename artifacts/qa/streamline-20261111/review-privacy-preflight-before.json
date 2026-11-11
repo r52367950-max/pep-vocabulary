@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-11-11T07:47:15.351355+00:00",
+  "stage": "Observed before adding the optional learning-context preflight to complete()",
+  "kind": "Independent local reproduction; recorded from the prior tool output",
+  "environment": {
+    "database": "real SQLite in memory through sqliteD1",
+    "provider": "globalThis.fetch mock only",
+    "externalRequests": 0,
+    "data": "synthetic test account and note only"
+  },
+  "scenario": "Disable learning memory after reserveTokens UPSERT returns, before provider dispatch",
+  "sequence": [
+    "Create valid encrypted test provider settings",
+    "Save enabled learning memory with SYNTHETIC_PRIVATE_NOTE at revision 1",
+    "After the real token reservation query, save disabled empty memory at revision 2",
+    "Invoke handleAssistantRequest(explain) with valid word input"
+  ],
+  "expected": {
+    "responseStatus": 409,
+    "providerMockCalls": 0,
+    "syntheticNoteSeenByProviderMock": false
+  },
+  "observed": {
+    "responseStatus": 409,
+    "providerMockCalls": 1,
+    "syntheticNoteSeenByProviderMock": true,
+    "revocationHookExecuted": true,
+    "responseErrorCode": "learning_context_changed"
+  },
+  "interpretation": "The final response was suppressed, but the mock provider received the previously loaded synthetic note. No real provider or user data was involved.",
+  "sourceSnapshot": "The run used complete() with a post-reservation configuration-token check only. A source hash was not captured during that read-only run."
+}

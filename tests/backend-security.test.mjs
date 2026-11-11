@@ -45,6 +45,18 @@ test('aborted requests and malformed UTF-8 cannot become accepted backup data', 
   await assert.rejects(readJsonObject(new Request('https://app.test/api', { method: 'POST', headers: { 'content-type': 'application/json' }, body: bytes }), 4096), error => error.status === 400);
 });
 
+test('fragmented Unicode JSON stays bounded and abort after a partial body releases the reader', async () => {
+  const expected = { text: '学习 📖 '.repeat(1000) };
+  const bytes = new TextEncoder().encode(JSON.stringify(expected));
+  let cursor = 0;
+  const chunks = new ReadableStream({ pull(controller) { if(cursor===bytes.length) controller.close(); else controller.enqueue(bytes.slice(cursor,++cursor)); } });
+  assert.deepEqual(await readJsonObject(new Request('https://app.test/api', {method:'POST',duplex:'half',headers:{'content-type':'application/json'},body:chunks}),bytes.length),expected);
+  const abort = new AbortController(); let cancelled=false;
+  const stalled = new ReadableStream({ start(controller){controller.enqueue(new TextEncoder().encode('{"text":"'));},cancel(){cancelled=true;return new Promise(()=>{});} });
+  const reading = readJsonObject(new Request('https://app.test/api',{method:'POST',duplex:'half',headers:{'content-type':'application/json'},body:stalled,signal:abort.signal}),1000);
+  abort.abort();await assert.rejects(bounded(reading),e=>e.status===408);assert.equal(cancelled,true);assert.equal(stalled.locked,false);
+});
+
 test('provider errors and oversized declared bodies release their streams without exposing contents', async () => {
   for (const [status, headers, code] of [[401, {}, 'provider_auth_failed'], [200, { 'content-length': '300001' }, 'model_response_too_large']]) {
     let cancelled = false;

@@ -69,6 +69,8 @@ HARNESS_API_KEY=... node --import ./tests/register.mjs scripts/ai-harness.mjs --
 5. 如需自定义兼容服务，由管理员设置 `AI_ALLOWED_PROVIDER_ORIGINS`：逗号分隔的精确 HTTPS origin，例如 `https://llm.example.com,https://gateway.example.com:8443`，不含路径、通配符、凭据、查询参数或片段。官方 `https://api.deepseek.com` 与 `https://api.openai.com` 默认允许，空值仅允许这两项；非法列表关闭 AI 出站请求。管理员只应批准自己控制或信任的服务及其 DNS、实际出站目标；此策略把目标选择权交给管理员，并非 DNS 预检或 IP 固定。用户不能通过设置添加新 origin。
 6. 由经过站点身份验证的用户在“设置 → AI 接口”保存自己的接口配置。
 
+站点更名或更换域名时，同步更新 Sites 运行环境中的 `IDENTITY_TRUSTED_HOSTS` 与 `SITE_CANONICAL_ORIGIN`，重新部署保存版本使配置生效，并核对实际登录请求的私有 API 状态。仅修改托管域名会使新域名上的账户接口返回 401。
+
 新保存的 API key 使用独立 96-bit IV 和绑定账号、服务商、规范化目标 URL 的 AES-256-GCM v2 上下文加密后保存到 D1。旧 v1 密文缺少账号与目标绑定，运行时不再解密、发送或自动迁移；原配置行保留，GET 返回 `requiresKeyReentry=true` / `hasApiKey=false`，设置页提示用户重新填写服务商 API key。空密钥保存会明确拒绝，不覆盖原行；重新填写后正常保存为 v2 / v3。不能仅根据可被修改的数据库行推断旧密文的原归属或目的地。服务端接口从不回显明文、密文、IV 或 Key 尾号。Base URL 的规范化目标发生变化时必须重新提交 API key，防止已保存凭据被转发到新目标。
 
 ### 主密钥轮换

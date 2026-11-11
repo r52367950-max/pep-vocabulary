@@ -1,0 +1,19 @@
+PASS desktop: original Today artwork and learning entry retained
+PASS desktop: Claude chat/model/history/mini layout and shared draft
+PASS ipad-landscape: original Today artwork and learning entry retained
+PASS ipad-landscape: Claude chat/model/history/mini layout and shared draft
+PASS ipad-portrait: original Today artwork and learning entry retained
+PASS ipad-portrait: Claude chat/model/history/mini layout and shared draft
+PASS phone: original Today artwork and learning entry retained
+PASS phone: Claude chat/model/history/mini layout and shared draft
+PASS IME and Shift+Enter do not send; stopping suppresses delayed answer
+PASS Actual client transport displays actionable HTTP error and clears busy state
+PASS Temporary conversation uses temporary request scope and never persists
+PASS Voice uses full chat region and unconfigured service never opens microphone/session
+PASS Actual TXT file read sends content once and leaves raw attachment out of persisted history
+PASS Actual article Range selection reaches shared mini/full request with exact quote
+PASS Same-account context refresh restores the quarantined draft and attachment after verification
+PASS Account invalidation refreshes context, clears prior data and sends only under the new scope
+PASS Keyboard delete removes the selected saved conversation
+PASS Action card opens actual study session, saves one answer and returns its real result to follow-up context
+PASS Cross-tab deletion survives the released stale 250 ms save callback and a fresh page reload

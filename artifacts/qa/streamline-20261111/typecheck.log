@@ -1,0 +1,4 @@
+
+> pep-vocab-studio@2.19.2 typecheck
+> tsc --noEmit
+

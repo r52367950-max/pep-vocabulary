@@ -118,6 +118,33 @@ test('search prioritizes exact heads then prefixes, excludes unreleased rows and
   }
 });
 
+test('bounded search preserves exact and prefix rank, full counts and original order in large result sets', async () => {
+  const entries = [
+    ...Array.from({ length: 90 }, (_, i) => row(`contains-${i}`, `xapp ${i}`)),
+    ...Array.from({ length: 90 }, (_, i) => row(`prefix-${i}`, `apple ${i}`)),
+    row('exact', 'app'), row('unreleased', 'app', '隐藏', false),
+  ];
+  const result = await run('search_lexicon', { query: 'app', limit: 8 }, { sources, loadLexicon: async () => entries });
+  assert.equal(result.data.totalMatches, 181);
+  assert.equal(result.data.hasMore, true);
+  assert.deepEqual(result.evidence.map(item => item.id), ['exact', ...Array.from({ length: 7 }, (_, i) => `prefix-${i}`)]);
+  const broad = await run('search_lexicon', { meaning: '测试', limit: 3 }, { sources, loadLexicon: async () => entries });
+  assert.equal(broad.data.totalMatches, 181);
+  assert.deepEqual(broad.evidence.map(item => item.id), ['contains-0', 'contains-1', 'contains-2']);
+});
+
+test('cached unit matching normalizes names while keeping book and unit on the same source', async () => {
+  const entries = [{ ...row('normalized', 'entry'), sources: [{ bookId: 'B1', volume: '册一', unit: 'ＵＮＩＴ　２', printedPage: 2 }] },
+    { ...row('wrong-pair', 'other'), sources: [{ bookId: 'B1', volume: '册一', unit: 'Unit 1', printedPage: 1 }, { bookId: 'B2', volume: '册二', unit: 'Unit 2', printedPage: 2 }] }];
+  const ctx = { sources, loadLexicon: async () => entries };
+  for (const unit of ['2', ' Unit  2 ', 'ＵＮＩＴ　２']) {
+    const result = await run('search_lexicon', { book: 'B1', unit }, ctx);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.evidence.map(item => item.id), ['normalized']);
+    assert.equal(result.evidence[0].sources[0].unit, 'ＵＮＩＴ　２');
+  }
+});
+
 test('source reader reads only selected bounded slices and returns continuation offsets', async () => {
   const first = await run('read_source', { kind: 'article', index: 0, length: 7 });
   assert.equal(first.data.text, 'First. ');

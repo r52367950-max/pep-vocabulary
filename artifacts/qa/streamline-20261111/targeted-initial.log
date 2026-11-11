@@ -1,0 +1,13 @@
+✔ tests/assistant-chat.test.mjs (1950.791177ms)
+✔ tests/assistant-harness.test.mjs (815.927262ms)
+✔ tests/backend-security.test.mjs (1705.53655ms)
+✔ tests/learning-journal-quota.test.mjs (2599.343465ms)
+✔ tests/learning-journal.test.mjs (1576.733058ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4558.317598

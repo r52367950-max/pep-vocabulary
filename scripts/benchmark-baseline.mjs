@@ -3,6 +3,10 @@ import { execFileSync } from 'node:child_process';
 // These exact historical implementations were reviewed for the comparisons
 // below. Adding a baseline requires reviewing every executed module/slice here.
 const reviewed = {
+  toolbox: {
+    revisions: ['f10737e675cf5e55352f0a9d2808600eb19e664d'],
+    paths: ['lib/assistant/toolbox.ts'],
+  },
   core: {
     revisions: ['3b12529a574addbb3064df865a1849e43a3600fb'],
     paths: ['lib/questions.ts', 'lib/lexicon.ts'],

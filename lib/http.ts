@@ -35,9 +35,10 @@ export async function readJsonObject(request: Request, maximumBytes: number, tim
     timer = setTimeout(() => reject(new RequestBodyError("请求读取超时，请重试。", 408)), timeoutMs);
   });
   try {
-    if (reader) {
+    const read = async () => {
+      if (!reader) return;
       while (true) {
-        const { done, value } = await Promise.race([reader.read(), interrupted]);
+        const { done, value } = await reader.read();
         if (done) break;
         total += value.byteLength;
         if (total > maximumBytes) {
@@ -46,7 +47,9 @@ export async function readJsonObject(request: Request, maximumBytes: number, tim
         }
         text += decoder.decode(value, { stream: true });
       }
-    }
+    };
+    // Race the entire read once, rather than retaining a timeout reaction per chunk.
+    await Promise.race([read(), interrupted]);
     const body: unknown = JSON.parse(text + decoder.decode());
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       throw new RequestBodyError("请求必须是 JSON 对象。");

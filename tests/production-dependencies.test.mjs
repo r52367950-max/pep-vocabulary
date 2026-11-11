@@ -7,7 +7,7 @@ import test from 'node:test';
 const require = createRequire(import.meta.url);
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
 // Fixed versions recommended by the 2026-10-31 production audit. This protects
-// against reintroducing these known advisories; audit:prod also checks new ones.
+// against reintroducing these known advisories; audit:deps also checks new ones.
 const fixed = { next: [16, 4, 3], sharp: [0, 35, 5], 'source-map-js': [1, 2, 2] };
 function patched(version, minimum) {
   const parts = version.split('.').map(Number);
@@ -39,5 +39,24 @@ test('production framework and parser/image dependencies exclude the reported vu
     const entries = Object.entries(lock.packages).filter(([path]) => path === `node_modules/${name}` || path.endsWith(`/node_modules/${name}`));
     assert.ok(entries.length, `${name} must remain locked`);
     for (const [path, entry] of entries) assert.ok(patched(entry.version, minimum), `${path}@${entry.version} retains a vulnerable copy`);
+  }
+});
+
+test('the RSC decoder and matching React peers exclude GHSA-xqc2-xf4c-x3h3, including locked copies', () => {
+  const names = ['react', 'react-dom', 'react-server-dom-webpack'];
+  const rsc = installed('react-server-dom-webpack');
+  // These branch-specific patch floors come from the upstream advisory.
+  const floors = { 0: 9, 1: 10, 2: 9, 3: 1 };
+  const safe = version => {
+    const [major, minor, patch] = version.split('.').map(Number);
+    return Number.isInteger(patch) && (major > 19 || major === 19 && (minor > 3 || patch >= floors[minor]));
+  };
+  for (const name of names) {
+    const actual = installed(name, rsc.require).json.version;
+    assert.equal(actual, rsc.json.version, `${name} must match the decoder's React release`);
+    assert.ok(safe(actual), `${name}@${actual} predates the RSC fix`);
+    const entries = Object.entries(lock.packages).filter(([path]) => path === `node_modules/${name}` || path.endsWith(`/node_modules/${name}`));
+    assert.ok(entries.length, `${name} must remain locked`);
+    for (const [path, entry] of entries) assert.ok(safe(entry.version), `${path}@${entry.version} retains a vulnerable copy`);
   }
 });

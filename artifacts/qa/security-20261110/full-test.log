@@ -1,0 +1,1064 @@
+
+> pep-vocab-studio@2.19.3 test
+> npm run data:audit && npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:runtime
+
+
+> pep-vocab-studio@2.19.3 data:audit
+> node scripts/audit-data.mjs
+
+{
+  "targetTextbooks": 12,
+  "sourceManifestEntries": 19,
+  "curriculumHeadwordRows": 2997,
+  "releasedEntries": 4681,
+  "missingEnglishDefinitions": 333,
+  "missingCompleteIpa": 153,
+  "unitRowsWithUnresolvedFields": 7
+}
+audit status: release-candidate-with-declared-gaps
+
+> pep-vocab-studio@2.19.3 typecheck
+> tsc --noEmit
+
+
+> pep-vocab-studio@2.19.3 lint
+> bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next
+
+
+> pep-vocab-studio@2.19.3 test:unit
+> node --import ./tests/register.mjs --test --test-concurrency=2 tests/*.test.mjs
+
+✔ global device reset clears legacy and current AI answers, then fresh answers cache normally (64.948551ms)
+✔ an independent tab cannot cache or display a pre-reset model answer before its broadcast arrives (41.418959ms)
+✔ atomic cache generation rejects a write delayed at IndexedDB open after standalone clear (5.636514ms)
+✔ global reset waits for the IndexedDB erasure while holding its cross-tab reset lock (3.652523ms)
+✔ an IndexedDB reset failure propagates instead of reporting successful local erasure (2.629995ms)
+✔ key-only eviction keeps the newest 600 answers without disturbing the deletion fence (21.370296ms)
+✔ a provider rejection before generation returns the reserved output; ambiguous failures keep it (65.050493ms)
+✔ daily request counts reset at Beijing midnight with a specific message (7.777409ms)
+✔ users cannot select DNS-controlled origins or alternate authorities; operators approve exact HTTPS origins (26.651935ms)
+{"event":"ai_connection_test","outcome":"passed","provider":"openai-compatible","phase":"capability","latencyMs":10,"code":"ok","providerStatus":null,"networkReason":null}
+✔ unapproved stored destinations block every AI caller and preserve the credential scope (28.984284ms)
+✔ the fetch boundary rechecks policy after configuration loading for both probes and completions (1.418257ms)
+✔ tiny JSON/SSE usage and missing or malformed usage cannot refund below local prompt and actual output (4.700528ms)
+✔ POST and DELETE share a mutation limit before encryption or configuration reads, isolated by identity (47.46505ms)
+✔ daily mutation exhaustion and missing or unavailable limiter storage leave configuration untouched (15.908614ms)
+✔ invalid provider policy blocks stored settings and outbound calls while credential removal still succeeds (11.046776ms)
+✔ new tasks parse bounded input (1.874008ms)
+✔ every request shares one static system prompt, then the profile, then the task (0.890496ms)
+✔ learner profiles are rebuilt server-side from known release IDs only (1.044347ms)
+✔ mistakes are refined from the recorded answer (15.380696ms)
+✔ essay feedback must point at text the student wrote (9.897165ms)
+✔ story, mnemonic, diagnose and practice outputs are validated (0.859464ms)
+✔ output tokens target 10,000 unless the model allows fewer (0.869912ms)
+✔ streamed answers carry usage, cache hits and the finish reason (36.531475ms)
+✔ assistant requests count tokens against a daily budget and place the profile after the system prompt (843.515215ms)
+✔ the offline prompt harness builds every case with the shared prefix (614.280574ms)
+✔ deep essay review follows the Gaokao bands and anchors sentence analysis in the essay (4.031939ms)
+✔ FSRS v6 schedules one main card and retention changes the interval (3.763002ms)
+✔ question engine exposes compatible modes and honest context gap (0.53257ms)
+✔ PWA shell, offline worker, lazy chunks, backup and D1 sync are wired (1.66307ms)
+✔ destructive reset and AI degradation are explicit (0.702909ms)
+✔ AI deployment settings keep credentials server-side and validate compatible upstreams (0.819064ms)
+✔ accessibility fallbacks and exact viewport QA harness stay wired (0.587544ms)
+✔ seeded randomness is stable across runs and differs between seeds (1.453839ms)
+✔ every scene paints without errors at card, banner and thumbnail sizes, for many seeds (2735.875979ms)
+✔ the same article always gets the same picture, and different articles differ (405.716641ms)
+✔ reading categories map to their illustration style (0.25751ms)
+✔ the Today landscape follows the local hour (0.484161ms)
+✔ cache keys separate size, pixel ratio, time of day and the copy's clear area (0.277588ms)
+✔ the Today moon keeps out from under the copy and leaves the rest of the picture in place (266.153871ms)
+✔ chat parser rejects role injection, unsupported models/actions and over-limit materials (2.4584ms)
+✔ server routing selects task depth and source text cannot upgrade model (4.82666ms)
+✔ Responses preserves server-selected reasoning and old callers retain low (0.472089ms)
+✔ assistant actions are a bounded application allowlist and arbitrary IDs/links/tools are dropped (2.235587ms)
+✔ unknown action IDs never broaden to the current scope, while an explicit empty scope remains usable (0.79321ms)
+✔ whitespace-heavy JSON and code fences parse within a bounded CPU budget (0.756148ms)
+✔ chat request authenticates, rejects cross-origin/body overflow and performs no outbound call on invalid input (25.650588ms)
+✔ real endpoint sends selected Sol Medium through Responses and reports exactly that route (12.524294ms)
+✔ custom provider Auto keeps its configured model and compatible request format (8.118939ms)
+✔ temporary and records-off requests omit both local profile and saved memory while retaining quotes (22.939799ms)
+✔ stale account/context rejects before provider and a privacy change during generation rejects returned content (11.184616ms)
+✔ reasoning output floor stops undersized budget requests before provider, without retry (6.492267ms)
+✔ truncated or malformed provider answers produce errors without automatic retries (6.262808ms)
+✔ provider policy withdrawal and aborted requests never contact a paid service (14.079484ms)
+✔ verified context metadata accompanies responses for the client identity fence (7.55135ms)
+✔ chat endpoint runs a metered tool round, returns validated evidence actions and sums usage (10.996345ms)
+✔ privacy changes after a tool request prevent every subsequent provider call (5.888563ms)
+✔ a concurrent budget consumer blocks the next model round through the shared reservation (9.627531ms)
+✔ chat rejects fabricated textbook quotations, unsupported pages and claims in action titles (0.824045ms)
+✔ attachment influence cannot turn a known word location into a verified quotation at the endpoint (5.415663ms)
+✔ normal material discussion retains quoted page wording and gets server-owned unverified provenance (11.837231ms)
+✔ chat may quote a user message about a personal page without authenticating new page claims (6.854939ms)
+✔ chat preserves translated personal page references without granting other documents or page numbers (1.041892ms)
+✔ explicit generated-content disclaimers stay usable without laundering adjacent textbook claims (0.494296ms)
+✔ cached and model attribution cannot replace current lexicon entry locations (1.660743ms)
+✔ untrusted citation properties are not read, including for earlier saved reviews (0.197389ms)
+✔ unknown, duplicate and non-formal IDs do not acquire source locations (0.178428ms)
+✔ saved results use the current release and do not retain obsolete citation metadata (0.118642ms)
+✔ entry locations preserve distinct current positions, deduplicate and isolate their data (0.154204ms)
+✔ an imported result cannot expand the source display beyond its bounded entries and positions (0.706487ms)
+✔ direct answers use one generation and never load the lexicon (5.775622ms)
+✔ tool outputs return to the model, usage aggregates, and trace contains no arguments or source text (2.128256ms)
+✔ identical read-only calls share a request-local result, and IDs remain correlated (0.936384ms)
+✔ malformed, mixed, oversized or duplicate dispatch envelopes never execute a tool (1.470628ms)
+✔ unavailable tools return a bounded error and do not gain execution capabilities (0.63766ms)
+✔ three-generation limit stops a repeated tool loop and forces the last model turn to answer (1.300746ms)
+✔ context changes after a tool request stop all further provider calls (0.375207ms)
+✔ caller abort and total deadline stop work even between provider responses (0.383532ms)
+✔ caller abort interrupts a pending source load without waiting for its promise (0.679948ms)
+✔ the run deadline also bounds a stalled context read (10.604723ms)
+✔ the next round receives only the remaining wall time and truncated output is never dispatched (0.724903ms)
+✔ the reported Chinese sentence-attribution bypass is rejected even for a known lexicon page (3.801774ms)
+✔ English textbook quotations do not become verified from a matching location (0.320571ms)
+✔ an unrelated integer in student text cannot authorize a model page claim (4.006962ms)
+✔ actual student diary page wording remains quotable in feedback and revised text (0.6389ms)
+✔ a real student page reference cannot authorize unrelated feedback or added revision prose (3.087362ms)
+✔ rewriting another sentence preserves an unchanged student diary clause (0.295501ms)
+✔ normal grammar corrections preserve explicit diary references without granting other citations (2.217327ms)
+✔ feedback can quote a located student reference without authorizing claims outside the quote (5.017387ms)
+✔ ordinary textbook prose and supported word-list locations remain usable (0.60369ms)
+✔ provider origin and citation claims cannot control server-owned provenance (0.885817ms)
+✔ generated examples and ordinary numerical prose retain normal behavior (0.187772ms)
+✔ shared attribution guard preserves explicit disclaimers and rejects affirmative neighbors (0.207878ms)
+✔ all four assistant requests accept only bounded canonical word IDs (2.072076ms)
+✔ base URL validation is HTTPS-first and rejects credential or private-network targets (0.84779ms)
+✔ evidence is re-resolved from release rows and excludes non-release entries (0.326115ms)
+✔ prompts treat user text as data and model results stay inside evidence (4.055724ms)
+✔ generated examples are explicitly marked and never represented as textbook quotations (0.841328ms)
+✔ upstream timeout and provider errors are normalized without leaking response bodies (31.301086ms)
+✔ connection probes exercise real generation safely and DeepSeek disables default thinking (0.729024ms)
+✔ connection reachability probe receives HTTP without sending credentials and rejects redirects (0.774575ms)
+✔ routes, D1 limits, no-store responses and client secret boundaries stay wired (1.165616ms)
+✔ bounded whitespace-heavy provider JSON cannot monopolize the worker with regex backtracking (453.446043ms)
+✔ provider JSON still accepts plain, fenced and explanatory wrappers, with a limit before cleanup (4.191877ms)
+✔ cancelled connection probes abort in flight and never try the fallback endpoint (1.008148ms)
+✔ SSE JSON fallback resets the idle timer on every body chunk (9.302594ms)
+✔ SSE JSON fallback still cancels a genuinely idle body (1.889499ms)
+✔ SSE JSON fallback retains its total deadline despite active chunks (1.850361ms)
+✔ SSE JSON fallback preserves caller cancellation and the byte limit (2.123547ms)
+✔ non-streaming JSON resets the idle timer on every body chunk (0.822216ms)
+✔ non-streaming JSON still cancels a genuinely idle body (0.646654ms)
+✔ non-streaming JSON retains its total deadline despite active chunks (0.657799ms)
+✔ non-streaming JSON preserves caller cancellation and the byte limit (1.434117ms)
+✔ official reasoning models omit unsupported temperature without changing other providers (1.120759ms)
+✔ an official FQDN trailing dot retains the official model parameters (0.916501ms)
+✔ reading classification uses Responses for official models and retains compatible-host temperature rules (44.089154ms)
+✔ slow request bodies time out even if their producer never completes cancellation (19.679949ms)
+✔ aborted requests and malformed UTF-8 cannot become accepted backup data (3.097858ms)
+✔ provider errors and oversized declared bodies release their streams without exposing contents (2.517467ms)
+✔ provider body timeout and byte limits cannot be blocked by a stalled cancel promise (10.574723ms)
+✔ version 2 credentials authenticate the account, provider and destination together (12.03991ms)
+✔ sync rejects an identity changed after the client read its revision (24.161163ms)
+✔ legacy AI settings retain their row until owner key reentry and public responses never include the secret (23.232963ms)
+✔ invalid imported metrics, calendar dates and undo links are rejected before replacing local data (38.572549ms)
+✔ a forged undo cannot remove a card without the matching committed review event (3.679051ms)
+✔ offline installation rejects missing assets, cache quota failures and non-cacheable shells (7.782054ms)
+✔ a complete offline installation retains its executable shell and declared fonts (2.917665ms)
+✔ offline preparation only confirms success when every detail chunk is saved (4.847426ms)
+✔ offline preparation reports failure on unavailable chunks or exhausted storage (5.265449ms)
+✔ concurrent budget reservations never admit more than the available allowance (5.244304ms)
+✔ output is reduced to remaining budget and an uncertain failed call keeps its reservation (1.721451ms)
+✔ a request finishing after midnight settles the day in which it began (1.116097ms)
+✔ provider usage cannot undercount its own prompt plus completion (0.754602ms)
+✔ valid JSON cut off before a terminal SSE event is rejected (7.352546ms)
+✔ caller cancellation prevents a fetch and interrupts a stalled body (6.81455ms)
+✔ config and budget save together, and preference read failures fail closed (36.576123ms)
+✔ an exhausted budget blocks credentialed connection-test generations (9.061803ms)
+✔ competing configuration saves keep the winning credential and budget together (12.821473ms)
+✔ a stale settings save cannot recreate a deleted API credential (7.864355ms)
+✔ metadata sync reads do not select or return the old backup body (6.354033ms)
+✔ expired bucket cleanup uses the new index (0.452847ms)
+✔ normal exports keep note and favorite edits between reviews and after the terminal review (23.793826ms)
+✔ old schemas retain reviewed baselines, optional FSRS fields, and independent metadata/status (4.040767ms)
+✔ same-time and clock-rollback chains are independent of array, timestamp, and event-ID order (2.801457ms)
+✔ undo and redo preserve inactive branches while requiring one terminal active chain (4.489165ms)
+✔ all-undone histories allow an absent original card and a new metadata-only card (7.766882ms)
+✔ all-undone reviewed baselines return to their original scheduler state (0.918768ms)
+✔ equivalent timezone encodings compare by absolute time without rewriting the imported payload (0.638126ms)
+✔ a shape-valid terminal skill mismatch is rejected (1.042432ms)
+✔ a terminal review cannot be reclassified as unseen, weak, or mastered independently of its history (1.405747ms)
+✔ an original review never produces an unseen or paused state even when its current card agrees (0.633564ms)
+✔ paused cards retain their scheduler history and can resume through a normal review (2.473847ms)
+✔ status changes inside an active chain cannot reinterpret the preceding review as unseen (0.473214ms)
+✔ an all-undone originally absent card remains unseen when recreated only for metadata (0.873956ms)
+✔ terminal scheduler mismatches and unknown FSRS fields are rejected (0.906435ms)
+✔ an active terminal review cannot reference a missing current card (0.366824ms)
+✔ each original review advances exactly one repetition counter (0.389665ms)
+✔ shape-valid discontinuities between active before and after snapshots are rejected (0.452274ms)
+✔ two active reviews from the same baseline are rejected even when one matches the card (0.993012ms)
+✔ undoing a predecessor cannot leave its dependent active review installed (0.456096ms)
+✔ an all-undone history cannot retain the undone scheduler state or lose its reviewed baseline (0.646004ms)
+✔ a disconnected inactive history cannot be attached to an otherwise valid active chain (1.012722ms)
+✔ event-chain validation rejects the entire restore before replacing any existing store (8.304705ms)
+✔ cloud sync rejects inconsistent event chains without advancing the saved revision (1172.02139ms)
+✔ all application-generated FSRS states remain importable and schedulable (13.299096ms)
+✔ invalid FSRS memory state is rejected in cards and both review snapshots (6.992587ms)
+✔ card dates must represent real calendar days (0.382111ms)
+✔ invalid imported scheduler state never replaces the existing learning database (22.457572ms)
+✔ older backup schemas and missing optional learning_steps retain scheduler compatibility (4.728768ms)
+✔ equivalent timezone encodings and self-consistent future clock readings remain importable (1.198295ms)
+✔ undo snapshot equality ignores object key order while retaining every value check (1.874122ms)
+✔ the largest representable date cannot enter a destructive restoration (5.934834ms)
+✔ counter exhaustion is explicitly rejected before corrupt scheduler output can be committed (1.472632ms)
+✔ unknown card, FSRS and scheduler log fields are rejected instead of retained (0.97538ms)
+✔ deep and oversized legacy extensions fail before replacing local data (17.200171ms)
+✔ bounded legacy extensions preserve restore, scheduling and export in supported schemas (12.543206ms)
+✔ large UTF-8 attachments fit the endpoint cap and keep Unicode characters intact (26.657127ms)
+✔ short and exact-boundary text remains unchanged and reports actual loaded characters (18.182771ms)
+✔ real text-file reader returns bounded content and respects cancellation (2.458856ms)
+✔ list selector retains newest saved conversations and other nonempty drafts, excluding temporary and active empty conversations (3.67849ms)
+✔ 142 active-composer keystrokes reuse the list and leave saved content untouched (1.064778ms)
+✔ other drafts, deletion, new messages and selected conversation changes invalidate the list (1.50044ms)
+✔ search matches visible draft titles or user messages and preserves day groups (0.911378ms)
+✔ legacy finite timestamps outside the Date range retain conversations without breaking the panel (0.381063ms)
+✔ history keeps only bounded origin metadata and always downgrades old or forged authenticity (4.260872ms)
+✔ chat history entry locations come from current formally released vocabulary (1.366364ms)
+✔ normal history serializes only supported fields and omits temporary conversations, attachment raw data and drafts (2.367896ms)
+✔ untrusted stored history is validated deeply and pending answers restore as stopped (0.906639ms)
+✔ history size bounds retain the newest supported rows within storage cap (23.703554ms)
+✔ real exercise result survives normal history and allows only formal word IDs (0.534256ms)
+✔ attachment controls reject empty/oversize/active markup types and strictly decode UTF-8 (0.857053ms)
+✔ settings parser rejects unsupported model and malformed options with stable defaults (0.418121ms)
+✔ typed follow-up includes real voice captions and exercise evidence within endpoint history limits (17.867862ms)
+✔ tool trace retains only known names and exact booleans within the dispatch cap (1.384943ms)
+✔ fixed summaries distinguish failed tools and omit invented activity for direct answers (4.254763ms)
+✔ history roundtrip keeps actual tool status without retaining private source or arbitrary labels (0.994736ms)
+✔ actual chat client projects only returned trace after identity and context checks (37.999621ms)
+✔ a context change before final client validation discards the answer and its tool trace (2.580166ms)
+✔ voice context keeps recent user, assistant, selected text and earlier voice captions (3.700206ms)
+✔ empty and action-only history creates no invented opening text (2.017179ms)
+✔ voice context is bounded to the API limit and prioritizes recent messages (0.445219ms)
+✔ UTF-16 boundaries do not split emoji in any context fragment (1.614459ms)
+✔ a delayed first save cannot restore a credential after create and delete (36.473478ms)
+✔ deleting an absent configuration also fences an in-flight first save (7.764834ms)
+✔ ordinary first creation, retained-key update, delete and deliberate recreation work (17.227221ms)
+✔ competing first saves admit one credential and its matching preferences (5.928041ms)
+✔ another account deletion does not reject an admitted first save (6.628219ms)
+✔ failed deletion retains the credential and can be retried (14.563145ms)
+✔ clearing all data prevents an old page from reintroducing an unseen card (34.038494ms)
+✔ restoring an identical snapshot still rejects old reviews and queued preferences (5.086804ms)
+✔ old writing editors cannot change or delete restored identical records (4.257016ms)
+✔ failed restoration leaves both the data and its generation unchanged (2.595003ms)
+✔ a late upload response cannot bind replacement data to its former cloud revision (3.077971ms)
+✔ legacy cloud bindings migrate only before the first dataset replacement (1.985184ms)
+✔ stale restore confirmations cannot replace a newer dataset (2.538513ms)
+✔ session recovery binds to its dataset, including legacy checkpoints (1.634148ms)
+✔ successful replacements notify other pages after the transaction commits (22.48808ms)
+✔ database version 4 preserves older records and stops unguarded version 3 clients (2.450025ms)
+✔ all twelve target textbooks have source and unit evidence (0.816577ms)
+✔ release records have stable unique IDs and traceable required fields (4.737968ms)
+✔ release contains no private-use glyphs or unsafe rights labels (13.75364ms)
+✔ middle and high scopes remain independently filterable (0.165176ms)
+✔ official high-school curriculum extraction is deterministic (44.199557ms)
+✔ retrieval uses real release IDs and sources; blank metadata never matches (15.068536ms)
+✔ article provenance remains user-provided and text cannot be model-rewritten (2.224166ms)
+✔ recognition always requires explicit confirmation and preserves misspellings (0.324137ms)
+✔ images enforce signatures, byte/pixel limits and reject urls (0.743808ms)
+✔ default recommendation uses trusted journal refs, bounded real defaults, and never invents a path (0.827407ms)
+✔ common Chinese book/unit aliases match exact source, latest correction replaces old scope (0.79595ms)
+✔ semantic expansion is opt-in and never overrides a textbook scope or supplied article (5.414241ms)
+✔ theme words reuse trusted textbook records and mark additional words as AI instead of inventing provenance (1.32524ms)
+✔ theme parsing bounds and deduplicates English targets, excluding unreleased lexicon records (0.949157ms)
+✔ admission rejects cross-origin, unauthenticated, oversized and malformed images before paid calls (73.549794ms)
+✔ planner grounds output and durably rejects repeated operation without second upstream call (81.831493ms)
+✔ vision sends only image/instructions, keeps spelling, forces confirmation and prevents duplicate charge (24.978864ms)
+✔ article request retrieves real library sentences and unavailable article never falls back to words (93.364929ms)
+✔ winter imagery uses one bounded Terra call without literal matches and retains truthful sources and reasoning low (17.738972ms)
+✔ unavailable explicit textbooks and articles still clarify without a paid call even with theme expansion enabled (18.94941ms)
+✔ late playback and answers cannot mutate another attempt, and submit is idempotent (1.312106ms)
+✔ spelling needs explicit confirmation and edits invalidate confirmation (0.230347ms)
+✔ interrupt drops late capture and assistance survives until terminal submission (0.331197ms)
+✔ literal spelling does not guess homophones or target answers (4.454678ms)
+✔ voice commands require the entire whitelist utterance (0.506445ms)
+✔ Live input never receives target text, ignores output, and captures only explicit epochs (4.938433ms)
+✔ ZIP64 forged and unsafe entry counts are rejected before decompression (6.467579ms)
+✔ ordinary stored/deflated DOCX with comments and irrelevant entries still extract only the document (9.518227ms)
+✔ ordinary central-directory comments cannot be mistaken for a ZIP64 locator (2.132409ms)
+✔ optional ZIP digital signatures inside/outside directory size remain compatible (1.182304ms)
+✔ an ordinary digital-signature payload cannot be mistaken for a ZIP64 locator (2.639376ms)
+✔ small ZIP64 entry metadata and 32/64-bit data descriptors remain supported (13.873139ms)
+✔ directory span, count, ZIP64 record/locator offsets and disk boundaries are checked (1.078203ms)
+✔ central/local signatures, local spans, names, extra fields and duplicate document entries are checked (0.890945ms)
+✔ the complete 2 MB document boundary is retained without filtering other entries by their decoded size (526.223146ms)
+✔ declared and actual XML sizes plus CRC are checked without truncating data (441.113425ms)
+✔ worker success transfers input and releases worker/listeners exactly once (3.81364ms)
+✔ aborting a pending import terminates the worker and rejects promptly (31.010752ms)
+✔ worker parse errors, crashes, message errors and malformed results all release resources (3.672977ms)
+✔ worker deadline is independently enforced and terminates a nonresponsive worker (3.768866ms)
+✔ unsupported Workers never fall back to synchronous UI parsing (0.789366ms)
+✔ DOCX XML size, markup and entity limits reject input before DOM allocation (5.06144ms)
+✔ missing or invalid trusted-host configuration never authenticates a forged gateway email (37.837883ms)
+✔ host allowlists accept exact DNS names and reject ambiguous host syntax (0.671116ms)
+✔ v1 ciphertext cannot be created, decrypted or migrated, even with a supplied plaintext (25.413269ms)
+✔ legacy or rebound v1 configurations cannot trigger any outbound AI request or lazy migration (27.056356ms)
+✔ public legacy config requests reentry without exposing or discarding stored settings (5.954729ms)
+✔ saving a legacy configuration requires key reentry and leaves the original row unchanged on refusal (13.035564ms)
+✔ owner key reentry replaces the legacy secret with scoped v2 and keeps settings usable (12.015388ms)
+✔ owner key reentry replaces the legacy secret with scoped v3 and keeps settings usable (11.273754ms)
+✔ IndexedDB key order cannot hide a recent mistake or choose an old recent review (17.547606ms)
+✔ raw-array activeOf compatibility includes chronology and undo without changing input (1.594606ms)
+✔ absolute timestamps and event IDs decide chronology across offsets and ties (0.815091ms)
+✔ late arrival, clock rollback, duplicate IDs and early undo preserve history indexes (18.749398ms)
+✔ mistake time windows and confusion order accept unsorted raw reviews and offset dates (0.544196ms)
+✔ writing targets and learner profile select the actual newest mistakes (2.744ms)
+✔ normal chronological appends never re-sort the existing history (105.398393ms)
+✔ well-formed email headers on an allowed host are gateway assertions, not independently authenticated credentials (13.160425ms)
+✔ current deployment documents require the guard and disclose the untrusted-ingress impersonation boundary (2.239037ms)
+✔ a learner without answers gets one invitation to study instead of empty charts (1.804142ms)
+✔ Today keeps its estimate legible over the artwork and its pickers sized to the choice (1.064816ms)
+✔ paper dictation renders its one-time recognition gate from state (0.848393ms)
+✔ dictation applies a prepared plan without an effect and requests at most one per context (1.324932ms)
+✔ a replacement started on this page reports its own result instead of the generic notice (1.511703ms)
+✔ legacy master-key environment writes scoped v2 and rejects unscoped v1 (17.583139ms)
+✔ v2 remains readable across key-set introduction while unscoped v1 stays blocked (7.090038ms)
+✔ v3 credentials are written under the active key and bound to key id, user, provider and destination (4.598156ms)
+✔ a non-active key id is detected and re-encrypted with the active key (3.911285ms)
+✔ removing k1 while v3-k2 rows exist still decrypts them (4.036762ms)
+✔ unknown key ids and malformed stored values fail (1.307574ms)
+✔ malformed key configuration fails closed with a generic error (6.528878ms)
+✔ refreshStoredCredential rewrites a stale row with a conditional update and never throws (3.734765ms)
+✔ seeded shuffles are deterministic and keep every item (3.11638ms)
+✔ the shared pool drops paused cards, proper names and other units, in page order (1.261694ms)
+✔ flash deck: unseen words first, then weak or due, then the rest (1.268198ms)
+✔ flash reducer: 再看看 returns once near the end, and undo reverses it exactly (0.664815ms)
+✔ short meanings drop POS labels, notes and broken brackets (1.228694ms)
+✔ match rounds: at most 6 pairs and 3 rounds, unique meanings and words, seeded (2.265767ms)
+✔ match rounds shrink for small units and need at least four words (2.16624ms)
+✔ match summary counts both confused words once, and the clock reads mm:ss (0.613836ms)
+✔ quiz length is capped at 40 and never exceeds the selection (2.667473ms)
+✔ quiz plan mixes kinds and only asks what each word supports (1.00372ms)
+✔ quiz questions carry no hints, and meaning choice shows the word (3.752395ms)
+✔ quiz scoring counts correct answers and lists each wrong word once (0.388488ms)
+✔ swipe physics: projected momentum decides, and the spring settles (0.688853ms)
+✔ card examples tolerate malformed open examples in the lexicon (also used by the practice session) (2.984696ms)
+✔ meanings that lost the opening bracket of a leading note are repaired for display (0.603533ms)
+✔ cache isolates accounts, revisions and model context versions; unknown policy never reads legacy output (76.403346ms)
+✔ local history requires scope-specific opt-in; same-count note edits invalidate profile output (8.706633ms)
+✔ paused and temporary modes omit profiles; temporary does not persist model cache or memory (5.621475ms)
+✔ a remote deletion during model generation discards its response and skips cache (3.365811ms)
+✔ account change between editor read and save cannot write into the replacement account (1.328136ms)
+✔ concurrent panels share metadata read without one cancellation aborting the other (1.187124ms)
+✔ activity writes stable ID and account guard without privacy epoch changes (65.394951ms)
+✔ temporary, disabled and stale account completion cannot write (3.346473ms)
+✔ failed sends remain bounded to current tab and are dropped on temporary mode (4.437059ms)
+✔ closing journal invalidates privacy context and drops queued activity (2.929122ms)
+✔ retry revalidates journal privacy revision and never resurrects deleted activity (2.860663ms)
+✔ editing never silently overwrites a newer journal revision (2.382732ms)
+✔ temporary round trip while initial policy is pending cannot backfill an old activity (1.150901ms)
+✔ account capacity errors appear in journal state and are not queued for automatic retry (2.486076ms)
+✔ old clients cannot persist free text, private references or arbitrary count keys through structural journal kinds (73.881247ms)
+✔ client omits private markers before any request and skips personal article events (9.772733ms)
+✔ migration scrubs old events and daily copies, preserves explicit edits and unrelated vocabulary, and fences old context (14.871501ms)
+✔ whole-journal deletion erases all data, rejects stale writes and edits, preserves account isolation and permits new activity (26.404511ms)
+✔ clearing a clock-skewed event keeps its suppression fence across disable/enable and concurrent stale posts (16.993006ms)
+✔ a POST already past its metadata read cannot resurrect content after a concurrent whole-journal clear (19.864992ms)
+✔ journal quota migration accounts for existing live and deleted Unicode text without changing privacy (36.733752ms)
+✔ deleting a missing or hidden date allocates no day row or journal revision (22.435861ms)
+✔ retained account IDs enforce the atomic row allowance across deletion cycles and concurrent appends (1096.424352ms)
+✔ journal usage follows UTF-8 edits, day summaries and cleared content while retaining IDs (15.35411ms)
+✔ byte quota rejects event and day growth with full rollback and still permits privacy deletion (26.931703ms)
+✔ oversized legacy accounts can delete an empty edited day after all its events were removed (13.768268ms)
+✔ privacy deletion at capacity keeps remaining events when the next summary item is longer (30.806129ms)
+✔ journal is empty without activity, account isolated, authenticates and never calls AI (41.861876ms)
+✔ parallel retries count once, changed payload conflicts, auto additions do not change privacy context (11.438045ms)
+✔ timezone grouping handles midnight and DST with original event timezone retained (9.324478ms)
+✔ event and day deletion remove content, invalidate privacy and suppress offline resurrection (18.367765ms)
+✔ edits are CAS protected, provenance stays visible and replay does not overwrite edits (12.945718ms)
+✔ recording switch is independent, temporary writes are rejected and paused queues cannot replay after re-enable (23.850171ms)
+✔ daily context retains bounded material references and edits while recording is paused; deletion removes sources (10.105924ms)
+✔ daily source references are deduplicated and capped at thirty (8.015345ms)
+✔ browser client normalizes optional fields against real journal routes and skips existing stable IDs (99.452009ms)
+✔ the published index is row encoded and decodes to the exact chunk projection (246.639056ms)
+✔ legacy object arrays from an older cached release are read unchanged (4.160615ms)
+✔ malformed encodings are rejected instead of producing partial entries (2.992325ms)
+✔ lookup equal to the headword and every flag combination survive a round trip (3.619145ms)
+✔ concurrent index loads share one pair of requests (28.65551ms)
+✔ chunk mapping follows manifest counts and retries failures without duplicate requests (3.059999ms)
+✔ release validation covers the complete physical tree, including undeclared stale chunks (11.475933ms)
+✔ release validation rejects missing files, duplicate/path-escaping declarations and symlinks (6.132532ms)
+✔ release validation checks chunk counts, index and every published phonetic/rights field (6.632926ms)
+✔ a smaller successful staged release removes old declared chunks and retains stable entry bytes (13.946865ms)
+✔ invalid staged content never modifies the prior release (6.312023ms)
+✔ failed directory exchange rolls back the complete prior release (6.568178ms)
+✔ unknown files in the existing tree are refused rather than silently deleted (5.275429ms)
+✔ a later evidence-file write failure restores both the release and build records (7.928098ms)
+✔ a successful release and generated evidence are exchanged together (9.458742ms)
+✔ every field of the index must match the audited chunk projection (9.369238ms)
+✔ the actual committed release has all 4681 index projections intact (144.547228ms)
+✔ stalled index headers, bodies and detail chunks time out and can be retried (51.179768ms)
+✔ Live tool sends exact call output, continues only after all calls settle, and keeps answers out of backend result (8.254201ms)
+✔ new speech cancels a pending recommendation, and late old context never reaches UI (1.628894ms)
+✔ dictation capture session has no learning tools and mismatched context is discarded (2.02017ms)
+✔ learning tool only searches actual assets for the active authenticated account without a paid model request (24.413762ms)
+✔ a correction before an older delegated call starts prevents lookup, and closed sessions discard late results (1.373285ms)
+✔ device reset removes legacy and all account-scoped practice data and revokes profile permission (64.364931ms)
+✔ device reset revokes consent while account metadata is absent or practice is temporary (2.624529ms)
+✔ reset opens the policy channel to invalidate practice in other tabs even before metadata was read (1.451833ms)
+✔ reset fences another tab’s ended/feedback saves, deleted-record undo and dictation attempts before broadcast delivery (15.580089ms)
+✔ reset and real persistence callbacks serialize, including a writer queued behind reset (1.464614ms)
+✔ queued practice persistence rechecks account and temporary policy inside the lock (1.228071ms)
+✔ independent stale tab cannot restore profile consent; an in-flight metadata response cannot adopt the new generation (67.181479ms)
+✔ without Web Locks practice writes and consent enabling fail closed, but reading, erasure and consent revocation remain available (29.92813ms)
+✔ concurrent edits of one writing accept one version and preserve reviewed history (36.851682ms)
+✔ invalid writing backup variants never replace the existing database (10.570673ms)
+✔ extra skill properties cannot change mastery through imported data (3.444285ms)
+✔ concurrent setting patches preserve unrelated fields and snapshots use one open (2.950009ms)
+✔ learning diagnosis never reuses an answer from an old learning profile (37.946492ms)
+✔ AI cache has a deterministic 600-entry maximum (719.913499ms)
+✔ PDF font fragments disappear without losing different noun and verb senses (1.392397ms)
+✔ affected release entries become readable while stable data and source evidence stay intact (24.588121ms)
+✔ Responses generation retains the shared atomic budget and independent usage floor (10.088637ms)
+✔ Responses connection endpoint overrides cannot bypass the operator origin policy (1.319005ms)
+✔ unchanged AI context cannot authorize queued writing changes after backup restoration (55.669713ms)
+✔ only official OpenAI standard endpoints use Responses; compatible hosts retain chat protocol (2.043012ms)
+✔ Responses payload retains instruction roles and JSON mode while removing chat-only fields (0.337633ms)
+✔ Responses JSON and SSE use output content, cached usage and terminal status (41.114299ms)
+✔ Responses refusal, failed streams and incomplete transport fail safely (1.859725ms)
+✔ shipped parser rejects a small compressed stream before decoded growth exceeds its budget (66.997133ms)
+✔ decoded budget is cumulative across individually valid content streams (2.29262ms)
+✔ ordinary text PDF remains readable with parser budgets (31.365424ms)
+✔ synchronous Brotli fallback also stops at the decoded budget (7.678666ms)
+✔ budgeted Flate avoids eager native expansion and resource failure stays terminal (1.875413ms)
+✔ Flate image control keeps the decoded bytes unchanged through guarded fallback (1.047146ms)
+✔ CCITT fallback checks a requested direct buffer before constructing its decoder (1.466943ms)
+✔ JPEG coefficient buffers are checked before allocation using codestream dimensions (0.962708ms)
+✔ OpenJPEG JS fallback checks its heap before allocation and still supports ordinary allocation (21.724628ms)
+✔ native JPEG frames count against the cumulative budget before decoding (1.022846ms)
+✔ asynchronous image failure remains visible after operator-list completion (10.434038ms)
+✔ text chunks stop before item, character, style or word accumulation exceeds limits (6.697741ms)
+✔ text resource limits apply across pages (1.501652ms)
+✔ cancelling a pending text read settles promptly and cancels the source (0.708936ms)
+✔ ordinary streamed text and layout attributes are preserved (0.851417ms)
+┌─────────┬────────┬─────────┬──────────────────────┬────────────────────┐
+│ (index) │ events │ load ms │ 200 appends+stats ms │ naive 200 (est) ms │
+├─────────┼────────┼─────────┼──────────────────────┼────────────────────┤
+│ 0       │ 10000  │ 36.1    │ 14.66                │ 2005               │
+│ 1       │ 50000  │ 219.2   │ 29.46                │ 9675               │
+│ 2       │ 100000 │ 252.2   │ 27.89                │ 24008              │
+└─────────┴────────┴─────────┴──────────────────────┴────────────────────┘
+✔ history stats equal studyStats for randomized histories with undo (338.271125ms)
+✔ history handles change per append, cache stats per change, and ignore repeated ids (0.422889ms)
+✔ restoreSession reads a ReviewHistory like the event array (1.311229ms)
+✔ appending to a large history stays cheap (2826.778414ms)
+✔ persistence helpers never throw without navigator.storage or localStorage (1.045717ms)
+✔ backup reminder fires once per 14 days and not after a recent export (0.384072ms)
+✔ personal readings persist, deduplicate by body, load separately and delete atomically (22.447897ms)
+✔ invalid imported bodies are rejected before changing the personal library (1.472609ms)
+✔ cancelling an asynchronous save leaves no hidden personal article (2.277152ms)
+✔ single-article removal fences the old ID while preserving other drafts and intentional re-imports (8.577611ms)
+✔ export re-reads the current article and cannot download a removed cached copy (4.107399ms)
+✔ v2 personal libraries retain data when upgraded and old v2 clients cannot restore removed IDs (3.417037ms)
+✔ single removals reach hidden tabs and foreground checks recover missed messages without replacing unrelated drafts (84.929763ms)
+✔ committed clears invalidate this reader and hidden independent tabs while retaining stale-save guards (52.848547ms)
+✔ a code-split surface renders straight away once preloaded (17.498842ms)
+✔ a chunk that failed to load is requested again by the next preload (1.63828ms)
+✔ idle warm-up loads one chunk per slice, keeps going past failures and stops when cancelled (8.926825ms)
+✔ delayed warm-up can be cancelled before it schedules an idle slice (31.019616ms)
+✔ production framework and parser/image dependencies exclude the reported vulnerable releases (12.047683ms)
+✔ legacy regional labels are separated while abbreviated American IPA remains unverified (1.097934ms)
+✔ all released regional-label artifacts are removed at the display boundary without changing IDs (21.717998ms)
+✔ reading quote uses exact source offsets across paragraphs and reversed selection (14.881303ms)
+✔ selection trims only source-edge whitespace and rejects empty/outside boundaries (1.362121ms)
+✔ Unicode selection counts visible code points and never splits a surrogate pair (3.543463ms)
+✔ formal reading title, translated title and ID resolve only verified original sentences (89.55008ms)
+✔ unknown articles ask for clarification and plain vocabulary never loads article bodies (4.424522ms)
+✔ generic recommendations may use trusted recent article references and read at most two (6.057106ms)
+✔ invalid catalog, changed article provenance, malformed bodies and cancellation fail before recommendation (4.919416ms)
+✔ oversized asset responses are bounded and sentence selection keeps stable source positions (2.71372ms)
+✔ reading metadata, independent length bands and word counts remain consistent (2.088257ms)
+✔ external links and body identity are validated before rendering (0.279838ms)
+✔ article loading rejects traversal, redirected/html data, and mismatched JSON (26.012106ms)
+✔ word matching is bounded, deduplicated and preserves curated target order (0.344702ms)
+✔ import normalization preserves paragraphs while reflowing hard line breaks (1.249174ms)
+✔ dense and nested HTML fail before DOM allocation and oversized files before reading (2.986137ms)
+✔ AI classification accepts only the closed enum and never changes text (0.341334ms)
+✔ PDF extraction retains paragraph gaps and reflows wrapped lines (0.743948ms)
+✔ large imported paragraphs split at sentence boundaries without losing words (4.157088ms)
+✔ image size checks inspect PNG headers before decoding and reject broken files (0.323501ms)
+✔ review event schema preserves learning evidence and supports 1.0 migration (4.313352ms)
+✔ packaging installs locked dependencies in isolation and retains archive/migration layout (1357.214074ms)
+✔ a failed fresh build cannot package a previously valid artifact (1050.055116ms)
+✔ ignored private files and symlinks fail before any dependency executable runs (455.155524ms)
+✔ fresh dependency install rejects a tarball that differs from the reviewed lock integrity (711.490298ms)
+✔ archive verification rejects unexpected members, link types and changed bytes (45.745209ms)
+✔ every comparison command rejects a locally available hostile Git baseline before execution (7201.957857ms)
+✔ toast store notifies subscribers and dismisses after five seconds (1.230706ms)
+✔ shell keeps the toast region mounted and outside the vocabulary hook (0.530866ms)
+✔ practice and shell shortcuts bind keydown once and read state through effect events (1.309471ms)
+✔ main views stay mounted behind Activity instead of remounting per tab (0.336389ms)
+✔ code-split surfaces open without a loading step and keep their styles out of the first paint (0.728794ms)
+✔ preview and saved reviews share a monotonic scheduler clock for every FSRS state and rating (27.406144ms)
+✔ a rewind, partial clock recovery and full recovery preserve normal scheduling intervals (0.866829ms)
+✔ rewound-clock reviews commit through existing CAS checks and survive backup restore (12.196156ms)
+✔ New cards without prior reviews keep the actual answer clock (0.7363ms)
+✔ stale config forms cannot mutate another account, overwrite an update or delete a newer key (38.339831ms)
+✔ sync requires read identity and fails closed before backup writes when limiter migration is absent (7.192189ms)
+✔ both learning-memory aliases reject omitted and wrong account scope; current scoped updates work (6.105164ms)
+✔ implausible provider usage cannot poison SQL counters; normal audio overages remain charged (1.645627ms)
+✔ photo budgets and animation flags are checked before a native decode for both photo workflows (3.275884ms)
+✔ personal article import started before erase cannot resurrect content, while a new import works (10.563612ms)
+✔ voice record CAS preserves another tab updates, blocks late save after delete and permits explicit absent-only undo (1.774275ms)
+✔ reading generator rejects traversal and duplicate IDs before writing either output tree (438.343355ms)
+✔ public provenance contains no private upload inventory and its generator cannot resurrect it (0.912917ms)
+✔ every API route is inventoried with the methods it exports (2.047076ms)
+✔ missing or malformed identity headers are rejected with 401 on every private endpoint (50.541314ms)
+✔ cross-site requests are rejected with 403 before identity or body are used (5.634842ms)
+✔ AI settings mutations require the settings action header (0.751418ms)
+✔ oversized bodies are refused with 413, including chunked bodies without Content-Length (34.697587ms)
+✔ sync is rate limited per identity with 429 and Retry-After (17.621861ms)
+✔ sync writes have a daily budget; no storage answers 503, a missing limiter table fails closed (4.422152ms)
+✔ sync keeps identity and revision conflicts after the hardening (3.906904ms)
+✔ gateway identity values are validated without changing existing user keys (0.781921ms)
+✔ the required trusted-host guard fails closed and rejects identities on other hosts (5.648272ms)
+✔ HTML documents carry a per-request nonce CSP that matches the one handed to vinext (1.544406ms)
+✔ development skips script CSP but keeps framing and sniffing protection (0.363524ms)
+✔ framework API errors become private JSON: 404, 405 with Allow, and 500 without internals (1.41259ms)
+✔ private APIs, sign-in routes, and RSC requests bypass service-worker caches (2.613508ms)
+✔ Vite /assets JavaScript is cached for offline revisits (3.452881ms)
+✔ cache open and lookup failures cannot break online navigation or assets (3.223386ms)
+✔ navigation errors cannot overwrite a valid offline shell (0.907363ms)
+✔ activation only removes this application cache namespace (0.805489ms)
+✔ PREPARE_LEXICON is accepted from same-origin clients only (1.59147ms)
+✔ static host headers keep the immutable asset cache rule and add baseline security headers (0.418137ms)
+✔ a committed answer after clock rollback advances once and repairs the stale checkpoint (28.228731ms)
+✔ generation-bound checkpoints recover pre-rollback history while the wall clock remains behind (0.774875ms)
+✔ clock-tolerant progression still rejects foreign IDs, wrong positions and future revisions (0.635216ms)
+✔ completion after a rollback and later undo retain coherent session timestamps (0.923664ms)
+✔ wrong or hinted words recur once, after intervening words, without mutating the checkpoint (22.470588ms)
+✔ refresh repairs committed reviews missing from a stale checkpoint and never advances twice (1.79121ms)
+✔ a committed undo repairs the old checkpoint and the next answer has a new, usable event id (14.7431ms)
+✔ a normal undo revision also repairs a newly submitted answer while keeping earlier reviews (0.961524ms)
+✔ corrupt, inconsistent, unknown-word and expired checkpoints are rejected (0.740534ms)
+✔ foreign, misordered, missing-history and future reviews cannot move a checkpoint incorrectly (0.908503ms)
+✔ a full 200-word plan remains recoverable after retries grow its queue beyond 200 steps (40.090596ms)
+✔ a fully committed session is not offered as unfinished after refresh (0.683247ms)
+✔ offline HIG refresh quarantines hostile source without changing active references (285.990338ms)
+✔ HIG offline cache errors fail closed instead of falling back to a live fetch (80.974938ms)
+✔ vendored Apple skill validates with a local dependency-free command (88.532252ms)
+✔ reviewed inputs are copied byte-for-byte and later cache tampering cannot alter the parser snapshot (7.195694ms)
+✔ modified bytes, missing pins and missing required files fail closed without rewriting the lock (5.380281ms)
+✔ metadata paths reject traversal, absolute paths, Windows drives and backslashes (2.542181ms)
+✔ file and directory symlinks cannot escape the authorized source cache (3.085553ms)
+✔ middle metadata and every consumed OEWN/Markdown file need independently reviewed pins (18.2859ms)
+✔ a pinned metadata row still cannot point outside its cache and incomplete dictionaries are rejected (8.202624ms)
+✔ the checked-in source lock separates baseline evidence from missing reviewed hashes (0.910193ms)
+✔ replacing the file with an external symlink between pathname checks and open reads no bytes (4.62993ms)
+✔ replacing a directory component with an external same-byte source is rejected on the opened handle (4.003548ms)
+✔ a larger regular file substituted before open fails the descriptor size check before any read (3.493476ms)
+✔ growth during a descriptor read consumes at most the pinned size plus one-byte probe (3.14554ms)
+✔ Chinese choices are distinguished and empty/punctuation answers are rejected (7.618067ms)
+✔ choices contain one correct option and no duplicate Chinese meanings (0.222718ms)
+✔ Chinese and punctuation searches cannot turn into an empty Latin prefix (0.312474ms)
+✔ the cached search matcher finds exactly the rows a per-entry scan finds (92.921911ms)
+✔ sentence target check uses word boundaries (1.569476ms)
+✔ forecasts exclude distant, paused and unseen cards without clamping to the last day (6.834919ms)
+✔ review and undo atomically restore an originally absent card (18.498344ms)
+✔ duplicate event abort rolls back the corresponding card update (2.928276ms)
+✔ two tabs cannot overwrite each other from the same stale card (1.808664ms)
+✔ putOne rejects a transaction that aborts after its request succeeds (0.958881ms)
+✔ backup validation rejects bad dates, duplicate ids and invalid settings before replacing data (2.781166ms)
+✔ valid backup round trips and legacy schema migrates (2.613365ms)
+✔ chunked UTF-8 requests are bounded by bytes and cancelled before parsing (18.541491ms)
+✔ JSON null, arrays, wrong media types and cross-site mutations are rejected (2.521212ms)
+✔ trailing-dot, single-label, numeric and IPv6 local targets are blocked (0.688175ms)
+✔ metadata writes preserve a concurrently reviewed card instead of replacing its schedule (1.787728ms)
+✔ CSV and TSV neutralize formulas and keep one row per record (0.286265ms)
+✔ book and unit must match the same source, with exact unit names (1.593982ms)
+✔ unit menus preserve Welcome/Starter units and sort numbered units naturally (0.309613ms)
+✔ daily queues prioritise overdue cards, respect scope and cap new words (0.84726ms)
+✔ due backlog uses the time budget before adding new material (0.239568ms)
+✔ review only excludes new, future, paused and invalid-date cards (0.203183ms)
+✔ mistake practice uses current weak state and does not revive historical mistakes (0.321801ms)
+✔ dictation includes due, current mistakes and a bounded number of new words (0.288365ms)
+✔ context queues contain words with usable examples, plus explicitly verified external examples (0.284392ms)
+✔ new practice excludes known and paused words, and progress uses the same scope (0.563895ms)
+✔ definitions and unrelated examples cannot become fake context exercises (2.131156ms)
+✔ real external examples mask every complete target occurrence without substring matches (3.677905ms)
+✔ unavailable advanced exercises change their actual type and scored skill (0.501745ms)
+✔ phrase gaps practise a real phrase and never display a repeated answer token (1.521777ms)
+✔ answer normalization handles typography without removing meaningful punctuation (0.177679ms)
+✔ objective errors and hinted responses cannot receive an inflated review rating (11.483085ms)
+✔ sentence length hints do not pretend to verify grammar or correctness (1.080189ms)
+✔ six original readings have translations, supported target words and answer explanations (25.769854ms)
+✔ original context examples have one correct choice and do not expose it in the prompt (69.827062ms)
+✔ optional sentence output cannot replace the displayed question or its committed grading metadata (29.1257ms)
+✔ late card updates and dictionary details cannot change an active exercise; the next step uses them (3.224428ms)
+✔ normal question rotation, deliberate modes and retries keep their current behavior (1.495032ms)
+✔ rating, playback and undo shortcuts work on the auto-focused rating button (0.962844ms)
+✔ study shortcuts preserve editing, composition, held-key and modifier protections (0.192361ms)
+✔ answers for different words on each device are combined without rescheduling (5.049663ms)
+✔ a word answered only on this device keeps its local history and schedule (1.995501ms)
+✔ a word answered on both devices keeps every answer and reschedules local ones after the cloud history (4.102568ms)
+✔ local undo records are replayed with their answers; an undo of a synced answer is dropped when the cloud built on it (3.998811ms)
+✔ merging again after the cloud holds rescheduled copies adds nothing and needs no further rescheduling (1.946675ms)
+✔ the same record ID with a different recorded answer is refused (1.101249ms)
+✔ without a recorded base, metadata set on either side is kept and settings follow the most recently updated side (1.930158ms)
+✔ large histories merge in linear time (3475.600113ms)
+✔ a merged snapshot replaces local data only if nothing was saved since the export (18.697365ms)
+✔ a note edited on this device survives a later review on the other device (1.677022ms)
+✔ a note changed on one side and a favourite on the other are both kept, including an unfavourite (0.955961ms)
+✔ a note changed differently on both sides keeps both texts, and merging again adds nothing (2.133305ms)
+✔ a draft edited in place on this device keeps its newer text when the cloud did not touch it (0.599647ms)
+✔ a merge that would exceed 30 writing versions is refused instead of dropping one side (0.377511ms)
+✔ the agreed base is stored with the cloud link and read back (2.743635ms)
+✔ older acknowledgements preserve both the newest revision and its agreed merge base (2.241104ms)
+✔ links saved before 2.17.0 have no base: offline note, favourite and pause survive a later review elsewhere (1.318461ms)
+✔ with 29 shared versions and one new version on each side, the 31-version merge is refused (0.537286ms)
+✔ a payload exactly at the UTF-8 cap fits the D1 row with metadata; one byte over never attempts SQL (62.048154ms)
+✔ Unicode and JSON escaping count as stored UTF-8 bytes rather than characters (60.152162ms)
+✔ the former D1-overflow range returns actionable 413 instead of repeatedly failing with 503 (23.600267ms)
+✔ metadata cannot consume the reserved row space and small uploads keep atomic revision behavior (16.973345ms)
+✔ existing larger snapshots remain readable without truncation or migration (19.482992ms)
+✔ client preflight uses the same byte boundary and actionable error (8.076599ms)
+✔ first upload race accepts exactly one writer and returns non-cacheable responses (16.507506ms)
+✔ concurrent updates compare revisions in SQL and reject missing/stale revisions (10.578211ms)
+✔ sync is partitioned by authenticated identity (4.915229ms)
+✔ sync rejects cross-origin requests and hides storage internals (1.738754ms)
+✔ configuration rejects null/oversized chunked bodies and catches unavailable D1 (6.240818ms)
+✔ published word lookup distinguishes exact, normalized and possible inflections without altering evidence (26.718593ms)
+✔ lookup checks exact heads before inflection candidates, bounds batches and excludes unreleased suggestions (0.80519ms)
+✔ published textbook and unit filters match a single source, support codes and numbers, and retain query compatibility (4.032153ms)
+✔ invalid textbook selections return bounded published names and units without broadening the search (0.770995ms)
+✔ calculator obeys arithmetic precedence, bounded exponentiation and unary signs (0.927146ms)
+✔ calculator rejects executable text, malformed expressions and unbounded work/results (0.686171ms)
+✔ search prioritizes exact heads then prefixes, excludes unreleased rows and retains evidence provenance (0.566081ms)
+✔ bounded search preserves exact and prefix rank, full counts and original order in large result sets (1.016676ms)
+✔ cached unit matching normalizes names while keeping book and unit on the same source (0.473412ms)
+✔ source reader reads only selected bounded slices and returns continuation offsets (1.649536ms)
+✔ text statistics count English apostrophes, hyphens and Unicode characters without interpreting instructions (1.310147ms)
+✔ tool errors are bounded and redact exceptions; non-lexicon tools never load vocabulary (2.04132ms)
+✔ same-path vendor parser, WASM and OCR data changes each rotate the worker release cache (51.962371ms)
+✔ vendor additions, removals and equal-content path changes rotate the worker release (27.08726ms)
+✔ speech settlement preserves token floors, larger audio usage and uncertain-call reservations (46.244101ms)
+✔ Live startup is gated by session.started, controls use Live events, close cleans all resources (27.643203ms)
+✔ cancelling a pending permission request stops a late microphone and creates no session (0.308623ms)
+✔ unconfirmed remote close stops local capture without claiming the remote session ended (1.25658ms)
+✔ custom lesson settings reach the server and provider-ended sessions release the lease (2.137388ms)
+✔ practice history retains review dialogue and validates optional restored fields (0.583724ms)
+✔ connection diagnostic uses silent audio without microphone access and releases the audio context (0.965889ms)
+✔ a late session answer after disposal is closed remotely and never attached (6.265346ms)
+✔ structured provider errors are readable and leave no microphone running (0.631901ms)
+✔ blocked iPad playback requires explicit recovery and stale play promise cannot affect replacement session (0.798981ms)
+✔ selected duration is bounded by server maxSeconds and reaching it ends rather than reconnects (571.960129ms)
+✔ full duplex caption fragments retain both speakers and exact spaces (0.487524ms)
+✔ long caption streams are split without loss, and feedback has a bounded explicit tail (0.327967ms)
+✔ local history has twelve records, updates by id, and tolerates unavailable/corrupt storage (1.258403ms)
+✔ dictation Live never plays output or exposes answer captions and sends no conversational greeting (2.031097ms)
+✔ pending server close is recoverable and blocks starting another billed session (0.68625ms)
+✔ late cancelled startup notifies subscribers when remote close becomes pending and clears (2.072223ms)
+✔ terminal close guidance retains pending state and prevents another session (1502.903417ms)
+✔ unified memory preserves provenance through legacy clients, rejects account changes and temporary writes (38.560258ms)
+✔ legacy provenance is not assigned invented historical confirmation dates (5.078002ms)
+✔ temporary or paused context is empty and config changes invalidate context metadata (49.7498ms)
+✔ ordinary text assistant shares account notes and excludes both historical sources when paused or temporary (28.643021ms)
+✔ feedback shares context while dictation Live instructions never receive target answers or memory (38.699516ms)
+✔ memory is durable and isolated, needs no AI key, and supports disable and clearing (18.566239ms)
+✔ memory rejects cross-origin, absent identity, overlong input and stale/concurrent writes (28.775887ms)
+✔ recommendations use official Responses and enabled memory; disabling keeps notes out of paid context (25.713095ms)
+✔ post-practice discussion is bounded quoted context and suggestions never write memory automatically (14.09575ms)
+✔ real session receives bounded custom goal and enabled memory, diagnostics do not (41.797926ms)
+✔ deadline binding is required before any paid capability or seconds reservation (46.950391ms)
+✔ one-second server deadline closes after eviction without any browser code or saved config (11.190174ms)
+✔ failed deadline closure retains nonexpiring admission and durably retries after restart (13.996482ms)
+✔ owned early close survives credential deletion, stays idempotent and isolates another account (11.044551ms)
+✔ late alarm releases only its original lease and treats provider 404 as finalized (10.519854ms)
+✔ alarm propagates retry-storage failure for Cloudflare automatic retries (8.002125ms)
+✔ ownership persistence failure still has a durable close retry when immediate close fails (9.389331ms)
+✔ transient arming failure retries durable registration before returning an error (9.812896ms)
+✔ finalized D1 row fences stale cleanup when a new session has an identical timestamp lease (9.842838ms)
+✔ missing ownership row is durably finalized so repeated cleanup cannot release a replacement lease (9.662175ms)
+✔ an early explicit-close failure retries after fifteen seconds instead of waiting for selected deadline (10.020046ms)
+✔ terminal 401 erases credential and retains admission across restart (13.260535ms)
+✔ terminal 403 erases credential and retains admission across restart (9.36381ms)
+✔ terminal decrypt erases credential and retains admission across restart (10.80772ms)
+✔ retry budget and backoff survive restarts and manual close never bypasses them (11.709716ms)
+✔ cleanup exhaustion immediately reports terminal guidance without another provider call (9.326647ms)
+✔ confirmed provider close erases credential before D1 failure and cleanup never recalls provider (8.181767ms)
+✔ dictation accepts punctuation, typographic apostrophes, listed UK spelling and unambiguous contractions (1.381827ms)
+✔ word alignment identifies an omission without shifting later words (0.837808ms)
+✔ word alignment separately reports replacement and insertion (0.848098ms)
+✔ word rounds deduplicate headwords, retain stable vocabulary IDs and never mutate their source (0.393973ms)
+✔ mistakes are retained after successful retry and isolated by activity identity (2.099058ms)
+✔ corrupt or excessive local history is rejected and retention is bounded (10.184336ms)
+✔ curriculum spans six topics and levels, supporting concise goal-oriented discussion (0.753162ms)
+✔ voice admission authenticates before parsing, bounds bodies and fails closed without config (20.234954ms)
+✔ persistent seconds admission prevents parallel over-budget requests (2.351165ms)
+✔ microphone-free connection diagnostic reserves only twenty seconds (51.690672ms)
+✔ status works with production D1 pattern limits and isolates account session prefixes (17.281601ms)
+✔ Live uses BYOK fixed host, single active session, durable ownership and idempotent close (34.953449ms)
+voice-provider-failure { status: 307, code: undefined, param: undefined }
+✔ speech requires transcript agreement, valid WAV, and retains reservation after mismatch (23.153693ms)
+✔ voice fixed-host transport rejects redirect bodies, bounds replies and cancels stalled bodies (9.759923ms)
+✔ feedback uses official Responses, quotes actual learner turns and rejects invented corrections (15.073647ms)
+✔ WebRTC close waits for session.closed and fails when finalization is unconfirmed (6.000193ms)
+✔ known created sessions are closed if ownership persistence fails (12.008246ms)
+✔ cancellation after session persistence closes the known upstream session (12.574168ms)
+✔ Live always uses Terra independently of the general text-model setting (9.685583ms)
+voice-provider-failure { status: 503, code: undefined, param: undefined }
+voice-provider-failure { status: 403, code: 'permission_denied', param: undefined }
+✔ ambiguous Live submission outcomes retain admission; confirmed provider rejection releases it (68.54068ms)
+✔ admission counts punctuation-equivalent spoken tokens and long non-whitespace runs (3.176063ms)
+✔ WAV duration parsing handles metadata and rejects inconsistent/truncated/unknown formats (2.051152ms)
+✔ speech endpoint charges normalized admission and upward-only measured duration (124.211688ms)
+✔ measured overage remains charged and blocks later paid admission (22.361752ms)
+✔ writing persistence respects temporary mode, queued context changes, and account boundaries (53.14327ms)
+✔ literal transcription preserves mistakes; totals computed independently; photo failure is not zero handwriting (1.525662ms)
+✔ admission rejects cross-origin, anonymous and malformed photo without upstream (31.81054ms)
+✔ Terra strict vision excludes task answers and memory text, forces confirmation and durable no-retry (53.994314ms)
+✔ malformed upstream results fail closed and keep operation consumed (18.380923ms)
+✔ target picker searches English and Chinese across the whole index with exact matches first (3.583109ms)
+✔ target selection survives query, learned and textbook filtering without changing existing words (0.486835ms)
+✔ target additions preserve stable IDs, remove duplicates and allow more than six words (0.298041ms)
+✔ target picker respects the existing twenty-word storage contract and frees capacity when unchecked (0.39855ms)
+✔ 48 original practice tasks have complete continuation passages, bounded prompts and real source references (2.657087ms)
+✔ old writing backups remain valid; confirmed handwriting round-trips while images and inflated scores fail validation (1.925503ms)
+✔ topic generation uses Terra and journal context, marks original output and admits an operation once (53.651152ms)
+✔ incomplete and wrong-genre generated tasks are rejected; continuation starters cannot be blank (12.902417ms)
+✔ target words are found through regular and irregular forms and phrases (3.863389ms)
+✔ local checks cover length, coverage, repetition and capitals (1.155289ms)
+✔ target suggestions start from recent mistakes and skip paused words (0.689292ms)
+✔ writings live in the learning database and in backups (schema 1.2.0) (20.850062ms)
+✔ older backups still import and gain an empty writings list (2.159793ms)
+✔ assistant cache verifies policy but reuses matching account and input without another model call (36.034514ms)
+✔ review marks are placed once each, in text order, case-insensitively (0.940614ms)
+✔ leaving an editor before a request starts never calls the AI provider (0.37905ms)
+ℹ tests 684
+ℹ suites 0
+ℹ pass 684
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60387.813513
+
+> pep-vocab-studio@2.19.3 build
+> bash scripts/build-verified.sh
+
+Validated lexicon release: 27 declared chunks, 4681 entries; exact file set and data fields match.
+Running bounded vinext build...
+
+  vinext build  (Vite 8.3.6)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - JSON import "./.openai/hosting.json" without import attributes (vite.config.ts:3:27). Add `with { type: 'json' }`
+  - import "./build/sites-vite-plugin" without a file extension (vite.config.ts:4:23). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+[1/5] analyze client references...
+transforming...
+✓ 325 modules transformed.
+rendering chunks...
+✓ built in 866ms
+[2/5] analyze server references...
+transforming...
+✓ 267 modules transformed.
+rendering chunks...
+✓ built in 463ms
+[3/5] build rsc environment...
+transforming...
+✓ 331 modules transformed.
+rendering chunks...
+computing gzip size...
+✓ built in 754ms
+[4/5] build client environment...
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+transforming...
+✓ 1747 modules transformed.
+rendering chunks...
+computing gzip size...
+✓ built in 1.20s
+[5/5] build ssr environment...
+transforming...
+✓ 273 modules transformed.
+rendering chunks...
+computing gzip size...
+✓ built in 631ms
+[0m
+  Route (app)
+  ┌ ? /                               
+  ├ λ /api/ai/config                  
+  ├ λ /api/ai/test                    
+  ├ λ /api/assistant/chat             
+  ├ λ /api/assistant/check-sentence   
+  ├ λ /api/assistant/contrast-words   
+  ├ λ /api/assistant/diagnose         
+  ├ λ /api/assistant/explain          
+  ├ λ /api/assistant/generate-practice
+  ├ λ /api/assistant/mnemonic         
+  ├ λ /api/assistant/review-essay     
+  ├ λ /api/assistant/story            
+  ├ λ /api/learning-journal           
+  ├ λ /api/learning-memory            
+  ├ λ /api/reading/classify           
+  ├ λ /api/sync                       
+  ├ λ /api/voice/close                
+  ├ λ /api/voice/dictation-plan       
+  ├ λ /api/voice/dictation-recognize  
+  ├ λ /api/voice/discuss              
+  ├ λ /api/voice/feedback             
+  ├ λ /api/voice/learning-tool        
+  ├ λ /api/voice/memory               
+  ├ λ /api/voice/recommend            
+  ├ λ /api/voice/session              
+  ├ λ /api/voice/speech               
+  ├ λ /api/voice/status               
+  ├ λ /api/writing/generate-topic     
+  └ λ /api/writing/recognize          
+
+  λ API  ? Unknown
+
+  ? Some routes could not be classified. vinext currently uses static analysis
+    and cannot detect dynamic API usage (headers(), cookies(), etc.) at build time.
+    Automatic classification will be improved in a future release.
+
+  Build complete. Run `vinext start` to start the production server.
+
+Validated lexicon release: 27 declared chunks, 4681 entries; exact file set and data fields match.
+Validated Sites artifact: Worker export and D1 hosting manifest are present. Runtime execution is tested through Wrangler because Node cannot resolve cloudflare:workers imports.
+
+> pep-vocab-studio@2.19.3 test:runtime
+> node scripts/smoke-worker.mjs
+
+{
+  "runtime": "workerd via Miniflare, local ephemeral D1",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 6569
+    },
+    {
+      "path": "/sw.js",
+      "status": 200,
+      "bytes": 6261
+    },
+    {
+      "path": "/offline-assets.json",
+      "status": 200,
+      "bytes": 2383
+    },
+    {
+      "path": "/data/v1/index.json",
+      "status": 200,
+      "bytes": 759461
+    },
+    {
+      "path": "/readings/v1/index.json",
+      "status": 200,
+      "bytes": 65173
+    },
+    {
+      "path": "/readings/v1/articles/andersen-real-princess.json",
+      "status": 200,
+      "bytes": 3501
+    },
+    {
+      "path": "/api/sync",
+      "status": 401,
+      "bytes": 99
+    },
+    {
+      "path": "/api/ai/config",
+      "status": 401,
+      "bytes": 65
+    },
+    {
+      "path": "/api/voice/status",
+      "status": 401,
+      "bytes": 107
+    },
+    {
+      "path": "/api/voice/memory",
+      "status": 401,
+      "bytes": 107
+    },
+    {
+      "path": "/api/learning-memory",
+      "status": 401,
+      "bytes": 107
+    },
+    {
+      "path": "/api/voice/session unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/session cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/close unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/close cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/speech unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/speech cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/feedback unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/feedback cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/recommend unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/recommend cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/discuss unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/discuss cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-memory cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/reading/classify cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify oversized input",
+      "status": 400
+    },
+    {
+      "path": "/api/assistant/chat unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/chat cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/chat invalid role",
+      "status": 400
+    },
+    {
+      "path": "/api/assistant/chat oversized body",
+      "status": 413
+    },
+    {
+      "path": "PUT /api/sync",
+      "status": 405
+    },
+    {
+      "path": "/api/ai/config cross-origin",
+      "status": 403
+    },
+    {
+      "path": "durable voice deadline encrypted snapshot, confirmed close, and idempotence",
+      "status": "passed"
+    },
+    {
+      "path": "database bootstrap with existing legacy rate limit table",
+      "status": "passed",
+      "preservedRequests": 7
+    },
+    {
+      "path": "/api/ai/config identity on synthetic internal transport hostname",
+      "status": 401
+    },
+    {
+      "path": "/api/sync forged identity on untrusted hostname",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config forged identity on untrusted hostname",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory persists, isolates accounts, rejects stale edits, and clears without paid calls",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-memory shares legacy data, preserves provenance, isolates accounts, pauses and rejects temporary writes",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-journal atomic idempotency, independent activity revision, privacy deletion and no resurrection",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-journal D1 quota trigger rolls back allocation and maps 409; missing day deletion allocates nothing",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-journal private-content projection, personal-reading rejection and CAS whole-journal deletion",
+      "status": "passed"
+    },
+    {
+      "path": "/api/voice/status authenticated without key",
+      "status": 200
+    },
+    {
+      "path": "/api/voice/status compatible provider remains unavailable",
+      "status": 200
+    },
+    {
+      "path": "/api/voice/status official configuration ready without paid calls",
+      "status": 200
+    },
+    {
+      "path": "/api/ai/config authenticated save",
+      "status": 200
+    },
+    {
+      "path": "/api/ai/config legacy key refuses blank save and preserves original row",
+      "status": "passed"
+    },
+    {
+      "path": "/api/ai/config owner key reentry restores scoped credential",
+      "status": "passed"
+    },
+    {
+      "path": "/api/sync concurrent first upload",
+      "statuses": [
+        200,
+        409
+      ]
+    },
+    {
+      "path": "/api/sync metadata-only read",
+      "status": 200
+    },
+    {
+      "path": "database bootstrap replay preserves snapshots and encrypted configuration",
+      "status": "passed"
+    }
+  ]
+}

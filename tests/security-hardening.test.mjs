@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
+import { validBodies, actions, sameOriginGetPaths } from './private-api-fixtures.mjs';
 import { PRIVATE_API_ROUTES, createSecureHandler, documentContentSecurityPolicy } from '../worker/security.ts';
 import { gatewayEmail, getChatGPTUser, identityHostTrusted } from '../app/chatgpt-auth.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
@@ -26,38 +27,6 @@ const routePath = file => `/api/${file.replace(/\/?route\.ts$/, '')}`;
 const exportedMethods = file => [...readFileSync(new URL(file, apiRoot), 'utf8').matchAll(/export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g)].map(match => match[1]).sort();
 const modules = Object.fromEntries(await Promise.all(routeFiles.map(async file => [routePath(file), await import(new URL(file, apiRoot).href)])));
 
-const wordA = 'pep-1e3e7e41accdc5f7';
-const wordB = 'pep-07d418db40de3fe8';
-const backup = { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] };
-// Representative valid bodies for the private mutation routes.
-const validBodies = {
-  '/api/writing/generate-topic': {operationId:'security-topic-1234',kind:'free'},
-  '/api/writing/recognize': {operationId:'security-writing-123',image:'data:image/png;base64,invalid'},
-  '/api/voice/learning-tool': { name:'prepare_dictation',callId:'call_test',sessionId:'live_test',arguments:{query:'book',count:3,mode:'words'},accountScope:'test-scope' },
-  '/api/learning-journal': { accountScope:'test-scope',privacyRevision:0,eventId:'test-event',kind:'study',title:'Study',summary:'Completed a practice.',refIds:[],counts:{},occurredAt:new Date().toISOString(),timezone:'UTC' },
-  '/api/sync': { schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: '2026-09-24T00:00:00Z', payload: backup },
-  '/api/ai/config': { provider: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: 'test-model', apiKey: 'test-only-not-a-real-key-000000', dailyLimit: 30, timeoutSeconds: 25 },
-  '/api/ai/test': {},
-  '/api/assistant/chat': { messages: [{ role: 'user', text: '安排今天的复习' }], model: 'auto', temporary: true },
-  '/api/assistant/explain': { wordId: wordA },
-  '/api/assistant/check-sentence': { wordId: wordA, sentence: 'They abandoned the plan.' },
-  '/api/assistant/generate-practice': { wordIds: [wordA, wordB], count: 3 },
-  '/api/assistant/contrast-words': { wordIds: [wordA, wordB] },
-  '/api/assistant/review-essay': { wordIds: [wordA], genre: 'free', essay: 'I abandoned my old plan and started again.' },
-  '/api/assistant/mnemonic': { wordId: wordA },
-  '/api/assistant/story': { wordIds: [wordA, wordB, 'pep-0000000000000001'] },
-  '/api/assistant/diagnose': { wordIds: [wordA] },
-  '/api/reading/classify': { title: 'A test article', text: 'This is an English reading sample. '.repeat(5) },
-  '/api/voice/session': { sdp: 'v=0\r\n', topicId: 'daily', level: 'B2', minutes: 10 },
-  '/api/voice/close': { sessionId: 'test-session' },
-  '/api/voice/speech': { text: 'A short listening exercise.' },
-  '/api/voice/feedback': { topicId: 'daily', transcript: [{ role: 'user', text: 'I prefer the train because it is comfortable.' }] },
-  '/api/voice/memory': { revision: 0, enabled: true, notes: [{ id: 'test_note', text: 'Practice discussing books.' }], recentTopics: [] },
-  '/api/learning-memory': { accountScope: 'test-scope', revision: 0, enabled: true, notes: [{ id: 'test_note', text: 'Practice discussing books.' }], recentTopics: [] },
-  '/api/voice/recommend': { topicId: 'culture', level: 'B2', minutes: 10 },
-  '/api/voice/discuss': { topicId: 'culture', level: 'B2', transcript: [{ role: 'user', text: 'I enjoy reading novels.' }], messages: [{ role: 'user', text: 'How could I say that more naturally?' }] },
-};
-const actions = { '/api/ai/config': 'settings', '/api/ai/test': 'settings', '/api/reading/classify': 'reading-classify', '/api/sync': 'sync' };
 const call = (path, method, { headers = {}, body } = {}) => {
   const init = { method, headers: { 'content-type': 'application/json', ...(actions[path] ? { 'x-vocab-action': actions[path] } : {}), ...headers } };
   if (method !== 'GET' && method !== 'HEAD') init.body = typeof body === 'string' || body instanceof ReadableStream ? body : JSON.stringify(body ?? validBodies[path] ?? {});
@@ -80,7 +49,11 @@ async function assertPrivateError(response, status) {
 
 test('every API route is inventoried with the methods it exports', () => {
   assert.deepEqual(routeFiles.map(routePath).sort(), Object.keys(PRIVATE_API_ROUTES).sort());
-  for (const file of routeFiles) assert.deepEqual(exportedMethods(file), [...PRIVATE_API_ROUTES[routePath(file)]].sort(), file);
+  for (const file of routeFiles) {
+    const path = routePath(file), methods = exportedMethods(file);
+    assert.deepEqual(methods, [...PRIVATE_API_ROUTES[path]].sort(), file);
+    if (methods.some(method => method !== 'GET')) assert.ok(Object.hasOwn(validBodies, path), `${path} needs an admission fixture`);
+  }
 });
 
 test('missing or malformed identity headers are rejected with 401 on every private endpoint', async () => {
@@ -93,9 +66,9 @@ test('missing or malformed identity headers are rejected with 401 on every priva
   }
 });
 
-test('cross-site requests are rejected with 403 before identity or body are used', async () => {
+test('cross-site requests are rejected with 403 according to each route contract', async () => {
   asIdentity(OWNER);
-  for (const [path, method] of endpoints().filter(([, method]) => method !== 'GET')) {
+  for (const [path, method] of endpoints().filter(([path, method]) => method !== 'GET' || sameOriginGetPaths.has(path))) {
     for (const headers of [{ origin: 'https://evil.test' }, { 'sec-fetch-site': 'cross-site' }, { origin: 'null' }]) {
       await assertPrivateError(await call(path, method, { headers }), 403);
     }
@@ -220,6 +193,60 @@ test('the required trusted-host guard fails closed and rejects identities on oth
 });
 
 const secure = (inner, enforce = true) => createSecureHandler({ fetch: inner }, { enforceContentSecurityPolicy: enforce });
+
+test('unused action transports are rejected before routing or reading a body on every path', async () => {
+  let entered = 0;
+  const handler = secure(async () => { entered++; throw new Error('must not enter the framework'); });
+  for (const path of ['/', '/.rsc', '/api', '/api/sync']) {
+    for (const [method, headers, status] of [
+      ['POST', { 'x-rsc-action': 'unknown#action', 'content-type': 'application/json' }, 404],
+      ['POST', { 'next-action': '', 'content-type': 'multipart/form-data; boundary=test' }, 404],
+      ['GET', { 'next-action': 'unknown#action' }, 404],
+      ['POST', { 'content-type': 'multipart/form-data; boundary=test' }, 415],
+      ['POST', { 'content-type': 'Multipart/Form-Data; boundary=test' }, 415],
+      ['POST', { 'content-type': 'multipart/form-data-invalid' }, 415],
+      ['POST', { 'content-type': 'multipart/form-data; boundary=test', origin: 'https://evil.test' }, 415],
+    ]) {
+      let reads = 0, cancelled = false;
+      const body = method === 'GET' ? undefined : new ReadableStream({
+        pull(controller) { reads++; controller.enqueue(new TextEncoder().encode('unread')); },
+        cancel() { cancelled = true; },
+      }, { highWaterMark: 0 });
+      const response = await handler.fetch(new Request(`https://app.test${path}`, { method, headers, ...(body ? { body, duplex: 'half' } : {}) }));
+      assert.equal(response.status, status, `${method} ${path}`);
+      assert.equal(entered, 0);
+      assert.equal(reads, 0, `${path} must not read action bodies`);
+      if (body) assert.equal(cancelled, true);
+      assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+      assert.equal(response.headers.get('x-frame-options'), 'DENY');
+      assert.match(response.headers.get('cache-control'), /no-store/);
+      if (path.startsWith('/api')) {
+        const result = await assertPrivateError(response, status);
+        assert.equal(result.code, status === 404 ? 'not_found' : 'unsupported_media_type');
+      } else assert.match(response.headers.get('content-type'), /^text\/plain/);
+    }
+  }
+});
+
+test('transport guard preserves JSON mutations and HTML/RSC GET routing', async () => {
+  const seen = [];
+  const handler = secure(async request => {
+    const path = new URL(request.url).pathname;
+    seen.push([path, request.method]);
+    if (path.startsWith('/api')) return Response.json(await request.json());
+    return new Response('control', { headers: { 'content-type': path.endsWith('.rsc') ? 'text/x-component' : 'text/html' } });
+  });
+  const json = await handler.fetch(new Request('https://app.test/api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"control":true}' }));
+  assert.equal(json.status, 200);
+  assert.deepEqual(await json.json(), { control: true });
+  assert.match(json.headers.get('cache-control'), /no-store/);
+  for (const path of ['/', '/.rsc']) {
+    const response = await handler.fetch(new Request(`https://app.test${path}`, { headers: { RSC: '1' } }));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), path.endsWith('.rsc') ? 'text/x-component' : 'text/html');
+  }
+  assert.deepEqual(seen, [['/api/sync', 'POST'], ['/', 'GET'], ['/.rsc', 'GET']]);
+});
 
 test('HTML documents carry a per-request nonce CSP that matches the one handed to vinext', async () => {
   const seen = [];

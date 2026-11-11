@@ -1,0 +1,87 @@
+
+> pep-vocab-studio@2.19.3 build
+> bash scripts/build-verified.sh
+
+Validated lexicon release: 27 declared chunks, 4681 entries; exact file set and data fields match.
+Running bounded vinext build...
+
+  vinext build  (Vite 8.3.6)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - JSON import "./.openai/hosting.json" without import attributes (vite.config.ts:3:27). Add `with { type: 'json' }`
+  - import "./build/sites-vite-plugin" without a file extension (vite.config.ts:4:23). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+[1/5] analyze client references...
+transforming...
+✓ 325 modules transformed.
+rendering chunks...
+✓ built in 878ms
+[2/5] analyze server references...
+transforming...
+✓ 269 modules transformed.
+rendering chunks...
+✓ built in 421ms
+[3/5] build rsc environment...
+transforming...
+✓ 331 modules transformed.
+rendering chunks...
+computing gzip size...
+✓ built in 700ms
+[4/5] build client environment...
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+transforming...
+✓ 1748 modules transformed.
+rendering chunks...
+computing gzip size...
+✓ built in 1.09s
+[5/5] build ssr environment...
+transforming...
+✓ 275 modules transformed.
+rendering chunks...
+computing gzip size...
+✓ built in 601ms
+[0m
+  Route (app)
+  ┌ ? /                               
+  ├ λ /api/ai/config                  
+  ├ λ /api/ai/test                    
+  ├ λ /api/assistant/chat             
+  ├ λ /api/assistant/check-sentence   
+  ├ λ /api/assistant/contrast-words   
+  ├ λ /api/assistant/diagnose         
+  ├ λ /api/assistant/explain          
+  ├ λ /api/assistant/generate-practice
+  ├ λ /api/assistant/mnemonic         
+  ├ λ /api/assistant/review-essay     
+  ├ λ /api/assistant/story            
+  ├ λ /api/learning-journal           
+  ├ λ /api/learning-memory            
+  ├ λ /api/reading/classify           
+  ├ λ /api/sync                       
+  ├ λ /api/voice/close                
+  ├ λ /api/voice/dictation-plan       
+  ├ λ /api/voice/dictation-recognize  
+  ├ λ /api/voice/discuss              
+  ├ λ /api/voice/feedback             
+  ├ λ /api/voice/learning-tool        
+  ├ λ /api/voice/memory               
+  ├ λ /api/voice/recommend            
+  ├ λ /api/voice/session              
+  ├ λ /api/voice/speech               
+  ├ λ /api/voice/status               
+  ├ λ /api/writing/generate-topic     
+  └ λ /api/writing/recognize          
+
+  λ API  ? Unknown
+
+  ? Some routes could not be classified. vinext currently uses static analysis
+    and cannot detect dynamic API usage (headers(), cookies(), etc.) at build time.
+    Automatic classification will be improved in a future release.
+
+  Build complete. Run `vinext start` to start the production server.
+
+Validated lexicon release: 27 declared chunks, 4681 entries; exact file set and data fields match.
+Validated Sites artifact: Worker export and D1 hosting manifest are present. Runtime execution is tested through Wrangler because Node cannot resolve cloudflare:workers imports.

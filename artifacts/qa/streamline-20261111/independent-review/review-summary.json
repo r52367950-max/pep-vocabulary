@@ -1,0 +1,77 @@
+{
+  "status": "runtime settings race fixed; targeted verification passed",
+  "changed": [
+    "lib/assistant/server.ts",
+    "lib/assistant/usage.ts",
+    "lib/learning-memory/context.ts",
+    "tests/context-fencing.test.mjs",
+    "tests/merge-ai-server.test.mjs",
+    "lib/writing-topic-server.ts",
+    "lib/voice/server.ts",
+    "lib/voice/coach-server.ts",
+    "lib/voice/dictation-server.ts"
+  ],
+  "runtime_guard": "write_token from the actual runtime row is compared immediately before each complete() provider dispatch; ciphertext refresh does not change that token",
+  "accounting": "failed local configuration verification releases the unused reservation once; already dispatched calls remain metered; ambiguous reservation failures remain charged",
+  "context_guard": "metadata hash includes write_token but omits ciphertext-refresh updated_at; every complete() caller sending learning context verifies its original metadata snapshot after reservation before dispatch and before returning the final result",
+  "verification": {
+    "context_fencing_cases": 46,
+    "new_context_fencing_cases": 39,
+    "targeted_files_passed": 12,
+    "targeted_files_failed": 0,
+    "typecheck": "passed",
+    "diff_check": "passed"
+  },
+  "limitations": [
+    "Already dispatched external requests cannot be recalled by this pre-dispatch check.",
+    "This is an independent scoped code review and local regression verification, not the unavailable Codex Security deep-scan coordinator.",
+    "RSC probe log predates the separate Worker action-request blocking patch; it demonstrates decoder reachability of the patched dependency in the previous bundle.",
+    "OCR image requests and Live voice use separate transports and were not changed by this complete() preflight patch.",
+    "Metadata checks and external dispatch are not atomic; requests already sent cannot be recalled."
+  ],
+  "review_scope": [
+    "bounded JSON body reader timeout/abort/UTF-8 behavior",
+    "learning context metadata, configuration and privacy revision boundaries",
+    "learning-journal batching, stable ordering, deletion exclusions and account isolation",
+    "assistant shared paid-completion boundary and chat multi-round verification",
+    "RSC dependency production bundling and benign local handler reachability"
+  ],
+  "privacy_race_before": {
+    "memory_revocation_after_reservation": {
+      "provider_calls": 1,
+      "synthetic_private_material_sent": true,
+      "response_status": 409
+    },
+    "evidence": "privacy-reserve-race-before.log",
+    "note": "The before log also contains two journal test fixture failures (duplicate INSERT); these are not evidence of a journal vulnerability. The corrected final tests use an upsert and all pass."
+  },
+  "privacy_race_after": {
+    "memory_or_journal_revocation_before_first_dispatch": {
+      "provider_calls": 0,
+      "response_status": 409,
+      "token_charge": 0
+    },
+    "second_chat_round_revocation": "no second provider call; first completed call remains charged"
+  },
+  "complete_context_callers": [
+    "assistant learning tasks",
+    "chat",
+    "writing topic generation",
+    "voice feedback",
+    "voice recommendations",
+    "voice discussion",
+    "dictation planning"
+  ],
+  "peer_review": "review_evidence independently reproduced provider calls=0, one unused-reservation refund, prior settled usage preserved, and normal old-context-version master-key rotation; no remaining blockers in the reviewed scope",
+  "source_sha256": {
+    "lib/assistant/server.ts": "8b2948f0ffb000254f40e499af3e5e36d2d18a23b0a747c0835a2908c3cf8d8b",
+    "lib/assistant/usage.ts": "b6cd01ac675d2484b4d95f9a47b5016c6259a0faf9bc1fa1a640bb571d1a6fb0",
+    "lib/learning-memory/context.ts": "52d234e2eb37d4594a13af77307b2e0ddfea92b4b4eb787096aed53a472b8650",
+    "tests/context-fencing.test.mjs": "fa3d6143dff870c3de4bac6dea8f38b34f3982e7310b7ef614b7b0326a5c7a1c",
+    "tests/merge-ai-server.test.mjs": "a61ad2390ebd9e4527533ae1d6d637e6024ba2f40d0a6e7b090225521af37afa",
+    "lib/writing-topic-server.ts": "25f96ace0f3c1323415e2442619a1ead8ffde598cb57a01326c659e683a94c58",
+    "lib/voice/server.ts": "d9e453a05078670f778d9fa66de5506ce58952f7c903d7baa41b9181f52d6c0d",
+    "lib/voice/coach-server.ts": "ab586e544aa8aba6fee12a7165de53bd8628e1e7ec7b47a5401d30bafea4a2c1",
+    "lib/voice/dictation-server.ts": "0625ce085a25b862f6a0bae83c80e433099dee65eb518dc766ab17143f205e4c"
+  }
+}

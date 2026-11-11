@@ -1,0 +1,339 @@
+{
+  "reviewedAtUtc": "2026-11-11T09:44:20.980295+00:00",
+  "reviewer": "review_evidence independent subagent",
+  "status": "passed_in_assigned_scope",
+  "blockers": [],
+  "releaseStatus": "Assigned read-only review complete, including resolved QA baseline integrity note. Fresh merged-candidate validation and deployment verification remain owned by the parent.",
+  "snapshot": {
+    "base": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+    "head": "f1a4bf6fe74ac258870ef4b445f2f78aad699c6b",
+    "sitesMain": "a9bb92642780cee06bb1d990a9a807536a6904de",
+    "candidateVersion": "2.19.4",
+    "state": "working-tree merge of local security/performance work and Sites 2.19.3; exact reviewed file hashes below"
+  },
+  "scope": {
+    "productionAndFixtures": [
+      "lib/http.ts",
+      "lib/learning-journal/store.ts",
+      "lib/learning-journal/input.ts",
+      "lib/learning-journal/facts.ts",
+      "lib/learning-journal-client.ts",
+      "drizzle/0010_learning_journal_privacy.sql",
+      "drizzle/meta/_journal.json",
+      "package.json",
+      "package-lock.json",
+      ".github/workflows/ci.yml",
+      "tests/private-api-fixtures.mjs",
+      "tests/security-hardening.test.mjs",
+      "tests/backend-security.test.mjs",
+      "tests/merge-ai-server.test.mjs",
+      "tests/production-dependencies.test.mjs",
+      "tests/learning-journal-privacy.test.mjs",
+      "tests/release-tool-security.test.mjs"
+    ],
+    "docs": [
+      "AGENTS.md",
+      "README.md",
+      "PROJECT_STATE.md",
+      "CHANGELOG.md",
+      "docs/DEVELOPMENT.md",
+      "docs/prompt-guidance.md",
+      "AI_ASSISTANT_DEPLOYMENT.md",
+      "PRIVACY.md",
+      "docs/README.md",
+      "docs/RELEASE_2.19.3.md"
+    ],
+    "scripts": [
+      "artifacts/qa/chat-experience-20261110/browser-check.mjs",
+      "artifacts/qa/chat-experience-20261110/render-report.py",
+      "artifacts/qa/prepublish-20261111/stream-render-check.mjs",
+      "artifacts/qa/security-20261110/browser-check.mjs",
+      "artifacts/qa/security-20261110/journal-browser-check.mjs",
+      "artifacts/qa/security-20261110/render-report.py",
+      "artifacts/qa/streamline-20261111/browser-performance.mjs",
+      "artifacts/qa/streamline-20261111/independent-review/config-race-original-repro.mjs",
+      "artifacts/qa/streamline-20261111/independent-review/config-race-public-repro.mjs",
+      "artifacts/qa/streamline-20261111/integration-browser.mjs",
+      "artifacts/qa/streamline-20261111/render-report.py",
+      "artifacts/qa/streamline-20261111/summarize-final.py",
+      "scripts/benchmark-baseline.mjs",
+      "scripts/benchmark-toolbox.mjs",
+      "scripts/benchmark-workload.mjs",
+      "scripts/check-runtime-security.mjs",
+      "scripts/local-worker.mjs",
+      "scripts/package-site.sh",
+      "scripts/release-archive.py",
+      "scripts/serve-qa.mjs",
+      "scripts/smoke-worker.mjs"
+    ],
+    "supportingReadOnlyFiles": [
+      "drizzle/0009_learning_journal_quota.sql",
+      "scripts/install-ci.sh",
+      "scripts/build-verified.sh",
+      "scripts/sites-env.sh",
+      ".gitignore",
+      ".npmrc",
+      ".openai/hosting.json",
+      "docs/SECURITY_PLAN.md"
+    ],
+    "serverSemanticReviewOwner": "review_security; other changed server files included only in credential/private-content scan here"
+  },
+  "sourceFindings": [
+    {
+      "area": "JSON request reader",
+      "result": "One timeout/abort race covers the full stream. Declared/actual byte caps, fatal UTF-8, JSON object admission, abort, nonblocking cancellation, timer/listener cleanup and reader lock release remain. Added Unicode fragmentation/abort/cancellation tests are meaningful; no blocker found."
+    },
+    {
+      "area": "Merged journal reads and privacy mutation",
+      "result": "Automatic merge retains D1 batch reads, bound user/date predicates, deleted=0, stable ordering, 20 events/day and 30 whole-day references. Sites clear-all remains a single guarded D1 mutation batch: revision CAS acquires write_token, privacy_revision increments, suppression time never decreases and includes greatest existing occurrence time, then scoped event/day deletion. New reader batching does not weaken these guards. Separate day-index and event reads are not a globally atomic snapshot."
+    },
+    {
+      "area": "Privacy projection and migration 0010",
+      "result": "Client and server project voice/assistant/reading/dictation to structural fields; personal reading is rejected. Existing vocabulary/writing callers use public IDs and fixed activity summaries. Migration erases automatic free text/private references, removes unedited personal-reading events, rekeys edited personal-reading identifiers, preserves explicit user edits, refreshes affected day facts and invalidates prior privacy contexts/queues. Quota DELETE/UPDATE triggers retain counters. Migration bytes exactly match Sites and must remain immutable."
+    },
+    {
+      "area": "Release archive",
+      "result": "Packaging checks clean reviewed source; rejects source symlinks/submodules and unexpected/private public/migration files; extracts an exact commit with Git replacement objects disabled into a private temporary directory; installs locked dependencies and builds there; accepts regular allowlisted output members only; verifies member names, uniqueness, type, size and SHA-256; rechecks source and atomically publishes the verified archive. No production source change requested."
+    },
+    {
+      "area": "Runtime matrix and smoke",
+      "result": "Admission-valid shared request fixtures and action headers exercise precise 401/403 outcomes; GET origin behavior follows route contract. RSC/HTML positive controls and disabled multipart/action transport checks are explicit. Local workerd/D1 is disposable and provider egress is intercepted; new smoke checks structural journal privacy, personal-reading rejection, CAS clear and storage counters."
+    },
+    {
+      "area": "Dependencies and CI",
+      "result": "Compared with f10737e, package versions change only application 2.19.2 to candidate 2.19.4 and react/react-dom/react-server-dom-webpack 19.2.8 to 19.2.9. No added/removed dependency package and all resolved hosts are registry.npmjs.org. Actions use pinned SHAs, read-only contents permission, no persisted checkout credentials, full dependency audit and complete npm test."
+    }
+  ],
+  "credentialAndPrivacyReview": {
+    "scanMethod": "Read every current changed/untracked file relative to f10737e; high-confidence credential/private-key/JWT/authenticated-URL patterns, email-domain classification, fixture and script source review. Counts describe this timestamp, not future logs. A scan cannot prove absence of every possible secret.",
+    "files": 263,
+    "utf8Files": 221,
+    "binaryFiles": 42,
+    "bytes": 15175753,
+    "highConfidenceMatches": [],
+    "emailDomains": {
+      "example.test": 38,
+      "example.invalid": 3
+    },
+    "credentialClassification": "Deterministic local-worker encryption key, fake provider strings, fixture writeTokens and PRIVATE/QA markers are test data. No actual token, password, customer email or user document was found. A broad initial URL regex crossed adjacent quoted JS fields; the literal URL has no userinfo and the email is example.test.",
+    "sitesHistoricalArtifacts": [
+      "artifacts/qa/chat-experience-20261110/answer-1440.png",
+      "artifacts/qa/chat-experience-20261110/answer-390.png",
+      "artifacts/qa/chat-experience-20261110/browser-check.mjs",
+      "artifacts/qa/chat-experience-20261110/browser-results.json",
+      "artifacts/qa/chat-experience-20261110/full-test.log",
+      "artifacts/qa/chat-experience-20261110/identity-deployment.json",
+      "artifacts/qa/chat-experience-20261110/render-report.py",
+      "artifacts/qa/chat-experience-20261110/report-data.json",
+      "artifacts/qa/chat-experience-20261110/report-layout.json",
+      "artifacts/qa/chat-experience-20261110/report-page-1.png",
+      "artifacts/qa/chat-experience-20261110/report-page-2.png",
+      "artifacts/qa/chat-experience-20261110/report.html",
+      "artifacts/qa/chat-experience-20261110/report.pdf",
+      "artifacts/qa/chat-experience-20261110/runtime-results.json",
+      "artifacts/qa/chat-experience-20261110/thinking-1440.png",
+      "artifacts/qa/chat-experience-20261110/thinking-390.png",
+      "artifacts/qa/chat-experience-20261110/verification.json",
+      "artifacts/qa/security-20261110/browser-check.mjs",
+      "artifacts/qa/security-20261110/browser-results.json",
+      "artifacts/qa/security-20261110/chat-1440.png",
+      "artifacts/qa/security-20261110/chat-390.png",
+      "artifacts/qa/security-20261110/full-test.log",
+      "artifacts/qa/security-20261110/journal-browser-check.mjs",
+      "artifacts/qa/security-20261110/journal-browser-results.json",
+      "artifacts/qa/security-20261110/journal-privacy-tests.txt",
+      "artifacts/qa/security-20261110/journal-reproduction.json",
+      "artifacts/qa/security-20261110/release-package.log",
+      "artifacts/qa/security-20261110/release-verification.json",
+      "artifacts/qa/security-20261110/render-report.py",
+      "artifacts/qa/security-20261110/report-data.json",
+      "artifacts/qa/security-20261110/report-layout.json",
+      "artifacts/qa/security-20261110/report-page-1.png",
+      "artifacts/qa/security-20261110/report-page-2.png",
+      "artifacts/qa/security-20261110/report.html",
+      "artifacts/qa/security-20261110/report.pdf",
+      "artifacts/qa/security-20261110/runtime-results.json",
+      "artifacts/qa/security-20261110/toolbox-benchmark.json",
+      "artifacts/qa/security-20261110/verification.json"
+    ],
+    "sitesArtifactVisualReview": "All 10 added PNGs visually inspected: 6 browser screenshots match hardcoded fresh-context synthetic prompts/responses; 4 report pages contain technical evidence and these fixtures. PNG metadata is absent or DPI only. Both two-page PDFs have no author, no attachments, no catalog JavaScript/OpenAction/Launch and no credential-pattern match in extracted text.",
+    "publicOperationalMetadata": "Historical evidence contains site hostname, deployment/saved-version identifiers, source commits, a Codex Security run URL and local workspace paths. These are identifiers/provenance, not authentication secrets; no cookies, authenticated response bodies or private learner records are included.",
+    "manifestSha256": "773f45aeb2d2cca541c27a5a5afdeeed0d9aba1cd61e233ee52479d98aa1e8f6"
+  },
+  "measurementReview": {
+    "httpModel": "Production build through real local Node HTTP/workerd/D1, all response bytes consumed; 8 synthetic accounts and 46,800 historical vocabulary rows with actual quota triggers; 3 rounds at concurrency 1/4/12, 20 requests/client = 1,020 requests per version. Mix: 50% journal read, 20% memory read, 10% lexicon asset, 10% home, 10% journal write. Dense account is active at concurrency 12; five journal warmups excluded.",
+    "statistics": "Nearest-rank percentiles on sorted raw request samples; aggregate percentiles must pool raw samples, not average per-round p95. Throughput uses completed requests divided by measured elapsed time. Preserve per-route values and all failures.",
+    "soak": "Optional 12 concurrent readers; 120 seconds is a bounded local steady-state check, not production endurance. It omits concurrent writers/provider traffic and does not measure a production memory leak threshold.",
+    "toolboxMicrobenchmark": "Only allowlisted immutable baseline content executes, replacement refs disabled. Four cases use alternating before/after order, 15 timing samples, 100 warm calls/sample and one cold call/sample; result-equivalence checks precede timing. It measures Node execution/result serialization, not HTTP/provider/UI response.",
+    "limitations": [
+      "Closed-loop clients with no think time are a controlled saturation-like workload and incur coordinated omission; they do not establish open-loop arrival-rate capacity or true user concurrency.",
+      "Local workerd/D1 topology, synthetic histories and fresh isolated state exclude WAN, live identity gateway, real AI providers, physical mobile devices and production cache/distribution effects.",
+      "Three short rounds have no statistical confidence intervals; the five warmups cover one journal account, so full cache/JIT steady-state is not guaranteed.",
+      "CPU/total-memory fields can describe the host rather than container limits; final report must separately record effective resource limits.",
+      "All pre-merge and Sites historical timing/test counts are intermediate evidence only. Merged 2.19.4 needs fresh build/full tests/runtime/performance results under the same fixture and environment before delivery.",
+      "Historical browser fixtures use absolute runtime paths and trusted local base URLs; they are environment-specific QA scripts, not production code or portable CI requirements."
+    ],
+    "streamRenderComponent": "Actual production React DOM/message/provenance components with a controlled context and synthetic 120-message history; counts 20 visible-answer updates and revalidates provenance on a word-map change. Synchronous commit timings exclude layout paint, complete app/network/provider work and INP. Three same-order rounds are corroborative; the deterministic historical-render count is the primary regression evidence."
+  },
+  "checksExecuted": {
+    "loadOrNetworkStarted": false,
+    "productionSourceEdited": false,
+    "scriptSyntaxOnly": [
+      {
+        "file": "artifacts/qa/chat-experience-20261110/browser-check.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/chat-experience-20261110/render-report.py",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/prepublish-20261111/stream-render-check.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/security-20261110/browser-check.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/security-20261110/journal-browser-check.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/security-20261110/render-report.py",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/streamline-20261111/browser-performance.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/streamline-20261111/independent-review/config-race-original-repro.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/streamline-20261111/independent-review/config-race-public-repro.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/streamline-20261111/integration-browser.mjs",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/streamline-20261111/render-report.py",
+        "passed": true
+      },
+      {
+        "file": "artifacts/qa/streamline-20261111/summarize-final.py",
+        "passed": true
+      },
+      {
+        "file": "scripts/benchmark-baseline.mjs",
+        "passed": true
+      },
+      {
+        "file": "scripts/benchmark-toolbox.mjs",
+        "passed": true
+      },
+      {
+        "file": "scripts/benchmark-workload.mjs",
+        "passed": true
+      },
+      {
+        "file": "scripts/check-runtime-security.mjs",
+        "passed": true
+      },
+      {
+        "file": "scripts/local-worker.mjs",
+        "passed": true
+      },
+      {
+        "file": "scripts/package-site.sh",
+        "passed": true
+      },
+      {
+        "file": "scripts/release-archive.py",
+        "passed": true
+      },
+      {
+        "file": "scripts/serve-qa.mjs",
+        "passed": true
+      },
+      {
+        "file": "scripts/smoke-worker.mjs",
+        "passed": true
+      }
+    ],
+    "gitDiffWhitespaceCheck": "passed; merge conflict paths were empty on subsequent check"
+  },
+  "nonBlockingNotes": [
+    {
+      "file": "docs/SECURITY_PLAN.md",
+      "note": "Historical plan still has old private-route count and old sync action-header description. Current AGENTS/DEVELOPMENT/CI and tests are authoritative; do not use the historical plan as a release checklist."
+    },
+    {
+      "file": "artifacts/qa/security-20261110/ and artifacts/qa/chat-experience-20261110/",
+      "note": "Reports intentionally retain their original unpublished/test-count snapshots. docs/RELEASE_2.19.3.md explicitly says deployment status follows Sites records; final 2.19.4 report must distinguish old and newly measured evidence."
+    },
+    {
+      "file": "scripts/release-archive.py",
+      "note": "hashlib.file_digest requires Python 3.11+; current merged DEVELOPMENT documents that minimum."
+    },
+    {
+      "file": "artifacts/qa/prepublish-20261111/stream-render-check.mjs",
+      "note": "Git replacement refs are now disabled for the immutable Sites baseline read. Rechecked source and syntax after correction; review_stream_ui completed the final three-round Chromium comparison.",
+      "status": "resolved"
+    }
+  ],
+  "reviewedFileSha256": {
+    ".github/workflows/ci.yml": "24f7df5ed880de93c2ee4fd4177086990b243a24426bc983ce457203251e1db9",
+    "AGENTS.md": "8033527fdc1497fed2e346aa957b9c54132030308177e2148c74179167ca2a50",
+    "AI_ASSISTANT_DEPLOYMENT.md": "93517a6dc245c84c38d771e6f24d7f3796926bd2363184b0208680d3bbba1258",
+    "CHANGELOG.md": "07dac9414692b9fef4c57a611cee61e9aecde21093fc74af1487665d4d86eb72",
+    "PRIVACY.md": "947c5be131c28a35f6fe84740304f3c1ef4835a301817e7edee942005af48593",
+    "PROJECT_STATE.md": "3cb817c83b3434f82c28b700edc4bc2770bef115401096142c4a89ebe42e6a49",
+    "README.md": "32eb61b9daaff0cc8933dd294e3f47647ceea7ce5bea20864e5b1086b438f82a",
+    "artifacts/qa/chat-experience-20261110/browser-check.mjs": "e9df67bf8fc975dadb034571d23f1d975429ce95b0e7e64ce3d5d15201c1bdc5",
+    "artifacts/qa/chat-experience-20261110/render-report.py": "363e7d8cfd237dc4dcd305a3bfe9f8fd4e3c56613ed5d0c3a5fafb1b97e9059c",
+    "artifacts/qa/prepublish-20261111/stream-render-check.mjs": "b763f47c670c557d5198efb78e995783dd9644f484f8cfff6ae0ae73034c0d92",
+    "artifacts/qa/security-20261110/browser-check.mjs": "24610dc2abf5ecb4cac09f202ded78e9f5ca334e95df4050356406cc983f9afc",
+    "artifacts/qa/security-20261110/journal-browser-check.mjs": "ac0afcc40e1ed59c54fe8d89f7712d32c95d023f5711d8fafc0cbbb4bce38abc",
+    "artifacts/qa/security-20261110/render-report.py": "444c7f3a36fa0f2741787b4d0da16c509aee5c39163968bc51441a2054c13b63",
+    "artifacts/qa/streamline-20261111/browser-performance.mjs": "fac1fd959c87732071999b2aca493a16b07d4a89cb1ad45589f70adbd1ab0fac",
+    "artifacts/qa/streamline-20261111/independent-review/config-race-original-repro.mjs": "6661a1b94a86df27692a6300654048d921f7e2ddb394043e082ce9b23ccb9187",
+    "artifacts/qa/streamline-20261111/independent-review/config-race-public-repro.mjs": "335f3c8f051e6da83511e72424edeb4d44cdf1aa6772ef81a3705f6a5dbe5fd0",
+    "artifacts/qa/streamline-20261111/integration-browser.mjs": "868f22862b1dab3d59fe3f7fe85eff1390d00743137997582657dc0e55686b62",
+    "artifacts/qa/streamline-20261111/render-report.py": "b8e4713a64e21fba0d66643658d00762a102bb46b0ccc468de905d2b636fdc8d",
+    "artifacts/qa/streamline-20261111/summarize-final.py": "578007cef5b9038c6224f3bd0ea11c35fef15717dbee8b8faa5c927c763f29ee",
+    "docs/DEVELOPMENT.md": "9d713d07efd90e8a0edf53b24091c1c5d67815aba0771d810f763222363ee1c2",
+    "docs/README.md": "51b0dcc73fa07f6c53e8ef7b97751a05564918a495491e0e9a454de880489909",
+    "docs/RELEASE_2.19.3.md": "8e7a5f4494fa54cd1bdc65ec50f3e90013cf99092b5dadffb6fcfc0885a6d52a",
+    "docs/prompt-guidance.md": "0d5ab359e50eeb5303eea8792ae88e7dd964cbc0c6dbd9b200bcd70aebd73ba5",
+    "drizzle/0010_learning_journal_privacy.sql": "624a7379087ab6ddfb2bb36909f687ea9b1272704027f716e0f25b7d12859e43",
+    "drizzle/meta/_journal.json": "8e737c5180276cc719534e5a97d952fc12da4889697391774a17745a47078c23",
+    "lib/http.ts": "e68dee42dd99263b35740a4e4574ae241b7318262161380e8fce835dbeb55ec4",
+    "lib/learning-journal-client.ts": "17295274d613b2a895f08725eb0ba2b10b66393e73ed7338be3aaeb76f537aa4",
+    "lib/learning-journal/facts.ts": "4f577179201314549f31063b1d587b9f9379670bb77994954df4a71962693566",
+    "lib/learning-journal/input.ts": "9a9d3fce3c1d53f6cd466c6e25e6a98cffa427e0d1953e217e01fc86ee6a820f",
+    "lib/learning-journal/store.ts": "f6f1494c4dc3fcab97143a6e5438afabe135831249e9a691d83ecdac4fe7f0ad",
+    "package-lock.json": "8f30891660999f177bc2ec8e8f8861a3cf66d6de52a4d71c541ed0b4419d9fcb",
+    "package.json": "3378fe83a94dd3048a3f64c33ab5f4fcb8d30c85142738d55f58f65d7afd444a",
+    "scripts/benchmark-baseline.mjs": "8f91fda8190aa36789d78f31391d917a53293a438609149954c75be76324bc7b",
+    "scripts/benchmark-toolbox.mjs": "41e025c80cc719dcba2b2666dfcdd464a953c73e9eeaf53ef04bee8b54360a4a",
+    "scripts/benchmark-workload.mjs": "efe024a9a42fe0df31ba8001fc21e8bad8fcb5f9d875719801118ff3cbe8da64",
+    "scripts/check-runtime-security.mjs": "822af98bb6dfcdce7678d3afaabfc9435f8c0fe551acc9f601904a0eea3c620e",
+    "scripts/local-worker.mjs": "494661349034de59d98c63ad722036b333656c07b82097b96eccdb66cc6bf50f",
+    "scripts/package-site.sh": "23397cd70d967b46ddbaf0fd5cc37bbca3898c030b6b81065f80ac217d1547ae",
+    "scripts/release-archive.py": "732bd4b7aef5d98b2063207caa0178bc746998377fe9fef64d97abb5ec810845",
+    "scripts/serve-qa.mjs": "5ecb135b89c128078b7f84a3cb46bf893b72ff12c13fe3036885c70204fc0673",
+    "scripts/smoke-worker.mjs": "cd5af5d8a36983042dd4eeef76541b47d90a1721812c20c883ef779c101ba47a",
+    "tests/backend-security.test.mjs": "48bddf2d0c2456a76413715eca94887179cb3bc717b42eae8f314f161a64bde2",
+    "tests/learning-journal-privacy.test.mjs": "0f19669cd10ec2ad769e0f72e08303fdd83fdb0ef95215188d1855e96057e0fc",
+    "tests/merge-ai-server.test.mjs": "a61ad2390ebd9e4527533ae1d6d637e6024ba2f40d0a6e7b090225521af37afa",
+    "tests/private-api-fixtures.mjs": "0f2cdc675c11c35b57b182260b0ecae65f098c6f0997dc564db907ea6c6c9749",
+    "tests/production-dependencies.test.mjs": "c5d875c8428dc6d8cbcb58e1659a96a244890bc57f76db2482c73069157f5e54",
+    "tests/release-tool-security.test.mjs": "b5bdd95baf80e390086f007f8b4e0a43d1a287aec5292c922b4c7afdf967b67a",
+    "tests/security-hardening.test.mjs": "339a8a60300bbb41ccb522ef58433b1c197f5af72210d3f2f56255fbbdee7cdc"
+  },
+  "sitesMigrationByteMatch": true
+}

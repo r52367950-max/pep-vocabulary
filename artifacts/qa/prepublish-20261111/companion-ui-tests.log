@@ -1,0 +1,43 @@
+✔ large UTF-8 attachments fit the endpoint cap and keep Unicode characters intact (19.464044ms)
+✔ short and exact-boundary text remains unchanged and reports actual loaded characters (15.718427ms)
+✔ real text-file reader returns bounded content and respects cancellation (2.083668ms)
+✔ list selector retains newest saved conversations and other nonempty drafts, excluding temporary and active empty conversations (1.902364ms)
+✔ 142 active-composer keystrokes reuse the list and leave saved content untouched (1.043006ms)
+✔ other drafts, deletion, new messages and selected conversation changes invalidate the list (0.37747ms)
+✔ search matches visible draft titles or user messages and preserves day groups (0.700378ms)
+✔ legacy finite timestamps outside the Date range retain conversations without breaking the panel (0.358662ms)
+✔ history keeps only bounded origin metadata and always downgrades old or forged authenticity (5.373798ms)
+✔ chat history entry locations come from current formally released vocabulary (1.078199ms)
+✔ normal history serializes only supported fields and omits temporary conversations, attachment raw data and drafts (1.953801ms)
+✔ untrusted stored history is validated deeply and pending answers restore as stopped (0.56967ms)
+✔ history size bounds retain the newest supported rows within storage cap (28.112911ms)
+✔ real exercise result survives normal history and allows only formal word IDs (0.623141ms)
+✔ attachment controls reject empty/oversize/active markup types and strictly decode UTF-8 (0.867731ms)
+✔ settings parser rejects unsupported model and malformed options with stable defaults (0.352803ms)
+✔ typed follow-up includes real voice captions and exercise evidence within endpoint history limits (19.604818ms)
+✔ chat stream exposes bounded real phases before its validated answer and ignores keepalive comments (50.149217ms)
+✔ terminal stream errors retain their API error code and never expose an answer (3.633159ms)
+✔ partial, oversized and unsupported text streams fail without returning incomplete model prose (11.169685ms)
+✔ stop cancels a stalled response reader and rejects before any late result (1.472124ms)
+✔ a context invalidation during progress aborts the reader and excludes its late answer (1.347255ms)
+✔ progressive reveal preserves every grapheme and caps long-answer animation at five seconds (27.008544ms)
+✔ stop and generation invalidation preserve the last visible prefix with no further callbacks (1.00004ms)
+✔ disabled/reduced motion is instant and an already cancelled reply never starts (0.416218ms)
+✔ stored progressive replies retain only their visible prefix, bounded public summary and no transient phase (2.11831ms)
+✔ tool trace retains only known names and exact booleans within the dispatch cap (1.944317ms)
+✔ fixed summaries distinguish failed tools and omit invented activity for direct answers (0.245771ms)
+✔ history roundtrip keeps actual tool status without retaining private source or arbitrary labels (1.475288ms)
+✔ actual chat client projects only returned trace after identity and context checks (37.122152ms)
+✔ a context change before final client validation discards the answer and its tool trace (3.536282ms)
+✔ voice context keeps recent user, assistant, selected text and earlier voice captions (1.599396ms)
+✔ empty and action-only history creates no invented opening text (0.199672ms)
+✔ voice context is bounded to the API limit and prioritizes recent messages (0.179882ms)
+✔ UTF-16 boundaries do not split emoji in any context fragment (0.243417ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2423.628932

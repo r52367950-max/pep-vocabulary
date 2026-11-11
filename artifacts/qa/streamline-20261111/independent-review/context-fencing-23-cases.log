@@ -1,0 +1,31 @@
+✔ personalized explain completion fences none changes during generation (36.86189ms)
+✔ personalized explain completion fences memory changes during generation (9.900855ms)
+✔ personalized explain completion fences journal changes during generation (8.075288ms)
+✔ personalized explain completion fences configuration changes during generation (8.360489ms)
+✔ metadata-only verification never reads note/event content and permits new activity (3.304862ms)
+✔ memory/config changes while journal content is loading cannot label stale content as current (2.644524ms)
+✔ batched history retains ordering, truncation, deleted exclusions, old references and owner isolation (85.549165ms)
+✔ explain rejects delete after runtime snapshot before context without dispatch or token charge (19.553953ms)
+✔ explain rejects model after runtime snapshot before context without dispatch or token charge (10.01456ms)
+✔ explain rejects credential after runtime snapshot before context without dispatch or token charge (10.061811ms)
+✔ explain rejects budget after runtime snapshot before context without dispatch or token charge (13.138914ms)
+✔ chat rejects delete after runtime snapshot before context without dispatch or token charge (12.788785ms)
+✔ chat rejects model after runtime snapshot before context without dispatch or token charge (8.537041ms)
+✔ chat rejects credential after runtime snapshot before context without dispatch or token charge (7.914511ms)
+✔ chat rejects budget after runtime snapshot before context without dispatch or token charge (9.207852ms)
+✔ a settings deletion during token reservation is checked at dispatch and refunded exactly once (10.81005ms)
+✔ dispatch configuration read failure is closed and refunds its unused reservation (10.537454ms)
+✔ ambiguous budget storage failure never dispatches and retains its reservation (8.861691ms)
+✔ exhausted budget never dispatches or refunds already consumed tokens (8.250268ms)
+✔ chat second-round dispatch fences none changes during reservation (13.455141ms)
+✔ chat second-round dispatch fences credential changes during reservation (12.528182ms)
+✔ same-timestamp credential replacement during generation invalidates the completed context (12.358151ms)
+✔ lazy master-key rotation preserves the runtime settings identity and normal generation (10.934538ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 342.745388

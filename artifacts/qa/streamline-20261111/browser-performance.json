@@ -1,0 +1,118 @@
+{
+  "method": "Fresh browser context each round, actual production UI and lexicon, 50 conversations / 2000 messages, synthetic metadata only; automation wall timings are not INP. CPU throttling is emulation, no mobile hardware or WAN claim.",
+  "runs": [
+    {
+      "device": "desktop",
+      "round": 1,
+      "startupMs": 337.15591299999994,
+      "chatMs": 423.707349,
+      "listMs": 63.21034899999995,
+      "searchMs": 25.715345999999954,
+      "typingMs": 127.51168499999994,
+      "longTasks": [
+        55
+      ],
+      "lcp": 144,
+      "historyChars": 491021,
+      "overflow": 0,
+      "heapBytes": 11446568,
+      "pageErrors": []
+    },
+    {
+      "device": "desktop",
+      "round": 2,
+      "startupMs": 330.76284699999997,
+      "chatMs": 871.707508,
+      "listMs": 51.11007500000005,
+      "searchMs": 23.59081900000001,
+      "typingMs": 146.0987240000004,
+      "longTasks": [],
+      "lcp": 116,
+      "historyChars": 491021,
+      "overflow": 0,
+      "heapBytes": 10836480,
+      "pageErrors": []
+    },
+    {
+      "device": "desktop",
+      "round": 3,
+      "startupMs": 313.18619499999977,
+      "chatMs": 890.7884020000001,
+      "listMs": 53.398245000000315,
+      "searchMs": 26.99977399999989,
+      "typingMs": 121.71903199999997,
+      "longTasks": [],
+      "lcp": 96,
+      "historyChars": 491021,
+      "overflow": 0,
+      "heapBytes": 10757884,
+      "pageErrors": []
+    },
+    {
+      "device": "phone-cpu4",
+      "round": 1,
+      "startupMs": 909.7051459999993,
+      "chatMs": 563.3503959999998,
+      "listMs": 198.87038500000017,
+      "searchMs": 138.9004960000002,
+      "typingMs": 544.3734089999998,
+      "longTasks": [
+        91,
+        59,
+        76,
+        77,
+        73
+      ],
+      "lcp": 264,
+      "historyChars": 491021,
+      "overflow": 0,
+      "heapBytes": 13361228,
+      "pageErrors": []
+    },
+    {
+      "device": "phone-cpu4",
+      "round": 2,
+      "startupMs": 920.9839170000005,
+      "chatMs": 663.5806089999987,
+      "listMs": 189.85021700000107,
+      "searchMs": 246.13997500000005,
+      "typingMs": 680.4000219999998,
+      "longTasks": [
+        57,
+        85,
+        51,
+        70,
+        96,
+        71,
+        98,
+        101,
+        78
+      ],
+      "lcp": 272,
+      "historyChars": 491021,
+      "overflow": 0,
+      "heapBytes": 13407340,
+      "pageErrors": []
+    },
+    {
+      "device": "phone-cpu4",
+      "round": 3,
+      "startupMs": 923.4343330000011,
+      "chatMs": 572.770559999999,
+      "listMs": 144.14263599999867,
+      "searchMs": 77.84781099999964,
+      "typingMs": 664.0649719999983,
+      "longTasks": [
+        97,
+        57,
+        51,
+        70
+      ],
+      "lcp": 268,
+      "historyChars": 491021,
+      "overflow": 0,
+      "heapBytes": 13342456,
+      "pageErrors": []
+    }
+  ]
+}

@@ -103,7 +103,7 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
     const timeout = setTimeout(() => controller.abort("timeout"), 15000);
     let active = true;
     const openingContext = learningContextStore.get();
-    const account = openingContext.temporary ? Promise.resolve(null) : refreshLearningContext(controller.signal).catch(() => null);
+    const account = openingContext.temporary || articleId.startsWith("personal-") ? Promise.resolve(null) : refreshLearningContext(controller.signal).catch(() => null);
     (articleId.startsWith("personal-") ? readPersonalArticle(articleId) : loadLibraryArticle(articleId, controller.signal)).then(value => {
       if (active && !removedPersonalReadingIds().has(value.id)) {
         loadedArticle.current = key; setArticle(value); requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
@@ -114,7 +114,7 @@ function ReadingView({ data, onDetail, onPractice }: ReadingProps) {
           const eventId = `reading-${value.id}-${date}`, openingKey = `${context.accountScope}:${eventId}`;
           if (journaledOpenings.current.has(openingKey)) return;
           journaledOpenings.current.add(openingKey);
-          void recordLearningActivity({ eventId, kind: "reading", title: value.title.slice(0, 160), summary: "阅读文章（已打开正文）", refIds: [value.id], occurredAt: now.toISOString() }, { accountScope: context.accountScope });
+          void recordLearningActivity({ eventId, kind: "reading", title: "阅读练习", counts: { opened: 1 }, occurredAt: now.toISOString() }, { accountScope: context.accountScope });
         });
       }
     }).catch(() => { if (active) setArticleError("这篇文章尚未载入。请检查网络后重试。"); }).finally(() => clearTimeout(timeout));

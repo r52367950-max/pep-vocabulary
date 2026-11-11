@@ -266,6 +266,24 @@ try {
     assert.equal((await (await request('/api/learning-journal',{headers})).json()).revision,journalDeleted.revision);
   } finally { await db.prepare('UPDATE learning_journal_settings SET storage_bytes=? WHERE user_key=?').bind(journalUsage.storage_bytes,journalUsage.user_key).run(); }
   results.push({path:'/api/learning-journal D1 quota trigger rolls back allocation and maps 409; missing day deletion allocates nothing',status:'passed'});
+  const privateMarker = 'PRIVATE_SMOKE_TRANSCRIPT';
+  const privateEvent = { ...journalEvent, eventId:'smoke-voice-private', kind:'voice', privacyRevision:journalDeleted.privacyRevision,
+    title:privateMarker, summary:privateMarker, refIds:[`personal-${privateMarker}`], counts:{seconds:42,turns:3,privateCounter:1} };
+  const structural = await request('/api/learning-journal',{method:'POST',headers,body:JSON.stringify(privateEvent)});
+  assert.equal(structural.status,200,await structural.clone().text());
+  const structuralBody = await structural.json();
+  assert.doesNotMatch(JSON.stringify(structuralBody),new RegExp(privateMarker));
+  const recorded = structuralBody.days[0].events.find(event=>event.eventId===privateEvent.eventId);
+  assert.equal(recorded.title,'口语练习'); assert.deepEqual(recorded.counts,{seconds:42,turns:3});
+  assert.doesNotMatch(JSON.stringify((await db.prepare('SELECT title,summary,ref_ids,counts FROM learning_journal_events WHERE user_key=?').bind(journalUsage.user_key).all()).results),new RegExp(privateMarker));
+  const personalReading = await request('/api/learning-journal',{method:'POST',headers,body:JSON.stringify({...privateEvent,kind:'reading',eventId:`reading-personal-${privateMarker}`})});
+  assert.equal(personalReading.status,400);
+  const clearAll = await request('/api/learning-journal',{method:'DELETE',headers,body:JSON.stringify({accountScope:structuralBody.accountScope,revision:structuralBody.revision,all:true})});
+  assert.equal(clearAll.status,200,await clearAll.clone().text());
+  assert.deepEqual((await clearAll.json()).days,[]);
+  assert.deepEqual(await db.prepare('SELECT event_count,storage_bytes FROM learning_journal_settings WHERE user_key=?').bind(journalUsage.user_key).first(),{event_count:0,storage_bytes:0});
+  assert.equal((await request('/api/learning-journal',{method:'POST',headers,body:JSON.stringify(privateEvent)})).status,409);
+  results.push({path:'/api/learning-journal private-content projection, personal-reading rejection and CAS whole-journal deletion',status:'passed'});
   const unconfiguredVoice = await request('/api/voice/status', { headers });
   assert.equal(unconfiguredVoice.status, 200, await unconfiguredVoice.clone().text());
   const unconfiguredBody = await unconfiguredVoice.json();

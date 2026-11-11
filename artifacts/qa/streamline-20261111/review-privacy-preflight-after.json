@@ -1,0 +1,35 @@
+{
+  "recordedAt": "2026-11-11T07:49:59.229Z",
+  "stage": "after context preflight fix",
+  "environment": {
+    "database": "real SQLite in memory through sqliteD1",
+    "provider": "globalThis.fetch mock only",
+    "externalRequests": 0,
+    "data": "synthetic fixtures only"
+  },
+  "sourceHashes": {
+    "lib/assistant/server.ts": "8b2948f0ffb000254f40e499af3e5e36d2d18a23b0a747c0835a2908c3cf8d8b",
+    "lib/assistant/usage.ts": "b6cd01ac675d2484b4d95f9a47b5016c6259a0faf9bc1fa1a640bb571d1a6fb0",
+    "lib/learning-memory/context.ts": "52d234e2eb37d4594a13af77307b2e0ddfea92b4b4eb787096aed53a472b8650"
+  },
+  "results": [
+    {
+      "scenario": "lazy rotation with client contextVersion",
+      "status": 200,
+      "providerMockCalls": 1,
+      "writeTokenPreserved": true,
+      "rotatedToK2": true
+    },
+    {
+      "scenario": "privacy disabled after token reservation",
+      "status": 409,
+      "providerMockCalls": 0,
+      "revocationHookExecuted": true,
+      "syntheticNoteSeenByProviderMock": false,
+      "responseErrorCode": "learning_context_changed",
+      "refundUpdates": 1,
+      "tokenUsageBefore": 5511,
+      "tokenUsageAfter": 5511
+    }
+  ]
+}
