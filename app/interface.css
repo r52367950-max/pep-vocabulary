@@ -382,3 +382,38 @@ html[data-theme="dark"] .complete-art { filter: brightness(.84) saturate(.92); }
   .scope-selection, .nav-selection, .favorite-button svg, .desktop-nav button, .scope-switch button { transition: none; }
   .desktop-nav button:active, .scope-switch button:active { transform: none; }
 }
+
+/* A non-modal inspector: the word list remains usable beside it. */
+.word-inspector { position: fixed; z-index: 60; top: 12px; right: 12px; bottom: 12px; width: 424px; max-width: calc(100vw - 24px); overflow: auto; overscroll-behavior: contain; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 26px; box-shadow: 0 8px 32px #00000014; animation: word-inspector-in 220ms var(--ease-settle); scrollbar-width: thin; }
+.word-inspector .detail-content { padding: 18px 22px 24px; }
+.word-inspector .detail-top { position: sticky; top: -18px; z-index: 1; padding-block: 8px; background: var(--surface); }
+.word-inspector .detail-word h2 { font-size: 2rem; }
+.word-inspector .detail-word > button { flex-shrink: 0; }
+.word-inspector .detail-meaning { font-size: 1.25rem; line-height: 1.65; }
+.word-inspector textarea { font-size: 1rem; }
+.word-order-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0 8px; font-size: .8125rem; color: var(--muted); }
+.word-order-toolbar label { display: flex; align-items: center; gap: 10px; }
+.word-order-toolbar select { min-height: 44px; padding: 8px 12px; border-radius: 12px; background: var(--grouped); color: var(--ink); max-width: 100%; }
+.word-order-toolbar > span { margin-left: auto; }
+@keyframes word-inspector-in { from { opacity: 0; transform: translateX(20px); } }
+@media (min-width: 1001px) {
+  .vocab-studio.word-inspector-open .studio-workspace { margin-right: 448px; padding-inline: 28px; }
+}
+@media (min-width: 761px) and (max-width: 1000px) {
+  .word-inspector { width: 350px; }
+  .vocab-studio.word-inspector-open .studio-workspace { margin-right: 374px; padding-inline: 18px; }
+  .word-inspector-open .word-list-meta { flex-direction: column; align-items: stretch; }
+  .word-inspector-open .word-list-meta > div { justify-content: flex-start; }
+  .word-inspector-open .word-open { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .word-inspector-open .word-list-heading { display: none; }
+}
+@media (max-width: 760px) {
+  .word-inspector { top: max(8px, env(safe-area-inset-top)); right: 8px; bottom: calc(80px + env(safe-area-inset-bottom)); width: min(424px, calc(100vw - 16px)); max-width: none; border-radius: 22px; }
+  .word-order-toolbar > span { flex-basis: 100%; margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .word-inspector { animation: none; } }
+
+@media (min-width: 1001px) and (max-width: 1200px) {
+  .word-inspector-open .word-open, .word-inspector-open .word-list-heading { grid-template-columns: minmax(0, .85fr) minmax(0, 1fr) 62px; gap: 12px; }
+  .word-inspector-open .word-list-meta { flex-direction: column; align-items: stretch; }
+}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Headphones, Mic, RotateCcw, Square, Volume2 } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
+import { shuffleWords } from "@/lib/word-order";
 import { compareDictation, DICTATION_SENTENCES, readLocalDictationHistory, saveLocalDictationAttempt, selectDictationRound, wordDictationItems, type DictationHistory, type DictationItem, type DictationMode } from "@/lib/voice/dictation";
 import { localPracticeGeneration, practiceGenerationCurrent, type PracticeGeneration } from "@/lib/local-practice-generation";
 import { DictationLiveInput, dictationVoiceCommand, canSubmitDictation, newDictationAttempt, reduceDictationAttempt, spellingDraft, type DictationAttemptEvent, type DictationLearningPreferences, type SpellingCaptureAdapter, type DictationVoiceCommand } from "@/lib/voice/dictation-session";
@@ -165,6 +166,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   };
   const start = async (items: DictationItem[]) => {
     if (!items.length) return;
+    if (items.every(item => item.mode === "words")) items = shuffleWords(items);
     planAbort.current?.abort();
     setPlanBusy(false); setPlanError("");
     adjustment.current?.removeAttribute("open");
