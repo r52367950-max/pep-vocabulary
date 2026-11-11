@@ -1,6 +1,6 @@
 {
   "name": "pep-vocab-studio",
-  "version": "2.19.2",
+  "version": "2.19.3",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -14,22 +14,24 @@
     "data:build": "node scripts/build-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
     "test:unit": "node --import ./tests/register.mjs --test --test-concurrency=2 tests/*.test.mjs",
-    "test": "npm run data:audit && npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:runtime",
+    "test": "npm run data:audit && npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:runtime && npm run test:security",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "typecheck": "tsc --noEmit",
     "test:runtime": "node scripts/smoke-worker.mjs",
+    "test:security": "node --import ./tests/register.mjs scripts/check-runtime-security.mjs",
     "benchmark": "node scripts/benchmark-core.mjs",
     "benchmark:backend": "node --import ./tests/register.mjs scripts/benchmark-backend.mjs",
-    "audit:prod": "npm audit --omit=dev --audit-level=high"
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:deps": "npm audit --audit-level=high"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
     "lucide-react": "0.468.0",
     "next": "16.4.3",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
     "ts-fsrs": "5.2.3",
     "fflate": "0.7.5"
   },
@@ -46,7 +48,7 @@
     "eslint": "9.39.4",
     "eslint-config-next": "16.4.3",
     "fake-indexeddb": "6.2.5",
-    "react-server-dom-webpack": "19.2.8",
+    "react-server-dom-webpack": "19.2.9",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",

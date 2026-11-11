@@ -1,0 +1,37 @@
+[vinext] Server action error: TinyAssertionError: TinyAssertionError
+    at Object.get (file:///workspace/pep-vocabulary/dist/server/index.js:4302:3)
+    at resolveServerReference (file:///workspace/pep-vocabulary/dist/server/index.js:3423:52)
+    at loadServerReference (file:///workspace/pep-vocabulary/dist/server/index.js:4064:25)
+    at exports.decodeAction (file:///workspace/pep-vocabulary/dist/server/index.js:4099:86)
+    at Object.decodeAction (file:///workspace/pep-vocabulary/dist/server/index.js:4540:28)
+    at handleProgressiveServerActionRequest (file:///workspace/pep-vocabulary/dist/server/index.js:10458:32)
+    at async handleAppRscRequest (file:///workspace/pep-vocabulary/dist/server/index.js:9105:34)
+    at async runWithPrerenderWorkUnit.route (file:///workspace/pep-vocabulary/dist/server/index.js:9230:16)
+    at async handleRequest (file:///workspace/pep-vocabulary/dist/server/index.js:29021:17)
+    at async Object.fetch (file:///workspace/pep-vocabulary/dist/server/index.js:29233:15)
+[vinext] CSRF origin mismatch: origin "evil.test" does not match host "localhost". Blocking server action request.
+file:///workspace/pep-vocabulary/scripts/check-runtime-security.mjs:58
+  if(failures.length) throw new AggregateError(failures,`${failures.length} runtime security checks failed`);
+                            ^
+
+AggregateError: 1 runtime security checks failed
+    at file:///workspace/pep-vocabulary/scripts/check-runtime-security.mjs:58:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  [errors]: [
+    AssertionError [ERR_ASSERTION]: unknown server action: 500 Internal Server Error
+    
+    500 !== 404
+    
+        at file:///workspace/pep-vocabulary/scripts/check-runtime-security.mjs:51:14
+        at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: 500,
+      expected: 404,
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  ]
+}
+
+Node.js v24.22.1

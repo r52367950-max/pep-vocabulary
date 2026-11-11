@@ -114,6 +114,7 @@ function secureTransport(url: URL) {
 const API_ERROR_MESSAGES: Record<number, { code: string; message: string }> = {
   404: { code: "not_found", message: "接口不存在。" },
   405: { code: "method_not_allowed", message: "不支持此请求方法。" },
+  415: { code: "unsupported_media_type", message: "不支持此请求内容类型。" },
   500: { code: "internal_error", message: "服务暂时不可用，本地学习数据没有受到影响。" },
 };
 
@@ -194,6 +195,17 @@ export function createSecureHandler<Env>(inner: WorkerHandler<Env>, options: Sec
       let url: URL;
       try { url = new URL(request.url); } catch { return new Response("Bad Request", { status: 400 }); }
       const api = isApiPath(url.pathname);
+      // Mutations use JSON APIs. Block unused Server Action transports before
+      // vinext decodes them (which happens before it selects an API route).
+      const unsupported = request.headers.has("x-rsc-action") || request.headers.has("next-action") ? 404
+        : request.method === "POST" && request.headers.get("content-type")?.trim().toLowerCase().startsWith("multipart/form-data") ? 415 : 0;
+      if (unsupported) {
+        void request.body?.cancel().catch(() => undefined);
+        const response = api ? apiErrorResponse(unsupported) : new Response(unsupported === 404 ? "Not Found" : "Unsupported Media Type", {
+          status: unsupported, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+        });
+        return applySecurityHeaders(response, url, null);
+      }
       const nonce = options.enforceContentSecurityPolicy && !api ? createNonce() : null;
       let forwarded = request;
       if (nonce) {

@@ -1,4 +1,4 @@
-import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
+import { resolveLearningContext, verifyLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
 import { budgetDay, consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-classification";
 import { decodeLexiconIndex } from "@/lib/lexicon-index-codec.mjs";
@@ -47,14 +47,23 @@ import { runChatHarness } from "./harness";
 const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
 const MAX_GENERATION_MS = 300_000;
-import { DEFAULT_TOKEN_BUDGET, providerRejectedBeforeGeneration, releaseOutputReservation, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
+import { DEFAULT_TOKEN_BUDGET, providerRejectedBeforeGeneration, releaseOutputReservation, releaseUnusedReservation, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
 
 /** Shared paid-generation boundary for learning, classification and connection tests. */
-export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string; minimumOutputTokens?: number } = {}) {
+export async function complete(config: UserRuntimeConfig, request: Request, payload: Record<string, unknown>, options: { totalMs?: number; idleMs?: number; url?: string; minimumOutputTokens?: number; verifyContext?: () => Promise<void> } = {}) {
   if (request.signal.aborted) throw new AssistantUpstreamError("request_aborted", "请求已取消。", 499, false);
   const outputCap = Number(payload.max_tokens ?? payload.max_completion_tokens);
   const prompt = JSON.stringify(payload.messages);
   const reservation = await reserveTokens(config.userKey, config.dailyTokenBudget, prompt, outputCap, Date.now(), options.minimumOutputTokens);
+  try {
+    // Bind the dispatched credential/model to the settings row actually loaded,
+    // including changes while context or the budget reservation was loading.
+    await verifyRuntimeConfig(config);
+    await options.verifyContext?.();
+  } catch (error) {
+    await releaseUnusedReservation(reservation);
+    throw error;
+  }
   const body = { ...payload };
   delete body.max_tokens;
   delete body.max_completion_tokens;
@@ -108,6 +117,7 @@ type RuntimeBindings = {
 
 export type UserRuntimeConfig = {
   userKey: string;
+  writeToken: string;
   provider: AiProvider;
   baseUrl: string;
   model: string;
@@ -250,6 +260,7 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
   }
   return {
     userKey,
+    writeToken: row.writeToken,
     provider: row.provider,
     baseUrl,
     model,
@@ -259,6 +270,22 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
     dailyTokenBudget: preferences?.dailyTokenBudget || DEFAULT_TOKEN_BUDGET,
     maxOutputTokens: preferences?.maxOutputTokens ?? null,
   };
+}
+
+async function verifyRuntimeConfig(config: UserRuntimeConfig) {
+  let current: { write_token: string } | null;
+  try {
+    const db = bindings().DB;
+    if (!db) throw new Error("Configuration store unavailable");
+    current = await db.prepare("SELECT write_token FROM ai_configs WHERE user_key = ?")
+      .bind(config.userKey).first<{ write_token: string }>();
+  } catch {
+    throw new AiRuntimeConfigError("configuration_unavailable", "暂时无法验证 AI 配置，请稍后重试。");
+  }
+  // Lazy master-key rotation only changes ciphertext, not this settings token.
+  if (!current || current.write_token !== config.writeToken) {
+    throw new AssistantInputError("learning_context_changed", "AI 设置已更新或移除，请重新载入后再试。", 409);
+  }
 }
 
 let releaseIndexPromise: Promise<ReleaseIndexRow[]> | null = null;
@@ -469,12 +496,13 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
       upstreamPayload(config.model, prompt, task, config.provider, {
         maxTokens: resolveMaxOutputTokens(config.model, config.maxOutputTokens), stream: true,
         baseUrl: config.baseUrl, cacheKey: `ciji-${config.userKey.slice(0, 24)}`,
-      }));
+      }), { verifyContext: () => verifyLearningContext(config.userKey, context) });
     if (completion.finishReason === "length") {
       throw new AssistantUpstreamError("output_truncated", "回答超过了输出上限被截断。可以在设置中调高输出上限，或缩短输入后重试。", 502, false);
     }
     const maximumItems = parsed.task === "generate-practice" ? parsed.count : 8;
     const result = sanitizeModelResult(task, completion.content, evidence, maximumItems, parsed);
+    await verifyLearningContext(config.userKey, context);
     return Response.json(
       {
         ok: true, task, provider: config.provider, model: config.model, evidence, result, ...contextMetadata(context),
@@ -516,9 +544,6 @@ export async function handleChatRequest(request: Request): Promise<Response> {
       ...(config.provider === "deepseek" || usesOpenAIResponses(config.baseUrl) ? { stream_options: { include_usage: true } } : {}),
       ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
     };
-    const verifyContext = async () => {
-      await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
-    };
     let toolRows: Promise<ReleaseIndexRow[]> | undefined;
     const { result, usage, today, trace } = await runChatHarness({
       messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)), evidence,
@@ -526,9 +551,10 @@ export async function handleChatRequest(request: Request): Promise<Response> {
         sources: { article: parsed.article, files: parsed.files, quotes: parsed.quotes },
         loadLexicon: () => toolRows ??= rows.length ? Promise.resolve(rows) : releaseIndex(request),
       },
-      signal: request.signal, verifyContext,
+      signal: request.signal, verifyContext: () => verifyLearningContext(config.userKey, context),
       generate: (messages, remainingMs) => complete(runtime, request, { ...payload, messages }, {
         totalMs: remainingMs,
+        verifyContext: () => verifyLearningContext(config.userKey, context),
         minimumOutputTokens: route.effort === "medium" || route.effort === "high" ? Math.min(2048, maximum) : Math.min(256, maximum),
       }),
     });

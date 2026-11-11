@@ -1,0 +1,84 @@
+{
+  "reviewed_at": "2026-11-11T09:30:08.764376+00:00",
+  "review_type": "Independent manual working-tree diff security re-review; not a formal Codex Security scan",
+  "base_commit": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+  "result": "No new blocking security findings in the reviewed diff",
+  "findings": [],
+  "coverage": {
+    "production": [
+      "lib/assistant/server.ts",
+      "lib/assistant/usage.ts",
+      "lib/learning-memory/context.ts",
+      "lib/http.ts",
+      "lib/learning-journal/store.ts",
+      "lib/voice/server.ts",
+      "lib/voice/coach-server.ts",
+      "lib/voice/dictation-server.ts",
+      "lib/writing-topic-server.ts",
+      "worker/security.ts"
+    ],
+    "support_and_ci": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "package-lock.json",
+      "tests/backend-security.test.mjs",
+      "tests/context-fencing.test.mjs",
+      "tests/merge-ai-server.test.mjs",
+      "tests/production-dependencies.test.mjs",
+      "tests/security-hardening.test.mjs",
+      "tests/private-api-fixtures.mjs",
+      "scripts/local-worker.mjs",
+      "scripts/check-runtime-security.mjs",
+      "scripts/benchmark-workload.mjs",
+      "scripts/serve-qa.mjs"
+    ],
+    "guidance_and_metadata": [
+      "AGENTS.md",
+      "docs/DEVELOPMENT.md",
+      "docs/prompt-guidance.md",
+      "README.md",
+      "PROJECT_STATE.md",
+      "CHANGELOG.md",
+      "data/audit-summary.json"
+    ]
+  },
+  "production_scope_sha256": "1b54e1c5592240618afa3faadfe603689ad9ce2004e9b7538c72174789a7b057",
+  "package_lock_sha256": "f32eeb1916625a9ab515a5e5d2885c62df04429b359f8da1e5639b4b562f761c",
+  "confirmed": [
+    "All seven complete() paths carrying learning context verify the original snapshot after reservation before dispatch and before returning personalized output.",
+    "Runtime write_token is loaded with the actual credential settings; deletion or a later settings write fails closed. Ciphertext refresh preserves the token and does not invalidate metadata via updated_at.",
+    "Unused-reservation refund is restricted to failed local preflight; it is mutually exclusive with provider-error refunds and settlement. Ambiguous accounting failures retain reservation.",
+    "Worker rejects unused action headers and multipart POST before vinext/body decoding, including API paths; response hardening/no-store remain intact and normal JSON/HTML/RSC requests are preserved.",
+    "Journal batches remain account-scoped, ordered, deletion-filtered and bounded; the JSON reader preserves byte caps, fatal UTF-8 decoding, cancellation and timeout cleanup.",
+    "React/react-dom/RSC are consistently pinned and installed at 19.2.9; CI audits the full dependency tree and executes the production Worker security matrix. The QA harness uses disposable local D1 and stubbed outbound traffic."
+  ],
+  "dependency_check": {
+    "react": {
+      "declared": "19.2.9",
+      "installed": "19.2.9",
+      "locked_copies": 1
+    },
+    "react-dom": {
+      "declared": "19.2.9",
+      "installed": "19.2.9",
+      "locked_copies": 1
+    },
+    "react-server-dom-webpack": {
+      "declared": "19.2.9",
+      "installed": "19.2.9",
+      "locked_copies": 1
+    }
+  },
+  "checks_this_pass": {
+    "git_diff_check": "passed",
+    "manifest_lock_installed_versions": "passed",
+    "tests_run_by_reviewer": false,
+    "reason": "Main agent runs full verification; no concurrent heavy tests or external requests were started."
+  },
+  "limitations": [
+    "Formal Codex Security coordinator/helpers are unavailable; conclusions are from manual source/diff review.",
+    "Pre-dispatch metadata checks are not atomic with external dispatch and cannot recall requests already sent.",
+    "OCR and Live voice use separate existing transports; this review does not claim that complete() preflight covers them.",
+    "Generated image/report artifacts and external advisory/prompt links were not independently revalidated in this pass."
+  ]
+}

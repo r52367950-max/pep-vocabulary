@@ -1,0 +1,5 @@
+
+> pep-vocab-studio@2.19.3 test:security
+> node --import ./tests/register.mjs scripts/check-runtime-security.mjs artifacts/qa/streamline-20261111/runtime-security-final-round1.json
+
+202 runtime checks passed across 28 private API routes

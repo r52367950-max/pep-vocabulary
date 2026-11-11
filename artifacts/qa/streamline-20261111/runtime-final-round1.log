@@ -1,0 +1,240 @@
+
+> pep-vocab-studio@2.19.3 test:runtime
+> node scripts/smoke-worker.mjs
+
+{
+  "runtime": "workerd via Miniflare, local ephemeral D1",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 6569
+    },
+    {
+      "path": "/sw.js",
+      "status": 200,
+      "bytes": 6261
+    },
+    {
+      "path": "/offline-assets.json",
+      "status": 200,
+      "bytes": 2385
+    },
+    {
+      "path": "/data/v1/index.json",
+      "status": 200,
+      "bytes": 759461
+    },
+    {
+      "path": "/readings/v1/index.json",
+      "status": 200,
+      "bytes": 65173
+    },
+    {
+      "path": "/readings/v1/articles/andersen-real-princess.json",
+      "status": 200,
+      "bytes": 3501
+    },
+    {
+      "path": "/api/sync",
+      "status": 401,
+      "bytes": 99
+    },
+    {
+      "path": "/api/ai/config",
+      "status": 401,
+      "bytes": 65
+    },
+    {
+      "path": "/api/voice/status",
+      "status": 401,
+      "bytes": 107
+    },
+    {
+      "path": "/api/voice/memory",
+      "status": 401,
+      "bytes": 107
+    },
+    {
+      "path": "/api/learning-memory",
+      "status": 401,
+      "bytes": 107
+    },
+    {
+      "path": "/api/voice/session unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/session cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/close unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/close cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/speech unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/speech cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/feedback unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/feedback cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/recommend unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/recommend cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/discuss unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/discuss cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-memory cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/reading/classify cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify oversized input",
+      "status": 400
+    },
+    {
+      "path": "/api/assistant/chat unauthenticated",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/chat cross-origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/chat invalid role",
+      "status": 400
+    },
+    {
+      "path": "/api/assistant/chat oversized body",
+      "status": 413
+    },
+    {
+      "path": "PUT /api/sync",
+      "status": 405
+    },
+    {
+      "path": "/api/ai/config cross-origin",
+      "status": 403
+    },
+    {
+      "path": "durable voice deadline encrypted snapshot, confirmed close, and idempotence",
+      "status": "passed"
+    },
+    {
+      "path": "database bootstrap with existing legacy rate limit table",
+      "status": "passed",
+      "preservedRequests": 7
+    },
+    {
+      "path": "/api/ai/config identity on synthetic internal transport hostname",
+      "status": 401
+    },
+    {
+      "path": "/api/sync forged identity on untrusted hostname",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config forged identity on untrusted hostname",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory persists, isolates accounts, rejects stale edits, and clears without paid calls",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-memory shares legacy data, preserves provenance, isolates accounts, pauses and rejects temporary writes",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-journal atomic idempotency, independent activity revision, privacy deletion and no resurrection",
+      "status": "passed"
+    },
+    {
+      "path": "/api/learning-journal D1 quota trigger rolls back allocation and maps 409; missing day deletion allocates nothing",
+      "status": "passed"
+    },
+    {
+      "path": "/api/voice/status authenticated without key",
+      "status": 200
+    },
+    {
+      "path": "/api/voice/status compatible provider remains unavailable",
+      "status": 200
+    },
+    {
+      "path": "/api/voice/status official configuration ready without paid calls",
+      "status": 200
+    },
+    {
+      "path": "/api/ai/config authenticated save",
+      "status": 200
+    },
+    {
+      "path": "/api/ai/config legacy key refuses blank save and preserves original row",
+      "status": "passed"
+    },
+    {
+      "path": "/api/ai/config owner key reentry restores scoped credential",
+      "status": "passed"
+    },
+    {
+      "path": "/api/sync concurrent first upload",
+      "statuses": [
+        200,
+        409
+      ]
+    },
+    {
+      "path": "/api/sync metadata-only read",
+      "status": 200
+    },
+    {
+      "path": "database bootstrap replay preserves snapshots and encrypted configuration",
+      "status": "passed"
+    }
+  ]
+}

@@ -15,10 +15,10 @@ function fromRow(row: EventRow): JournalEvent { return { eventId: row.event_id, 
 export async function journalDays(key: string, limit = 30): Promise<JournalDay[]> {
   const db = memoryDatabase();
   const rows = await db.prepare(`SELECT d.*, (SELECT count(*) FROM learning_journal_events e WHERE e.user_key=d.user_key AND e.date=d.date AND e.deleted=0) AS event_count FROM learning_journal_days d WHERE user_key=? AND (facts_summary<>'' OR edited_summary IS NOT NULL) ORDER BY date DESC LIMIT ?`).bind(key, limit).all<{ date: string; facts_summary: string; edited_summary: string | null; updated_at: string; event_count: number }>();
-  return Promise.all(rows.results.map(async row => {
-    const events = await db.prepare("SELECT * FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0 ORDER BY occurred_at DESC,event_id DESC LIMIT 20").bind(key, row.date).all<EventRow>();
-    return { date: row.date, summary: row.edited_summary ?? row.facts_summary, factsSummary: row.facts_summary, summarySource: row.edited_summary === null ? "facts" : "edited", updatedAt: row.updated_at, eventCount: row.event_count, events: events.results.map(fromRow), eventsTruncated: row.event_count > events.results.length };
-  }));
+  if (!rows.results.length) return [];
+  // One D1 round trip for bounded per-day reads; avoid scanning entire histories.
+  const events = await db.batch<EventRow>(rows.results.map(row => db.prepare("SELECT * FROM learning_journal_events WHERE user_key=? AND date=? AND deleted=0 ORDER BY occurred_at DESC,event_id DESC LIMIT 20").bind(key, row.date)));
+  return rows.results.map((row, index) => ({ date: row.date, summary: row.edited_summary ?? row.facts_summary, factsSummary: row.facts_summary, summarySource: row.edited_summary === null ? "facts" : "edited", updatedAt: row.updated_at, eventCount: row.event_count, events: events[index].results.map(fromRow), eventsTruncated: row.event_count > events[index].results.length }));
 }
 function ensureSettings(key: string) { return memoryDatabase().prepare("INSERT INTO learning_journal_settings (user_key) VALUES (?) ON CONFLICT(user_key) DO NOTHING").bind(key); }
 function refreshDay(key: string, date: string, token: string | null = null, deleting = false) {
@@ -103,10 +103,8 @@ export async function mutateJournal(key: string, body: Record<string, unknown>, 
 }
 export async function journalContext(key:string) {
   const days=await journalDays(key,7);
-  return Promise.all(days.map(async day=>{
-    // Read across the whole day, not only the UI's newest 20 events. Deleted
-    // activity has no references and never contributes to this bounded index.
-    const refs=await memoryDatabase().prepare(`SELECT refs.value AS ref_id FROM learning_journal_events e, json_each(e.ref_ids) refs WHERE e.user_key=? AND e.date=? AND e.deleted=0 GROUP BY refs.value ORDER BY MAX(e.occurred_at) DESC,refs.value LIMIT 30`).bind(key,day.date).all<{ref_id:string}>();
-    return {date:day.date,summary:day.summary.slice(0,1200),source:day.summarySource==="edited"?"user_edited_daily_summary":"recorded_learning_activities",eventCount:day.eventCount,sourceEventIds:day.events.slice(0,8).map(e=>e.eventId),refIds:refs.results.map(ref=>ref.ref_id)};
-  }));
+  if (!days.length) return [];
+  // References include the whole day, exclude deletions, and stay capped at 30.
+  const refs=await memoryDatabase().batch<{ref_id:string}>(days.map(day=>memoryDatabase().prepare(`SELECT refs.value AS ref_id FROM learning_journal_events e, json_each(e.ref_ids) refs WHERE e.user_key=? AND e.date=? AND e.deleted=0 GROUP BY refs.value ORDER BY MAX(e.occurred_at) DESC,refs.value LIMIT 30`).bind(key,day.date)));
+  return days.map((day,index)=>({date:day.date,summary:day.summary.slice(0,1200),source:day.summarySource==="edited"?"user_edited_daily_summary":"recorded_learning_activities",eventCount:day.eventCount,sourceEventIds:day.events.slice(0,8).map(e=>e.eventId),refIds:refs[index].results.map(ref=>ref.ref_id)}));
 }

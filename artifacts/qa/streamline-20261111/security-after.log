@@ -1,0 +1,29 @@
+✔ slow request bodies time out even if their producer never completes cancellation (9.884889ms)
+✔ aborted requests and malformed UTF-8 cannot become accepted backup data (1.760342ms)
+✔ fragmented Unicode JSON stays bounded and abort after a partial body releases the reader (50.532259ms)
+✔ provider errors and oversized declared bodies release their streams without exposing contents (1.3289ms)
+✔ provider body timeout and byte limits cannot be blocked by a stalled cancel promise (4.95929ms)
+✔ version 2 credentials authenticate the account, provider and destination together (7.270867ms)
+✔ sync rejects an identity changed after the client read its revision (9.891979ms)
+✔ legacy AI settings retain their row until owner key reentry and public responses never include the secret (10.650698ms)
+✔ invalid imported metrics, calendar dates and undo links are rejected before replacing local data (22.006841ms)
+✔ a forged undo cannot remove a card without the matching committed review event (1.828796ms)
+✔ offline installation rejects missing assets, cache quota failures and non-cacheable shells (4.232101ms)
+✔ a complete offline installation retains its executable shell and declared fonts (1.07156ms)
+✔ offline preparation only confirms success when every detail chunk is saved (2.38043ms)
+✔ offline preparation reports failure on unavailable chunks or exhausted storage (3.874309ms)
+✔ personalized explain completion fences none changes during generation (33.195511ms)
+✔ personalized explain completion fences memory changes during generation (10.241308ms)
+✔ personalized explain completion fences journal changes during generation (9.740991ms)
+✔ personalized explain completion fences configuration changes during generation (11.18202ms)
+✔ metadata-only verification never reads note/event content and permits new activity (3.477389ms)
+✔ memory/config changes while journal content is loading cannot label stale content as current (2.554904ms)
+✔ batched history retains ordering, truncation, deleted exclusions, old references and owner isolation (59.026625ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1551.935712
