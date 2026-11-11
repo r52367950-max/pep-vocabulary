@@ -27,7 +27,9 @@ test('published word lookup distinguishes exact, normalized and possible inflect
     const source = published.find(item => item.id === evidence.id);
     assert.equal(source.flags.formalReleaseEligible, true);
     assert.equal(source.headword, evidence.headword);
-    assert.ok(evidence.sources.every(item => source.sources.some(candidate => JSON.stringify(candidate) === JSON.stringify(item))));
+    const publicSources = source.sources.map(({ bookId, volume, unit, printedPage }) => ({ bookId, volume, unit, printedPage }));
+    assert.ok(evidence.sources.every(item => publicSources.some(candidate => JSON.stringify(candidate) === JSON.stringify(item))));
+    assert.ok(evidence.sources.every(item => !('sequence' in item)), 'UI ordering metadata stays outside the tool evidence contract');
   }
 });
 
