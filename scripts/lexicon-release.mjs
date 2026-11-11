@@ -11,7 +11,10 @@ export function lexiconIndexEntry(entry) {
     id: entry.id, headword: entry.headword, lookup: entry.lookup, tier: entry.tier, scopes: entry.scopes,
     chineseCore: entry.chineseCore, britishIpa: entry.britishIpa, americanIpa: entry.americanIpa,
     partsOfSpeech: entry.partsOfSpeech,
-    sources: entry.sources.map(({ bookId, volume, unit, printedPage }) => ({ bookId, volume, unit, printedPage })),
+    sources: entry.sources.map(({ bookId, volume, unit, printedPage, recordId }) => {
+      const sequence = Number(/:(\d+)$/.exec(recordId ?? "")?.[1]);
+      return { bookId, volume, unit, printedPage, ...(Number.isSafeInteger(sequence) && sequence > 0 ? { sequence } : {}) };
+    }),
     flags: entry.flags,
   };
 }

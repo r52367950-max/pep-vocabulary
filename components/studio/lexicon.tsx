@@ -9,12 +9,14 @@ import {
   Download,
   Search,
   SlidersHorizontal,
+  Shuffle,
   X,
 } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import { lexiconQueryMatcher, type LexiconIndexEntry } from "@/lib/lexicon";
 import { BOOKS, selectEntries, type StudyMode } from "@/lib/study";
 import { delimitedCell } from "@/lib/export";
+import { orderWords, shuffleWords, type WordOrder } from "@/lib/word-order";
 import { StudioSymbol } from "./symbol";
 import { CoursePicker, Empty, sourceLabel } from "./shared";
 import { ActionMenu } from "./action-menu";
@@ -42,6 +44,8 @@ export default function Lexicon({
     initialQuery ? "all" : "book",
   );
   const [status, setStatus] = useState("all");
+  const [order, setOrder] = useState<WordOrder>("textbook");
+  const [randomIds, setRandomIds] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -58,7 +62,13 @@ export default function Lexicon({
     [data.index, scope, bookId, unit],
   );
   // Bookmark/review updates affect status only, not the matched text.
-  const searched = useMemo(() => scoped.filter(lexiconQueryMatcher(search)), [scoped, search]);
+  const ordered = useMemo(() => {
+    if (order !== "random") return orderWords(scoped, order, scope === "book" ? { bookId, unit } : {});
+    const ranks = new Map(randomIds.map((id, index) => [id, index]));
+    return [...scoped].sort((a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0));
+  }, [scoped, order, scope, bookId, unit, randomIds]);
+  const reshuffle = () => { setRandomIds(shuffleWords(data.index.map(entry => entry.id))); setPage(0); };
+  const searched = useMemo(() => ordered.filter(lexiconQueryMatcher(search)), [ordered, search]);
   const rows = useMemo(() => {
     if (status === "all") return searched;
     return searched.filter((entry) => {
@@ -207,6 +217,22 @@ export default function Lexicon({
             <option value="favorite">已收藏</option>
           </select>
         </label>
+      </div>
+      <div className="word-order-toolbar">
+        <label>单词顺序
+          <select aria-label="单词顺序" value={order} onChange={event => {
+            const next = event.target.value as WordOrder;
+            setOrder(next); setPage(0);
+            if (next === "random") reshuffle();
+          }}>
+            <option value="textbook">课本词表顺序</option>
+            <option value="az">字母 A → Z</option>
+            <option value="za">字母 Z → A</option>
+            <option value="random">随机打乱</option>
+          </select>
+        </label>
+        {order === "random" && <button className="text-button" onClick={reshuffle}><Shuffle size={16} aria-hidden="true" />再打乱</button>}
+        <span>听写默认打乱顺序</span>
       </div>
       <div className="word-list-meta">
         <span role="status" aria-live="polite">

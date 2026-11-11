@@ -9,6 +9,8 @@ export type Scope =
   | "common-supplement";
 
 export type SourcePosition = {
+  /** Original row number in this book's word list. */
+  sequence?: number;
   bookId: string;
   volume: string;
   unit: string;
