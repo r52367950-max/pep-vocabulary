@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-11-11T09:39:21.723306+00:00",
+  "review_type": "manual merge/diff review and local targeted tests; not a formal Codex Security scan",
+  "github_checkpoint": "f1a4bf6",
+  "sites_baseline": "a9bb92642780cee06bb1d990a9a807536a6904de",
+  "result": "server conflict resolved; no new blocking findings in reviewed assistant changes",
+  "edited_files": [
+    "lib/assistant/server.ts",
+    "tests/assistant-chat-stream.test.mjs"
+  ],
+  "reviewed_source_sha256": {
+    "lib/assistant/server.ts": "4b60df56431635fc066f2848d50d135f918eed98ad917fc83a2c6f195d7a0dae",
+    "lib/assistant/core.ts": "3a5a6cc0aad0e2e3ea1cca6cce0326ea0f35d88ea00e35b9e176cfa3880b5bbb",
+    "lib/assistant/chat-core.ts": "3028a0529104076bc1b9d3ed9154d8c57224bc3e790a6666815da0cb0d3eec17",
+    "lib/assistant/chat-contract.ts": "b58aba9d05ebb5812b0e7e2326687f8563b67048729154b3584a5afd607259be",
+    "lib/assistant/harness.ts": "9b73e213012472c9473e5e532f63ac553ef8d5537fa31e35c99a6ce3f7d4d5d3",
+    "lib/assistant/toolbox.ts": "c6379d5aa5e978050605c48d3f1be1980bd44182507ec480c4e2c14c12c04da7",
+    "tests/assistant-chat-stream.test.mjs": "e03046282ca01beee610b1d4aea052ea03d4022c3c392beb76511b160aeaaf9d"
+  },
+  "retained": [
+    "complete() configuration-token and optional original-context preflight with unused-reservation refund",
+    "Sites SSE progress, final-result validation, error envelope, cancellation propagation and heartbeat cleanup",
+    "Only final provider summary_text is exposed; raw/encrypted reasoning and partial summary deltas remain excluded",
+    "Evidence/provenance checks and bounded toolbox ranking/count behavior"
+  ],
+  "tests": {
+    "sse_cases_passed": 15,
+    "new_sse_revocation_cases": 8,
+    "related_test_files_passed": 7,
+    "typecheck": "passed",
+    "diff_check": "passed"
+  },
+  "sse_regressions": "Rounds 1 and 2 each cover memory, journal privacy, configuration changes and configuration deletion after reservation; no rejected answer/summary or private note emitted, no revoked provider dispatch, earlier settled usage retained. Existing successful JSON/SSE, tool progress, summary validation and cancellation cases passed.",
+  "limitations": [
+    "No paid or external provider calls and no heavy load in this subtask.",
+    "Metadata checks and dispatch are not atomic; already dispatched upstream calls cannot be recalled.",
+    "Full-suite/build/production and remaining Sites changes are handled by the parent task."
+  ]
+}

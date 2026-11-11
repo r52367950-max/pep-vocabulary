@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "status": "blocked_environment",
+  "generatedAt": "2026-11-11T09:52:58.009Z",
+  "runs": [],
+  "reason": "The managed preview failed to start with EPERM while binding 127.0.0.1. Sites managed preview instructions prohibit substituting a server or changing network permissions to bypass that failure. The parent directed this check to remain unrun.",
+  "evidenceOrigin": "Managed-preview failure and required handling reported by the root agent; this subagent did not start a browser or alternate preview.",
+  "script": "artifacts/qa/prepublish-20261111/mixed-ui-load.mjs",
+  "runCommand": "CIJI_QA_URL=<managed-preview-url> CIJI_QA_BUILD_LABEL=<build-label> CIJI_QA_REVISION=<commit> node artifacts/qa/prepublish-20261111/mixed-ui-load.mjs",
+  "fixture": {
+    "conversations": 50,
+    "messages": 2000,
+    "activeMessages": 120,
+    "userMessages": 1000,
+    "assistantMessages": 1000,
+    "lexiconEntries": 4681,
+    "api": "synthetic account/journal and phased SSE answer; other API requests blocked",
+    "devices": [
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900,
+        "cpuThrottle": 1,
+        "rounds": 3
+      },
+      {
+        "name": "phone-cpu4",
+        "width": 390,
+        "height": 844,
+        "cpuThrottle": 4,
+        "rounds": 3
+      }
+    ]
+  },
+  "plannedCoverage": [
+    "Actual preview app and released vocabulary",
+    "Open 120-message mixed conversation from 50 conversations and 2000 messages",
+    "List/search/typing before and during a phased SSE answer",
+    "Safe terminal payload before grapheme reveal",
+    "Local persistence of complete answer with 50 conversations and 2000 total messages retained",
+    "Long tasks, browser timing counters, heap, scroll overflow and page exceptions"
+  ],
+  "verification": "Script prepared and syntax checked only. No whole-app result, whole-app latency or whole-app security pass is claimed.",
+  "componentEvidence": {
+    "artifact": "artifacts/qa/prepublish-20261111/stream-render-results.json",
+    "scope": "Previously completed controlled React component fixture only; does not substitute for this unrun whole-app load test."
+  }
+}

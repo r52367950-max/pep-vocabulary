@@ -1,10 +1,10 @@
-# 词迹 2.19.3
+# 词迹 2.19.4
 
-精简项目指引，合并学习日志读取，减少助手复核开销，并检查隐私变化与配置撤销。React/RSC 更新至 19.2.9 安全补丁，收紧未使用的框架入口，CI 纳入构建依赖审计；兼容现有数据，无新增数据库迁移。详见 [更新记录](CHANGELOG.md)。
+精简项目指引，合并学习日志读取，减少助手复核开销，并检查隐私变化与配置撤销。React/RSC 更新至 19.2.9 安全补丁，收紧未使用的框架入口，CI 纳入构建依赖审计；保留已上线的聊天反馈与 0010 日志隐私迁移，兼容现有备份格式。详见 [更新记录](CHANGELOG.md)。
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
-[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+[打开应用](https://pep-vocab.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
 
 ## 功能
 

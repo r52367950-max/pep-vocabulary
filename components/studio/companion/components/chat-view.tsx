@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { CircleUserRound, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
+import { ArrowDown, CircleUserRound, Minimize2, PanelLeft, Search, SquarePen, Undo2 } from "lucide-react";
 import { hasDraftContent, useStore } from "../store";
 import { conversationGroups, createConversationListSelector, type ConversationListRow } from "../conversation-list";
 import { Composer } from "./composer";
@@ -27,6 +27,8 @@ export function ChatView() {
   const closePanel = useCallback(() => { setPanelOpen(false); toggle.current?.focus({ preventScroll: true }); }, []);
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+  const scrollConversation = useRef(active.id);
+  const [awayFromLatest, setAwayFromLatest] = useState<string | null>(null);
   const empty = active.messages.length === 0;
   const returnTo = state.conversations.find((conversation) => conversation.id === state.returnToId);
 
@@ -40,9 +42,18 @@ export function ChatView() {
   const revealed = lastMessage?.role === "assistant" ? lastMessage.revealed + lastMessage.blocks.length : 0;
   useLayoutEffect(() => {
     const element = scroller.current;
+    if (scrollConversation.current !== active.id) {
+      scrollConversation.current = active.id;
+      stick.current = true;
+    }
     if (element && stick.current) element.scrollTop = element.scrollHeight;
   }, [active.id, active.messages.length, revealed]);
-  useEffect(() => { stick.current = true; }, [active.id]);
+  const latest = () => {
+    stick.current = true;
+    setAwayFromLatest(null);
+    const element = scroller.current;
+    if (element) element.scrollTo({ top: element.scrollHeight, behavior: "instant" });
+  };
 
   // A suggestion sends at once; the cursor follows only when it was chosen from the keyboard.
   const send = (text: string, fromKeyboard: boolean) => withTransition(() => {
@@ -90,7 +101,8 @@ export function ChatView() {
             </header>
             <div className="chat-scroll" ref={scroller} onScroll={(event) => {
               const element = event.currentTarget;
-              stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+              stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+              setAwayFromLatest(stick.current ? null : active.id);
             }}>
               {empty ? (
                 <div className="hero">
@@ -111,6 +123,7 @@ export function ChatView() {
             </div>
             {!empty && (
               <div className="chat-dock">
+                {awayFromLatest === active.id && <button type="button" className="jump-latest" onClick={latest}><ArrowDown size={16} aria-hidden="true" /><span>回到最新</span></button>}
                 <Composer conversationId={active.id} variant="dock" />
               </div>
             )}

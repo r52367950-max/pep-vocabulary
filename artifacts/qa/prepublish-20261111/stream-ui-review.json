@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-11-11T09:43:56.304085+00:00",
+  "reviewer": "review_stream_ui",
+  "status": "passed_after_fix",
+  "scope": {
+    "baseline": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+    "sitesRevision": "a9bb92642780cee06bb1d990a9a807536a6904de",
+    "compared": "git diff f10737e refs/remotes/sites/main",
+    "restriction": "UI/stream/history/privacy-client review only; no real account, model, external endpoint, deployment or load test.",
+    "sourceFiles": [
+      "components/console-settings.tsx",
+      "components/studio/companion/chat-client.ts",
+      "components/studio/companion/components/chat-view.tsx",
+      "components/studio/companion/components/messages.tsx",
+      "components/studio/companion/components/mini-panel.tsx",
+      "components/studio/companion/persistence.ts",
+      "components/studio/companion/reveal.ts",
+      "components/studio/companion/store.tsx",
+      "components/studio/companion/styles.css",
+      "components/studio/companion/types.ts",
+      "components/studio/reading.tsx",
+      "components/studio/voice-workspace.tsx",
+      "components/studio/voice/dictation-panel.tsx",
+      "components/studio/voice/learning-memory.tsx",
+      "components/studio/voice/practice-discussion.tsx",
+      "lib/companion-preferences.ts",
+      "lib/learning-journal-client.ts"
+    ],
+    "supportingFiles": [
+      "components/studio/ai/ai-provenance.tsx",
+      "lib/assistant-provenance.ts",
+      "hooks/use-vocabulary.ts"
+    ],
+    "reviewedTests": [
+      "tests/companion-provenance.test.mjs",
+      "tests/companion-state.test.mjs",
+      "tests/companion-streaming.test.mjs",
+      "artifacts/qa/chat-experience-20261110/browser-check.mjs"
+    ],
+    "baselineIntegrity": "Browser render comparison reads the fixed Sites commit with git --no-replace-objects show."
+  },
+  "findings": [
+    {
+      "id": "UI-PERF-01",
+      "severity": "medium",
+      "status": "fixed",
+      "title": "Every streamed prefix invalidated all historical assistant replies through context",
+      "location": "components/studio/companion/components/messages.tsx",
+      "trigger": "Open a conversation with historical assistant replies while a new answer is revealed. AssistantReply subscribed directly to the entire store, whose value changes on each prefix.",
+      "impact": "Context bypassed memoized MessageRow and reparsed every historical RichText block and provenance list up to 50 times/second.",
+      "reproduction": "node artifacts/qa/prepublish-20261111/stream-render-check.mjs",
+      "fix": "MessageList reads words once and passes its stable map through memoized MessageRow to AssistantReply. Vocabulary replacement still invalidates provenance.",
+      "evidence": {
+        "fixture": "Actual production React DOM, MessageList, RichText and AiProvenance; 120 messages, including 59 historical assistant replies and one active reply; 20 prefix updates spaced 20 ms apart; three independent rounds per variant.",
+        "historyRichTextCallsBefore": [
+          1180,
+          1180,
+          1180
+        ],
+        "historyRichTextCallsAfter": [
+          0,
+          0,
+          0
+        ],
+        "activeRichTextCallsAfter": [
+          20,
+          20,
+          20
+        ],
+        "vocabularyReplacementHistoricalRerenders": 59,
+        "staleProvenanceEntriesAfterReplacement": 0,
+        "synchronousCommitTotalMsBefore": [
+          73.00000000372529,
+          70.99999999627471,
+          48.5
+        ],
+        "synchronousCommitTotalMsAfter": [
+          14.799999998882413,
+          15.299999998882413,
+          16.59999999590218
+        ],
+        "medianSynchronousCommitTotalMsBefore": 70.99999999627471,
+        "medianSynchronousCommitTotalMsAfter": 15.299999998882413,
+        "measuredScope": "Controlled component fixture; timings exclude app startup, layout/CSS realism, persistence, network and provider latency. Not INP or a whole-app benchmark.",
+        "artifact": "artifacts/qa/prepublish-20261111/stream-render-results.json"
+      }
+    }
+  ],
+  "securityReview": [
+    {
+      "area": "Account and late-result isolation",
+      "result": "No new blocker found",
+      "evidence": "requestCompanion checks account scope, context revision/version, epoch and local practice generation before/after reads and final context refresh; provider also fences progress/reveal by current scope, generation and request message ID."
+    },
+    {
+      "area": "Temporary mode and deletion",
+      "result": "No new blocker found",
+      "evidence": "Temporary conversations are excluded from serialization; global temporary mode resets identity and cancels pending work. Conversation deletion and identity reset abort readers/reveal and remove request IDs, preventing late resurrection."
+    },
+    {
+      "area": "Cancellation and resource cleanup",
+      "result": "No new blocker found",
+      "evidence": "Abort cancels a stalled stream reader. Parser limits SSE bytes to 256000 and non-comment frames to 64; validates phase allowlist. Reader lock, listeners and request timeout are released in finally. Reveal is grapheme-safe, capped at five seconds and respects reduced motion."
+    },
+    {
+      "area": "History checkpoints and untrusted stored data",
+      "result": "No new blocker found",
+      "evidence": "Checkpoint reads current state inside the local write lock and checks scope/sequence/generation. CAS mismatch synchronizes instead of overwriting. Stored history is projected to 50 conversations, 120 messages each and 1000000 characters; raw attachments, drafts, hidden suffixes and transient progress are omitted."
+    },
+    {
+      "area": "Text rendering and provenance",
+      "result": "No new blocker found",
+      "evidence": "Answer and summary use React text nodes, without HTML injection. Summary is bounded to 6000 characters and answer to 30000. Saved provenance is projected to unverified/model-generated metadata; visible entry locations come from the current formally released vocabulary."
+    },
+    {
+      "area": "Activity-log privacy",
+      "result": "No new blocker found in client scope",
+      "evidence": "Reading skips personal- article logging. Voice, discussion and dictation callers send generic titles and counts; recordLearningActivity rejects private reading and projects facts before queuing. Account/temporary generation fences remain. Server enforcement and migrations belong to the separate review."
+    },
+    {
+      "area": "Scroll and accessibility",
+      "result": "No new blocker found",
+      "evidence": "Full and mini views preserve upward scrolling, expose a jump-to-latest control and reset stickiness on conversation change. Reduced-motion and forced-color fallbacks remain; no HTML interpretation was added."
+    }
+  ],
+  "verification": [
+    {
+      "command": "node --import ./tests/register.mjs --test --test-concurrency=2 tests/companion-*.test.mjs",
+      "result": "passed",
+      "tests": 35,
+      "failed": 0,
+      "skipped": 0,
+      "artifact": "artifacts/qa/prepublish-20261111/companion-ui-tests.log",
+      "executionNote": "Confirmed with normal child-process permissions. The sandbox-only attempt reported seven file wrappers and was not used as case-count evidence."
+    },
+    {
+      "command": "node artifacts/qa/prepublish-20261111/stream-render-check.mjs",
+      "result": "passed",
+      "variants": 2,
+      "roundsPerVariant": 3,
+      "assertions": "59 historical reply skips during every prefix; active text updated; new vocabulary invalidates all historical source locations; no browser exceptions; 120 message fixture preserved."
+    },
+    {
+      "command": "git diff --check -- components/studio/companion/components/messages.tsx artifacts/qa/prepublish-20261111/stream-render-check.mjs",
+      "result": "passed"
+    }
+  ],
+  "unresolvedBlockers": [],
+  "limits": [
+    "This scoped review does not certify backend authorization, model-provider behavior, migrations, packaged worker behavior or deployment.",
+    "The existing full-app browser-performance fixture seeds only user messages; include historical assistant replies and a phased answer in final app-level performance coverage.",
+    "Whole-app privacy races, mobile layout and full security/performance suites are handled by the parent final verification; this pass ran the focused actual-component regression and companion unit tests.",
+    "The final whole-app mixed-history load test is blocked by managed-preview startup EPERM; mixed-ui-load.json records blocked_environment with no runs. Component Chromium results do not replace whole-app verification."
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "status": "blocked_environment",
+  "results": [],
+  "attempt": "sites-preview start /workspace/pep-vocabulary",
+  "observedAtUtc": "2026-11-11T09:51:02Z",
+  "reason": "Managed preview exited during startup: listen EPERM: operation not permitted 127.0.0.1",
+  "scope": "No final merged full-page browser checks were executed. Prior reports retain their original versions and do not substitute for final UI evidence.",
+  "policyReference": "Sites managed preview and troubleshooting: no alternate preview server or network-permission bypass; continue appropriate checks and publishing.",
+  "availableEvidence": "Actual Chromium / production React DOM controlled component regression: stream-render-results.json"
+}

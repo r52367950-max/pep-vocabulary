@@ -1,0 +1,23 @@
+✔ Responses summaries are explicitly requested, bounded and distinct from private reasoning (9.856213ms)
+✔ stream returns live bounded status before a provider answer, then only the validated final envelope (36.740404ms)
+✔ real tool phases carry no material and a rejected summary cannot contaminate a valid answer (13.687211ms)
+✔ streamed errors never release rejected text and input errors retain HTTP semantics (7.696769ms)
+✔ privacy change during generation suppresses answer and exposed summary (6.772813ms)
+✔ SSE round 1 rejects memory changes after reservation before provider dispatch (8.969553ms)
+✔ SSE round 1 rejects journal changes after reservation before provider dispatch (5.656076ms)
+✔ SSE round 1 rejects configuration changes after reservation before provider dispatch (9.73552ms)
+✔ SSE round 1 rejects delete changes after reservation before provider dispatch (16.980572ms)
+✔ SSE round 2 rejects memory changes after reservation before provider dispatch (10.411211ms)
+✔ SSE round 2 rejects journal changes after reservation before provider dispatch (9.432022ms)
+✔ SSE round 2 rejects configuration changes after reservation before provider dispatch (12.165361ms)
+✔ SSE round 2 rejects delete changes after reservation before provider dispatch (10.758096ms)
+✔ cancelling the response stream aborts a running paid request without producing a late answer (13.187936ms)
+✔ legacy JSON consumers receive summary while DeepSeek keeps its current thinking mode (17.243746ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.474235

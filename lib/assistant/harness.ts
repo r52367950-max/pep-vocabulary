@@ -1,4 +1,5 @@
-import { AssistantUpstreamError, type Completion, type CompletionUsage, type LexiconEvidence } from "./core";
+import { assertEvidenceClaims, AssistantUpstreamError, type Completion, type CompletionUsage, type LexiconEvidence } from "./core";
+import type { ChatProgress } from "./chat-contract";
 import { sanitizeChatResult } from "./chat-core";
 import { executeTool, TOOL_DEFINITIONS, toolSourceManifest, type ToolCall, type ToolContext, type ToolResult } from "./toolbox";
 
@@ -52,10 +53,12 @@ type TraceItem = { name: string; ok: boolean; cached: boolean };
 export async function runChatHarness(options: {
   messages: Message[];
   evidence: LexiconEvidence[];
+  userText?: string;
   context: ToolContext;
   signal: AbortSignal;
   generate: Generate;
   verifyContext: () => Promise<void>;
+  onProgress?: (progress: ChatProgress) => void;
   now?: () => number;
 }) {
   const now = options.now ?? Date.now;
@@ -95,6 +98,7 @@ export async function runChatHarness(options: {
   for (let round = 0; round < HARNESS_LIMITS.modelCalls; round++) {
     check();
     if (round > 0) await bounded(options.verifyContext);
+    options.onProgress?.({ phase: "thinking" });
     const { completion, today } = await options.generate(messages, check());
     for (const key of ["prompt", "completion", "cacheHit", "total"] as const) usage[key] += completion.usage[key];
     usage.estimated ||= completion.usage.estimated;
@@ -102,11 +106,25 @@ export async function runChatHarness(options: {
     if (completion.finishReason === "length") throw new AssistantUpstreamError("output_truncated", "回答达到输出上限，请缩短问题或调整输出设置。", 502, false);
     const calls = toolCalls(completion.content);
     if (!calls) {
-      const result = sanitizeChatResult(completion.content, [...evidence.values()]);
+      options.onProgress?.({ phase: "verifying" });
+      const sources = options.context.sources;
+      const materials = [...(sources.article ? [sources.article.text] : []), ...sources.files.map(item => item.text), ...sources.quotes.map(item => item.text)];
+      const result = sanitizeChatResult(completion.content, [...evidence.values()], materials, options.userText);
+      let reasoningSummary: string | undefined;
+      if (completion.reasoningSummary) {
+        try {
+          assertEvidenceClaims({ text: completion.reasoningSummary }, [...evidence.values()], [options.userText ?? "", ...materials].join("\n"));
+          reasoningSummary = completion.reasoningSummary;
+        } catch (error) {
+          // A rejected optional summary never escapes the prose boundary, and
+          // does not discard an otherwise valid final answer.
+          if (!(error instanceof AssistantUpstreamError) || error.code !== "evidence_violation") throw error;
+        }
+      }
       // Another tab/device can change memory or AI settings during generation.
       await bounded(options.verifyContext);
       check();
-      return { result, usage, today, trace: { modelCalls: round + 1, tools: trace } };
+      return { result, usage, today, trace: { modelCalls: round + 1, tools: trace }, ...(reasoningSummary ? { reasoningSummary } : {}) };
     }
     if (round === HARNESS_LIMITS.modelCalls - 1 || trace.length + calls.length > HARNESS_LIMITS.tools) {
       throw new AssistantUpstreamError("tool_limit_reached", "这次任务需要更多工具步骤，请缩小问题后重试。", 502, false);
@@ -117,6 +135,7 @@ export async function runChatHarness(options: {
       usedIds.add(call.id);
     }
     await bounded(options.verifyContext);
+    options.onProgress?.({ phase: "tool" });
     const results = [];
     for (const call of calls) {
       check();

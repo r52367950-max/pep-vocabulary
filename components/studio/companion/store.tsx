@@ -10,6 +10,7 @@ import { buildLearnerProfile } from "@/lib/learner-profile";
 import { headwordLookup } from "@/lib/mistakes";
 import type { ChatRequest, ChatActivityAction } from "@/lib/assistant/chat-contract";
 import { requestCompanion } from "./chat-client";
+import { revealReply } from "./reveal";
 import { requestHistory } from "./history";
 import { classifyTask, buildRequest, resolveRoute, routeTable, type Fallback, type SelectionAction } from "./routing";
 import { quoteContext, type Quote } from "./selection";
@@ -117,6 +118,7 @@ export type CompanionProviderProps = {
   selectionRequest?: CompanionSelectionRequest | null; onSelectionConsumed?: (id: string) => void;
 };
 type Store = {
+  words: Vocabulary["byId"];
   state: State; active: Conversation; draft: Draft; currentArticle: ArticleSelectionSource | null;
   dispatch: (action: StoreAction) => void; send: (id: string, options?: SendOptions) => SendOutcome;
   stop: (id: string) => void; setView: (view: View) => void; openChat: (id?: string) => void;
@@ -144,6 +146,7 @@ export function CompanionProvider(props: CompanionProviderProps) {
   const fileReads = useRef(new Map<string, { controller: AbortController; conversationId: string }>());
   const identity = useRef<{ scope: string | null; generation: PracticeGeneration; ready: boolean; sequence: number }>({ scope: null, generation: localPracticeGeneration(), ready: false, sequence: 0 });
   const historySnapshot = useRef<{ raw: string | null; ids: Set<string> }>({ raw: null, ids: new Set() });
+  const historyWriteDueAt = useRef<number | null>(null);
   const parked = useRef<{ state: State; scope: string; generation: PracticeGeneration; snapshot: { raw: string | null; ids: Set<string> } } | null>(null);
   const ownedAttachments = useRef(new Map<string, { attachment: Attachment; conversationId: string }>());
   const preferences = useSyncExternalStore(companionPreferencesStore.subscribe, companionPreferencesStore.get, companionPreferencesStore.getServerSnapshot);
@@ -272,18 +275,24 @@ export function CompanionProvider(props: CompanionProviderProps) {
   }, [synchronizeHistory]);
   useEffect(() => {
     const scope = identity.current.scope, generation = identity.current.generation, sequence = identity.current.sequence;
-    const expected = historySnapshot.current.raw, stateGeneration = state.generation;
-    if (!scope || !identity.current.ready || learningContextStore.get().temporary) return;
+    const stateGeneration = state.generation;
+    if (!scope || !identity.current.ready || learningContextStore.get().temporary) { historyWriteDueAt.current = null; return; }
+    // Advancing text keeps the first deadline, so a reload can recover the
+    // visible prefix while the answer is still appearing.
+    historyWriteDueAt.current ??= Date.now() + 250;
     const timer = setTimeout(() => {
-      const serialized = serializeConversations(state.conversations);
+      historyWriteDueAt.current = null;
       void writeLocalPracticeData(generation, (storage) => {
         if (identity.current.scope !== scope || identity.current.sequence !== sequence || stateRef.current.generation !== stateGeneration || learningContextStore.get().memory?.accountScope !== scope) return;
+        // Capture inside the write lock: another checkpoint may have completed
+        // while this one waited, or a newer prefix may already be visible.
+        const expected = historySnapshot.current.raw, serialized = serializeConversations(stateRef.current.conversations);
         const actual = storage.getItem(COMPANION_HISTORY_PREFIX + scope);
         if (actual !== expected) { synchronizeHistory(actual); return; }
         storage.setItem(COMPANION_HISTORY_PREFIX + scope, serialized);
         historySnapshot.current = { raw: serialized, ids: new Set(parseStoredConversations(serialized).map((c) => c.id)) };
       }).catch(() => undefined);
-    }, 250);
+    }, Math.max(0, historyWriteDueAt.current - Date.now()));
     return () => clearTimeout(timer);
   }, [state.conversations, state.connected, state.generation, synchronizeHistory]);
 
@@ -324,20 +333,43 @@ export function CompanionProvider(props: CompanionProviderProps) {
     const controller = new AbortController(), now = Date.now(), messageId = newId("a"), generation = current.generation, scope = identity.current.scope;
     requests.current.set(conversationId, { controller, messageId });
     const user: Message = { id: newId("u"), role: "user", at: now, text: original, quotes, attachments, via: options.via ?? (options.action ? "action" : "text"), action: options.action };
-    const reply: AssistantMessage = { id: messageId, role: "assistant", at: now, status: "streaming", blocks: [], revealed: 0, request: metadata, routeReason: "" };
+    const reply: AssistantMessage = { id: messageId, role: "assistant", at: now, status: "streaming", blocks: [], revealed: 0, request: metadata, routeReason: "", progress: { phase: "thinking" } };
     dispatchRaw({ type: "append", id: conversationId, messages: [user, reply], title: (original || quotes[0]?.title || attachments[0]?.name || "对话").slice(0, 32) });
     dispatchRaw({ type: "notice", id: conversationId, notice: undefined });
     dispatchRaw({ type: "draft", id: conversationId, patch: (latest) => options.keepDraft ? { quotes: latest.quotes.length ? latest.quotes : quotes.slice(0, 1).map((q) => ({ ...q, carried: true })) } : { text: "", attachments: [], quotes: quotes.slice(0, 1).map((q) => ({ ...q, carried: true })) } });
-    void requestCompanion(request, controller.signal, scope).then((response) => {
-      if (controller.signal.aborted || identity.current.scope !== scope || stateRef.current.generation !== generation) return;
+    const currentReply = () => identity.current.scope === scope && stateRef.current.generation === generation
+      && practiceGenerationCurrent(identity.current.generation) && requests.current.get(conversationId)?.messageId === messageId;
+    void requestCompanion(request, controller.signal, scope, progress => {
+      if (currentReply() && !controller.signal.aborted) dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { progress } });
+    }).then(async (response) => {
+      if (!currentReply() || controller.signal.aborted) return;
+      const context = learningContextStore.get();
+      const unsubscribe = learningContextStore.subscribe(() => {
+        const next = learningContextStore.get();
+        if (next.epoch !== context.epoch || next.temporary !== context.temporary || next.memory?.accountScope !== scope) controller.abort();
+      });
+      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { progress: undefined,
+        provenance: response.result.provenance, toolSteps: response.toolSteps, reasoningSummary: response.reasoningSummary,
+        request: { ...metadata, model: response.model, reasoning: { effort: response.effort } } } });
+      try {
+        await revealReply(response.result.text, { signal: controller.signal, current: currentReply,
+          animated: stateRef.current.settings.animateReplies && stateRef.current.settings.motion !== "reduce" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+          update: prefix => dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { blocks: [{ type: "text", text: prefix }], revealed: prefix.length } }),
+        });
+      } finally { unsubscribe(); }
+      if (!currentReply() || controller.signal.aborted) return;
       const blocks: Block[] = [{ type: "text", text: response.result.text }];
       if (response.result.actions.length) blocks.push({ type: "actions", actions: activityActions(response.result.actions) });
-      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "done", blocks, toolSteps: response.toolSteps, revealed: response.result.text.length, request: { ...metadata, model: response.model, reasoning: { effort: response.effort } } } });
+      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "done", blocks, progress: undefined, revealed: response.result.text.length } });
       dispatchRaw({ type: "announce", text: "回答完成" });
     }).catch((error: unknown) => {
-      if (controller.signal.aborted || stateRef.current.generation !== generation || identity.current.scope !== scope) return;
+      if (!currentReply()) return;
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+        dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "stopped", progress: undefined } });
+        return;
+      }
       const message = error instanceof Error ? error.message : "发送失败，请重试。";
-      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "error", blocks: [{ type: "notice", tone: "warn", text: message }] } });
+      dispatchRaw({ type: "replace-reply", id: conversationId, messageId, generation, patch: { status: "error", progress: undefined, blocks: [{ type: "notice", tone: "warn", text: message }] } });
     }).finally(() => { if (requests.current.get(conversationId)?.messageId === messageId) requests.current.delete(conversationId); });
     return { ok: true, blocks: [], label: choice === "auto" ? "自动" : choice };
   }, [articleAvailable, dispatchRaw]);
@@ -345,7 +377,7 @@ export function CompanionProvider(props: CompanionProviderProps) {
     const pending = requests.current.get(id);
     if (!pending) return;
     pending.controller.abort(); requests.current.delete(id);
-    dispatchRaw({ type: "replace-reply", id, messageId: pending.messageId, generation: stateRef.current.generation, patch: { status: "stopped" } });
+    dispatchRaw({ type: "replace-reply", id, messageId: pending.messageId, generation: stateRef.current.generation, patch: { status: "stopped", progress: undefined } });
   }, [dispatchRaw]);
   const newConversation = useCallback((temporary: boolean) => {
     const previous = stateRef.current.conversations.find((c) => c.id === stateRef.current.activeId);
@@ -428,7 +460,7 @@ export function CompanionProvider(props: CompanionProviderProps) {
   const active = state.conversations.find((c) => c.id === state.activeId) ?? state.conversations[0];
   const draft = state.drafts[active.id] ?? emptyDraft(state.settings, active.temporary);
   const article = props.article ?? currentArticle.current;
-  const value = useMemo<Store>(() => ({ state, active, draft, currentArticle: article, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment }), [state, active, draft, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment, article]);
+  const value = useMemo<Store>(() => ({ words: props.data.byId, state, active, draft, currentArticle: article, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment }), [state, active, draft, dispatch, send, stop, setView, openChat, newConversation, remove, clearAll, getState, continueReply, articleAvailable, runAction, appendVoice, addFiles, removeAttachment, article, props.data.byId]);
   return <StoreContext.Provider value={value}>{props.children}</StoreContext.Provider>;
 }
 export const StoreProvider = CompanionProvider;

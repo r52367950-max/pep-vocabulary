@@ -345,7 +345,10 @@ export function responsesPayload(payload: Record<string, unknown>, maximum: numb
     stream: Boolean(payload.stream), store: false,
     ...(payload.response_format ? { text: { format: payload.response_format } } : {}),
     ...(payload.prompt_cache_key ? { prompt_cache_key: payload.prompt_cache_key } : {}),
-    ...(/^gpt-[56]/.test(String(payload.model)) ? { reasoning: { effort: ["low", "medium", "high"].includes(String(payload.reasoning_effort)) ? payload.reasoning_effort : "low" } } : {}),
+    ...(/^gpt-[56]/.test(String(payload.model)) ? { reasoning: {
+      effort: ["low", "medium", "high"].includes(String(payload.reasoning_effort)) ? payload.reasoning_effort : "low",
+      ...(payload.reasoning_summary === true ? { summary: "auto" } : {}),
+    } } : {}),
   };
 }
 
@@ -446,22 +449,48 @@ function parseJsonObject(content: string): Record<string, unknown> {
   }
 }
 
-function assertEvidenceClaims(value: unknown, evidence: LexiconEvidence[], studentText = "") {
+/** Personal-document references can survive translation without authorizing textbook pages. */
+function personalPageReferences(text: string) {
+  const kinds: Record<string, string> = {
+    diary: "diary", journal: "diary", 日记: "diary", 日记本: "diary",
+    notebook: "notebook", 笔记本: "notebook", notes: "notes", 笔记: "notes",
+    logbook: "logbook", 日志: "logbook",
+  };
+  const patterns = [
+    /\b(?:page\s+|p\.\s*)(\d+)\s+(?:of|in|from)\s+(?:(?:my|our|his|her|your|this|that|the|a|an)\s+)?(diary|journal|notebook|notes|logbook)\b/gi,
+    /\b(?:my|our|his|her|your)\s+(diary|journal|notebook|notes|logbook)\s+(?:page\s+|p\.\s*)(\d+)\b/gi,
+    /(日记本|日记|笔记本|笔记|日志)(?:的)?第?\s*(\d+)\s*页/g,
+  ];
+  return patterns.flatMap((pattern, index) => [...text.matchAll(pattern)].map(match => {
+    const number = index === 0 ? match[1] : match[2];
+    const kind = kinds[(index === 0 ? match[2] : match[1]).toLowerCase()];
+    return { key: `${kind}:${Number(number)}`, start: match.index!, end: match.index! + match[0].length };
+  }));
+}
+
+export function assertEvidenceClaims(value: unknown, evidence: LexiconEvidence[], studentText = "") {
   // This is an auxiliary prose check, not verification of a quotation. Our
   // lexicon contains entry locations, never the source spans of textbook prose.
   const textbookAttribution = /(?:教材|课本|课文|教科书)[^。；\n]{0,80}(?:原句|原文|摘录|摘自|引用|引自|写道|出自|句子是|句子为)|(?:原句|原文|摘录|摘自|引用|引自|出自)[^。；\n]{0,80}(?:教材|课本|课文|教科书)|\baccording\s+to\s+(?:the\s+)?(?:textbook|coursebook)[^.!?;\n]{0,80}["“]|\b(?:textbook|coursebook|course\s+text)[^.!?;\n]{0,80}\b(?:(?:original|quoted)\s+(?:sentence|text|passage)|(?:sentence|passage)\s+(?:is|reads)\s*[:"“]|(?:says|states|reads|quotes)\s*[:"“])|\b(?:sentence|quotation|quoted\s+text|quote|passage)\s+(?:in|from|on)\s+(?:the\s+)?(?:textbook|coursebook|course\s+text)\b[^.!?;\n]{0,80}\b(?:is|reads|says)\s*[:"“]/i;
   const allowedPages = new Set(evidence.flatMap((item) => item.sources.map((source) => source.printedPage).filter((page): page is number => typeof page === "number")));
   const student = squash(studentText);
+  const personalPages = new Set(personalPageReferences(studentText).map(reference => reference.key));
   const inspect = (node: unknown, field = "") => {
     if (typeof node === "string") {
-      if (textbookAttribution.test(node)) {
+      // Mask only explicit denials, then check all remaining prose. A disclaimer
+      // cannot authorize a second, affirmative attribution in the same answer.
+      const attributionText = node.replace(/(?:并非|并不是|不是)(?:教材|课本|课文|教科书)(?:原句|原文|摘录|引用)(?=$|[，,。；;：:！？!?\n])/g, "");
+      if (textbookAttribution.test(attributionText)) {
         throw new AssistantUpstreamError("evidence_violation", "模型把生成内容误称为教材原句。", 502, false);
       }
       const claims = [...node.matchAll(/(\d+)\s*页|\b(?:page\s+|p\.\s*)(\d+)\b/gi)];
       const studentQuotes = student ? [...node.matchAll(/"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’/g)]
         .filter((match) => student.includes(squash(match[1] || match[2] || match[3]))) : [];
+      const translatedReferences = personalPages.size && ["text", "translation"].includes(field) ? personalPageReferences(node) : [];
       for (const claim of claims) {
         if (allowedPages.has(Number(claim[1] || claim[2]))) continue;
+        if (translatedReferences.some(reference => personalPages.has(reference.key)
+          && claim.index! >= reference.start && claim.index! + claim[0].length <= reference.end)) continue;
         // A located student quote only authorizes that quote. It never grants
         // the page number to another feedback field or a new sentence.
         if (student && student.includes(squash(node))) continue;
@@ -1019,7 +1048,7 @@ export function mappedUpstreamFailure(status: number): AssistantUpstreamError {
 }
 
 export type CompletionUsage = { prompt: number; completion: number; cacheHit: number; total: number; estimated: boolean };
-export type Completion = { content: string; usage: CompletionUsage; finishReason: string | null };
+export type Completion = { content: string; usage: CompletionUsage; finishReason: string | null; reasoningSummary?: string };
 
 const tokenCount = (value: unknown) => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
 
@@ -1083,7 +1112,11 @@ export function parseResponsesCompletion(payload: Record<string, unknown>, promp
   if (payload.status === "failed" || payload.status === "cancelled") throw new AssistantUpstreamError("provider_unavailable", "模型未完成回答，请重试。", 502, true);
   const output = Array.isArray(payload.output) ? payload.output : [];
   let content = "";
+  const summaries: string[] = [];
   for (const item of output) {
+    if (item?.type === "reasoning" && Array.isArray(item.summary)) {
+      for (const part of item.summary) if (part?.type === "summary_text" && typeof part.text === "string") summaries.push(part.text);
+    }
     if (!item || typeof item !== "object" || item.type !== "message" || !Array.isArray(item.content)) continue;
     for (const part of item.content) {
       if (part?.type === "refusal") throw new AssistantUpstreamError("model_refusal", "模型无法完成这个请求，请调整输入。", 422, false);
@@ -1091,7 +1124,11 @@ export function parseResponsesCompletion(payload: Record<string, unknown>, promp
     }
   }
   const text = cleanOutputText(content, "output_text", 300_000);
-  return { content: text, usage: parseUsage(payload.usage) || estimateUsage(promptChars, text),
+  // Only the provider's explicitly exposed summary is displayable. Omit an
+  // oversized optional summary; raw/encrypted reasoning is never extracted.
+  const summary = summaries.join("\n\n").trim();
+  return { content: text, usage: parseUsage(payload.usage) || estimateUsage(promptChars, text + summary),
+    ...(summary && summary.length <= 6000 ? { reasoningSummary: summary } : {}),
     finishReason: payload.status === "incomplete" ? "length" : "stop" };
 }
 
@@ -1118,6 +1155,7 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     else { onAbort = () => reject(abortError()); signal.addEventListener("abort", onAbort, { once: true }); }
   }) : null;
   let buffer = "", content = "", bytes = 0, finishReason: string | null = null, usage: CompletionUsage | null = null, done = false;
+  let reasoningSummary: string | undefined;
   const handle = (line: string) => {
     if (!line.startsWith("data:")) return;
     const data = line.slice(5).trim();
@@ -1130,7 +1168,7 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     if (chunk.type === "response.output_text.delta" && typeof chunk.delta === "string") content += chunk.delta;
     if (chunk.type === "response.completed" || chunk.type === "response.incomplete") {
       const final = parseResponsesCompletion(outputRecord(chunk.response), promptChars);
-      content = final.content; usage = final.usage; finishReason = final.finishReason; done = true;
+      content = final.content; usage = final.usage; finishReason = final.finishReason; reasoningSummary = final.reasoningSummary; done = true;
     }
     usage = parseUsage(chunk.usage) || usage;
     const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as Record<string, unknown> | undefined) : undefined;
@@ -1162,7 +1200,7 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
   }
   if (!done && !finishReason) throw new AssistantUpstreamError("incomplete_stream", "模型回答传输中断，请重试。", 502, true);
   const text = cleanOutputText(content, "choices[0].message.content", 300_000);
-  return { content: text, usage: usage || estimateUsage(promptChars, text), finishReason };
+  return { content: text, usage: usage || estimateUsage(promptChars, text), finishReason, ...(reasoningSummary ? { reasoningSummary } : {}) };
 }
 
 /**

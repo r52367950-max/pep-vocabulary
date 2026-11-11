@@ -1,0 +1,14 @@
+✔ old clients cannot persist free text, private references or arbitrary count keys through structural journal kinds (59.136946ms)
+✔ client omits private markers before any request and skips personal article events (6.606261ms)
+✔ migration scrubs old events and daily copies, preserves explicit edits and unrelated vocabulary, and fences old context (13.893198ms)
+✔ whole-journal deletion erases all data, rejects stale writes and edits, preserves account isolation and permits new activity (25.506891ms)
+✔ clearing a clock-skewed event keeps its suppression fence across disable/enable and concurrent stale posts (17.086396ms)
+✔ a POST already past its metadata read cannot resurrect content after a concurrent whole-journal clear (11.193601ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 139.779383

@@ -1,5 +1,6 @@
 import { AssistantInputError } from "@/lib/assistant/core";
 import { JOURNAL_KINDS, type JournalEvent } from "./types";
+import { isPrivateReadingEvent, learningFacts } from "./facts";
 export function invalid(message: string): never { throw new AssistantInputError("invalid_request", message); }
 export function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== "object" || Array.isArray(value)) return invalid("学习记录格式无效。"); return value as Record<string, unknown>; }
 export function text(value: unknown, max: number, empty = false) { if (typeof value !== "string" || value.length > max) return invalid("学习记录文字长度无效。"); const clean = value.normalize("NFC").replace(/[\u0000-\u001f\u007f]/g, " ").trim(); if (!empty && !clean) return invalid("学习记录不能为空。"); return clean; }
@@ -17,5 +18,7 @@ export function eventInput(raw: Record<string, unknown>): JournalEvent {
   const countsRaw = object(raw.counts), counts: Record<string, number> = {};
   if (Object.keys(countsRaw).length > 12) return invalid("学习统计过多。");
   for (const [key, value] of Object.entries(countsRaw)) { if (!/^[a-z][a-zA-Z0-9]{0,30}$/.test(key) || !Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > 100000) return invalid("学习统计无效。"); counts[key] = Number(value); }
-  return { eventId, kind: raw.kind as JournalEvent["kind"], title: text(raw.title, 160), summary: text(raw.summary, 600, true), refIds, counts, occurredAt, timezone: zone, date: dateInZone(occurredAt, zone), source: "learning_activity" };
+  const event: JournalEvent = { eventId, kind: raw.kind as JournalEvent["kind"], title: text(raw.title, 160), summary: text(raw.summary, 600, true), refIds, counts, occurredAt, timezone: zone, date: dateInZone(occurredAt, zone), source: "learning_activity" };
+  if (isPrivateReadingEvent(event)) return invalid("个人文章的阅读记录仅保存在本机。");
+  return learningFacts(event);
 }

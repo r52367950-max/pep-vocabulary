@@ -1,0 +1,240 @@
+{
+  "baselineRevision": "a9bb92642780cee06bb1d990a9a807536a6904de",
+  "scope": "Production React DOM with actual MessageList/RichText/AiProvenance, 120 messages (59 historical assistant answers), 20 updates spaced at 20 ms. Controlled store and synthetic answers. Timings measure synchronous commit work only, exclude app/network/real-provider latency; not an INP benchmark.",
+  "runs": [
+    {
+      "variant": "baseline",
+      "round": 1,
+      "progressive": {
+        "history": 1180,
+        "current": 20
+      },
+      "updates": 20,
+      "updateMs": [
+        8.300000000745058,
+        6.799999998882413,
+        4.699999999254942,
+        3.5,
+        4.200000001117587,
+        4.199999999254942,
+        3.399999998509884,
+        5.199999999254942,
+        5.5,
+        1.599999999627471,
+        2.700000001117587,
+        3.300000000745058,
+        3.600000001490116,
+        2.199999999254942,
+        1.900000000372529,
+        2.100000001490116,
+        1.900000000372529,
+        2.300000000745058,
+        2.800000000745058,
+        2.800000000745058
+      ],
+      "initialSourceCount": 60,
+      "vocabularyRefresh": {
+        "history": 59,
+        "current": 1,
+        "sourceCount": 0
+      },
+      "currentText": "current answer new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words ",
+      "assistantRows": 60
+    },
+    {
+      "variant": "current",
+      "round": 1,
+      "progressive": {
+        "history": 0,
+        "current": 20
+      },
+      "updates": 20,
+      "updateMs": [
+        4,
+        1.299999998882413,
+        0.6999999992549419,
+        0.8999999985098839,
+        0.5,
+        0.8000000007450581,
+        0.5,
+        0.6000000014901161,
+        0.6999999992549419,
+        0.5,
+        0.7000000011175871,
+        0.40000000037252903,
+        0.40000000037252903,
+        0.2999999988824129,
+        0.40000000037252903,
+        0.3999999985098839,
+        0.5,
+        0.40000000037252903,
+        0.40000000037252903,
+        0.40000000037252903
+      ],
+      "initialSourceCount": 60,
+      "vocabularyRefresh": {
+        "history": 59,
+        "current": 1,
+        "sourceCount": 0
+      },
+      "currentText": "current answer new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words ",
+      "assistantRows": 60
+    },
+    {
+      "variant": "baseline",
+      "round": 2,
+      "progressive": {
+        "history": 1180,
+        "current": 20
+      },
+      "updates": 20,
+      "updateMs": [
+        11.199999999254942,
+        5.800000000745058,
+        4.5,
+        4.299999998882413,
+        3.300000000745058,
+        3.800000000745058,
+        3.400000000372529,
+        4,
+        1.900000000372529,
+        3.599999999627471,
+        3.099999999627471,
+        3.599999999627471,
+        1.799999998882413,
+        3.199999999254942,
+        1.5,
+        1.5,
+        2.099999999627471,
+        1.699999999254942,
+        3.900000000372529,
+        2.799999998882413
+      ],
+      "initialSourceCount": 60,
+      "vocabularyRefresh": {
+        "history": 59,
+        "current": 1,
+        "sourceCount": 0
+      },
+      "currentText": "current answer new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words ",
+      "assistantRows": 60
+    },
+    {
+      "variant": "current",
+      "round": 2,
+      "progressive": {
+        "history": 0,
+        "current": 20
+      },
+      "updates": 20,
+      "updateMs": [
+        4.300000000745058,
+        1,
+        0.900000000372529,
+        0.8000000007450581,
+        0.8000000007450581,
+        0.900000000372529,
+        0.599999999627471,
+        0.599999999627471,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.2999999988824129,
+        0.5,
+        0.30000000074505806,
+        0.6000000014901161,
+        0.7999999988824129,
+        0.3999999985098839,
+        0.2999999988824129,
+        0.19999999925494194
+      ],
+      "initialSourceCount": 60,
+      "vocabularyRefresh": {
+        "history": 59,
+        "current": 1,
+        "sourceCount": 0
+      },
+      "currentText": "current answer new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words ",
+      "assistantRows": 60
+    },
+    {
+      "variant": "baseline",
+      "round": 3,
+      "progressive": {
+        "history": 1180,
+        "current": 20
+      },
+      "updates": 20,
+      "updateMs": [
+        6.300000000745058,
+        4,
+        2.599999999627471,
+        2.5,
+        2.5,
+        2.800000000745058,
+        2,
+        2.299999998882413,
+        2.300000000745058,
+        1.699999999254942,
+        1.5,
+        3.599999999627471,
+        1.599999999627471,
+        1.699999999254942,
+        1.800000000745058,
+        1.5,
+        2.5,
+        1.799999998882413,
+        1.800000000745058,
+        1.700000001117587
+      ],
+      "initialSourceCount": 60,
+      "vocabularyRefresh": {
+        "history": 59,
+        "current": 1,
+        "sourceCount": 0
+      },
+      "currentText": "current answer new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words ",
+      "assistantRows": 60
+    },
+    {
+      "variant": "current",
+      "round": 3,
+      "progressive": {
+        "history": 0,
+        "current": 20
+      },
+      "updates": 20,
+      "updateMs": [
+        2.800000000745058,
+        0.7999999988824129,
+        0.8999999985098839,
+        1.199999999254942,
+        1,
+        0.599999999627471,
+        0.6999999992549419,
+        0.6999999992549419,
+        0.8999999985098839,
+        0.599999999627471,
+        0.599999999627471,
+        0.8000000007450581,
+        0.5,
+        0.599999999627471,
+        0.5,
+        0.5,
+        1.400000000372529,
+        0.6000000014901161,
+        0.5,
+        0.40000000037252903
+      ],
+      "initialSourceCount": 60,
+      "vocabularyRefresh": {
+        "history": 59,
+        "current": 1,
+        "sourceCount": 0
+      },
+      "currentText": "current answer new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words new words ",
+      "assistantRows": 60
+    }
+  ]
+}

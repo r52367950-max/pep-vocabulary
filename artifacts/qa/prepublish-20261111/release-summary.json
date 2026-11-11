@@ -1,0 +1,2164 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-11-11T09:57:04.868957+00:00",
+  "status": "blocked_environment",
+  "version": "2.19.4",
+  "completeness": {
+    "complete": true,
+    "allAvailableEvidencePresent": true,
+    "allChecksPassed": false,
+    "closed": false,
+    "meaning": "complete means every expected final evidence record is present and parseable, including explicit blocked records. closed/allChecksPassed require every requested check to have executed and passed.",
+    "requiredInputs": [
+      "release-full-check.log",
+      "release-full-check-round2.log",
+      "release-dependencies.json",
+      "sites-baseline-workload.json",
+      "release-workload.json",
+      "browser-results.json",
+      "mixed-ui-load.json",
+      "stream-render-results.json",
+      "assistant-merge-review.json",
+      "evidence-review.json",
+      "stream-ui-review.json"
+    ],
+    "missing": [],
+    "missingFields": [],
+    "invalid": [],
+    "failed": [],
+    "blocked": [
+      {
+        "source": "browser-results.json",
+        "reason": "Managed preview exited during startup: listen EPERM: operation not permitted 127.0.0.1",
+        "executed": false
+      },
+      {
+        "source": "mixed-ui-load.json",
+        "reason": "The managed preview failed to start with EPERM while binding 127.0.0.1. Sites managed preview instructions prohibit substituting a server or changing network permissions to bypass that failure. The parent directed this check to remain unrun.",
+        "executed": false
+      }
+    ]
+  },
+  "checks": {
+    "fullRounds": [
+      {
+        "version": "2.19.4",
+        "stages": [
+          "data:audit",
+          "typecheck",
+          "lint",
+          "test:unit",
+          "build",
+          "test:runtime",
+          "test:security"
+        ],
+        "unit": {
+          "tests": 758,
+          "pass": 758,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0,
+          "duration_ms": 55768.750886
+        },
+        "runtimeSmoke": {
+          "count": 55,
+          "scope": "workerd via Miniflare, local ephemeral D1"
+        },
+        "securityMatrix": {
+          "count": 202,
+          "privateRoutes": 28
+        },
+        "completionEvidence": "All npm test && stages reached the final success marker; no external process exit-code sidecar was supplied.",
+        "status": "passed",
+        "source": "release-full-check.log"
+      },
+      {
+        "version": "2.19.4",
+        "stages": [
+          "data:audit",
+          "typecheck",
+          "lint",
+          "test:unit",
+          "build",
+          "test:runtime",
+          "test:security"
+        ],
+        "unit": {
+          "tests": 758,
+          "pass": 758,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0,
+          "duration_ms": 53719.358272
+        },
+        "runtimeSmoke": {
+          "count": 55,
+          "scope": "workerd via Miniflare, local ephemeral D1"
+        },
+        "securityMatrix": {
+          "count": 202,
+          "privateRoutes": 28
+        },
+        "completionEvidence": "All npm test && stages reached the final success marker; no external process exit-code sidecar was supplied.",
+        "status": "passed",
+        "source": "release-full-check-round2.log"
+      }
+    ],
+    "acceptedRounds": 2
+  },
+  "dependencies": {
+    "status": "passed",
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "dependencies": {
+      "prod": 25,
+      "dev": 579,
+      "optional": 145,
+      "peer": 45,
+      "peerOptional": 0,
+      "total": 638
+    },
+    "scope": "All installed dependency classes, including build dependencies",
+    "source": "release-dependencies.json"
+  },
+  "guidance": {
+    "baselineRevision": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+    "documents": [
+      {
+        "file": "AGENTS.md",
+        "beforeBytes": 7852,
+        "afterBytes": 1245,
+        "reductionPercent": 84.14416709118696
+      },
+      {
+        "file": "docs/DEVELOPMENT.md",
+        "beforeBytes": 7674,
+        "afterBytes": 3535,
+        "reductionPercent": 53.93536617148814
+      },
+      {
+        "file": "PROJECT_STATE.md",
+        "beforeBytes": 3067,
+        "afterBytes": 1293,
+        "reductionPercent": 57.84153896315618
+      },
+      {
+        "file": "docs/prompt-guidance.md",
+        "beforeBytes": 1380,
+        "afterBytes": 1364,
+        "reductionPercent": 1.1594202898550732
+      }
+    ],
+    "note": "Documentation baseline differs intentionally from the deployed Sites performance baseline."
+  },
+  "performance": {
+    "baselineRevision": "a9bb92642780cee06bb1d990a9a807536a6904de",
+    "container": {
+      "cpuCores": 4.0,
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16.0,
+      "cpuMax": "400000 100000",
+      "memoryMax": "17179869184",
+      "note": "Effective cgroup quota: 4 CPU cores and 16 GiB. os.cpus()/totalmem() fields describe the visible host, not this quota."
+    },
+    "http": {
+      "baseline": {
+        "status": "passed",
+        "timestamp": "2026-11-11T09:45:51.393Z",
+        "build": "/tmp/pep-sites-baseline/dist",
+        "seed": {
+          "accounts": 8,
+          "days": 30,
+          "regularEventsPerDay": 80,
+          "denseEventsPerDay": 1000,
+          "totalEvents": 46800
+        },
+        "method": "Local production HTTP/workerd/D1; closed-loop concurrency; synthetic learning histories; no paid provider; full body consumed; warm-up excluded; 3 rounds. Optional soak: 12 concurrent readers, full journal/memory/index/shell requests.",
+        "reportedEnvironment": {
+          "node": "v24.22.1",
+          "cpu": "AMD EPYC 9V74 80-Core Processor",
+          "logicalCpus": 5,
+          "memoryBytes": 18882662400
+        },
+        "byConcurrency": [
+          {
+            "concurrency": 1,
+            "n": 60,
+            "p50Ms": 30.513222000001406,
+            "p95Ms": 43.64889200000107,
+            "p99Ms": 61.23281400000269,
+            "elapsedMs": 1461.2017309999997,
+            "requestsPerSecond": 41.062092062358786,
+            "bytes": 17623926,
+            "errorCount": 0,
+            "errors": [],
+            "rounds": [
+              {
+                "round": 1,
+                "n": 20,
+                "p50Ms": 32.070108000000346,
+                "p95Ms": 47.520268000000215,
+                "p99Ms": 50.577486000000135,
+                "elapsedMs": 541.6841140000001,
+                "errors": 0
+              },
+              {
+                "round": 2,
+                "n": 20,
+                "p50Ms": 30.019529999999577,
+                "p95Ms": 40.41394600000058,
+                "p99Ms": 43.64889200000107,
+                "elapsedMs": 456.41545099999894,
+                "errors": 0
+              },
+              {
+                "round": 3,
+                "n": 20,
+                "p50Ms": 29.016411000000517,
+                "p95Ms": 43.12391600000046,
+                "p99Ms": 61.23281400000269,
+                "elapsedMs": 463.1021660000006,
+                "errors": 0
+              }
+            ],
+            "routes": [
+              {
+                "route": "GET /",
+                "n": 6,
+                "p50Ms": 3.554818000000523,
+                "p95Ms": 29.70687799999996,
+                "p99Ms": 29.70687799999996,
+                "mixedRunContributionRps": 4.106209206235878
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "n": 30,
+                "p50Ms": 32.80546800000002,
+                "p95Ms": 43.64889200000107,
+                "p99Ms": 61.23281400000269,
+                "mixedRunContributionRps": 20.531046031179393
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "n": 12,
+                "p50Ms": 5.435117000000901,
+                "p95Ms": 6.753091999999924,
+                "p99Ms": 6.753091999999924,
+                "mixedRunContributionRps": 8.212418412471756
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "n": 6,
+                "p50Ms": 3.139450000000579,
+                "p95Ms": 11.659823999999844,
+                "p99Ms": 11.659823999999844,
+                "mixedRunContributionRps": 4.106209206235878
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "n": 6,
+                "p50Ms": 39.08346700000038,
+                "p95Ms": 50.577486000000135,
+                "p99Ms": 50.577486000000135,
+                "mixedRunContributionRps": 4.106209206235878
+              }
+            ]
+          },
+          {
+            "concurrency": 4,
+            "n": 240,
+            "p50Ms": 97.34972099999959,
+            "p95Ms": 161.84792599999855,
+            "p99Ms": 230.37471399999959,
+            "elapsedMs": 5182.066122,
+            "requestsPerSecond": 46.31357345694633,
+            "bytes": 70394918,
+            "errorCount": 0,
+            "errors": [],
+            "rounds": [
+              {
+                "round": 1,
+                "n": 80,
+                "p50Ms": 71.50080899999921,
+                "p95Ms": 169.88313900000003,
+                "p99Ms": 430.34465400000045,
+                "elapsedMs": 1729.4218930000002,
+                "errors": 0
+              },
+              {
+                "round": 2,
+                "n": 80,
+                "p50Ms": 99.10475099999894,
+                "p95Ms": 143.41442600000119,
+                "p99Ms": 230.37471399999959,
+                "elapsedMs": 1703.6509400000014,
+                "errors": 0
+              },
+              {
+                "round": 3,
+                "n": 80,
+                "p50Ms": 112.77815999999802,
+                "p95Ms": 156.97053000000233,
+                "p99Ms": 166.2203100000006,
+                "elapsedMs": 1748.9932889999982,
+                "errors": 0
+              }
+            ],
+            "routes": [
+              {
+                "route": "GET /",
+                "n": 24,
+                "p50Ms": 10.439233999999487,
+                "p95Ms": 51.338722999998936,
+                "p99Ms": 77.92531000000054,
+                "mixedRunContributionRps": 4.631357345694632
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "n": 120,
+                "p50Ms": 122.07530299999962,
+                "p95Ms": 171.8192939999999,
+                "p99Ms": 264.3842510000004,
+                "mixedRunContributionRps": 23.156786728473165
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "n": 48,
+                "p50Ms": 20.91934299999957,
+                "p95Ms": 99.50094399999944,
+                "p99Ms": 104.7046969999974,
+                "mixedRunContributionRps": 9.262714691389265
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "n": 24,
+                "p50Ms": 14.258242999996583,
+                "p95Ms": 50.14430999999968,
+                "p99Ms": 61.155125999999655,
+                "mixedRunContributionRps": 4.631357345694632
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "n": 24,
+                "p50Ms": 81.55048600000009,
+                "p95Ms": 166.2203100000006,
+                "p99Ms": 205.83352000000014,
+                "mixedRunContributionRps": 4.631357345694632
+              }
+            ]
+          },
+          {
+            "concurrency": 12,
+            "n": 720,
+            "p50Ms": 269.5208700000003,
+            "p95Ms": 747.4792150000012,
+            "p99Ms": 1034.325447000001,
+            "elapsedMs": 17160.535164999998,
+            "requestsPerSecond": 41.956733462979976,
+            "bytes": 210903743,
+            "errorCount": 0,
+            "errors": [],
+            "rounds": [
+              {
+                "round": 1,
+                "n": 240,
+                "p50Ms": 217.43072100000063,
+                "p95Ms": 851.9358680000005,
+                "p99Ms": 1035.9419479999997,
+                "elapsedMs": 5817.148534,
+                "errors": 0
+              },
+              {
+                "round": 2,
+                "n": 240,
+                "p50Ms": 351.98297100000127,
+                "p95Ms": 591.5260110000017,
+                "p99Ms": 839.7489260000002,
+                "elapsedMs": 5516.461792999999,
+                "errors": 0
+              },
+              {
+                "round": 3,
+                "n": 240,
+                "p50Ms": 291.1283320000002,
+                "p95Ms": 777.173738999998,
+                "p99Ms": 1243.2362820000017,
+                "elapsedMs": 5826.924837999999,
+                "errors": 0
+              }
+            ],
+            "routes": [
+              {
+                "route": "GET /",
+                "n": 72,
+                "p50Ms": 31.914804000000004,
+                "p95Ms": 255.10944799999925,
+                "p99Ms": 337.51129199999923,
+                "mixedRunContributionRps": 4.195673346297998
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "n": 360,
+                "p50Ms": 395.9046269999999,
+                "p95Ms": 881.9474309999996,
+                "p99Ms": 1243.239587,
+                "mixedRunContributionRps": 20.978366731489988
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "n": 144,
+                "p50Ms": 52.06867499999862,
+                "p95Ms": 419.7457080000004,
+                "p99Ms": 873.069739999999,
+                "mixedRunContributionRps": 8.391346692595995
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "n": 72,
+                "p50Ms": 30.582115999999587,
+                "p95Ms": 114.48403400000007,
+                "p99Ms": 451.2567710000003,
+                "mixedRunContributionRps": 4.195673346297998
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "n": 72,
+                "p50Ms": 345.847119,
+                "p95Ms": 600.2662549999995,
+                "p99Ms": 778.8780719999995,
+                "mixedRunContributionRps": 4.195673346297998
+              }
+            ]
+          }
+        ],
+        "measuredRequests": 1020,
+        "source": "sites-baseline-workload.json"
+      },
+      "candidate": {
+        "status": "passed",
+        "timestamp": "2026-11-11T09:48:37.299Z",
+        "build": "dist",
+        "seed": {
+          "accounts": 8,
+          "days": 30,
+          "regularEventsPerDay": 80,
+          "denseEventsPerDay": 1000,
+          "totalEvents": 46800
+        },
+        "method": "Local production HTTP/workerd/D1; closed-loop concurrency; synthetic learning histories; no paid provider; full body consumed; warm-up excluded; 3 rounds. Optional soak: 12 concurrent readers, full journal/memory/index/shell requests.",
+        "reportedEnvironment": {
+          "node": "v24.22.1",
+          "cpu": "AMD EPYC 9V74 80-Core Processor",
+          "logicalCpus": 5,
+          "memoryBytes": 18882662400
+        },
+        "byConcurrency": [
+          {
+            "concurrency": 1,
+            "n": 60,
+            "p50Ms": 15.694239999999809,
+            "p95Ms": 25.66552799999954,
+            "p99Ms": 36.87572300000011,
+            "elapsedMs": 897.1886569999983,
+            "requestsPerSecond": 66.87556684078777,
+            "bytes": 17623926,
+            "errorCount": 0,
+            "errors": [],
+            "rounds": [
+              {
+                "round": 1,
+                "n": 20,
+                "p50Ms": 19.100894000000153,
+                "p95Ms": 32.121241999999256,
+                "p99Ms": 36.87572300000011,
+                "elapsedMs": 365.70845599999984,
+                "errors": 0
+              },
+              {
+                "round": 2,
+                "n": 20,
+                "p50Ms": 15.263670000000275,
+                "p95Ms": 20.97285499999998,
+                "p99Ms": 22.96234000000004,
+                "elapsedMs": 261.7965069999991,
+                "errors": 0
+              },
+              {
+                "round": 3,
+                "n": 20,
+                "p50Ms": 15.613648000000467,
+                "p95Ms": 23.7160530000001,
+                "p99Ms": 25.065207000001465,
+                "elapsedMs": 269.6836939999994,
+                "errors": 0
+              }
+            ],
+            "routes": [
+              {
+                "route": "GET /",
+                "n": 6,
+                "p50Ms": 4.053273999999874,
+                "p95Ms": 32.121241999999256,
+                "p99Ms": 32.121241999999256,
+                "mixedRunContributionRps": 6.687556684078777
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "n": 30,
+                "p50Ms": 17.6228689999989,
+                "p95Ms": 25.065207000001465,
+                "p99Ms": 28.962792000000263,
+                "mixedRunContributionRps": 33.437783420393885
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "n": 12,
+                "p50Ms": 5.70308599999953,
+                "p95Ms": 8.691291000000092,
+                "p99Ms": 8.691291000000092,
+                "mixedRunContributionRps": 13.375113368157553
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "n": 6,
+                "p50Ms": 5.7144029999999475,
+                "p95Ms": 9.356372000000192,
+                "p99Ms": 9.356372000000192,
+                "mixedRunContributionRps": 6.687556684078777
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "n": 6,
+                "p50Ms": 20.82156599999871,
+                "p95Ms": 36.87572300000011,
+                "p99Ms": 36.87572300000011,
+                "mixedRunContributionRps": 6.687556684078777
+              }
+            ]
+          },
+          {
+            "concurrency": 4,
+            "n": 240,
+            "p50Ms": 43.6295740000005,
+            "p95Ms": 69.1257540000006,
+            "p99Ms": 81.54813800000011,
+            "elapsedMs": 2408.501022999999,
+            "requestsPerSecond": 99.64704092218278,
+            "bytes": 70394918,
+            "errorCount": 0,
+            "errors": [],
+            "rounds": [
+              {
+                "round": 1,
+                "n": 80,
+                "p50Ms": 49.80607500000042,
+                "p95Ms": 78.45504000000074,
+                "p99Ms": 86.41737199999989,
+                "elapsedMs": 895.6538930000006,
+                "errors": 0
+              },
+              {
+                "round": 2,
+                "n": 80,
+                "p50Ms": 39.51603900000009,
+                "p95Ms": 61.336724000000686,
+                "p99Ms": 69.69694499999969,
+                "elapsedMs": 722.8255179999996,
+                "errors": 0
+              },
+              {
+                "round": 3,
+                "n": 80,
+                "p50Ms": 43.6295740000005,
+                "p95Ms": 64.06757599999946,
+                "p99Ms": 70.5818249999993,
+                "elapsedMs": 790.0216119999986,
+                "errors": 0
+              }
+            ],
+            "routes": [
+              {
+                "route": "GET /",
+                "n": 24,
+                "p50Ms": 8.208004000000074,
+                "p95Ms": 24.13211500000034,
+                "p99Ms": 26.2767530000001,
+                "mixedRunContributionRps": 9.964704092218279
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "n": 120,
+                "p50Ms": 52.644182,
+                "p95Ms": 69.1257540000006,
+                "p99Ms": 78.45504000000074,
+                "mixedRunContributionRps": 49.82352046109139
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "n": 48,
+                "p50Ms": 17.59584200000063,
+                "p95Ms": 44.22459799999979,
+                "p99Ms": 46.61276200000066,
+                "mixedRunContributionRps": 19.929408184436557
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "n": 24,
+                "p50Ms": 11.80587099999866,
+                "p95Ms": 27.428427000000738,
+                "p99Ms": 27.773637000000235,
+                "mixedRunContributionRps": 9.964704092218279
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "n": 24,
+                "p50Ms": 49.853125999999975,
+                "p95Ms": 85.1783489999998,
+                "p99Ms": 86.41737199999989,
+                "mixedRunContributionRps": 9.964704092218279
+              }
+            ]
+          },
+          {
+            "concurrency": 12,
+            "n": 720,
+            "p50Ms": 147.01560299999983,
+            "p95Ms": 291.1379940000006,
+            "p99Ms": 355.2319289999996,
+            "elapsedMs": 8379.14877,
+            "requestsPerSecond": 85.92758283249816,
+            "bytes": 210905145,
+            "errorCount": 0,
+            "errors": [],
+            "rounds": [
+              {
+                "round": 1,
+                "n": 240,
+                "p50Ms": 138.87489599999935,
+                "p95Ms": 255.30091100000027,
+                "p99Ms": 328.3473590000003,
+                "elapsedMs": 2793.9156629999998,
+                "errors": 0
+              },
+              {
+                "round": 2,
+                "n": 240,
+                "p50Ms": 161.6181030000007,
+                "p95Ms": 291.4311180000004,
+                "p99Ms": 340.65612899999905,
+                "elapsedMs": 2748.292668,
+                "errors": 0
+              },
+              {
+                "round": 3,
+                "n": 240,
+                "p50Ms": 161.13639199999852,
+                "p95Ms": 309.0196070000002,
+                "p99Ms": 437.60721100000046,
+                "elapsedMs": 2836.940439,
+                "errors": 0
+              }
+            ],
+            "routes": [
+              {
+                "route": "GET /",
+                "n": 72,
+                "p50Ms": 40.8861880000004,
+                "p95Ms": 85.09061099999963,
+                "p99Ms": 96.2392719999998,
+                "mixedRunContributionRps": 8.592758283249815
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "n": 360,
+                "p50Ms": 186.72516300000007,
+                "p95Ms": 312.5792070000007,
+                "p99Ms": 485.7887749999991,
+                "mixedRunContributionRps": 42.96379141624908
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "n": 144,
+                "p50Ms": 47.1700439999986,
+                "p95Ms": 148.95649499999945,
+                "p99Ms": 208.51576099999966,
+                "mixedRunContributionRps": 17.18551656649963
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "n": 72,
+                "p50Ms": 36.547881000000416,
+                "p95Ms": 82.03627600000073,
+                "p99Ms": 96.63719299999957,
+                "mixedRunContributionRps": 8.592758283249815
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "n": 72,
+                "p50Ms": 189.05721599999924,
+                "p95Ms": 258.0706119999995,
+                "p99Ms": 259.9508829999995,
+                "mixedRunContributionRps": 8.592758283249815
+              }
+            ]
+          }
+        ],
+        "measuredRequests": 1020,
+        "source": "release-workload.json"
+      },
+      "comparison": {
+        "status": "passed",
+        "byConcurrency": [
+          {
+            "concurrency": 1,
+            "before": {
+              "n": 60,
+              "p50Ms": 30.513222000001406,
+              "p95Ms": 43.64889200000107,
+              "p99Ms": 61.23281400000269,
+              "requestsPerSecond": 41.062092062358786,
+              "errorCount": 0
+            },
+            "after": {
+              "n": 60,
+              "p50Ms": 15.694239999999809,
+              "p95Ms": 25.66552799999954,
+              "p99Ms": 36.87572300000011,
+              "requestsPerSecond": 66.87556684078777,
+              "errorCount": 0
+            },
+            "p95ReductionPercent": 41.200046956520886,
+            "throughputRatio": 1.628644900489421,
+            "routes": [
+              {
+                "route": "GET /",
+                "before": {
+                  "route": "GET /",
+                  "n": 6,
+                  "p50Ms": 3.554818000000523,
+                  "p95Ms": 29.70687799999996,
+                  "p99Ms": 29.70687799999996,
+                  "mixedRunContributionRps": 4.106209206235878
+                },
+                "after": {
+                  "route": "GET /",
+                  "n": 6,
+                  "p50Ms": 4.053273999999874,
+                  "p95Ms": 32.121241999999256,
+                  "p99Ms": 32.121241999999256,
+                  "mixedRunContributionRps": 6.687556684078777
+                },
+                "p95ReductionPercent": -8.127289579198793
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "before": {
+                  "route": "GET /api/learning-journal",
+                  "n": 30,
+                  "p50Ms": 32.80546800000002,
+                  "p95Ms": 43.64889200000107,
+                  "p99Ms": 61.23281400000269,
+                  "mixedRunContributionRps": 20.531046031179393
+                },
+                "after": {
+                  "route": "GET /api/learning-journal",
+                  "n": 30,
+                  "p50Ms": 17.6228689999989,
+                  "p95Ms": 25.065207000001465,
+                  "p99Ms": 28.962792000000263,
+                  "mixedRunContributionRps": 33.437783420393885
+                },
+                "p95ReductionPercent": 42.57538770972502
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "before": {
+                  "route": "GET /api/learning-memory",
+                  "n": 12,
+                  "p50Ms": 5.435117000000901,
+                  "p95Ms": 6.753091999999924,
+                  "p99Ms": 6.753091999999924,
+                  "mixedRunContributionRps": 8.212418412471756
+                },
+                "after": {
+                  "route": "GET /api/learning-memory",
+                  "n": 12,
+                  "p50Ms": 5.70308599999953,
+                  "p95Ms": 8.691291000000092,
+                  "p99Ms": 8.691291000000092,
+                  "mixedRunContributionRps": 13.375113368157553
+                },
+                "p95ReductionPercent": -28.70091211551966
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "before": {
+                  "route": "GET /data/v1/index.json",
+                  "n": 6,
+                  "p50Ms": 3.139450000000579,
+                  "p95Ms": 11.659823999999844,
+                  "p99Ms": 11.659823999999844,
+                  "mixedRunContributionRps": 4.106209206235878
+                },
+                "after": {
+                  "route": "GET /data/v1/index.json",
+                  "n": 6,
+                  "p50Ms": 5.7144029999999475,
+                  "p95Ms": 9.356372000000192,
+                  "p99Ms": 9.356372000000192,
+                  "mixedRunContributionRps": 6.687556684078777
+                },
+                "p95ReductionPercent": 19.755461145894504
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "before": {
+                  "route": "POST /api/learning-journal",
+                  "n": 6,
+                  "p50Ms": 39.08346700000038,
+                  "p95Ms": 50.577486000000135,
+                  "p99Ms": 50.577486000000135,
+                  "mixedRunContributionRps": 4.106209206235878
+                },
+                "after": {
+                  "route": "POST /api/learning-journal",
+                  "n": 6,
+                  "p50Ms": 20.82156599999871,
+                  "p95Ms": 36.87572300000011,
+                  "p99Ms": 36.87572300000011,
+                  "mixedRunContributionRps": 6.687556684078777
+                },
+                "p95ReductionPercent": 27.090636731133678
+              }
+            ]
+          },
+          {
+            "concurrency": 4,
+            "before": {
+              "n": 240,
+              "p50Ms": 97.34972099999959,
+              "p95Ms": 161.84792599999855,
+              "p99Ms": 230.37471399999959,
+              "requestsPerSecond": 46.31357345694633,
+              "errorCount": 0
+            },
+            "after": {
+              "n": 240,
+              "p50Ms": 43.6295740000005,
+              "p95Ms": 69.1257540000006,
+              "p99Ms": 81.54813800000011,
+              "requestsPerSecond": 99.64704092218278,
+              "errorCount": 0
+            },
+            "p95ReductionPercent": 57.28968809893726,
+            "throughputRatio": 2.1515731455016294,
+            "routes": [
+              {
+                "route": "GET /",
+                "before": {
+                  "route": "GET /",
+                  "n": 24,
+                  "p50Ms": 10.439233999999487,
+                  "p95Ms": 51.338722999998936,
+                  "p99Ms": 77.92531000000054,
+                  "mixedRunContributionRps": 4.631357345694632
+                },
+                "after": {
+                  "route": "GET /",
+                  "n": 24,
+                  "p50Ms": 8.208004000000074,
+                  "p95Ms": 24.13211500000034,
+                  "p99Ms": 26.2767530000001,
+                  "mixedRunContributionRps": 9.964704092218279
+                },
+                "p95ReductionPercent": 52.99432165462932
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "before": {
+                  "route": "GET /api/learning-journal",
+                  "n": 120,
+                  "p50Ms": 122.07530299999962,
+                  "p95Ms": 171.8192939999999,
+                  "p99Ms": 264.3842510000004,
+                  "mixedRunContributionRps": 23.156786728473165
+                },
+                "after": {
+                  "route": "GET /api/learning-journal",
+                  "n": 120,
+                  "p50Ms": 52.644182,
+                  "p95Ms": 69.1257540000006,
+                  "p99Ms": 78.45504000000074,
+                  "mixedRunContributionRps": 49.82352046109139
+                },
+                "p95ReductionPercent": 59.76834010271242
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "before": {
+                  "route": "GET /api/learning-memory",
+                  "n": 48,
+                  "p50Ms": 20.91934299999957,
+                  "p95Ms": 99.50094399999944,
+                  "p99Ms": 104.7046969999974,
+                  "mixedRunContributionRps": 9.262714691389265
+                },
+                "after": {
+                  "route": "GET /api/learning-memory",
+                  "n": 48,
+                  "p50Ms": 17.59584200000063,
+                  "p95Ms": 44.22459799999979,
+                  "p99Ms": 46.61276200000066,
+                  "mixedRunContributionRps": 19.929408184436557
+                },
+                "p95ReductionPercent": 55.55358952172349
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "before": {
+                  "route": "GET /data/v1/index.json",
+                  "n": 24,
+                  "p50Ms": 14.258242999996583,
+                  "p95Ms": 50.14430999999968,
+                  "p99Ms": 61.155125999999655,
+                  "mixedRunContributionRps": 4.631357345694632
+                },
+                "after": {
+                  "route": "GET /data/v1/index.json",
+                  "n": 24,
+                  "p50Ms": 11.80587099999866,
+                  "p95Ms": 27.428427000000738,
+                  "p99Ms": 27.773637000000235,
+                  "mixedRunContributionRps": 9.964704092218279
+                },
+                "p95ReductionPercent": 45.30101820126568
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "before": {
+                  "route": "POST /api/learning-journal",
+                  "n": 24,
+                  "p50Ms": 81.55048600000009,
+                  "p95Ms": 166.2203100000006,
+                  "p99Ms": 205.83352000000014,
+                  "mixedRunContributionRps": 4.631357345694632
+                },
+                "after": {
+                  "route": "POST /api/learning-journal",
+                  "n": 24,
+                  "p50Ms": 49.853125999999975,
+                  "p95Ms": 85.1783489999998,
+                  "p99Ms": 86.41737199999989,
+                  "mixedRunContributionRps": 9.964704092218279
+                },
+                "p95ReductionPercent": 48.75575132786151
+              }
+            ]
+          },
+          {
+            "concurrency": 12,
+            "before": {
+              "n": 720,
+              "p50Ms": 269.5208700000003,
+              "p95Ms": 747.4792150000012,
+              "p99Ms": 1034.325447000001,
+              "requestsPerSecond": 41.956733462979976,
+              "errorCount": 0
+            },
+            "after": {
+              "n": 720,
+              "p50Ms": 147.01560299999983,
+              "p95Ms": 291.1379940000006,
+              "p99Ms": 355.2319289999996,
+              "requestsPerSecond": 85.92758283249816,
+              "errorCount": 0
+            },
+            "p95ReductionPercent": 61.05069035264076,
+            "throughputRatio": 2.048004592834076,
+            "routes": [
+              {
+                "route": "GET /",
+                "before": {
+                  "route": "GET /",
+                  "n": 72,
+                  "p50Ms": 31.914804000000004,
+                  "p95Ms": 255.10944799999925,
+                  "p99Ms": 337.51129199999923,
+                  "mixedRunContributionRps": 4.195673346297998
+                },
+                "after": {
+                  "route": "GET /",
+                  "n": 72,
+                  "p50Ms": 40.8861880000004,
+                  "p95Ms": 85.09061099999963,
+                  "p99Ms": 96.2392719999998,
+                  "mixedRunContributionRps": 8.592758283249815
+                },
+                "p95ReductionPercent": 66.64544897608032
+              },
+              {
+                "route": "GET /api/learning-journal",
+                "before": {
+                  "route": "GET /api/learning-journal",
+                  "n": 360,
+                  "p50Ms": 395.9046269999999,
+                  "p95Ms": 881.9474309999996,
+                  "p99Ms": 1243.239587,
+                  "mixedRunContributionRps": 20.978366731489988
+                },
+                "after": {
+                  "route": "GET /api/learning-journal",
+                  "n": 360,
+                  "p50Ms": 186.72516300000007,
+                  "p95Ms": 312.5792070000007,
+                  "p99Ms": 485.7887749999991,
+                  "mixedRunContributionRps": 42.96379141624908
+                },
+                "p95ReductionPercent": 64.55806820077909
+              },
+              {
+                "route": "GET /api/learning-memory",
+                "before": {
+                  "route": "GET /api/learning-memory",
+                  "n": 144,
+                  "p50Ms": 52.06867499999862,
+                  "p95Ms": 419.7457080000004,
+                  "p99Ms": 873.069739999999,
+                  "mixedRunContributionRps": 8.391346692595995
+                },
+                "after": {
+                  "route": "GET /api/learning-memory",
+                  "n": 144,
+                  "p50Ms": 47.1700439999986,
+                  "p95Ms": 148.95649499999945,
+                  "p99Ms": 208.51576099999966,
+                  "mixedRunContributionRps": 17.18551656649963
+                },
+                "p95ReductionPercent": 64.51268180686213
+              },
+              {
+                "route": "GET /data/v1/index.json",
+                "before": {
+                  "route": "GET /data/v1/index.json",
+                  "n": 72,
+                  "p50Ms": 30.582115999999587,
+                  "p95Ms": 114.48403400000007,
+                  "p99Ms": 451.2567710000003,
+                  "mixedRunContributionRps": 4.195673346297998
+                },
+                "after": {
+                  "route": "GET /data/v1/index.json",
+                  "n": 72,
+                  "p50Ms": 36.547881000000416,
+                  "p95Ms": 82.03627600000073,
+                  "p99Ms": 96.63719299999957,
+                  "mixedRunContributionRps": 8.592758283249815
+                },
+                "p95ReductionPercent": 28.342605397709274
+              },
+              {
+                "route": "POST /api/learning-journal",
+                "before": {
+                  "route": "POST /api/learning-journal",
+                  "n": 72,
+                  "p50Ms": 345.847119,
+                  "p95Ms": 600.2662549999995,
+                  "p99Ms": 778.8780719999995,
+                  "mixedRunContributionRps": 4.195673346297998
+                },
+                "after": {
+                  "route": "POST /api/learning-journal",
+                  "n": 72,
+                  "p50Ms": 189.05721599999924,
+                  "p95Ms": 258.0706119999995,
+                  "p99Ms": 259.9508829999995,
+                  "mixedRunContributionRps": 8.592758283249815
+                },
+                "p95ReductionPercent": 57.00730969792735
+              }
+            ]
+          }
+        ],
+        "sameReportedEnvironment": true,
+        "statistics": "Nearest-rank percentiles of pooled raw request samples; throughput=sum(n)*1000/sum(elapsedMs). Route contribution RPS uses the whole mixed-run time denominator."
+      }
+    },
+    "soak": {
+      "status": "passed",
+      "configuredSeconds": 120,
+      "concurrentReaders": 12,
+      "n": 12333,
+      "p50Ms": 112.90462099999422,
+      "p95Ms": 241.52478100000008,
+      "p99Ms": 318.44729799999914,
+      "observedCompletionSpanMs": 120052.450703,
+      "observedRequestsPerSecond": 102.7300977845995,
+      "errorCount": 0,
+      "statusCounts": {
+        "200": 12333
+      },
+      "segments": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 30,
+          "n": 3084,
+          "p50Ms": 119.20860900000116,
+          "p95Ms": 239.98020800000086,
+          "p99Ms": 317.43455099999846,
+          "errorCount": 0
+        },
+        {
+          "startSeconds": 30,
+          "endSeconds": 60,
+          "n": 3066,
+          "p50Ms": 111.31085700000403,
+          "p95Ms": 248.21332800000528,
+          "p99Ms": 328.69576000000234,
+          "errorCount": 0
+        },
+        {
+          "startSeconds": 60,
+          "endSeconds": 90,
+          "n": 3104,
+          "p50Ms": 111.1399500000116,
+          "p95Ms": 237.85474599999725,
+          "p99Ms": 314.492247999995,
+          "errorCount": 0
+        },
+        {
+          "startSeconds": 90,
+          "endSeconds": 120,
+          "n": 3079,
+          "p50Ms": 110.8905139999988,
+          "p95Ms": 238.33607300001313,
+          "p99Ms": 319.6271390000038,
+          "errorCount": 0
+        }
+      ],
+      "routes": [
+        {
+          "route": "/",
+          "n": 2051,
+          "p50Ms": 51.62764099999913,
+          "p95Ms": 146.7681239999947,
+          "p99Ms": 206.97450899999967
+        },
+        {
+          "route": "/api/learning-journal",
+          "n": 6175,
+          "p50Ms": 167.09485300000233,
+          "p95Ms": 262.75985800000126,
+          "p99Ms": 344.95620000000054
+        },
+        {
+          "route": "/api/learning-memory",
+          "n": 2055,
+          "p50Ms": 96.70685700000104,
+          "p95Ms": 242.897907999999,
+          "p99Ms": 319.5838459999977
+        },
+        {
+          "route": "/data/v1/index.json",
+          "n": 2052,
+          "p50Ms": 27.888041999998677,
+          "p95Ms": 156.20455300000322,
+          "p99Ms": 257.95122499999707
+        }
+      ],
+      "segmentAttribution": "Requests grouped by start timestamp; each latency includes its complete response, even across a 30-second boundary.",
+      "scope": "Closed-loop local read workload only; no writes/provider calls; 120 seconds is not a production endurance test.",
+      "source": "release-workload.json"
+    }
+  },
+  "browser": {
+    "status": "blocked_environment",
+    "executed": false,
+    "checkCount": 0,
+    "reason": "Managed preview exited during startup: listen EPERM: operation not permitted 127.0.0.1",
+    "scope": "No final merged full-page browser checks were executed. Prior reports retain their original versions and do not substitute for final UI evidence.",
+    "attempt": "sites-preview start /workspace/pep-vocabulary",
+    "policyReference": "Sites managed preview and troubleshooting: no alternate preview server or network-permission bypass; continue appropriate checks and publishing.",
+    "checks": [],
+    "source": "browser-results.json"
+  },
+  "mixedUi": {
+    "status": "blocked_environment",
+    "executed": false,
+    "runs": 0,
+    "devices": [],
+    "reason": "The managed preview failed to start with EPERM while binding 127.0.0.1. Sites managed preview instructions prohibit substituting a server or changing network permissions to bypass that failure. The parent directed this check to remain unrun.",
+    "plannedFixture": {
+      "conversations": 50,
+      "messages": 2000,
+      "activeMessages": 120,
+      "userMessages": 1000,
+      "assistantMessages": 1000,
+      "lexiconEntries": 4681,
+      "api": "synthetic account/journal and phased SSE answer; other API requests blocked",
+      "devices": [
+        {
+          "name": "desktop",
+          "width": 1440,
+          "height": 900,
+          "cpuThrottle": 1,
+          "rounds": 3
+        },
+        {
+          "name": "phone-cpu4",
+          "width": 390,
+          "height": 844,
+          "cpuThrottle": 4,
+          "rounds": 3
+        }
+      ]
+    },
+    "script": "artifacts/qa/prepublish-20261111/mixed-ui-load.mjs",
+    "verification": "Script prepared and syntax checked only. No whole-app result, whole-app latency or whole-app security pass is claimed.",
+    "scope": "Planned whole-app load was not run; no latency or pass claim.",
+    "source": "mixed-ui-load.json"
+  },
+  "streamRender": {
+    "baselineRevision": "a9bb92642780cee06bb1d990a9a807536a6904de",
+    "scope": "Production React DOM with actual MessageList/RichText/AiProvenance, 120 messages (59 historical assistant answers), 20 updates spaced at 20 ms. Controlled store and synthetic answers. Timings measure synchronous commit work only, exclude app/network/real-provider latency; not an INP benchmark.",
+    "variants": [
+      {
+        "variant": "baseline",
+        "rounds": 3,
+        "historicalRichTextCalls": [
+          1180,
+          1180,
+          1180
+        ],
+        "activeRichTextCalls": [
+          20,
+          20,
+          20
+        ],
+        "synchronousCommitTotalMs": {
+          "n": 3,
+          "median": 70.99999999627471,
+          "min": 48.5,
+          "max": 73.00000000372529,
+          "samples": [
+            73.00000000372529,
+            70.99999999627471,
+            48.5
+          ]
+        }
+      },
+      {
+        "variant": "current",
+        "rounds": 3,
+        "historicalRichTextCalls": [
+          0,
+          0,
+          0
+        ],
+        "activeRichTextCalls": [
+          20,
+          20,
+          20
+        ],
+        "synchronousCommitTotalMs": {
+          "n": 3,
+          "median": 15.299999998882413,
+          "min": 14.799999998882413,
+          "max": 16.59999999590218,
+          "samples": [
+            14.799999998882413,
+            15.299999998882413,
+            16.59999999590218
+          ]
+        }
+      }
+    ],
+    "medianCommitReductionPercent": 78.4507042257955,
+    "status": "passed",
+    "source": "stream-render-results.json"
+  },
+  "reviews": [
+    {
+      "result": "server conflict resolved; no new blocking findings in reviewed assistant changes",
+      "reviewType": "Independent manual scoped review; not a formal Codex Security scan",
+      "checkedSourceHashCount": 7,
+      "sourceHashDrift": [],
+      "status": "passed",
+      "source": "assistant-merge-review.json"
+    },
+    {
+      "result": "passed_in_assigned_scope",
+      "reviewType": "Independent manual scoped review; not a formal Codex Security scan",
+      "checkedSourceHashCount": 26,
+      "sourceHashDrift": [],
+      "status": "passed",
+      "source": "evidence-review.json"
+    },
+    {
+      "result": "passed_after_fix",
+      "reviewType": "Independent manual scoped review; not a formal Codex Security scan",
+      "checkedSourceHashCount": 0,
+      "sourceHashDrift": [],
+      "status": "passed",
+      "source": "stream-ui-review.json"
+    }
+  ],
+  "blockers": [
+    {
+      "source": "browser-results.json",
+      "reason": "Managed preview exited during startup: listen EPERM: operation not permitted 127.0.0.1",
+      "executed": false
+    },
+    {
+      "source": "mixed-ui-load.json",
+      "reason": "The managed preview failed to start with EPERM while binding 127.0.0.1. Sites managed preview instructions prohibit substituting a server or changing network permissions to bypass that failure. The parent directed this check to remain unrun.",
+      "executed": false
+    }
+  ],
+  "provenance": {
+    "gitHead": "f1a4bf6fe74ac258870ef4b445f2f78aad699c6b",
+    "baselineRevision": "a9bb92642780cee06bb1d990a9a807536a6904de",
+    "sourceSnapshot": {
+      "sha256": "9a8b712e42990a1dfe88fd3701be9b67652dcc282b4fe96fe27c0643b7f09c28",
+      "fileCount": 773,
+      "files": {
+        ".env.example": "d0823b6e644465abc950e8ab02ff63fdc735bb00b0a599dca94d96f867acb40f",
+        ".github/workflows/ci.yml": "24f7df5ed880de93c2ee4fd4177086990b243a24426bc983ce457203251e1db9",
+        ".gitignore": "d85ab86065de39b858ec4a4e531402cc2f56a6c8c461a35742ef8bf29420fc34",
+        ".npmrc": "494e64a8818b6158e89321250500ad5ad018e33ad5cfea06a1cacd2cf4da75fa",
+        ".openai/hosting.json": "b8b9fe5919e1a511176d418ba89c792bf41f713642af0cc56864cfe2acd14163",
+        "app/ai-writing.css": "63450ac3b3e8282ac86a0cfd5cfb305554c82ff262903ca37a35d4984816403c",
+        "app/api/ai/config/route.ts": "ad44ced6d93b7df6be7696beb2e9ae1ecb133025020a688a1b082d5a1bf386f4",
+        "app/api/ai/test/route.ts": "187451352268a2c443a3c26826c2cb17075a769f8fa7deca46d88914edbc6a8c",
+        "app/api/assistant/chat/route.ts": "a0a4a91fc6ada1aac66109a63eeb42a4d08b691a6d119cdd835243cc5d2e2775",
+        "app/api/assistant/check-sentence/route.ts": "9a0ec6e33f77521029bab27b0ba12d5f13136dec59bf01a1188f0fc05dc55aea",
+        "app/api/assistant/contrast-words/route.ts": "f0521890c4a9a5c3d1cee9b8dcb822e150ee6b070affb6b71cac6fc7169860d9",
+        "app/api/assistant/diagnose/route.ts": "4f61feacc9af20d1a5fd245ec83b26cf02cfd0036a9e807ca97a9a9850563409",
+        "app/api/assistant/explain/route.ts": "409129a466bd4255c2f479400ebbcca87f76021b68168db2428953634ac9b80b",
+        "app/api/assistant/generate-practice/route.ts": "301e49f2d53de03f6f704d520aebc5b6c0f19e7b3ae514a2782608d2037d0e06",
+        "app/api/assistant/mnemonic/route.ts": "f56511628339a9ee6e2fc216ae7a7ca0cca145f8fc04b1532bc55eb7d7d9af69",
+        "app/api/assistant/review-essay/route.ts": "d190e1a29874733ac947f039790e038eb69e207ec6ba86dfb4ef73027c7e65c2",
+        "app/api/assistant/story/route.ts": "e8020b7b03f5a613ed97ead3bd3a2efd223dba0fc994599ec3c47c55816cb927",
+        "app/api/learning-journal/route.ts": "2f9f4fa044d6a6021ca392554a089a1db5032e6ec010b4d57b086dfea3b3215a",
+        "app/api/learning-memory/route.ts": "7fe6bf35427d4b4376e25f3d26f09f4fbd1f6626ecf2840315b65b3668864cf2",
+        "app/api/reading/classify/route.ts": "1734ab5f73ad15337ccc7519131789ff6095dc4e15089875efad546985082fe3",
+        "app/api/sync/route.ts": "1015c4bb3fa912e2c664b538cfade79092bf737dd3b90b691ba57ff7d8b0e951",
+        "app/api/voice/close/route.ts": "58af0e3ca91ec966a559aef41c7c9b11241a80bb25bc78be647a0864d686ce28",
+        "app/api/voice/dictation-plan/route.ts": "c45074c4a03749be1b74d7a1612e92734a676376eb6953da8625bb41868d987a",
+        "app/api/voice/dictation-recognize/route.ts": "2249c7fd81f9c80804d90d3efc23a3723da7c13f0ce134c23fa68911afede7a2",
+        "app/api/voice/discuss/route.ts": "ac6eb94682c3b1012c7c6c20f5e617a33f4697d4bd29840c8f01c5088daf3ea1",
+        "app/api/voice/feedback/route.ts": "d9ccdedfaee7ec6b1801211e77e4be3b4ce206042618c9d5eb11cc02cc8d31f3",
+        "app/api/voice/learning-tool/route.ts": "5a226e96dcf01d8be50cc1c89e1fb7b277ce3c4b1069ceca4927224b6622a595",
+        "app/api/voice/memory/route.ts": "b443d2fc5c25a25f065a8aa22274bc02a5f766761d9c59e4af65f17a5495188f",
+        "app/api/voice/recommend/route.ts": "e87cb4a73a1f2edd16ece56bc6fbb0399e3b8e7373e59b75f2269055aff092a3",
+        "app/api/voice/session/route.ts": "f2af14397282c795d842e36d77763967a36452f68eee5fedea0133cbdceef691",
+        "app/api/voice/speech/route.ts": "4aa4a703e299641d1cc6d69bc34c2482c9c0986fa9261f398c2b11d846695c27",
+        "app/api/voice/status/route.ts": "87ee3ef8739fc7e90ff46dda979545a6197ac4f76cf2e721860cf278e1d4c581",
+        "app/api/writing/generate-topic/route.ts": "8a111e21f368241601e7072e92c908033a3d1bfaccd621d1fd396d4cbd04cd08",
+        "app/api/writing/recognize/route.ts": "66d6a31d52522f5aa166ec6bcf92987818639570b1f91d1c41eb78ae62d21166",
+        "app/chatgpt-auth.ts": "655cf8ab4d4929f5cb89c4b9b1511c4767ffbfcb3bb06110ecf12404663acba2",
+        "app/globals.css": "35ea9a529e202b6af90314dccc0d541e198db941f89b7fd086ba8f0a73df2fe5",
+        "app/interface.css": "a8811835db90001ff809e2ae6ef4c05f76c3d8f25d0de73c5865cebfdd2c1d09",
+        "app/layout.tsx": "3ec7e815ae1e8b7f53c4ae8ac047eca1e5c81f9b2ec18c6c33dd7edfe3699be5",
+        "app/learn.css": "ba08bee029e27fc00600dd68f298d472a54d762691cba3e69c8e471066305602",
+        "app/page.tsx": "4443b7e1edea2f64cb8320c48cfad740b88e91de248dff345754cd40fdb1ca13",
+        "app/reading-surfaces.css": "e5934fd2d6c68bf12ae84da2b7f9a55882c391bbaf945841b198ebc1b47ae0dc",
+        "app/secondary-ui.css": "a8387d0efc9a1ab01024cda096bb4cf7b9a09600530973e941acec1277415a87",
+        "app/settings-dialog.css": "16ee224ef90d1a7c9e76f2e605fe6c5e7564a38e60b26f7ad0ced6fcd72081fb",
+        "app/studio-controls.css": "81384fa870f1dcc20c25cc013b501fcde0c5c087a1ee9599155e32809a92a273",
+        "app/voice.css": "e27e30c0544acd9af97b3a6c024335a0e555821fe27992db1b23ed663f4eb201",
+        "build/sites-vite-plugin.ts": "ececf30670652c811501a515fd1c20bd7c3b2e128425381f6dc94ec4659f237c",
+        "components/console-settings.tsx": "9a4edead5d4526ff86c0215ea838990a7f02734227d04adc1ef3bf988ec4508a",
+        "components/studio/action-menu.tsx": "9e69cc7c135c9e48531abc2da0c746a035dfa605bbc7b44b438da9a40835df50",
+        "components/studio/activity.tsx": "dbcd985258710e14c11cc6c4dcb716afd40c7f305da1f062c34d9f329a309b34",
+        "components/studio/ai-connection.tsx": "fd85d9132c94b102713d62636e79bee0837c554e13b5904fa5bdf320ebccede2",
+        "components/studio/ai/ai-provenance.tsx": "9a5af76c70769c03c7710607e1da56dbf5917aa9c122f6a46aea074687f5572c",
+        "components/studio/ai/ai-views.tsx": "12ab0cb13a7fd212ffba950d107b7bae2f039f8f7bd6333bc17884218fae656d",
+        "components/studio/ai/sentence-output.tsx": "534f6255e61d2ce446e22267351bc4ab789eaada5d23b0836f617b138669354d",
+        "components/studio/ai/study-insights.tsx": "d1828615b0a0a69bc0c95013eed76143714e99ca0174866bd0e0b25fde05ced9",
+        "components/studio/ai/use-assistant.ts": "843121be149700b23de695d8647dd802eb2d047b23e0480ba31abbbd955bd8d1",
+        "components/studio/ai/word-ai.tsx": "bc0afec8fd64c077df8f24bfc71edfecdfbab1c7635acb13aacfa5c6efc5b846",
+        "components/studio/art.tsx": "e725e27934f024a0ea0dc9561c9735b11bd391e4020638a296459ce7c11a7d39",
+        "components/studio/companion-glyph.tsx": "1c17bd8dbe1e323b75c700b479cec0953d649823a5d10b180d929713fd63cea9",
+        "components/studio/companion/chat-client.ts": "17938178d2d14e79316679e2213e692eec70acff253ab81ba8b3af8b5f306669",
+        "components/studio/companion/components/chat-view.tsx": "d8c495d7e40f6a953e4e94d49de4218a36d70c386a39fc9177f3a2927477656e",
+        "components/studio/companion/components/composer.tsx": "8a7ad5874e5fe3c3331ae49b5e6f361341053da2d294333451aee849ebd9cdbc",
+        "components/studio/companion/components/icons.tsx": "3a98095c8156b88d98b33911d768c73ea3c6ab10d8a4ae895e211d698892bb84",
+        "components/studio/companion/components/live-voice-stage.tsx": "fb7fcaa2b7823bef1bffe877c6300c5cb61e61f81ac727f97614f588f50169ad",
+        "components/studio/companion/components/messages.tsx": "bb94e4141c4f63d9e6ce03c06c2f854a62ebfed142597674190abbd116f308c4",
+        "components/studio/companion/components/mini-panel.tsx": "e69ac1ebaa38f47ac14bc1fd5cc3f23493edb9abe9993505cd5e8325e199f1df",
+        "components/studio/companion/components/modal.tsx": "4cb0a409d3f38732694bd43f616d2578180c25f67e6f28456b27db7d25dedf46",
+        "components/studio/companion/components/popover.tsx": "4417a588d9e5ce9e3c3486ad986dafe2dfb34726d04b8f32379c559e922eef88",
+        "components/studio/companion/components/thumb.tsx": "93e33cbf5001b5c31b2ee4ef62f75838ac2b74656264d6b18a70dac14020b7e7",
+        "components/studio/companion/components/transition.ts": "4552b93a013615690fee0bf259ce706d76868f29f7d5ec8f4040cb40255d685f",
+        "components/studio/companion/conversation-list.ts": "2312ee9506260c77fedc5089b6044b42b11d4c5076d10906e9dbff72e68ef42e",
+        "components/studio/companion/data.ts": "a1b023fe3bb31992a6b21320b80c854338392a858f88f37fad9bda9a6116fc2e",
+        "components/studio/companion/history.ts": "7fc385926f5f068bea4fbb99f1aef24e119b837c6434689355279b08f2933feb",
+        "components/studio/companion/index.tsx": "33f75d1d9f9366c534ca45d39c0767b71ec562980081bea60064a24f8e148385",
+        "components/studio/companion/live-voice.css": "ee6217ab5eaba786ecb8c9ba55a69c9103a18853fad708be5bc0b00fd6fa731c",
+        "components/studio/companion/persistence.ts": "76cb9504aabee0bc227daa1c1dfdfdc932ad918c40eabfe1b39c554817940b94",
+        "components/studio/companion/practice.ts": "d819a6ac14a3da5ee84ab246d5fb28225423e34c6b0522548ee2276a914cbdd6",
+        "components/studio/companion/reveal.ts": "c4f802da5f0d79fb9be8e845d8ec9b59873f14744ec8fcf2ddc597127111d232",
+        "components/studio/companion/routing.ts": "0ccecaf74349224ea3226e93b44e9c82bbfc151344db3e98454b9eb6d7b2e2e9",
+        "components/studio/companion/selection.ts": "e434fbc029b1fb66e306238cb0100f9c8cca99f367b60b9dbe6daf33a9477d0b",
+        "components/studio/companion/sources.ts": "a30508f9ded8db94054bd74b0132fedd187492602d3790ed2dc1605944de3ef2",
+        "components/studio/companion/store.tsx": "40cb51b1a7bacdcf5f831729eff83ad2e682b9f61345c67613bda2f5ac55e94b",
+        "components/studio/companion/styles.css": "fbc153111612b9d1801419088c56754eaed178983f7dc54ee5bb039fe74071bd",
+        "components/studio/companion/types.ts": "190dd6afabead04fb4d728ad6d962eab9ee10b3c96aec1096513083444c8645f",
+        "components/studio/data-tools.tsx": "24cbb5dcdaf9d6d12f26ccdc1fd6a1cb956d11a8f4de3979e090b952b3bc6abd",
+        "components/studio/error-boundary.tsx": "6e9256e5840e8d477b01322788c184c52c409e3376e60d503c813d22e9e9e0b3",
+        "components/studio/learn/flashcards.tsx": "a24a702c0c5c4884f639781f0da626f43ff59707407174bbcdd5163f164b3366",
+        "components/studio/learn/learn-activity.tsx": "7e21a9015cef5fb647222c4161028f699afbaf7aabe30e1547d853d37efe22f5",
+        "components/studio/learn/match.tsx": "251ab04bacf22c49d728edef16ee6b7897d812ec012526f457c8a861ed9d0213",
+        "components/studio/learn/parts.tsx": "06c86b978a34b0401317b4efbc00b5bb3e1ebf96aff542b4dfdb5b27df1f40fb",
+        "components/studio/learn/quiz.tsx": "097f71b94568ebcd2348e205168d923b08175b23a8a50f1235ec7aa3d235601c",
+        "components/studio/lexicon.tsx": "2721b33c1930ba1326ca236c34c4bdad53d1a643e1eb76efff46dcfb783e88e6",
+        "components/studio/preloadable.ts": "8a74a22e6bbde6b882118c260bc23312b621ec53711ee214c86b3555cc89f610",
+        "components/studio/reading-ai-tools.css": "6cd9428b7741bf100393d1bb32f89610f3aa3e3a5f74c6e295ab418ad7e73bc2",
+        "components/studio/reading-ai-tools.tsx": "89e8d34f561ee5879c209eb2e5f733668b05c4f5c46d76de092719b020fb97ad",
+        "components/studio/reading-import.tsx": "f8c94c065515296bdc87bd5bdf412d8459fa0360d31512df8bf78233f443d691",
+        "components/studio/reading.tsx": "805f3ab6ad2cead8f68549ecf49acffce49c824a13b8a6d11cb824dd6f5c3bbd",
+        "components/studio/settings-dialog.tsx": "88e90f1c4fb528192b5a5043296150e54410366ac50319e65692f82512f0410b",
+        "components/studio/shared.tsx": "8d0627b5fcb0204c561fae2697ea3ab4cb4ffc380ba17d44fc44fc2cfd26b1bc",
+        "components/studio/studio-dialog.tsx": "69ba8df03e8ed89993893b676fe06f68703811d9dc37422313ada2e9cf91dc85",
+        "components/studio/study-session.tsx": "45d118bb31c9d8488876fa4360782d05772ab80b26fdb0415dd368d322b65e0b",
+        "components/studio/surface-styles.ts": "83c1b03b4b322741cc4ffa6f391ff20cf6e6a060353cd6bf778837a838d1a984",
+        "components/studio/surfaces.ts": "1f700d59124c14130f2dc700d4e99274b03b0ce5020bd31461a18d3de47a7d7b",
+        "components/studio/symbol.tsx": "13f4c5c78d4f52fadb8f46d95d26650ab2df9874ddf83b09dc135c33355afce3",
+        "components/studio/today.tsx": "19d0b96b00d732a5d09d9f72a78dbde7be81c4aa2359b225dd5d8faa84fbdc2d",
+        "components/studio/vocabulary-practice.tsx": "6fca33dd506023a2bf443345e36a7e1ff6d61413e79b02010cfc6b14765c96ae",
+        "components/studio/voice-workspace.tsx": "ce2904e46da065480af28bb48ac6e901f00f347ad33d773f65fdb9547635a529",
+        "components/studio/voice/dictation-panel.tsx": "e464d050a087459ffd2ea676bf6e930e1ce7a3637ed6efd86ce0d47c40b60ec0",
+        "components/studio/voice/dictation.css": "c3b60562ef8fe56e6af1158c1a068dea5b1952fd5d2efdf1898e3589d19f9068",
+        "components/studio/voice/learning-memory.tsx": "4459ac7b4bd503240fe77b02c22140df332f2bc44072ab0f003981194beb816f",
+        "components/studio/voice/paper-dictation.css": "09942b55c2a6cff9bb6e889887c1bea044153857e2cf9e0281a4c70a6a882f3a",
+        "components/studio/voice/paper-dictation.tsx": "90bfa912ae3939dd180ebfd2333cae9c33a86d4641d2dd210a2c090ad441c50c",
+        "components/studio/voice/practice-discussion.tsx": "5a3fa0a43831267408950371b0087429203246b5e26ffdd06254e114ab7e59cf",
+        "components/studio/voice/voice-dialog.tsx": "002a8ae75b87f22e55167540638e63ee14a75caca455e8a5a2c986686a585233",
+        "components/studio/word-detail.tsx": "2c7b3de09e4a1a4f9122c093ca1613224faff61c041db26fc9c47bb449cc7031",
+        "components/studio/writing/essay-review.tsx": "e5e3273ce760797323f49528913b3a4e2557d4dd0eafa5e86141ebd4d53532d7",
+        "components/studio/writing/handwriting-upload.css": "6dddb74da7d5c962cc40f3fd849c922ac78ea98dbe204b8899ab0ee084872a79",
+        "components/studio/writing/handwriting-upload.tsx": "2d11c948a2ac4a513534201f5dac4b7fc3503cd381b0f184475911f5027dceb4",
+        "components/studio/writing/target-word-picker.tsx": "c8b20aa4106fd7abb22c6d44a770d82284ac3e8500074cecc9b3424a1a0bfa6c",
+        "components/studio/writing/writing-card.tsx": "c17547f243327832867e692ea3e2a66e0c9a946c950d2a224a7475eef3b2c8d1",
+        "components/studio/writing/writing-workspace.tsx": "7228fc54efc5483732c98870bbd9c5047683d8fe916113c8af13edbd98446ac8",
+        "components/vocab-app.tsx": "b3821d23d1fd93e499ce7f53402a49ba8675366aa4f9606d4dd4abbde5bd3120",
+        "config/books.json": "49d5391c66d61d12cf256cca6fba3a8ea997ef7885a227082b7a9f5e2fe0de81",
+        "config/source-input-lock.json": "1c921e93d46280b3590def33d514088aa0c2da690a4ebddff70561bc4be78e57",
+        "data/build/normalized/HS-R1.jsonl": "4bcbaacc83cc1394d26314cb2103ada0732cb2c5d46b9dad9e1d534ce8898016",
+        "data/build/normalized/HS-R2.jsonl": "405d95765c62b49af5da2089ea1db91a25ddc852a30ecb3643792a4e83d2ce88",
+        "data/build/normalized/HS-R3.jsonl": "c5a0aa52c65200277b796614eff3e9570357624eab3bac9bd199476535c30cfe",
+        "data/build/normalized/HS-S1.jsonl": "fb25231f3f9acedea9a8a82c642008d81b56db116dfc45e6be2888a3e057dc15",
+        "data/build/normalized/HS-S2.jsonl": "32a9c079fdc4f7acd24b4cde3f4bd07a02fbcd9a3202e8e46304c5aebb66c0e3",
+        "data/build/normalized/HS-S3.jsonl": "71895c1783b0e0fa06355cf85eaeb39aacf422af926c7bd2bc0b30d864a113fe",
+        "data/build/normalized/HS-S4.jsonl": "7ab38e19b0f7cec8f4463b0a274eb97326ea074202a78875539d1c83d8014c5e",
+        "data/build/normalized/JH-7A.jsonl": "ffba8772a6d0bcfff2f498c2e7ecb626144e2d959200844ebec641f303ab0640",
+        "data/build/normalized/JH-7B.jsonl": "121dafd2250099dee4bff7b6e24b9c57ea376aee531faf9fdfecf17e1656cf7e",
+        "data/build/normalized/JH-8A.jsonl": "802043bf42a85646c12b37d0c9c93276d790c0cf2a19dd12182c14843b3a1274",
+        "data/build/normalized/JH-8B.jsonl": "f5399ef1ce5534b1db7d18d4a7cfc4b6b1cd3d3cd65e8c79217961410d0c6dc1",
+        "data/build/normalized/JH-9.jsonl": "9079b1bd4bf7d0b469120ea6ce42dca016a493417dac89016f39aa63a2cafd99",
+        "data/build/raw/HS-R1.jsonl": "99365534a54a4a6a11e825e558d528c51b9fed2e26d0391f498fcc79c6bc9b24",
+        "data/build/raw/HS-R2.jsonl": "ec9c7b3410e2de43fed41074ff30b129c7f3ba1b2eb09758d901237fee65078f",
+        "data/build/raw/HS-R3.jsonl": "b3cbae633568342f7a3dfc13bfde0de2c08623aec7907f781ee0f69325d15d62",
+        "data/build/raw/HS-S1.jsonl": "0fc7d531d961cccf62903469debb1afc9ff243120eb1a8c4fd41b6c8fc7ce4f1",
+        "data/build/raw/HS-S2.jsonl": "c6fbdf218511c74c24a917d278f27ec0978604a5ddc9f09f5c5ba18b4f50f79d",
+        "data/build/raw/HS-S3.jsonl": "e544971e476704624a951cdebf264f12aedaaef3a46356cc0e4621a6b0076cee",
+        "data/build/raw/HS-S4.jsonl": "f2d09cebe60eff5c07bde568831c0de3976b8cce434d8796f227507fa9a04d29",
+        "data/build/raw/JH-7A.jsonl": "fe0771b4b21e4187e7f88a5cc7b9f389be28b08a4a6e29bea587779ff6763366",
+        "data/build/raw/JH-7B.jsonl": "f6706f9f2148ee12bed7655102281b18421b91ea3730f86992314f8ac3450372",
+        "data/build/raw/JH-8A.jsonl": "9f83b7cacfaf6d96370be0a9c4903babe5582b2744bdc667fec99bad33781981",
+        "data/build/raw/JH-8B.jsonl": "f003e4fd57e22eb8c5b85c9cef3054ccc973943af14c7a498911864dd6650488",
+        "data/build/raw/JH-9.jsonl": "d9f6b9ea231d66457d69121cdcb1733d44e466839c1b2c447331bf311936eaa4",
+        "data/build/raw/STD-HS.jsonl": "4a950c3f2a7ac468bd292bb0f5a5e52fd0f3ec40554d56ef1bfabb65d3a6d170",
+        "data/readings/curation.json": "50a6c2ef6c7b6f1bc6559cd72b4e10212db78f27ebe690b1a98679d1fc47a220",
+        "data/readings/extraction-evidence.json": "2d91079f7a7728477f7452c0b80b8176c6115499f12c6b7c49b0b6bdc6ac1740",
+        "data/readings/noaa-evidence/official-a.txt": "6c4992ee038ac85f3b860a9c5945681cd49fc3e767412505913347ec0d8ace61",
+        "data/readings/noaa-evidence/official-b.txt": "e644c2284c4652da9edcd347da38aa8abaae567dffa7bdf805c9a2a30f89ba15",
+        "data/readings/noaa-evidence/official-c.txt": "a8c3c28827c5c8f7cdbfa61ea96a62086928ee37d8e0945d669608a6d0950b5c",
+        "data/readings/noaa-evidence/selection.json": "60072cb6244258fb9083a9b4bdf818686f7fbd0378f1690f52c3861a52eeb329",
+        "data/readings/sources.json": "1f8cf4b3c090b2dc3f4ec315ba4fa47c49c0a391ed72eaf98d88a3eb8bed6755",
+        "data/readings/sources/pg1022.txt.gz": "ce1ac0bcb37dac61257c8059a68881a081a3f08db3cdb35b7b47021d9422cb7d",
+        "data/readings/sources/pg10343.txt.gz": "bb89065f7aec0a3e9d2a95ef773810ddbf7f0792daf2d25123d657781cbee76b",
+        "data/readings/sources/pg11.txt.gz": "58971dca11a367fbec1b94702caf1247e2382ef31937ecf88c1be91794939815",
+        "data/readings/sources/pg11339.txt.gz": "b32c79c66e8ddfbf7abb533f419102369bb4f0436d38ac05c9ecd7962aaaa794",
+        "data/readings/sources/pg120.txt.gz": "4ec91b4ccfd896f346ccd83a4190972a97024a7a6b6aaab53d2d9ee7ac6904a4",
+        "data/readings/sources/pg1342.txt.gz": "0bdf18c2a821b06ca5c8a4c9ee90003ebfae07de837f4d852bb399010645bc1f",
+        "data/readings/sources/pg1597.txt.gz": "e26cfb4407b301c44fa3d51fffd7b1f97064e916430e4f4f3bfb63db97143162",
+        "data/readings/sources/pg205.txt.gz": "695222ad5d36b47dff9e2481da0d8a6fda10d7028c757c79cee7124a931f0431",
+        "data/readings/sources/pg25586.txt.gz": "aa21933e8364cd316aebbd7904a8ee578ab0285aaa44e6bc3381f67bdfe2a1dd",
+        "data/readings/sources/pg269.txt.gz": "c925c487a96e4e673c490cd6c6d34685668e9f6974a08719d4e5f7540e7e7029",
+        "data/readings/sources/pg271.txt.gz": "c8900205119adc495e014cf396a41b45c43e315a02212b04f90d5dea558d1336",
+        "data/readings/sources/pg2776.txt.gz": "fd412cbe9d5b3335198f04302b52578c4089dac6eb4eb315f5e53933698f1c40",
+        "data/readings/sources/pg289.txt.gz": "f86a27f8f06b4ebcd578069a69376028e918cda58b78d97fdbe6b3dd7d263c91",
+        "data/readings/sources/pg29433.txt.gz": "1a36d57ee642484e3da149e4998b2e83b54950682937ea23c7337e0fede8bea1",
+        "data/readings/sources/pg2944.txt.gz": "f0a986e9413cb3af8275221dc1f7aca8a52267571a29d70210c54563a108359d",
+        "data/readings/sources/pg3250.txt.gz": "5a05fb49809f6180de3d927bc65555d59553eb873b3de773cb9a6841e78834b7",
+        "data/readings/sources/pg386.txt.gz": "4d671b7a434b5309241a5477b1af2e71f611cdb9a7fa7ba892ac6b6064c8d100",
+        "data/readings/sources/pg45.txt.gz": "d4c4b63198addb2b62e8540e220a7c0ecf100bc4e8510beaa536720627e4ec6b",
+        "data/readings/sources/pg46.txt.gz": "2d40e21ef1dfdd32ed4375d26ec195d1f7576724608cb8dd2ed3023d0f1620a0",
+        "data/readings/sources/pg514.txt.gz": "043d1d2fefdc36ef107647cc8353c067697b8e9b8775395cc4866e3a400a2d66",
+        "data/readings/sources/pg55.txt.gz": "3d7aa12c75713264fadfc6c987c9d2947b507bf3b7ffe9b30eac10f05efad23f",
+        "data/readings/sources/pg575.txt.gz": "533d39cfe8a58b7142e17094d8cd9c87993d4169744e402e8e87dffcf3c5f70b",
+        "data/readings/sources/pg9846.txt.gz": "bdfe49a2a4b701fc1a267b0839f170ea1fd388e5a00102c06fd580adbfccd455",
+        "data/readings/sources/pg99.txt.gz": "50cd1086e95b49b0ddb530d5829958bd24afca10d036d56c5fba6b119a8d69ad",
+        "data/readings/supplemental/noaa-blue-carbon.json": "1445e689966d4d7ff11b69b058790c3934d080969f023ba536f282137b4bee96",
+        "data/readings/supplemental/noaa-currents.json": "bf9def7b32cc6bb966325bb33a63be33fbc71e5cded060eb9736d984a6c734d4",
+        "data/readings/supplemental/noaa-estuaries.json": "a3adc2ddfb15b0aadc5a511069b254608d31ad108f621fae1919d282483687cb",
+        "data/readings/supplemental/noaa-mangroves.json": "df6b6ed9810097ad170f56c92e090b6853fc903785dc5655c949b36d04a99b91",
+        "data/readings/supplemental/noaa-ocean-formation.json": "bbc5a4c316c70ba0003389c7b9876278e409e940bf06dfc978633cecac798929",
+        "data/readings/supplemental/noaa-ocean-oxygen.json": "13933f24eacdc63d98e4c6444969a8a80f5454486013c17a2db60a2f1422782f",
+        "data/readings/supplemental/noaa-phytoplankton.json": "3350c3c0e5271675abe98d8e1a75b1186ac21bccbb74fb03435ae8c8ecfc3756",
+        "data/readings/supplemental/noaa-salinity.json": "c803835fdd26b1c5a20ece79710ee0c6c8f5acecbfbd1d0f5545a8bb573d2d6a",
+        "data/readings/supplemental/noaa-tides.json": "9afc6014254f2a1f6839319b11d16167050f593563e6fa9bcb6477ff8ebe02b8",
+        "data/readings/supplemental/original-library-hour.json": "52bae93f220d80fe00c7dca00f00bed01da2916228a922cae87fc311d264c2c8",
+        "data/readings/supplemental/original-rain-notebook.json": "8104c4d451c9149cf35561457bc327fa21761542976e2410be2891ba90927642",
+        "data/unit-reconciliation.json": "cbece56014df928579b52362118c949646c9beffdb83b28ed30355481050687c",
+        "db/index.ts": "dc7610b00b918e0ffff1360a63626f16655ced3064b2eaf96095a4101fb14bcd",
+        "db/schema.ts": "36e417cda3c81ea60957e2f7d359da5fc3ccd6fc42db8faff7d6dd7ae4df4fce",
+        "drizzle.config.ts": "af081f7384aaeb0082cf422e29f139d137ca2f6a57c69b2c37b9fb1f8479867b",
+        "drizzle/0000_curvy_newton_destine.sql": "cdc05b5fa35aaee9cdc67f8e9ad5dcf3d157afa58f7115b6ac8c39e77962d4dc",
+        "drizzle/0001_flawless_human_cannonball.sql": "02dc401c49584dee70beccdc3c2fac72ec055c07d493752e47612a9e9488ce15",
+        "drizzle/0002_swift_cerise.sql": "0dd2e839f0a9f2b6e993f314982dfbc66cfe9bac5ac0697a9116841811baf642",
+        "drizzle/0003_small_smiling_tiger.sql": "f8dc5ba1e9a7471b4f58cb4807d99ec181bc335a61895ab4e28853a87fc02ba6",
+        "drizzle/0004_thick_malcolm_colcord.sql": "7c51e8510d66d8f5dd0f50778a738beaccfaa84d1671fc8c8dae66b0b2059eb7",
+        "drizzle/0005_overconfident_old_lace.sql": "3e8676d7a89bc0005c3a6748860a0908e6ca4503253be8cd945cda0da0c04dc2",
+        "drizzle/0006_lame_shinko_yamashiro.sql": "52e418169c939572a8c1bfcdd326ac865d7751aa3347d6e3c51b2dcece976d5e",
+        "drizzle/0007_ai_config_generations.sql": "b9b993cde69560f58afb9a50229747f749611b87bd5a929be7c5dc8c9ef26855",
+        "drizzle/0008_learning_journal.sql": "96aa89f9132da82839b6380527e8ed822b149240c88bfd5191e89b3cd4cc019c",
+        "drizzle/0009_learning_journal_quota.sql": "cfee2543eb452f18ed2d2e723117b0d3924b892bed3724c4a031ba2a88fe9d88",
+        "drizzle/0010_learning_journal_privacy.sql": "624a7379087ab6ddfb2bb36909f687ea9b1272704027f716e0f25b7d12859e43",
+        "drizzle/meta/0000_snapshot.json": "036071e0bc3980b1adef43fc0ff6cfaf96acfab1c2dc817ada332602718dea43",
+        "drizzle/meta/0001_snapshot.json": "a14b9905ff6021cd33b8e42e7ea6a896516a306b3d9c756f3bbce9790652aa88",
+        "drizzle/meta/0002_snapshot.json": "3dad7332ee9af905297ac074a4e422d4326ebfeb05d8f3796d72982d207e089d",
+        "drizzle/meta/0003_snapshot.json": "5c570b57bf427169cd4ef3a9d92c901bfac43a3f79722dde305847a2766254db",
+        "drizzle/meta/0004_snapshot.json": "ed5ad3ac62b9dacca7cb908be7e8f7c04f914597a5e223aadec2d4e09359fe85",
+        "drizzle/meta/0005_snapshot.json": "a54544e7a35218d1b1f67a51e7ef6773b4bab98ff44856b60e83bfa6fa7748f2",
+        "drizzle/meta/0006_snapshot.json": "642724835e65f3cbb8c6c3dc24be7874637d95f7734ad17011bfa48fe7b319b0",
+        "drizzle/meta/0007_snapshot.json": "32d5a328620473d727d26265624a21d84e80a763546926c267367e010420fcce",
+        "drizzle/meta/0008_snapshot.json": "5632845706e51c32cc68f6857734a05278f483a202c99708d96d0d1aabdd27c9",
+        "drizzle/meta/0009_snapshot.json": "9b7adf972558e6cc4fc1a7c5e93741f67714efb3b39d2134d8d8286b3aa8b48b",
+        "drizzle/meta/_journal.json": "8e737c5180276cc719534e5a97d952fc12da4889697391774a17745a47078c23",
+        "eslint.config.mjs": "0689284c1614addc85e2ea4d1be0889c0cc764f3ac03d42646fd2da89bccbbbc",
+        "hooks/toast-store.ts": "510b2cd2370617ff29242ce90accb85bbad598f98f1aed6b022bd3e9cafc473e",
+        "hooks/use-back-guard.ts": "09bba87299b385c75bc83997e8fd4533e5beea1d5d4c9ebd807a4a125ded4a77",
+        "hooks/use-modal.ts": "1ce90ae88e441cac9c9e3eac0a12f2ba6e330cdf2f7f229e8ae6fbf2d3c26af1",
+        "hooks/use-vocabulary.ts": "d523ff75c2cbaf52a067361f65a6db6acf2e3a1343f0e200d8a9724ee4a98471",
+        "lib/ai-client.ts": "dd92bc91f5d4d9a8e6cd7929a9c005963e9a5341927219ac9033403311e6f508",
+        "lib/ai-config.ts": "733baebab9586eaa7e08101c2848a322dc61b3cf1698664462f1ccbf139a8a7b",
+        "lib/art/core.ts": "061c28175738eaed926cf0306dbed87d343763096d2a36a2cc65e2bb0f6c8be0",
+        "lib/art/index.ts": "90106729e6e5d6478ea4f09dafaefd03f681a269189baa8e1a2a12e054b9084b",
+        "lib/art/scenes.ts": "04919a880efe2e6f9b80a5943c77da93661ae4ea9a531b435db19486a0783ddb",
+        "lib/assistant-provenance.ts": "dec932aca3afc0e5ef281ab3cecf90b30d41db27c1fc0f2d21833fb19b682112",
+        "lib/assistant/chat-contract.ts": "b58aba9d05ebb5812b0e7e2326687f8563b67048729154b3584a5afd607259be",
+        "lib/assistant/chat-core.ts": "3028a0529104076bc1b9d3ed9154d8c57224bc3e790a6666815da0cb0d3eec17",
+        "lib/assistant/core.ts": "3a5a6cc0aad0e2e3ea1cca6cce0326ea0f35d88ea00e35b9e176cfa3880b5bbb",
+        "lib/assistant/harness.ts": "9b73e213012472c9473e5e532f63ac553ef8d5537fa31e35c99a6ce3f7d4d5d3",
+        "lib/assistant/profile.ts": "e65477a3587ade81280fe63e617404bd1c550f0d9289e1fa53fc2335f58fb80d",
+        "lib/assistant/prompt.ts": "5101579e892b9d794cd1fd940f6a57d04dd6121e14767441e6fbcd69e40cacd3",
+        "lib/assistant/rubric.ts": "77b5a041b99aa8b0eeb320245da71628f6cf676c1c73e1578c7263603322f1f8",
+        "lib/assistant/server.ts": "4b60df56431635fc066f2848d50d135f918eed98ad917fc83a2c6f195d7a0dae",
+        "lib/assistant/tool-trace.ts": "695758cca7bd7931a74d50c08ccf561f8fc513801de7880029ba247e4881e5e2",
+        "lib/assistant/toolbox.ts": "c6379d5aa5e978050605c48d3f1be1980bd44182507ec480c4e2c14c12c04da7",
+        "lib/assistant/usage.ts": "b6cd01ac675d2484b4d95f9a47b5016c6259a0faf9bc1fa1a640bb571d1a6fb0",
+        "lib/backup.ts": "2a5e51d85cc05cf930bd06bfc230b0d70c9a96a05bc660c6a7dd72b70b158e4b",
+        "lib/companion-events.ts": "b5b17a992f6636ecc259b7307f0ade1be4d0ec6acd11cd5d64b770a42bcd67a1",
+        "lib/companion-preferences.ts": "52b93a572919b2bd56acb5498cb99c3c33845dbc22b5fc5076e6fe91705a09a3",
+        "lib/companion-voice-context.ts": "2adfa2b82dc16bc63874d8ceef630b0b924c28b8776bf45ce4f334428e716c2d",
+        "lib/docx-archive.ts": "690b738335db5954885fd7bec991f8767313484cc6980ff0506598fe708cb00b",
+        "lib/docx-import.ts": "d34beb61d3e1d36e9707eccecd2e411d2986bed9157c947ca8db97ebaca61048",
+        "lib/docx-worker.ts": "2b51697e0ef8555bb83ceb9f338ae6b7570fbe8845eed58012587d09fb6f0b0d",
+        "lib/examples.ts": "1d2dec3681a7bc8aad34ac09dc4c1ba2592d9c95db070d870f19e52e9c41fb09",
+        "lib/export.ts": "97f9f232037bbd6c1b495952cfa7b1e0d150dd409bd61b2c581521b63e5d1a67",
+        "lib/http.ts": "e68dee42dd99263b35740a4e4574ae241b7318262161380e8fce835dbeb55ec4",
+        "lib/image-input.ts": "59370424ef5f7d9fc98886d481a7cfb402bc5e21048a0d7aed567f4a0b45668d",
+        "lib/learn.ts": "108ea66955a22e1072ea7913f7051e519184c71179f211337ae6158ff3a546b8",
+        "lib/learner-profile.ts": "3f8496d0a405173c5740f9f1779745b147514e04741bdbfa8a59a840e88b85a9",
+        "lib/learning-context-client.ts": "fefab07774ffd73267051dce06439e8a2efb67f8ba19adf8fcfda5ebb12bda52",
+        "lib/learning-journal-client.ts": "17295274d613b2a895f08725eb0ba2b10b66393e73ed7338be3aaeb76f537aa4",
+        "lib/learning-journal/facts.ts": "4f577179201314549f31063b1d587b9f9379670bb77994954df4a71962693566",
+        "lib/learning-journal/input.ts": "9a9d3fce3c1d53f6cd466c6e25e6a98cffa427e0d1953e217e01fc86ee6a820f",
+        "lib/learning-journal/server.ts": "b22cc6634c24c28556379127e5f386d5a9657539feaacb4c29dc847808087000",
+        "lib/learning-journal/store.ts": "f6f1494c4dc3fcab97143a6e5438afabe135831249e9a691d83ecdac4fe7f0ad",
+        "lib/learning-journal/types.ts": "bd7152dfa76278b813c24238a2a4015539e730dc4261ef6477a15ef69bcda503",
+        "lib/learning-memory/context.ts": "52d234e2eb37d4594a13af77307b2e0ddfea92b4b4eb787096aed53a472b8650",
+        "lib/learning-memory/server.ts": "9365ec7149a50428bdb55a5c8f2639d1df2d0a5c698318b5f78d8da21f429dea",
+        "lib/learning-memory/store.ts": "59ea03fc6920bcc0f60a612fd21b9229adcc3d4060ad8ea0e28386f4a4baed22",
+        "lib/learning-memory/types.ts": "5d08365d9e98321c7fbba7ffe8cba6cf84fd6b08de552d95dc811c777b706c4f",
+        "lib/lexicon-index-codec.mjs": "e79db425f8f4e55a2212373a6bfd7234a1edf0e39b7799a86cff190c7ca2f4b1",
+        "lib/lexicon.ts": "bc815616887d73d1cd8cf53139bb8615d13e2a8f59083b3b383c73f4c0855b2b",
+        "lib/local-practice-data.ts": "0855a8fa53f401cc16246fd027da51acc581b692b8d445dac597d0ac9a37a4d3",
+        "lib/local-practice-generation.ts": "6e0857ef31a3cfa98b6d339b195cb1e1bfdd58df28b4364af5fe971374bf5e9b",
+        "lib/mistakes.ts": "37fffa537efd313af61e76bb62a971a2154dd555ed91f3f629d2a62c60061be1",
+        "lib/offline.ts": "82b8a45f4c5064710dc76855748c5cea204ddd2ca43f8f8bd137526a02fa3350",
+        "lib/pdf-import.ts": "f09312d2b68ed1cf59571b6f2a2c15cf4e186f1b73598aebd971caa45fa7b34e",
+        "lib/persistence.ts": "8e2eed7f2d3a5f2fdc879dddb1a222a86315f5b64d63504c7e6b5572abcc6c05",
+        "lib/personal-readings.ts": "523b2d118b4824b9be64b0368d54e9276fbc1cacdff3b020f771e94e786f39e9",
+        "lib/progress.ts": "b2d3e9b51203b59e92d5554814bad50ab58a3ee5a2051466419693d613857d90",
+        "lib/questions.ts": "2265ef2175512b742e93b76b60c516cb0a538948371efe1712b78b5cb4d19fb2",
+        "lib/reading-ai-selection.ts": "f8aa7c3f24e9a840a0a6ac484eaf4ccc3053b66e2462879d969d09dd9adf4fb2",
+        "lib/reading-classification.ts": "fcb40f05cf9600a8bd214f5bcfee131eef7297044dbac4f5b8cc66d6196e67c0",
+        "lib/reading-import.ts": "ab80371528033adbb823be309e32d87c1483dbe2609ff1ddbb315891ce350f01",
+        "lib/reading-library.ts": "e1d778d2fddbc2602e38b3c895c82c77ec91a02610da9728dc15546f89b63be7",
+        "lib/reading.ts": "18a374cd308bf6cfd83ab0f8634af939ac601bce2926ad941f3037c79e7fd515",
+        "lib/scheduler-limits.ts": "09ea38a3f5110c09ceb30451d3930a1f74a660547234ac85316438a39da1777f",
+        "lib/scheduler.ts": "a3cfc5346bb1b5fd7da51fb4bc0a04c17d29923094e6725814f45022725132be",
+        "lib/server-user.ts": "fd8f6dfc30bf52f94ab44d41af3ae080aff57e5c0fd7f0569e8834c286759128",
+        "lib/session.ts": "7be17eac0b8ef427bcb834a56987e498e4e6b6563aefc6b903502e048afce142",
+        "lib/stable-json.ts": "0dd239d342647ddf0392e1264fc51cbb6ca24602f053653c1931ce0256363cfe",
+        "lib/storage.ts": "493dacff1fe0ef541618281b443136f3b6b8316254b21236aea6d2fcd03f431f",
+        "lib/study-controls.ts": "98baca8f5b7d0cf06c7d8f9e5952f78f2c7c411fd7f53edb910ea1ae1fb3e07b",
+        "lib/study-question.ts": "e03535ac69df1036e817cb740cabedfb3d145db05b25e315d144912c4dc46995",
+        "lib/study.ts": "0bfd1f5d830de3c71f913dbc2db392b9bf210f5202b4d7895770d6d0bd0c6177",
+        "lib/sync-limits.ts": "eeeb4742512c87c632d4a8f35a26f6b2a91fd739c249a54b242fb989f33d6281",
+        "lib/sync-merge.ts": "2468ce90b3a6313238b6b3cc8b90ab159e37331e6811175373b90fd85edcd2b8",
+        "lib/voice/client.ts": "5db5bfd19dd500a2ed61d3f4e0c47bf0cd849a394939087277d04c7dba609d5a",
+        "lib/voice/coach-server.ts": "ab586e544aa8aba6fee12a7165de53bd8628e1e7ec7b47a5401d30bafea4a2c1",
+        "lib/voice/coaching.ts": "60a6b1f5ad2c03786a46247225f0c51d8f95d9cea30ba8c0b0ad3602190b3ff6",
+        "lib/voice/curriculum.ts": "dcaac8de64254c700cbc0c245d9dde5735a8ae3aab9d72fc1924f0a53fef61b5",
+        "lib/voice/deadline.ts": "e422aa6ce0b6071d0c775df40ae3e13938440efe9812613a4fc19d586e72ba65",
+        "lib/voice/dictation-planner.ts": "4afb3c60eae300a3e9de56f0e1692da7fad3244d3efe993dc52eae73f0ac7061",
+        "lib/voice/dictation-server.ts": "0625ce085a25b862f6a0bae83c80e433099dee65eb518dc766ab17143f205e4c",
+        "lib/voice/dictation-session.ts": "37d7ec91aecd8ac462e94d3a45b2b4f5ec172e5c7045607e0d9fff832e70afc2",
+        "lib/voice/dictation.ts": "9929a78546e8acc996d66d4ff3f97706432ee5022d37b5b65b105e34ae92b2c4",
+        "lib/voice/live-learning-tools.ts": "024ea9fb896cb894554c47e52fb2e7af78153e6d3c2009695cf6515301359be9",
+        "lib/voice/openai.ts": "3f386a920fd523c17ba28a5242aecf3ffe1e1ffd5de89bbdddf2554f19190c10",
+        "lib/voice/reading-candidates.ts": "74d55d063ffe210c5ec6e2b0e851a3983ed97f6de922ebe5883f22ee77570c18",
+        "lib/voice/server.ts": "d9e453a05078670f778d9fa66de5506ce58952f7c903d7baa41b9181f52d6c0d",
+        "lib/writing-context.ts": "02defcd88f68b43436c420edb9862099163e9df285701efbc34b134f06415cdc",
+        "lib/writing-recognition-server.ts": "fca77c2d9eafca594fd5835e008786fb56486d8c4a20a7bf6c3c4730578a98ea",
+        "lib/writing-recognition.ts": "3e4bba098420d187dd42f0816c1cbdca2725ea6efdb432fc0d29d738187728b2",
+        "lib/writing-review.ts": "bcb1da0d7592fca14fbdb8fcfd6afd3dff3b3424743bb336fae82ce13a57c529",
+        "lib/writing-targets.ts": "1249bcec6dba88d69577070331645c3476e6712a2fbe241f62e0ab6df5ceb7d3",
+        "lib/writing-topic-data.ts": "246bb6eedc37737174d3033190d67e8c435c3f4f3cf3b752466d56963b10482f",
+        "lib/writing-topic-rules.ts": "164d912bb0a15a7f9624402193ea5cc75c9bb8a462eaa9863f28f0c91f241386",
+        "lib/writing-topic-server.ts": "25f96ace0f3c1323415e2442619a1ead8ffde598cb57a01326c659e683a94c58",
+        "lib/writing-topics.ts": "8a0f7e00699d9ed80011e3da81efbca847b963e00a0050050ddebc0643497b28",
+        "lib/writing.ts": "84c7bdd9dd6472ff7693a8bd86d5830aa13cd44fae93dd29db349f750be0f21a",
+        "next.config.ts": "614bce25b089c3f19b1e17a6346c74b858034040154c6621e7d35303004767cc",
+        "package-lock.json": "8f30891660999f177bc2ec8e8f8861a3cf66d6de52a4d71c541ed0b4419d9fcb",
+        "package.json": "3378fe83a94dd3048a3f64c33ab5f4fcb8d30c85142738d55f58f65d7afd444a",
+        "postcss.config.mjs": "dfac7ac2d86d326a0e5adb024e7943c181393ed17a5fcb8f0315b24c7da6ddde",
+        "public/_headers": "6bd6a05de99c80fa063cafa577347f106512ba7059ea3f592e8b43bb6560ad2d",
+        "public/art/voice-mist.webp": "3903c684cd130a4a27a2ec4e53948f25ec7dc9775eb6645050966d3f6910f24e",
+        "public/data/v1/chunks/lexicon-00.json": "11bbfe9d0c1c0ce65eaae163a32d79c6813a10bf63ecc3c8ed31db85f13670e1",
+        "public/data/v1/chunks/lexicon-01.json": "6d1c92cf560d1f02c47c14fa5d61d3319505d9da595f4c26acbb08f2c1880a92",
+        "public/data/v1/chunks/lexicon-02.json": "acc8060844db41058b7446cdecaf2f6b8c39ebcc27996884752d1dfd60eb0756",
+        "public/data/v1/chunks/lexicon-03.json": "7f43f8b69a9157b210e9bd8f068f2b19cd06bd67f393a87c956960a8ca1cf6d0",
+        "public/data/v1/chunks/lexicon-04.json": "b5fc37361fb2c469d19b8ace8234df17c98048dbcb5045c067b195aa2823a466",
+        "public/data/v1/chunks/lexicon-05.json": "0dabf6c95cbe3fe1852f7bafc8c1d306526220b5e4b3c481254f0b056cb1cee1",
+        "public/data/v1/chunks/lexicon-06.json": "1c9f16356edaa540d799f9691764bab0393b5a357ecf784e045847e3af127b27",
+        "public/data/v1/chunks/lexicon-07.json": "5d185a112eeb7db2d0451b18c0b2dba88b9a139007716c37bd84b54ef9e2e802",
+        "public/data/v1/chunks/lexicon-08.json": "64244f9fdfc993daa36365cb54b7c6e7645e88e0b4c3f891a9135e8d5ee4632b",
+        "public/data/v1/chunks/lexicon-09.json": "ff42573f00c59634e1118f084eb2a1a3e991e454fd7851e6d1551a05b8838beb",
+        "public/data/v1/chunks/lexicon-10.json": "990077e4f8cf89a410dff28ceb689cd0289009f7f8a5f1b72a168ea30a0a86a2",
+        "public/data/v1/chunks/lexicon-11.json": "3b23c3d993048b769dfdbf7cd7ff9a01476e326172ccc16bd01d1431d116f141",
+        "public/data/v1/chunks/lexicon-12.json": "07f14242920d66946df559d4ff3f4cea1db1b14a7400eb99ff6f22896f488b15",
+        "public/data/v1/chunks/lexicon-13.json": "860f4bfaf1ae92d460b472dd183645cfc2131b85f6e492653052e4ade5c6548b",
+        "public/data/v1/chunks/lexicon-14.json": "3abe1a71651bc18a770f9c315b9b75cb267a573fb943f0a7104f511aa3c369b2",
+        "public/data/v1/chunks/lexicon-15.json": "25db7a829e6f6c74f390e728581df9feff26bbef0894406aaf87e61f73731aa1",
+        "public/data/v1/chunks/lexicon-16.json": "10b98cd0a79a2075d4dd0fa60de879a06c9bf5dcf2f5a5eba7b48adf06a606b7",
+        "public/data/v1/chunks/lexicon-17.json": "f4e00f8ff676ef33f835304b0fa2483afa20b361e66427a7d56e3678f00f2686",
+        "public/data/v1/chunks/lexicon-18.json": "2f31fa4960392f0eb3ae53f201598ae3938ac4dbfb06c66aa8b56f7eea55e1a1",
+        "public/data/v1/chunks/lexicon-19.json": "aae199488146f14feb581546f29bc104dd88292287ec896ac30801762e8be5d0",
+        "public/data/v1/chunks/lexicon-20.json": "3363d5de5b83f994e15c6ffa9c176f50487b74a8da45f294a0b770325878c77e",
+        "public/data/v1/chunks/lexicon-21.json": "3879735e1ca9c7705b66bb4b6a6c119f21500778418c6490cf638fa02c673332",
+        "public/data/v1/chunks/lexicon-22.json": "77e6bcc2e9abdaeec8ee5e3f41a645e5087a8950579aa542de4ee29cc59e88e5",
+        "public/data/v1/chunks/lexicon-23.json": "6f93d40775ff17ffb93bea41bde632ed84b1f6149bf7020a65227ba6c6d75e4a",
+        "public/data/v1/chunks/lexicon-24.json": "4125c83b72ed57605f3973c3d216d9155e28977d71345944ffc8e0e70dd19822",
+        "public/data/v1/chunks/lexicon-25.json": "bab3ddd851852d4ac86bb4fa5719363fa87827a3d62caa8d890214299b892d2e",
+        "public/data/v1/chunks/lexicon-26.json": "f05d133c3e87b4c27287fca60051225c799e6423c65fa0feba2c190294f47974",
+        "public/data/v1/index.json": "d5681c73bc9ccd2472bce664e866a960137ae2b514d442a74018670336398e55",
+        "public/data/v1/manifest.json": "f8837bda04246cc2e7ef0cc3586afc0e8e2746bdee168b7151cd64c0f33f973e",
+        "public/favicon.svg": "9366e77b4a04110006d284879847e9cba3cfb83adc1e0d1b1559691873fe5675",
+        "public/icons/app-192.png": "c19cf79040c7d41c6e1e570edb4fdaf4a0350e371f12e0fcff748d5ef51c11dc",
+        "public/icons/app-512.png": "d0be9172b5bcdcd4e39dc096ab5888bf73ffacb6fbd7e7b73499eb340c12ab61",
+        "public/icons/icon-source.svg": "9d1578e8b9e3edd5518b54cd7f3cc13aab2d132960265a185c198f4c04b74c61",
+        "public/manifest.webmanifest": "555cc0a2101274c59a8520b3080b4e5b3f45fd7b36b6eb7de5ded695a3fcccc7",
+        "public/qa-fixtures/reading.pdf": "28d2fe2b74963da5b7d59db86775c2cd005cce28ae85541849c440448d729dc8",
+        "public/qa-fixtures/reading.txt": "7ac6fd03577767c03e9b76fec2a598851af1a79cb26defd999c85c29da4f1740",
+        "public/qa-reading-import.html": "52290cd2af1508a51b6975def7c006807d9e84a2d15a19ca5e11e9ec370479b1",
+        "public/qa-viewport.html": "4ae2804d9a4766780eaeb9c2612cc34579eedde6a5833050da363f421dd7a3fd",
+        "public/readings/v1/articles/a-place-to-begin.json": "add600953657f5c171ddbcde79baf931c56e6b499adeaa22cef6e05eac9cd97e",
+        "public/readings/v1/articles/a-small-question.json": "385403f592443841b05d81ddb19e90f5db5a97810c93ca3cd7cc9ac592d7008e",
+        "public/readings/v1/articles/aesop-bear-travellers.json": "cfb3969336367cf9a665a045f0cc3c0922d977b15b511c5afe75fa54a113a084",
+        "public/readings/v1/articles/aesop-fox-crow.json": "1961d7845d13af8747c2585da0e98f00389e4ec3e9e5dcf4242fb1142e375410",
+        "public/readings/v1/articles/aesop-fox-stork.json": "04053190f966480d2ae2a3e8b2f3e40c465b60122c837071f2bf2560d4b87a78",
+        "public/readings/v1/articles/aesop-golden-goose.json": "034eff875ed7cfb316eb7fbdf28e2e9e45b6444651bab7f2a28e7e0d0dd919d7",
+        "public/readings/v1/articles/aesop-lion-mouse.json": "88479b8b57d1288431e9361e468cabaa31a4f840d693874740bdde19fa798ae5",
+        "public/readings/v1/articles/aesop-mice-council.json": "625868d49e903794135f7b4fe240e0417d09efe7f6cbf13fe60d352a165cd870",
+        "public/readings/v1/articles/aesop-milkmaid.json": "95bec1a74605b4a5dd4dc9f63cdf15483b78c486c65ae624dfb2189e4574c577",
+        "public/readings/v1/articles/aesop-wind-sun.json": "7c0cbbdf6a19a9fab6aef8b85200a441c75e6e62d9881bec4a297127da2d954c",
+        "public/readings/v1/articles/aesop-woodman.json": "924df5d6811f9369e2c777c79728d765cbb6245b3c55ed27f3185190952e3efd",
+        "public/readings/v1/articles/alcott-playing-pilgrims.json": "e2fba83a218cbc24d07694996b484390004aa8f55f0a44d902644138ce12b5d1",
+        "public/readings/v1/articles/andersen-false-collar.json": "fd9afc56539c738b8e078f9de9d3a9f551ebf948dc2c955b1cf7419c4a9cc0a5",
+        "public/readings/v1/articles/andersen-leap-frog.json": "dba79aaee5d1d6f32ba62fdce0de5edf0a2b475e31f6a5c8ad0d0a324754a995",
+        "public/readings/v1/articles/andersen-naughty-boy.json": "7829cd443ac31b0030c7978dcb77eb02b61d2fad55957de68a95b53a44e932dd",
+        "public/readings/v1/articles/andersen-real-princess.json": "6f5b7abd13cd26fbdb39917e7a89562f2a9eaa117baa3443934430da366821be",
+        "public/readings/v1/articles/austen-first-chapter.json": "38f7311a8d65a63c67027d1cbff60a3d58bbb8269a3fac2571b6b4e7279fd56e",
+        "public/readings/v1/articles/bacon-studies.json": "5f1f24a23d6b145da4cae170fb7ef9b11af7742832692d855fd9118743d61fa3",
+        "public/readings/v1/articles/bacon-travel.json": "261a5e381a1fbf5ab2a8a9a606531887d2147fdfb40654fc92b33f55b389ea36",
+        "public/readings/v1/articles/baum-cyclone.json": "90df4d7d27ce1cb979a15bbca5fddd4b61556033c2b4daaf05f747f76eabbed5",
+        "public/readings/v1/articles/before-the-bin.json": "5ad9467284cd587fd96e5b84d2b687fa7b24223e0e50665b60788dfd88b732dc",
+        "public/readings/v1/articles/between-two-stations.json": "1e7698dfc83953c49e06b0ad131845a0aaf029d4c400d7e48ead68324de754e0",
+        "public/readings/v1/articles/carroll-rabbit-hole.json": "6fbe633d7ba2b7ea40047822fa28ab8d85e441dc4dd4f9493d76fe1ae1e34c78",
+        "public/readings/v1/articles/cather-art-fiction.json": "6fc6f11ce06062a39017d1cacafc34b30cfb94b1293d00d0c8c9e4212c1daff0",
+        "public/readings/v1/articles/check-the-answer.json": "f4f8ab767cfeb8e1957ece653bb655af2c7cda2792f0a2f00f03501653e98fe6",
+        "public/readings/v1/articles/dickens-christmas-visit.json": "161944452f758eda376c8dab41ae6542146dd8b058231a326f31ac7abd626c56",
+        "public/readings/v1/articles/douglass-escape.json": "6bb455a3da2cef3208aaf8a686c00a833fdb6aae375f905fd6a00eacf95c53fd",
+        "public/readings/v1/articles/emerson-friendship.json": "9ebb1a6c9a8a6e57fb025f5a1d481cd4c9bf7c31b320f3cca478cce98d69cada",
+        "public/readings/v1/articles/emerson-nature.json": "2f69c12a0fa81a5e61435c7a3517a6c6b81bc02f12f9509298b14b82cd0958eb",
+        "public/readings/v1/articles/emerson-self-reliance.json": "e91906eb197e24511d6722b6dedde9ba6cf7f33a7dc1cfd7d59e362939e5a84c",
+        "public/readings/v1/articles/grahame-river-bank.json": "83a09324716f3dea589b2d0e95fc63eeada36300da4a37259101e2cc46d0887c",
+        "public/readings/v1/articles/henry-gift-magi.json": "cacbdd9dc5213cc49c92734b23cc0f5aa2339abbb9058cdd91a89f36c6c60a59",
+        "public/readings/v1/articles/henry-twenty-years.json": "ec2d21ddde812a12c680af044eb57b7f4ca40bd55e3a08d798efd24222988ef9",
+        "public/readings/v1/articles/lamb-books-reading.json": "2632d2cdea92db4346b4f2f8c8a07d73366114a1eadbdc5c51753f55ae3391ab",
+        "public/readings/v1/articles/lamb-dream-children.json": "94262b269be91efb82979e66bd93e104b8a27493dad96a066277afff788824ee",
+        "public/readings/v1/articles/lamb-old-china.json": "bdc95b9d17c92fae433a316f6119578f168d0638707edd5b7d6b7935cadab0ed",
+        "public/readings/v1/articles/montgomery-rachel-lynde.json": "1a1ee798684309c56a5828a28b4cc819e0454650f077a031c0f9fa1fb47d6bf4",
+        "public/readings/v1/articles/noaa-blue-carbon.json": "1445e689966d4d7ff11b69b058790c3934d080969f023ba536f282137b4bee96",
+        "public/readings/v1/articles/noaa-currents.json": "bf9def7b32cc6bb966325bb33a63be33fbc71e5cded060eb9736d984a6c734d4",
+        "public/readings/v1/articles/noaa-estuaries.json": "a3adc2ddfb15b0aadc5a511069b254608d31ad108f621fae1919d282483687cb",
+        "public/readings/v1/articles/noaa-mangroves.json": "df6b6ed9810097ad170f56c92e090b6853fc903785dc5655c949b36d04a99b91",
+        "public/readings/v1/articles/noaa-ocean-formation.json": "bbc5a4c316c70ba0003389c7b9876278e409e940bf06dfc978633cecac798929",
+        "public/readings/v1/articles/noaa-ocean-oxygen.json": "13933f24eacdc63d98e4c6444969a8a80f5454486013c17a2db60a2f1422782f",
+        "public/readings/v1/articles/noaa-phytoplankton.json": "3350c3c0e5271675abe98d8e1a75b1186ac21bccbb74fb03435ae8c8ecfc3756",
+        "public/readings/v1/articles/noaa-salinity.json": "c803835fdd26b1c5a20ece79710ee0c6c8f5acecbfbd1d0f5545a8bb573d2d6a",
+        "public/readings/v1/articles/noaa-tides.json": "9afc6014254f2a1f6839319b11d16167050f593563e6fa9bcb6477ff8ebe02b8",
+        "public/readings/v1/articles/notes-in-the-margin.json": "e48d62a951235193743f87bc8091916530258d6a384338a5814f4399582fc54b",
+        "public/readings/v1/articles/original-library-hour.json": "52bae93f220d80fe00c7dca00f00bed01da2916228a922cae87fc311d264c2c8",
+        "public/readings/v1/articles/original-rain-notebook.json": "8104c4d451c9149cf35561457bc327fa21761542976e2410be2891ba90927642",
+        "public/readings/v1/articles/saki-open-window.json": "175fb79d64ecc675712ee7dc0333e330376c9496f0e1145dd9ca248ae4002ff3",
+        "public/readings/v1/articles/sewell-my-early-home.json": "f2cc9283e7e166f3b0c30e979eaf98f1a88c069caeb50cbe511dfddc95200774",
+        "public/readings/v1/articles/stevenson-el-dorado.json": "59fb51d57d685b7fb2bb9418113f9d5a6db217e0698824ab19d89bc9fcb4da4f",
+        "public/readings/v1/articles/stevenson-idlers.json": "21a2816b32fe4bc1396bd29f88cd8dbe4e5479f3f25aa39eb93e97e1d4b93cdc",
+        "public/readings/v1/articles/stevenson-sea-dog.json": "321eda47d3a3919486fabd2a2c157280bb771c80fcfe160b9bad023e32c48121",
+        "public/readings/v1/articles/stevenson-walking-tours.json": "bb5683ff97907d5e2008351d996fefe3513201e50f4ac77767f3060a0bec705b",
+        "public/readings/v1/articles/thoreau-autumnal-tints.json": "dd76a18328923ea13f26ff1302ff8f9c0a54c8f3380cb222cac5a3fe6a07d371",
+        "public/readings/v1/articles/thoreau-solitude.json": "55d7e2060b783d6fbbd1ec6602b059e85d5a6e8385233b9211dc68d89f70b2e8",
+        "public/readings/v1/articles/thoreau-walking.json": "3e4db9973444501ea1ee559bc591f6d6da0b39af0345aac5455b019e2b413b8d",
+        "public/readings/v1/articles/thoreau-winter-walk.json": "24e39d838b0cc1cdb99f03dc0f8a9739e3e1b4f761a300904fc63169357a0557",
+        "public/readings/v1/articles/twain-telling-story.json": "8e51cc0f4a5e8bda25d2dff4539767bae61771585578f2d53335cee154ece2f4",
+        "public/readings/v1/index.json": "f13530470ae67b5cfff9227e93d96fb053e14b44a65eae488040ca968f1f9cb8",
+        "public/sw.js": "55e7fc100827e8ecfbf9c44219d0daa7aeeda0f04bb1576631797ebb57084773",
+        "public/vendor/manifest.json": "29a9f5081a1f851abb88c890e6eb998054c34a9d11b2ecb7090934ba7d2fe3ac",
+        "public/vendor/ocr-7/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "public/vendor/ocr-7/eng-copyright.txt": "33fb8161898e34fcf5c6b8585d6be97642d7e8f34a922e783c6c5c970d0b09ad",
+        "public/vendor/ocr-7/eng.traineddata.gz": "f1c22599ed6fd3eb821d87fdb43e09f98b61179a4abe38c43cfca2cdcb9f5ec2",
+        "public/vendor/ocr-7/tesseract-core-lstm.wasm.js": "eef5f8b2f8e20e150680b20adaec4a60babafee3adbe8a94583c81fee46e8680",
+        "public/vendor/ocr-7/tesseract-core-relaxedsimd-lstm.wasm.js": "861a536cf9ef8e63cb644d57bab39c388f37f7d6b6f60024b741c5f6b39a59b3",
+        "public/vendor/ocr-7/tesseract-core-simd-lstm.wasm.js": "c58b46a4c796c0b8afccf77591d5b875b6896b45d402bbce8caa6f5362447b38",
+        "public/vendor/ocr-7/tesseract.esm.min.js": "64871d76c75609fd5413b88a8171e2ef40deedd77d5875ba23df104b2d05eb29",
+        "public/vendor/ocr-7/tesseract.js-LICENSE.md": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+        "public/vendor/ocr-7/tesseract.js-core-LICENSE": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "public/vendor/ocr-7/worker.min.js": "576b7df7e3393e137e51849357c9adb53fe7ac1bb69bfa06cf3d61520f182c6d",
+        "public/vendor/pdfjs-5.6.205/LICENSE": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "public/vendor/pdfjs-5.6.205/RESOURCE_LIMITS.md": "543a381472b6f292774d81c8018e15d9559e6d5a6e49b3e8abd4d6b26bd36240",
+        "public/vendor/pdfjs-5.6.205/cmaps/78-EUC-H.bcmap": "d92a261336dc18b8c03a46eb4d462382d33f4338fa195d303256b2031434c874",
+        "public/vendor/pdfjs-5.6.205/cmaps/78-EUC-V.bcmap": "61670bebc4e4827b67230c054fd0d820d6e30c3584d02e386804e62bbedc032a",
+        "public/vendor/pdfjs-5.6.205/cmaps/78-H.bcmap": "ece6415b853d61e1b2560165151407d35cf16e6556932b85a13ea75276b77402",
+        "public/vendor/pdfjs-5.6.205/cmaps/78-RKSJ-H.bcmap": "696b1f973c97623496703809eaaa5f9b40696c77540057413f4b826a08edfa7b",
+        "public/vendor/pdfjs-5.6.205/cmaps/78-RKSJ-V.bcmap": "53cb6d560ab377da48cf65d6dcacb0bdb31f13fab7066c580de38c12a73a7ff9",
+        "public/vendor/pdfjs-5.6.205/cmaps/78-V.bcmap": "289000f02fd34872b6975503217f33abae6bee676e7d28f640473a67c8db1712",
+        "public/vendor/pdfjs-5.6.205/cmaps/78ms-RKSJ-H.bcmap": "a2442595218f5f8bd8e1b42188e368587d876cfe0cc4cd87196f077c878f72e2",
+        "public/vendor/pdfjs-5.6.205/cmaps/78ms-RKSJ-V.bcmap": "f8ddceba96bfd9d3740bd1789ee30d1f47c78371520a8084f71f7df58f19be0b",
+        "public/vendor/pdfjs-5.6.205/cmaps/83pv-RKSJ-H.bcmap": "44040051ec818fe09b9703472bea72efd2759d5eeb5ff0d77c718d6bb5e6d1df",
+        "public/vendor/pdfjs-5.6.205/cmaps/90ms-RKSJ-H.bcmap": "c13e043e85ff715b75bb03801e8fd0fb8f3a75e4a48496faa6baaf92b5b48ba1",
+        "public/vendor/pdfjs-5.6.205/cmaps/90ms-RKSJ-V.bcmap": "499bb916ce1adbe4289b6e5811f4dc20eb238cdc2ffad20cf26ae56716885bab",
+        "public/vendor/pdfjs-5.6.205/cmaps/90msp-RKSJ-H.bcmap": "7b8b3b8bbf821702e9a4df9f3596ce292380c8c1b0925dedadbb4e4b2d80498b",
+        "public/vendor/pdfjs-5.6.205/cmaps/90msp-RKSJ-V.bcmap": "6296c2b5c07dca8128e96d5296d621a3268803d4fa0e5812a21e52fe2802aacb",
+        "public/vendor/pdfjs-5.6.205/cmaps/90pv-RKSJ-H.bcmap": "fb5103f03d3a34547e18d316e52b6d9b26e485c662999222f84d2ba54c2e4fa8",
+        "public/vendor/pdfjs-5.6.205/cmaps/90pv-RKSJ-V.bcmap": "7bcb5ad2ba55b9662ce379e16c2d9cc2b82d621a579807353741172e4af615c2",
+        "public/vendor/pdfjs-5.6.205/cmaps/Add-H.bcmap": "a2ffab28b990998181bcca9b0e914bb2207820f100ae31d5c469444892e5ad8e",
+        "public/vendor/pdfjs-5.6.205/cmaps/Add-RKSJ-H.bcmap": "b29f4b52e2465d0485856d5e69f1ba69927deb2848d8fd328c8035583b35bb7e",
+        "public/vendor/pdfjs-5.6.205/cmaps/Add-RKSJ-V.bcmap": "2aa2232c283a3f5d0997c2834a36cead0b79ce2657944cfeed08140c293460ff",
+        "public/vendor/pdfjs-5.6.205/cmaps/Add-V.bcmap": "25125d3b1be64e86b2df5b3344170b45a42bcaa0b46e43a34314ef73c166e542",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-0.bcmap": "8c65be9d51a9f269a547dc12460707aaf4031ab67ebe8a2900f4b4cc6b3e450e",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-1.bcmap": "73152bc1a59cc594b414ac6068be48e5512b96ae85920c40e32a99269fdb0c04",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-2.bcmap": "a1b8d353bdef9584c820464e8f1c9e2013d64ebf433cba0aa831dddf515818c2",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-3.bcmap": "2ffc0c75c79fafde506163d3c08c390d183251009f3fbf6ae50d1167d14b9570",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-4.bcmap": "98a1f470c878c6b9691a4d7aef776af8ac9b55f5587c9fafa00547f3bf655716",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-5.bcmap": "ddd6e29955eb8cb545f2ebd09c628c3bbda5023256eda1b728f743c75fb77829",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-6.bcmap": "317bb2db71e0e5b7b0c47b75de1da915c2e22f65f0c0861507f9ca7ba238f8a2",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-CNS1-UCS2.bcmap": "e665837f2197c6bd08cd8955ad4d6932cee2398e2e328b25b00e6bfb3bd72af9",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-0.bcmap": "8b81cce8a11d510e505704953cfa4e4ab080c1a0cab991145a3512ee433946b9",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-1.bcmap": "0426983081788ec7202703e71f1efa4b860f75b936994236010b39d89251a81e",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-2.bcmap": "e67b37a83b160ab3831306a71a605893b24454ee81ac9b6123bf2d3984d268d5",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-3.bcmap": "aa299afc3e12a28726147305f191be28c7498078c8b182ece7886ac79cd99078",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-4.bcmap": "8fbd7d74c2ddb1350c1cecce54a73fde3f5453093d4bed445283ec0033d2097f",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-5.bcmap": "c22cb2fcff24112fa31dab2111bdc51957006576d31aad5a25e67793ac01428c",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-GB1-UCS2.bcmap": "20507620260c0c935c35afc1e70e5888aa7125d5ec7ffc03cef1959feb2c1641",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-0.bcmap": "464f08905236f5703b1f5cf8358767c8b18e6bcc808840d081f1de2c7ab38134",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-1.bcmap": "4c823848722187d1ffe75ae3f5f9126ccd2d7895a05fad14c919fb119e037008",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-2.bcmap": "7810fb808e367e70429e90a9478fe6a3fdc3e214f25c7582ce9c2da6a242315c",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-3.bcmap": "84deb1828711ad3d390c9899c38abce1bf619d65ff7bf1a326ec95acc45f08f8",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-4.bcmap": "3f8a4f974919c2b8bae5d10175ffa2673be140481e00840542c85d48ef184067",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-5.bcmap": "1d3ce4ff28d977f8cf37a912ae4ec811f4175c3167b1ec0b2567feec3e79e1db",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-6.bcmap": "5609797b9401b30be72ef9645da62a87829f058c3be4b5c623383119f584b1d9",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Japan1-UCS2.bcmap": "66c5d0dc4964f4093e77b194023f3a0f689324028ec8330e1e1d0570bcba7c2f",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Korea1-0.bcmap": "dfb8c3874f0e5a8c3acf597d2c12d2b63e90bc5e4f0fce990ec4c56077d80b32",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Korea1-1.bcmap": "62f277b7b1c441c007797ae707d5c37258d029ce4661a2b911e2e1ee35e6adc1",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Korea1-2.bcmap": "1d77068af462f96d7ad28ad7e7d43eef6423c685b479d7dc25ff5df38db0380d",
+        "public/vendor/pdfjs-5.6.205/cmaps/Adobe-Korea1-UCS2.bcmap": "857b723088be97255053562bfa41bd1075a7f7910d3bab59a0645c8bbc7060ff",
+        "public/vendor/pdfjs-5.6.205/cmaps/B5-H.bcmap": "718ad0ffbef4c34f8f3f31292c462e519cd567a5511fc8b346c60010d64f4ef9",
+        "public/vendor/pdfjs-5.6.205/cmaps/B5-V.bcmap": "b5c37383517477620ced927b6b4ffd4f4cc6230d8051b5b46a21d6768e07f7d8",
+        "public/vendor/pdfjs-5.6.205/cmaps/B5pc-H.bcmap": "bab6028aead1d6149400e904ab10cfd319082d826473ed4c582c8eeed920f17e",
+        "public/vendor/pdfjs-5.6.205/cmaps/B5pc-V.bcmap": "41543142b9767f3b76133899fc8453282b01ad3c653acaeea42d78c5a7d08c63",
+        "public/vendor/pdfjs-5.6.205/cmaps/CNS-EUC-H.bcmap": "e8f89cd61e6486b948205da46499d659ed0aed949b7095fd3c8e95ffe2b0e7a9",
+        "public/vendor/pdfjs-5.6.205/cmaps/CNS-EUC-V.bcmap": "cae422bec2ac6dbe86bf921cec942bacd2d0b733ffcca5f91b3ba14e917025a0",
+        "public/vendor/pdfjs-5.6.205/cmaps/CNS1-H.bcmap": "e8487971ab20cd16f3de3e8ac56ec994b72b658ad113f2818239dfd5108f501a",
+        "public/vendor/pdfjs-5.6.205/cmaps/CNS1-V.bcmap": "42df8076aaa7574505e7304af83a3323ec032c4177d64b1309db8c043d594a8a",
+        "public/vendor/pdfjs-5.6.205/cmaps/CNS2-H.bcmap": "bc6024d274d440f0625c69e25f37036ef6cb6689432ceaa160d3432a2a716ca7",
+        "public/vendor/pdfjs-5.6.205/cmaps/CNS2-V.bcmap": "2e4f70a8afd23a121030fc2e5b5f3816e903b11e7ba8b8c09654b31c80399c38",
+        "public/vendor/pdfjs-5.6.205/cmaps/ETHK-B5-H.bcmap": "d2f10fa519336bc4efcc7b6deb9604b75429946b40d82e311cb3a97a1994c89a",
+        "public/vendor/pdfjs-5.6.205/cmaps/ETHK-B5-V.bcmap": "1fea3fd0d9f0f679f80505800851ef2e4131d81127e18c006938ffa2f4c8b247",
+        "public/vendor/pdfjs-5.6.205/cmaps/ETen-B5-H.bcmap": "87ee6b3f5bfda5fe26fa35431264c7d73070d10dbbf398a75185d63ae322c18d",
+        "public/vendor/pdfjs-5.6.205/cmaps/ETen-B5-V.bcmap": "47dc0d2c21e3bde317947aec1675ceabc1d5460a60bf9c24334b8c407a17172c",
+        "public/vendor/pdfjs-5.6.205/cmaps/ETenms-B5-H.bcmap": "d5f5a73da4173b7da9a3a20e16f26f9cd5d12deb1553409919e0cec6fd37fdee",
+        "public/vendor/pdfjs-5.6.205/cmaps/ETenms-B5-V.bcmap": "18252fca90f472f479af1bddd60d6ab51c8e1b55dcf6845951426504934543e0",
+        "public/vendor/pdfjs-5.6.205/cmaps/EUC-H.bcmap": "f9939cd57fccdc65c5d9f4c205fd497ebdbd283643308da5663801a8c1d9c595",
+        "public/vendor/pdfjs-5.6.205/cmaps/EUC-V.bcmap": "1283a50a706507c4436da83ede9ad7a4440be25378f2e96f6c81a430081426a3",
+        "public/vendor/pdfjs-5.6.205/cmaps/Ext-H.bcmap": "4000ed4e61a1c668ef453bbd0603cfa383defa793abd46a57ed870d7f527350b",
+        "public/vendor/pdfjs-5.6.205/cmaps/Ext-RKSJ-H.bcmap": "e0d2f0df337660e73813238dd4a725f11f0621b90f3273857db253d0e7694caa",
+        "public/vendor/pdfjs-5.6.205/cmaps/Ext-RKSJ-V.bcmap": "f617a22b6d67febb187990952006c91a9f5a4db21155d268c656252d0c21985d",
+        "public/vendor/pdfjs-5.6.205/cmaps/Ext-V.bcmap": "c2087fb845a9e3acea0c2922cd40e6af67e11957bec74dcd597f1285edd490ce",
+        "public/vendor/pdfjs-5.6.205/cmaps/GB-EUC-H.bcmap": "928bad06fd84a48f5ba7150d7716609119fb660f2aaa73eccad81ddab9b9d203",
+        "public/vendor/pdfjs-5.6.205/cmaps/GB-EUC-V.bcmap": "a9ad88ac2479da529b16dc48abc5952332e27bc355335f91df5729a587533324",
+        "public/vendor/pdfjs-5.6.205/cmaps/GB-H.bcmap": "1018c777a8910b5bb46d7d54a4aee9d51ca5cff8addb2b41c969d9101cb3fd1c",
+        "public/vendor/pdfjs-5.6.205/cmaps/GB-V.bcmap": "0b96789143c0bbf9f1641ae7165b3456dccd14dabffcbb0bd654d5bf6f94f863",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBK-EUC-H.bcmap": "2103fed28650ede096a2281104a1a8a4304dae0db414342c636867522307123b",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBK-EUC-V.bcmap": "a7fd35dd14d9dbdb955f34e6c0630618b6620dfd09d4283b2f65a65ce77fcaea",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBK2K-H.bcmap": "3d919ae72af16c5cc6846ec87a4326a9f125e493c59d3628429d35c2c95fe8c4",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBK2K-V.bcmap": "b927fdfd595c07ce9158bf2ec13f4641b2e83b01c70989dadfabd6ed7c6ac2dc",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBKp-EUC-H.bcmap": "d15ebd8e81fb4fe8a244f1b1e877922e03500ac69eddf5001093e502430451d2",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBKp-EUC-V.bcmap": "fdc736d46e642625dccc8ad8c59f2c69fc7db7a13f2e799c6c6b779e707bb97a",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBT-EUC-H.bcmap": "dc5f44e48a39f3367ae28665027d8ab1d8cedb5a9dcc5068a900acd6709f60f9",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBT-EUC-V.bcmap": "a1ad24e63653b8aa388c18fa5e498f007564e43dde699a9f91ccb4645c999be8",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBT-H.bcmap": "8afda745a505763f3ff54c8126eeb48ef376ea9ed07d9f42ff9a22c5c547ec57",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBT-V.bcmap": "cdc2ec5c3c7c7033290c9a8894878202f08674eb9b1ae7d36218430326768771",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBTpc-EUC-H.bcmap": "7b23e2f7bfdb6c918f567b7324bf858f398bd8cd5f268d74ece19a3c91bf4f32",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBTpc-EUC-V.bcmap": "d7a1b13ead9ab511cf2cd01de6ce8b02aa8e8767e84895337d7a3b67f039f93b",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBpc-EUC-H.bcmap": "3c4a4eb82f05abe51f6650985c630e180438bfdd491318f5d20d2ec29236e1c3",
+        "public/vendor/pdfjs-5.6.205/cmaps/GBpc-EUC-V.bcmap": "215bdfa2842705624b4cf4cd29b8e3c720f1e192365e0305c11030a424c84d7c",
+        "public/vendor/pdfjs-5.6.205/cmaps/H.bcmap": "a0233e21047ec00b852125b243cbcf30abee511155b6d8159c24f944384bc9ee",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKdla-B5-H.bcmap": "5242bce18fb13ab4cc59b146a03eba36e4ce42667eeff09e10981a9d2aa4996b",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKdla-B5-V.bcmap": "2e0537f786c0791d41a925f72bad2d4e7268aa6cbf15a1400a722672cec38e2c",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKdlb-B5-H.bcmap": "fdc8159984bf5dbe475c0d5dfcb621ecee4dea07c38c668bd77f4c679e23b9b3",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKdlb-B5-V.bcmap": "b249eb9dcb915ab45057c5d4d7aa55ef88d0efbb092af6bae0b2d4705d139abf",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKgccs-B5-H.bcmap": "ab64c7fc5e9b2e97750cc4f269b0da14fd8649e49151b7598c8df86599bac591",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKgccs-B5-V.bcmap": "02ebdf7cdffb5395fb21091cd58a013a18ae5388922822f9dc6292ef16b98956",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKm314-B5-H.bcmap": "bfd8bbde6b36a9da4c1c902c74121a30d9807a7079a00eeea218be6adc223cef",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKm314-B5-V.bcmap": "2a64a815cfb6fdd480674a868762e3d161fda17543b20c9209978559f0667164",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKm471-B5-H.bcmap": "49d7c037758826b5b6c0fa329c35bbf25d3943197754e72ecd30c6fb04d745e6",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKm471-B5-V.bcmap": "be24c109e78aa4fe3c1f27d30aab3ed0741e783fa1b6b6c2719741072b54b132",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKscs-B5-H.bcmap": "08599378f41d96b40537adef6e6edcc4a787bc63f5accf47c026df4905a13914",
+        "public/vendor/pdfjs-5.6.205/cmaps/HKscs-B5-V.bcmap": "d073542b7dad1c4cbf01c1af5f0cd13218d1281a491956e310c55702fc8705c4",
+        "public/vendor/pdfjs-5.6.205/cmaps/Hankaku.bcmap": "b454701f7aecd7856769016dfd04ca64280a060f2c67a2466d50b4395d24974e",
+        "public/vendor/pdfjs-5.6.205/cmaps/Hiragana.bcmap": "2ed669394756dd9458651cd9995ab29ab691ecb7686659003306cdf22767a414",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSC-EUC-H.bcmap": "6784e16dbc5861c036c23d3e55f0d4ba0975a3e464da0ee8e49bcfff0be070c4",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSC-EUC-V.bcmap": "fdb36bad85e9924823d49db374067988e024cf80fc894711f2c9178951cbbe95",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSC-H.bcmap": "c1f6d61f1d3304fd539a65ae72624fa567ecc3853bf52e283958a7a2515b3eee",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSC-Johab-H.bcmap": "939993d213f68db763bf156217c217ae23af082b91a0eacecf3d11eb4ff8ef8c",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSC-Johab-V.bcmap": "5d61967aac0e666def721e8b8d0fed8f95a879a14f2e76ce516c3d11c621e519",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSC-V.bcmap": "d7da5afd9f1fe74816d79c9325f0139a4efb6438664ebfdf9a7aa92f3034360f",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSCms-UHC-H.bcmap": "5b70d8f6a4fa9e2283dc649f0ff95d906d56efbee50a20e8d2faec3a8fed078e",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSCms-UHC-HW-H.bcmap": "a5e6ba22aceb02fdedee11bfb9ed138463d89e85b87810b9f075b469d936f8ec",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSCms-UHC-HW-V.bcmap": "890332a6a26880d463a12f2a6ff048bf9cf7e45077cfb1ca8815b89baa7bf411",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSCms-UHC-V.bcmap": "1631b531c9a40c8cbe24c2317dba107362e49fa6e18af620414d627c111d570c",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSCpc-EUC-H.bcmap": "709480682c55cedbb0124b9960d78e28febeee0df2e34607d61aac6601647ec7",
+        "public/vendor/pdfjs-5.6.205/cmaps/KSCpc-EUC-V.bcmap": "031707887d6fc2378a36cdb6775334fd7a236c3f95048d8436abf43fe26fc49d",
+        "public/vendor/pdfjs-5.6.205/cmaps/Katakana.bcmap": "3b6ca6642fbf8822da00d5e58a8aa275216d5c32dbf2bd73e934197fc9fc5c53",
+        "public/vendor/pdfjs-5.6.205/cmaps/LICENSE": "aa92ab5a472974865a96fd4a4e9c13bb41bf6fe1b309cb6b8da48bc9e19839a2",
+        "public/vendor/pdfjs-5.6.205/cmaps/NWP-H.bcmap": "286c6c9e335da330928a01edc3c97a3a623f1f7f3c42762b0a7dc2f651b1a78f",
+        "public/vendor/pdfjs-5.6.205/cmaps/NWP-V.bcmap": "3a75fb7b59adfb172710758c425d8ac6c93fd5360a64dd4afd5dd04e60ab4b4d",
+        "public/vendor/pdfjs-5.6.205/cmaps/RKSJ-H.bcmap": "a70de61a22a898f693f02cc011c3e3cff2e10aaa7cddb4661e456a21ae859f78",
+        "public/vendor/pdfjs-5.6.205/cmaps/RKSJ-V.bcmap": "68c1a64506471a524ea5cfc3b3a9f8f70031989a6bd95427b1351f33ccf50b06",
+        "public/vendor/pdfjs-5.6.205/cmaps/Roman.bcmap": "1c6b3ef9d9e5cb1aa329142ce9414b90f9b6d7f9182a2a9e927378dab8f0d43f",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UCS2-H.bcmap": "779428116752f34e2490a1941d24e4634c71e3c22d053b811d2090ae2fb3c704",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UCS2-V.bcmap": "1e5cc184b850ea44abc2df8ae5674279df668e8edf5e2a1a2ea2bd77adbd280f",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UTF16-H.bcmap": "32ff139b3c7b91d6ad25f994701f3ce7b242906022c418fd73e6493fc228bfe5",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UTF16-V.bcmap": "278eb1e68d1a236c60ef59472cf0176ee0d45f364285e76ca12419a08d46fb9a",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UTF32-H.bcmap": "bf26eb67fe19ee5ba915799e80ca72408400aa8342fdf6a244a4f44de8f97336",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UTF32-V.bcmap": "f7da3caf83ceb1cb37936fa10700d9ba6e9c3f72c5bc9724e3ac79bff0c0179e",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UTF8-H.bcmap": "2f2a742bcd1a84a148a4a518b9eed51a8f9c6ca5ed3bc5e2e41fff97de5dc2d8",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniCNS-UTF8-V.bcmap": "b7c3f10780a8c62dd1c8ff6c30dc1e4e23b6cdc87c3a96fcd514cc98ffd3af9d",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UCS2-H.bcmap": "9201569b402e81ad8860650bd86350c4fa28e5dd5971f05fcacaf40f51de18ed",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UCS2-V.bcmap": "f10282335e4d64203bc2a653a3a47d745ec76c8ae04549f4d50180c1899be216",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UTF16-H.bcmap": "386fd39581245c034da016a92d23f3df1117d169f996100050b264fc09a84e35",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UTF16-V.bcmap": "0473cfbba612b92dd9918f0ff8aee9112897c48e0ffdc0eb82da3144ed8ea84a",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UTF32-H.bcmap": "f48a145dc4e3ed1dca1dde7111716a72306a2a4191ab05c6bae3a5c3a961cd2f",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UTF32-V.bcmap": "106acc49b7118bdef944e32107b4f348238f3929a0a15d3b7aab7b9101535993",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UTF8-H.bcmap": "f217b439c80ee5fa1bc2cf6d1defcc319f8d84483d166a00ee199e05a68588df",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniGB-UTF8-V.bcmap": "a64df947632878eacc532fa193c735c92a383b7d66e6f8374ac193af7c64fc63",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UCS2-H.bcmap": "ad2352f40870880fbf7f8ee5abadff743fbd025fbf9830b8ada472d1c5e4da0b",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UCS2-HW-H.bcmap": "16e87edca954177c0881c874859d6783220925d821b5cdfb8755b61ebd93f9ce",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UCS2-HW-V.bcmap": "1973457e2c0192819947e56068625b34fb9a72ecc8a476ce6d7eaae5f73e2e5c",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UCS2-V.bcmap": "42a133d8e2ce9dd6d2288018e01592d2bf2435b326d39b94ea0b6e6a44ac33d3",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UTF16-H.bcmap": "f6a89c5688978548c83fcee990e205bc63c74274d5c69b49032a3bd4c49a05ee",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UTF16-V.bcmap": "c67126fc7c73850855186bb0d6482ac0a365057e0b58778c4ab9f234683fef53",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UTF32-H.bcmap": "96195950ce0fe24443d8eb426fa6b88534ec421d7bef9046f0b2362809cfba73",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UTF32-V.bcmap": "ed4dafda402bdd19c4d5d8bf2ab41473c0f86f384552b4c7b963d6627daedeb1",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UTF8-H.bcmap": "798fb0bf06ab0788d1f6a91c2db7de581612eef03c628f10e8f7ecd8f70ab448",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS-UTF8-V.bcmap": "1021611424f913b2df0bfdbe94bd327c04e224ec89d8e821c6501ea3d21f4265",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS2004-UTF16-H.bcmap": "710a32d7cb43fd6bd9dbf30da5971f8c941590f74441e208d852c2be0e74cc97",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS2004-UTF16-V.bcmap": "3b149aff5c5707b57fb3215d1775852c8b1f413ec0f679ea628f25cf87fe098d",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS2004-UTF32-H.bcmap": "8d2658e18741af7937d586a57c89729a6fec0d86121197c1f8518aa58b29cdfb",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS2004-UTF32-V.bcmap": "6dd475782f2897648a683c48b2fa015a15b8f06856760bddc8a17a63f418bacb",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS2004-UTF8-H.bcmap": "691c614ce432b3e62486efb54e5c84c6da5afe9b51b21253bde4758feb484183",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJIS2004-UTF8-V.bcmap": "40a8c7ea2d46711c5f78fc9a878a7db68b1543ba5cd60ecf14f519a2deb829b7",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISPro-UCS2-HW-V.bcmap": "6826f94d789d7bf1960668c1c5819c34c9585c1b23152fbc19ee81c7df08524b",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISPro-UCS2-V.bcmap": "493de9fd1a08f7946065d8ab58f0c3c9fe489f5a0f109f2d05a3169b4bd5789f",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISPro-UTF8-V.bcmap": "6181d382cf736c5e09492e8be9f26f31fa25b7462253f23ab16646af432cad81",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISX0213-UTF32-H.bcmap": "692044e1fb33445668632bc9fe7386805c624864be1ddeb29d65bb0c99fc630c",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISX0213-UTF32-V.bcmap": "dd54e16ca7bffb3a886242549b2bf7d78a277087f7c60d2636f118c21a5b0646",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISX02132004-UTF32-H.bcmap": "f80ea5a989be30ccda5a8804baef6d3b4b044d2b339bf8b31c671b2466171cf6",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniJISX02132004-UTF32-V.bcmap": "94c22bd99e771c5fbe0dd8dc39850570d4db0075074aca13e272813edd7cc57f",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UCS2-H.bcmap": "a1081396ab4adb6f4a5b6c15f896963c244c1c9bcb65ce5616d06096a1b9811c",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UCS2-V.bcmap": "6cab547431958fbdc1d401d06ebd4dd61a73f5509a10f974df32bcbca11a2e43",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UTF16-H.bcmap": "42d35b396286499dfae1737a07adb3a64500df37b426580bfb1d3ea872938519",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UTF16-V.bcmap": "5bdb7390c80dcc136cb47d41dc7460082560969c17322ee739fe3020fb642410",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UTF32-H.bcmap": "3a01ec51ed1b828101351e337ffb8250abe11880032e5210f881170fed2588de",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UTF32-V.bcmap": "dfda895eceaed081af030dbbb962b49629eea817fc3c02bae15db93d0c68acd7",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UTF8-H.bcmap": "3fac9c65145f72d7d42157a3b9c5ed6904632184e6a0888f2b828699afd2002f",
+        "public/vendor/pdfjs-5.6.205/cmaps/UniKS-UTF8-V.bcmap": "9ecc6cf30dd354b9778ddba163b6cc7302b087ce9f39d1ba73472d2b75ed13ca",
+        "public/vendor/pdfjs-5.6.205/cmaps/V.bcmap": "b9ad1c0c09ff14bca52f9a28a9767eb857ad0e8946e64ba14c7387a7eb69866a",
+        "public/vendor/pdfjs-5.6.205/cmaps/WP-Symbol.bcmap": "543923bead225732aba30976690ee89095a19628277b5863efecc2c728d5d7bf",
+        "public/vendor/pdfjs-5.6.205/iccs/CGATS001Compat-v2-micro.icc": "73e1ba37d2bad5bab2a964f40a9eed96209666efc067c3322626214bbef234a0",
+        "public/vendor/pdfjs-5.6.205/iccs/LICENSE": "286e4fd7b447330b2c88e23890e3cd0a9d38cb398d4a59cb247f578ccbda3213",
+        "public/vendor/pdfjs-5.6.205/pdf.mjs": "da6a8bc694b6c24870a310553a3410b786f3e3dc1c449fe248f03fdfc41ac336",
+        "public/vendor/pdfjs-5.6.205/pdf.worker.mjs": "87127bb3943cda2f766a26c7dd8c77c2c01c4d6f999a9af754222e03d09a7b6a",
+        "public/vendor/pdfjs-5.6.205/resource-budget.mjs": "1ba1a0aedabc4ea773a6febde3e89e3aa6f3aa6874eaa4d664e36d122e940e93",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitDingbats.pfb": "845c752392b6c914fb989c75a08b7792b88f542d2499042ef2889f8c814a16ed",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitFixed.pfb": "b6c8fe53f134b8b6d4578cd2d544df4cee9624c4efa8d51a560fb40ea296101b",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitFixedBold.pfb": "f1b7159702973f54fc86254ea38bcf3712b2a736eb3a0995751e9f4bb45ad603",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitFixedBoldItalic.pfb": "8a000945843bd31add06aee63bf9fd41b7578b4f3242a4b7cd46349ad9d24d4d",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitFixedItalic.pfb": "5007faf8320fa1fcc08b8894b356ad976f60b992ba29ee5272578bbdebaf3876",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitSerif.pfb": "4f57d2b9d884af8f907bf22df6019b52d86cbf6214fdbd02b1ae05472a543f35",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitSerifBold.pfb": "0bdf4b04e964139818d51eda03d566ba999fc3ba2421b1c6c51f9dc969022e80",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitSerifBoldItalic.pfb": "a406cac82583bf98175cb62c87ed5e95c45fbb34eece63a10b0a13e793cb2e10",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitSerifItalic.pfb": "610ae0687198045c4db5d1a6650fd5e92536631706382eb8b72e38df578d0ae9",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/FoxitSymbol.pfb": "47967d055530e7357088a08403115425643ec2cdfd6201ba8af0fbd7116c1539",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/LICENSE_FOXIT": "b578cdd2345840ada550bd12519533812320d5f1d21cf4c1c7e1b1b0a31c98b7",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/LICENSE_LIBERATION": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/LiberationSans-Bold.ttf": "361c61b82d575c5c35fd9157fda8b0194bcfcd0d88ea8521a4fb5dd53d33dddc",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/LiberationSans-BoldItalic.ttf": "a224075ac17495ad0a3af3bc0a419ac0704a8b3fd1095456201fb9b095fc281d",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/LiberationSans-Italic.ttf": "832b4406dbef23628800d3aaad21048534ac84d7e3ad955be83b8172ed8ef512",
+        "public/vendor/pdfjs-5.6.205/standard_fonts/LiberationSans-Regular.ttf": "f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f",
+        "public/vendor/pdfjs-5.6.205/wasm/LICENSE_JBIG2": "9e66b7f1b934a28b37f3bc4dac97915de1674271e79a0a88182a18ed9731b4d1",
+        "public/vendor/pdfjs-5.6.205/wasm/LICENSE_OPENJPEG": "a6af136f3e15038a666b61f376612a07d9a4e48cb7c01adbf3e33b3f14ab49b6",
+        "public/vendor/pdfjs-5.6.205/wasm/LICENSE_PDFJS_JBIG2": "aad3cce09842e00e9e11ad5e8fef8cc02fbc3a3768fe2f007443b9cee37aaee5",
+        "public/vendor/pdfjs-5.6.205/wasm/LICENSE_PDFJS_OPENJPEG": "717fc62da03292dbb4dd0c8280bd4ce7bb8550dcf31d772bc93455fb50313425",
+        "public/vendor/pdfjs-5.6.205/wasm/LICENSE_PDFJS_QCMS": "eb5104ca33552be007857a28351bc408f379ddd4bfacab1226b09c6d1e9fd7c4",
+        "public/vendor/pdfjs-5.6.205/wasm/LICENSE_QCMS": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc",
+        "public/vendor/pdfjs-5.6.205/wasm/jbig2.wasm": "e6bee67724a7b5436fe8162638e3708cfc8d52b6342db69a49715e30ff27cfdc",
+        "public/vendor/pdfjs-5.6.205/wasm/openjpeg.wasm": "67b8e2b162da472e98cb48d3d32e3e38fff481b9b32ff4818e78bb248af88ab2",
+        "public/vendor/pdfjs-5.6.205/wasm/openjpeg_nowasm_fallback.js": "fccd9cd3c5bfea56626a4ac8631c4feb2ea2d11a9d1dff22b26749d76ab1830b",
+        "public/vendor/pdfjs-5.6.205/wasm/qcms_bg.wasm": "6017eca5939cde1836e88e6d8cd27ae039246f206515ea4487bdfd0e3fb16e26",
+        "scripts/ai-harness.mjs": "2c73e317eaf7eda9cafe883a1bdb96a3fda78881d836a75b8a4bd6ce608957a6",
+        "scripts/ai-harness/cases.json": "c6edc6606562e34cf9d243e7b720934170eca2c7ab63dbd77c87db54ddc3f3bd",
+        "scripts/audit-data.mjs": "cb35bc3352c043ca1b28e50f6416cb18c43c7dc8243e8d5b4aeb4ae01700f88c",
+        "scripts/audit-readings.mjs": "0b2b348c3999a0e44bd9415e602fb815102b358496dcbf5e3076945a77359c2a",
+        "scripts/benchmark-attachments.mjs": "361ae4e30923cb42515b5f3245f00aa97b44126332754057c3e67a51e985d7b5",
+        "scripts/benchmark-backend.mjs": "1cb64ebfd898c54abba93d47d81ae3c596a23aa58b1337e04880279f2b1f0696",
+        "scripts/benchmark-baseline.mjs": "8f91fda8190aa36789d78f31391d917a53293a438609149954c75be76324bc7b",
+        "scripts/benchmark-conversation-list.mjs": "9c7e4836ebc612804dd809621059117519b312bf00286ee6d331d3d8489c2875",
+        "scripts/benchmark-core.mjs": "399655a5e5e36643e5136ddbddf95556e3afe3c4bae28c5a725d93722c701e0e",
+        "scripts/benchmark-reading-lookup.mjs": "f51f8c945a747ebd584288e6f86ff0cd632b2ee8804488bcecf46d65c3739a64",
+        "scripts/benchmark-reading.mjs": "28b7b92e952a098732e9dec01a0d0a3cb125535c3253a6abb379344fd067f94f",
+        "scripts/benchmark-toolbox.mjs": "41e025c80cc719dcba2b2666dfcdd464a953c73e9eeaf53ef04bee8b54360a4a",
+        "scripts/benchmark-workload.mjs": "efe024a9a42fe0df31ba8001fc21e8bad8fcb5f9d875719801118ff3cbe8da64",
+        "scripts/build-lexicon.mjs": "14f8f87ea17f578fb8e71adcbee1ace20637c6f58d7116ac8a279516fda72e65",
+        "scripts/build-reading-corpus.py": "8936d2997439403adc989a8b5090b05acd796ac5de19b3d947f5523dcb99e4d3",
+        "scripts/build-source-manifest.mjs": "6cff0ad7dfeaa696b0d3b98541842c987b4b9b41c2d5b49a8caed0c7e9dbece0",
+        "scripts/build-verified.sh": "d26af80d204be9564f3941fbf318b2b0f6646f351ea30ccc7454dca974ee1da8",
+        "scripts/check-lexicon-release.mjs": "3e1215b8af4269a58d4c7286149bb2d1b042faa71d846994f0a36173b3d38c09",
+        "scripts/check-runtime-security.mjs": "822af98bb6dfcdce7678d3afaabfc9435f8c0fe551acc9f601904a0eea3c620e",
+        "scripts/install-ci.sh": "7f665bf669230297f726515e4dc99fa87e94876527f41fac478be0cb09f1c450",
+        "scripts/lexicon-release.mjs": "66498a31a39e7b0035f7f92962bbf97b35d2bd20e90be7913211b2ccae8d319d",
+        "scripts/local-worker.mjs": "494661349034de59d98c63ad722036b333656c07b82097b96eccdb66cc6bf50f",
+        "scripts/package-site.sh": "23397cd70d967b46ddbaf0fd5cc37bbca3898c030b6b81065f80ac217d1547ae",
+        "scripts/release-archive.py": "732bd4b7aef5d98b2063207caa0178bc746998377fe9fef64d97abb5ec810845",
+        "scripts/serve-qa.mjs": "5ecb135b89c128078b7f84a3cb46bf893b72ff12c13fe3036885c70204fc0673",
+        "scripts/sites-env.sh": "3ae59a4b11a6eb37b9e4f84051e4a20d93f0686b3034316bf48ad77d6b739f8b",
+        "scripts/smoke-worker.mjs": "cd5af5d8a36983042dd4eeef76541b47d90a1721812c20c883ef779c101ba47a",
+        "scripts/source-inputs.mjs": "24bf5df46d07fcd45b5dae6705f427b9dd2d594ccc8ae9684869e786913ebce1",
+        "scripts/source-pin-candidates.mjs": "0a4e70ee04ecfbae07e3ad694a0b1c819392ebe4c92a567757005161f78910ba",
+        "scripts/validate-artifact.sh": "2891db8294e450cd29f892f0771ff504df2f0d8e8f418ee55b21981c0a0afcb2",
+        "tests/ai-cache-reset.test.mjs": "ad0eb78723c1abcc40d4e3d4bbeef9df35b4f7558b006b21e7c9699f561645a4",
+        "tests/ai-quota-accounting.test.mjs": "98744f25ea9f23ea4744188487051df078f9eb349cc8070e93691358039bff39",
+        "tests/ai-security-boundaries.test.mjs": "7529c7eb2838b577afd7fa2f140979e7185e17a6d25511d929be3547f0bd57a2",
+        "tests/ai-upgrade.test.mjs": "a1484a66577c57fc5d3462bb461a4b550ac7adab5c4c8eccd40fbdea3efec9ca",
+        "tests/architecture.test.mjs": "75a6373325986bb7c62825f745531a2da2b0627f4c0f6aefcbed6fc87bab6faa",
+        "tests/art.test.mjs": "c4ccff727323df5238808c8644f893b389355eb57f81f8ae6d3c9dd15c871888",
+        "tests/assistant-chat-stream.test.mjs": "e03046282ca01beee610b1d4aea052ea03d4022c3c392beb76511b160aeaaf9d",
+        "tests/assistant-chat.test.mjs": "0efb9056b672259e5b96b962b3fefaf6778ae433ed40d28ad70459fd11fcee56",
+        "tests/assistant-entry-locations.test.mjs": "13725a3f17e77f99969976d70a4f8e846fcf91e2e40b6d3cdbc5ddbc075139c1",
+        "tests/assistant-harness.test.mjs": "74858fc4ddae9156fd6695523a883ad42730190d4aa03b35a92d51a90a437943",
+        "tests/assistant-provenance.test.mjs": "dbecc42985d6011a22b9f7abdd2dd2078ff801b0af29948b703985c3eb81ba6d",
+        "tests/assistant-proxy.test.mjs": "31b64b19a292c50c7c0e5be7cdf238b06b2927cc64e91327f79a76042705e435",
+        "tests/assistant-response-boundaries.test.mjs": "8e7ab76b3e1701b99130f35cb4828617700e0f6f2cec765db0ac00a5dcb0522d",
+        "tests/backend-compatibility.test.mjs": "433f8b6658628c614a08f3f7538adb078f04ade97e2f4fe22fa399127409f54a",
+        "tests/backend-security.test.mjs": "48bddf2d0c2456a76413715eca94887179cb3bc717b42eae8f314f161a64bde2",
+        "tests/backend-upgrade.test.mjs": "340c0eb5cf2aee3db8660b204ce5c8367356c2c2eccf64b0bbe44fa7bf9895b2",
+        "tests/backup-chain.test.mjs": "e01d0e04dac3947750e3728ccb3f2888fb47862182253926c025e66f139c51f0",
+        "tests/backup-invariants.test.mjs": "4f9f25a021546d61260d52693d1bca025f360232a3f762da90d406bdab6a1171",
+        "tests/companion-attachment-boundaries.test.mjs": "1880b999c87ec5a67d7d01d3fb4bb9848eb08b11fca697254d1c90d520142fb1",
+        "tests/companion-conversation-list.test.mjs": "3341d9b18eb5458066bee0309166eb8b8f67d6b8a47c2ba444bceef452694c83",
+        "tests/companion-provenance.test.mjs": "756814be49b6ad090c7dc1d73671d973176292d8cb6bb146c00d8f5ceb5eebee",
+        "tests/companion-state.test.mjs": "ba04e6ee976ac949b2695154c458ae5af27127b5508f5c12bfcf37f58969ec3e",
+        "tests/companion-streaming.test.mjs": "b3f02e3043261229795f024b1e66af80b1a749b9615bf18d2764f8256580499e",
+        "tests/companion-tool-trace.test.mjs": "da4df44000f0c97955f3beb40bb40dc28aab530aa987df929d86333dec615c8e",
+        "tests/companion-voice-context.test.mjs": "5e350ee079c70c36c0fce66370e4ea9e729fa21abc6cd31ebd15e2aa2adc31b5",
+        "tests/config-client.mjs": "4f0c8b69b1d2a0b71fbb99ada1a52bb5c7b1d680e94130de324308c82a3ef34c",
+        "tests/config-lifecycle.test.mjs": "e654ee6c47ba833b932afa483557ceb66b7f506f6d94d6027d932ede0c1ce25a",
+        "tests/context-fencing.test.mjs": "fa3d6143dff870c3de4bac6dea8f38b34f3982e7310b7ef614b7b0326a5c7a1c",
+        "tests/data-generation.test.mjs": "04b8e5ee5624dce6d6b40752ba1e20104fa95d549a578f0f2272adf5b5968224",
+        "tests/data-quality.test.mjs": "c0b4891b0332dddda7a5a0032592bbfedd3a7e1763159204e8f0d2df3626f2f4",
+        "tests/dictation-planner.test.mjs": "d75e8e2384e7451ec7f6d847c3768c48adcb4375b3840b264cb3215f686a5052",
+        "tests/dictation-server.test.mjs": "a6301dd8bf12922d27918621b16e1ba4f9a68401a50136452ad0e2659bb80385",
+        "tests/dictation-session.test.mjs": "6a32a00355e0bc5e33e344ca81538291b224b6cd1eeb4b492b54e97afd5795a9",
+        "tests/docx-import-security.test.mjs": "e645b48e01af81b3fdcb2f95bf77a218e0822441a093d660ee8365321aa224e6",
+        "tests/gateway-credentials.test.mjs": "208a81516fa66ca117e5a166d0682dd1fbc6feafad5231040bad6f5ec7a8738e",
+        "tests/history-order.test.mjs": "00927cff1b81bbf586651c70d0cc7288582cf239cab5b6102594fb723206b7f5",
+        "tests/identity-documentation.test.mjs": "df7f615d84b93e9b5a81092c334ada9ef97837b056dd248b9c5505f30fc583d2",
+        "tests/interface-polish.test.mjs": "ff414bb6e424895d80ce6f733dc8d9be5ea5c1ec9daf900428aba273006ed0e9",
+        "tests/key-rotation.test.mjs": "eb1782df611c7e72dd90688989ca45da3505a350fce69a8eb742e5814efa5ee6",
+        "tests/learn.test.mjs": "4bbcc26c99f82d60051e351672da8689576ecf80850bbed167d15479b0dc91ff",
+        "tests/learning-context-client.test.mjs": "ea150b0fe195bd5958e26467c9c71cf7a3960dd9368c48482b37733381d8b253",
+        "tests/learning-journal-client.test.mjs": "425d5c368c5eb570b46bc4abd9581142a7fe08ebf3643690a3801b669c7f7200",
+        "tests/learning-journal-privacy.test.mjs": "0f19669cd10ec2ad769e0f72e08303fdd83fdb0ef95215188d1855e96057e0fc",
+        "tests/learning-journal-quota.test.mjs": "6deac0013801227259781ba8def9e7661ce3dc963968bf516201d64e09e6a412",
+        "tests/learning-journal.test.mjs": "f15c6088019d661dd166100466c86def49345627adf3468e230ebd94ed8b6a64",
+        "tests/legacy-ai-credential.mjs": "fbaa7e04ecca13fb705aa967482aafdb28400471c405dd806f009787f660efc3",
+        "tests/lexicon-index-codec.test.mjs": "1e76a3c8036a17a2969efe45e22fe0f624d98a290eb4a31a77d116c4a66f6142",
+        "tests/lexicon-loading.test.mjs": "6de7f52230e39f2e7351de4d2fcfdc52fe1dbae2abf12d562291ae2c5bbab974",
+        "tests/lexicon-release-security.test.mjs": "88409fe15ff09869a899219995ff73e5ae2714c0c431cf6513be823a546788c8",
+        "tests/lexicon-timeout.test.mjs": "463557f4508e9a88ee88e431f99d4dac3784be1826b09e0c7d8f054ba002fea1",
+        "tests/live-learning-tools.test.mjs": "f1183a8f7eedc11bc71b5f7dc59c27fc0485554e7fc9322de044388e3ba3d1a1",
+        "tests/local-practice-data.test.mjs": "c784e389fc351b93418f59ab61f1c090814b5a44bb67ebc789342b8329401c16",
+        "tests/local-practice-generation.test.mjs": "f8d4998e200a46f7572f8f8402f6073f8de3c11cdf097b9be77f18cc5cdc2d5f",
+        "tests/local-practice-locks.mjs": "2a08f36390dd99293877bac608de7c9e3940a5c7d812e92ce52e64637aa7473b",
+        "tests/local-upgrade.test.mjs": "3222026dc8bdd796ff2ead97339927557a72706ebba64cdef6da64d79c42a83e",
+        "tests/meaning-display.test.mjs": "9dc20881ad4d53491be93d13433812402c147c575e11db2b3d459ffde50a7d95",
+        "tests/merge-ai-server.test.mjs": "a61ad2390ebd9e4527533ae1d6d637e6024ba2f40d0a6e7b090225521af37afa",
+        "tests/merge-writing-boundaries.test.mjs": "de831f5341a2ae35ca4ae5022888d242bc0f6c20d89aa7b40cfc79f0797e4294",
+        "tests/openai-responses.test.mjs": "198dba612ba951364c5f86f2d7621d55621b2450ff6f353365d25ec204c7ab5b",
+        "tests/pdf-resource-limits.test.mjs": "703d2f493ba40b4e8e2704c8bb149cdc48dd17b55becc7ddafb512a781a0c6c8",
+        "tests/performance-history.test.mjs": "5c25b768c751b500d6ce395bfdeff5f7de6293904a876d9d8038de921abb4260",
+        "tests/personal-readings.test.mjs": "61f6f67024d1d8a697d7b6a44ac952e9f4749edeb5d398e79a27f1e4072a5a4c",
+        "tests/preloadable.test.mjs": "ac22714f579ce74a89accc5d540afeee0028d215ac7dddaca3aa126bc78ea9c0",
+        "tests/private-api-fixtures.mjs": "0f2cdc675c11c35b57b182260b0ecae65f098c6f0997dc564db907ea6c6c9749",
+        "tests/production-dependencies.test.mjs": "c5d875c8428dc6d8cbcb58e1659a96a244890bc57f76db2482c73069157f5e54",
+        "tests/pronunciation.test.mjs": "ca450ad5046cfdcd9057d6b8b3a43549f9b18ba264a7ac47ba45b2771b8fb3b4",
+        "tests/reading-ai-selection.test.mjs": "debef46e119f321929b22ef8f912f3ef4a7605d9af973d59791c6c500482a002",
+        "tests/reading-candidates.test.mjs": "8e2211753f5e17ff58e2c704cbb1e3a1025a7fc19631150c3ec5f6e6891c5c8a",
+        "tests/reading-library.test.mjs": "b481beb299c3c866fc58a5167cb4ccd068ea201cb76c5788bdc205b12a76a227",
+        "tests/redesign-contract.test.mjs": "98c19b3032bc11aedeb8e77ec5cd17f4dfa9e6aedce6b32b3f2f5452eb3defa4",
+        "tests/register.mjs": "ef6bad87167f5250090eac7a502cef69bf6e2027fbb429af74ba12c501a381c3",
+        "tests/release-tool-security.test.mjs": "b5bdd95baf80e390086f007f8b4e0a43d1a287aec5292c922b4c7afdf967b67a",
+        "tests/request-headers.mjs": "1660c9e633e64815c1931b35bf5e2fcfe7bb4e56441a402c48ba367f5ae0e47f",
+        "tests/runtime-performance.test.mjs": "8d46ffeac12964b82597c244e7ed71e9646aeefc162af08047cea22210a7fa8a",
+        "tests/scheduler-clock.test.mjs": "2098b6b087f1ad1c4b7c28daf6d5115f2b0ec21563bb33e343e96fe369977286",
+        "tests/security-cloud-20261103.test.mjs": "b1975a2da62ea6ec56a8bbf49a4bc04b61186f403e817776c97df7197dd2a3d0",
+        "tests/security-hardening.test.mjs": "339a8a60300bbb41ccb522ef58433b1c197f5af72210d3f2f56255fbbdee7cdc",
+        "tests/service-worker.test.mjs": "1f0f41ac63fe56ba571ea36606fe0f03b4b832033138535fffbf04083480b675",
+        "tests/session-clock.test.mjs": "c525f8762ecb3e55a68deacc4b09d3b6d55644bbe37118eba744218eb7527f64",
+        "tests/session.test.mjs": "60ed78fd41d716a1fc7b735caa734146b168a0afc9a76fc2d02596f6e4796eb5",
+        "tests/skill-supply-chain.test.mjs": "929e88624d31b83a88bdbb061fe0757d7b2187feba3cfc3b136d674a847626f5",
+        "tests/source-input-security.test.mjs": "fb578e772a142c613bd9df012e4071e79c4adb12aaf61cff944ec10345ec015f",
+        "tests/sqlite-d1.mjs": "179a130e159039275142351f64a05c9a19f633d9dd3fc65fd0dc63e51cdd8b93",
+        "tests/stability.test.mjs": "86b2dafe7262c4429ee17588f9c7e1266c18836f759c0e5c26a12d15c240d6fa",
+        "tests/study-engine.test.mjs": "6738656bba09d7c22e5b3149cc40e8d62bba20044fb9cc71edf1fcceda941fa1",
+        "tests/study-flow-regressions.test.mjs": "3eefb6c90b714eb30036ed61ae9d44e904a3f565fd7f21be42036ee0642d9b8f",
+        "tests/sync-merge.test.mjs": "4478cd2d59cb84059cb9b2280ec1e6906c8765986509c2b176dc90dda875e109",
+        "tests/sync-size.test.mjs": "8fc520bf58af92821db4a7aba40e56c8ec176438ea3e650703979dc10b20a309",
+        "tests/sync.test.mjs": "b176248da1bef647262d5aa69937db45ba3f058855206632061b1709e580a276",
+        "tests/toolbox.test.mjs": "3b7a81467f5f49b75615053cadf6c20274cfa84ce66219b90eca2554a0793689",
+        "tests/ts-loader.mjs": "67cdf0d49b1e39d0d13f3c7d0d8b1868c2883c01e16c0df2ab9855c4c25418ec",
+        "tests/vendor-cache-release.test.mjs": "690b64da41dc6a5d02855067eb737171d322c7c1db708052599f00823609bb38",
+        "tests/voice-accounting-merge.test.mjs": "fe332ee73c035377eeb76f42b3476ffa611ffd96624842d204ed8732f68e3ed8",
+        "tests/voice-client.test.mjs": "08e89b95370a51ce20b4b6fc25e9d7ce5f5c76f36228d888dcb9ee4e13ea61f7",
+        "tests/voice-coach.test.mjs": "51ee08996faa0b382b2284089e098d6d38c80a1d8d51e8aa757fad21efc4cedf",
+        "tests/voice-deadline-env.mjs": "4f32f59444a14d6204c67abdaf9e8ebe44d9aff94259e9b412c71ae49bcda472",
+        "tests/voice-deadline.test.mjs": "ebdae64509a604e12622a3697800fba44951fba40ecb223b2e4eb694e51c21d3",
+        "tests/voice-learning.test.mjs": "9e8eb0c9f479603c00ca77d1e19b1041b512a179ee34e477f9c75c86a5c08bc6",
+        "tests/voice-server.test.mjs": "7f5ccbf379d2cd4a6eef5dbdaad2cc4b78a137d7b35f89c1dcb9ab78bab6425f",
+        "tests/voice-speech-accounting.test.mjs": "e5d3982aa6633fafff4770d03b542c0ffd93fb76f3060c4eec4b435eadb22cb4",
+        "tests/worker-env.mjs": "04483a1e372ddade8cc3fdae7901055270d33db7875a99226c6298bfa3f7f117",
+        "tests/writing-experience.test.mjs": "c729b46b83fb4a91e90c9b1746a5871da82ea552a912a266b39f5f063e202ddd",
+        "tests/writing-recognition.test.mjs": "ac1a2141ce753420df272d70731ff96944a43a98b1222537eae2ace9750271ce",
+        "tests/writing-targets.test.mjs": "742962792acad0c8cde760eb61ceca7fd046684de519428f66ef36a8337f9adc",
+        "tests/writing-topics.test.mjs": "b4257cda9a7935fa292bb1ae4f2ed962f27c5c3742eec78c9aa7d90f5bc73dda",
+        "tests/writing.test.mjs": "cda614dde63a0978cf0b3f3f1299ca332ce9a6645bc245e4b33a824fc8c92f87",
+        "tsconfig.json": "d6e859fc34c54dd8b469bfc07d7bc3a6a0328382115a6f794db57abe6c5c1e5e",
+        "vite.config.ts": "2bfcfed87bdb324424375bf6c16bd07dae01841fd9223e52bdf67fcac7fb652c",
+        "worker-env.d.ts": "afc7f2496d2c14f54c9b759929eae30076ab58c9adcc940dfe754aa557d09be8",
+        "worker/index.ts": "08efdf604f7dcc93cc0d8632b48cc2dcbe6b1beaabd619276e3db30bcb232741",
+        "worker/security.ts": "00c84e15a4fbda47f5a603f5bd8ed803abb987ef8b4ae6212cbc6ab219b2d59b",
+        "worker/voice-deadline.ts": "0bcb1ff66ab2b5f810a900951276fd2085288cdac344d05fb1247866aa27db16"
+      },
+      "scope": "Current production source/assets, test fixtures, build/QA scripts, configuration, CI and immutable migrations. Excludes artifacts/, docs and generated data/audit-summary.json to avoid evidence self-reference and audit timestamp churn."
+    },
+    "inputs": {
+      "release-full-check.log": {
+        "bytes": 86248,
+        "sha256": "d94d56a1cc6ae83ee88149bc19c10d96c8b6659037ce9f1a81e6050e74b16027"
+      },
+      "release-full-check-round2.log": {
+        "bytes": 86249,
+        "sha256": "a4dc0c51b1487e412fda33316d4a4f6d5b0556a17251085b8cde61691ff8d351"
+      },
+      "release-dependencies.json": {
+        "bytes": 366,
+        "sha256": "1458741baaddf848971e79c4b54919c8359a16e22a034dcd59d624ca676a1bae"
+      },
+      "sites-baseline-workload.json": {
+        "bytes": 71891,
+        "sha256": "44df11dc52a50a2e7773210b05ace6bd0d7f959780281c13739dfb7b729cb739"
+      },
+      "release-workload.json": {
+        "bytes": 1641341,
+        "sha256": "2ff711257adf9e66ca3ea05e31fd3e5599a66a26ce74ebeeb224e00fcc3a62d9"
+      },
+      "browser-results.json": {
+        "bytes": 716,
+        "sha256": "1d189e0c02dec83e9c571e231ff9d5af7e2844832709c3bfaf17a07813096f31"
+      },
+      "mixed-ui-load.json": {
+        "bytes": 2176,
+        "sha256": "790b9f7d827556d488a3491883675fd4a57ca998900c646270ba82e203ed6c62"
+      },
+      "stream-render-results.json": {
+        "bytes": 6809,
+        "sha256": "d2e9d06518118974041c03eb6ed340035eca2f8df1b3fe593850a4f395ae9656"
+      },
+      "assistant-merge-review.json": {
+        "bytes": 2465,
+        "sha256": "4bd2896916ad81420299032c95ca8383c762d6725c1608d1c0b4ceede51ebe5d"
+      },
+      "evidence-review.json": {
+        "bytes": 22189,
+        "sha256": "cea29343ea9e97d21017e34e114704ec6113f1faa580c7bf4b11dad4012075fc"
+      },
+      "stream-ui-review.json": {
+        "bytes": 8636,
+        "sha256": "58c9a8f47fa89511123d1045edac9bc47b93170a377d94320592d41e6e35eab9"
+      }
+    },
+    "aggregationScriptSha256": "80393c90571e9d6d2e3436462c1df5d7410f1f3add1d9d64c415ddaaae41246d",
+    "note": "Source snapshot hashes current worktree bytes; a Git HEAD alone does not identify uncommitted candidate changes. Final report uses only the named final evidence, not prior f107/pre-merge benchmark results."
+  },
+  "limits": [
+    "Closed-loop synthetic local HTTP/D1 workload has coordinated omission; no open-loop production capacity claim.",
+    "Three HTTP rounds and 120-second read soak do not establish statistical significance or long-term production stability.",
+    "Browser SSE/model responses are controlled fixtures; no real paid provider, WAN, production identity gateway, physical iPad/Safari or INP measurement.",
+    "Component render counts and synchronous commit timings are separate from whole-app interaction timings.",
+    "Manual scoped reviews do not replace a formal Security Cloud scan; deployment and live migration validation are separate later evidence."
+  ]
+}

@@ -2,7 +2,7 @@
 
 ## 运行
 
-Node 版本见 `package.json#engines`，依赖以锁文件为准。`npm ci` 后运行 `npm run dev`；默认仅监听本机。可信网络预览可加 `-- --host 0.0.0.0`。构建依赖 Bash 与 GNU `timeout`，Windows 使用 WSL。
+Node 版本见 `package.json#engines`，依赖以锁文件为准。`npm ci` 后运行 `npm run dev`；默认仅监听本机。可信网络预览可加 `-- --host 0.0.0.0`。构建依赖 Bash 与 GNU `timeout`，发布打包另需 Python 3.11+，Windows 使用 WSL。
 
 | 目的 | 命令 |
 | --- | --- |
@@ -31,9 +31,11 @@ CI 执行 `npm ci`、`npm run audit:deps` 和 `npm test`。`install:ci` 提供�
 
 ### 版本分级
 
+同一 PR 推送前的追加修复沿用一个候选版本；已发布版本之后的修复进入下一版本。
+
 兼容的安全、缺陷和性能修复升补丁；成组产品新功能升次版本；产品代际或不兼容公共契约升主版本并提供迁移及回退。内部重构、修复数量和报告排版不决定升档；纯文档不升级应用。
 
-发布前核对源码、产物来源、数据库迁移和阻塞项。`bash scripts/package-site.sh` 清理旧产物并重建，输出 `outputs/site.tar.gz`；包内保留 `dist/server`、`drizzle/` 及 journal、根 `migrations/`，使用普通文件。Sites 会复用同提交的已保存版本，打包修正须提交新版本。GitHub 与 Sites 状态分别记录，部署成功后验证实际迁移。
+发布前核对源码、产物来源、数据库迁移和阻塞项。`bash scripts/package-site.sh` 从已提交源码的隔离目录安装锁定依赖并重建，拒绝额外私密文件或符号链接，逐项回读归档后输出 `outputs/site.tar.gz`；包内保留 `dist/server`、`drizzle/` 及 journal、根 `migrations/`，使用普通文件。Sites 会复用同提交的已保存版本，打包修正须提交新版本。GitHub 与 Sites 状态分别记录，部署成功后验证实际迁移。
 
 ### 修复报告
 
