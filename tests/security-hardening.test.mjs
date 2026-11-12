@@ -147,6 +147,19 @@ test('sync is rate limited per identity with 429 and Retry-After', async () => {
   assert.equal((await modules['/api/sync'].GET()).status, 200);
 });
 
+test('a full rate limit bucket rejects requests without writing and the next window opens normally', async () => {
+  const now = 55_000;
+  const currentKey = 'rate-limit-window:0';
+  const totalChanges = () => database.prepare('SELECT total_changes() AS count').get().count;
+  const before = totalChanges();
+  const attempts = await Promise.all(Array.from({ length: 8 }, () => consumeRateLimit(env.DB, currentKey, 60_000, 3, now)));
+  assert.equal(attempts.filter(value => value === null).length, 3);
+  assert.deepEqual(attempts.filter(value => value !== null), Array(5).fill(5));
+  assert.equal(totalChanges() - before, 3, 'only admitted requests write');
+  assert.equal(database.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key = ?').get(currentKey).request_count, 3);
+  assert.equal(await consumeRateLimit(env.DB, 'rate-limit-window:60000', 120_000, 3, 60_000), null);
+});
+
 test('sync writes have a daily budget; no storage answers 503, a missing limiter table fails closed', async () => {
   asIdentity('daily@example.test');
   const key = await authenticatedUserKey();
@@ -288,4 +301,21 @@ test('framework API errors become private JSON: 404, 405 with Allow, and 500 wit
   const thrownPage = await secure(async () => { throw new Error('secret stack'); }).fetch(new Request('https://app.test/'));
   assert.equal(thrownPage.status, 500);
   assert.doesNotMatch(await thrownPage.text(), /secret stack/);
+});
+
+test('the Worker enforces private API caching without changing streaming response bodies', async () => {
+  const handler = secure(async () => new Response('data: example\n\n', { headers: {
+    'content-type': 'text/event-stream',
+    'cache-control': 'public, no-store, s-maxage=300',
+    'cdn-cache-control': 'public, max-age=300',
+    'cloudflare-cdn-cache-control': 'public, max-age=300',
+    'surrogate-control': 'max-age=300',
+  } }));
+  const response = await handler.fetch(new Request('https://app.test/api/assistant/chat'));
+  assert.equal(response.headers.get('cache-control'), 'private, no-store, max-age=0');
+  for (const name of ['cdn-cache-control', 'cloudflare-cdn-cache-control', 'surrogate-control']) {
+    assert.equal(response.headers.get(name), null, name);
+  }
+  assert.equal(response.headers.get('content-type'), 'text/event-stream');
+  assert.equal(await response.text(), 'data: example\n\n');
 });

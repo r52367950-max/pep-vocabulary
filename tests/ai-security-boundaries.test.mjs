@@ -8,6 +8,7 @@ import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { decryptApiKey, fetchAiProvider, normalizeConfiguredBaseUrl } from '../lib/ai-config.ts';
 import { fetchCompletion } from '../lib/assistant/core.ts';
+import { complete } from '../lib/assistant/server.ts';
 import { readTokenUsage, reserveTokens, settleTokens } from '../lib/assistant/usage.ts';
 import { authenticatedUserKey } from '../lib/server-user.ts';
 import { GET as configGet, POST as configPost, DELETE as configDelete } from './config-client.mjs';
@@ -124,6 +125,42 @@ test('tiny JSON/SSE usage and missing or malformed usage cannot refund below loc
   const reservation = await reserveTokens('honest', 3000, 'prompt', 1000);
   const honest = { prompt: 1500, completion: 500, total: 2000, cacheHit: 100, estimated: false };
   assert.deepEqual(await settleTokens(reservation, honest, 'short answer'), { today: 2000, usage: honest });
+});
+
+test('provider stream failures retain the paid reservation and release the response body', async (t) => {
+  const payload = { messages: [{ role: 'user', content: 'Sample' }], max_tokens: 1000, stream: true };
+  const promptBytes = Buffer.byteLength(JSON.stringify(payload.messages));
+  const expectedReservation = 1000 + 256 + Math.ceil(promptBytes / 2);
+  const encoder = new TextEncoder();
+  for (const [provider, baseUrl, events] of [
+    ['deepseek', 'https://api.deepseek.com/v1', [
+      { choices: [{ delta: { content: '{}' }, finish_reason: 'stop' }] },
+      { error: { message: 'private provider diagnostic' } },
+    ]],
+    ['openai-compatible', settings.baseUrl, [{ type: 'response.cancelled' }]],
+  ]) {
+    let cancelled = false;
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n'));
+      },
+      cancel() { cancelled = true; },
+    }), { headers: { 'content-type': 'text/event-stream' } }));
+    try {
+      const config = {
+        userKey: provider, baseUrl, provider,
+        model: settings.model, apiKey: settings.apiKey, dailyTokenBudget: 3000, timeoutMs: 1000,
+      };
+      await assert.rejects(complete(config, request(payload), payload), error =>
+        error.code === 'provider_unavailable' && error.providerStatus === null && !error.message.includes('private provider diagnostic'));
+      assert.equal(cancelled, true);
+      const usage = await readTokenUsage(provider);
+      assert.equal(usage.total, expectedReservation);
+      assert.equal(usage.output, 0);
+    } finally {
+      fetchMock.mock.restore();
+    }
+  }
 });
 
 test('POST and DELETE share a mutation limit before encryption or configuration reads, isolated by identity', async (t) => {

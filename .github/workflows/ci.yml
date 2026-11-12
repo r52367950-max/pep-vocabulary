@@ -28,7 +28,7 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Audit production dependencies
-        run: npm run audit:prod
+      - name: Audit production and build dependencies
+        run: npm run audit:all
       - name: Data audit, typecheck, lint, unit tests, build and Worker smoke
         run: npm test

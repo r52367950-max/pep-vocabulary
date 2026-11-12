@@ -248,8 +248,26 @@ function reviewState(card: StoredCard | null): string {
 function validateReviewChains(data: BackupPayload, undoneTargets: ReadonlySet<string>) {
   const cards = new Map(data.cards.map((card) => [card.id, card]));
   type ChainState = { incoming: boolean; status?: StoredCard["status"] };
-  const groups = new Map<string, { states: Map<string, ChainState>; active: ReviewEvent[]; absentBaseline: boolean }>();
+  type ChainEdge = { before: ChainState; after: ChainState; repetitions: number };
+  const groups = new Map<string, { states: Map<string, ChainState>; active: ChainEdge[]; absentBaseline: boolean }>();
   const invalid = () => { throw new Error("备份的复习链与词卡调度状态不一致"); };
+  function chainState(states: Map<string, ChainState>, card: StoredCard | null, incoming: boolean) {
+    const key = reviewState(card);
+    let state = states.get(key);
+    if (!state) {
+      state = { incoming: false };
+      states.set(key, state);
+    }
+    // Paused is an independent suppression marker supported by study/forecast
+    // and legacy backups. Other classifications must agree for the same state.
+    const status = card?.status ?? "unseen";
+    if (status !== "paused") {
+      if (state.status !== undefined && state.status !== status) invalid();
+      state.status = status;
+    }
+    state.incoming ||= incoming;
+    return state;
+  }
   for (const event of data.events) {
     if (event.eventType === "undo") continue;
     // Every scheduler version produces a learned classification on review;
@@ -261,41 +279,28 @@ function validateReviewChains(data: BackupPayload, undoneTargets: ReadonlySet<st
       group = { states: new Map(), active: [], absentBaseline: false };
       groups.set(event.cardId, group);
     }
-    const before = reviewState(event.before), after = reviewState(event.after);
-    for (const [key, status, incoming] of [
-      [before, event.before?.status ?? "unseen", false], [after, event.after.status, true],
-    ] as const) {
-      const state: ChainState = group.states.get(key) ?? { incoming: false };
-      // Paused is an independent suppression marker supported by study/forecast
-      // and legacy backups. Other classifications affect learning and statistics,
-      // and cannot silently change for the same recorded scheduling state.
-      if (status !== "paused") {
-        if (state.status !== undefined && state.status !== status) invalid();
-        state.status = status;
-      }
-      state.incoming ||= incoming;
-      group.states.set(key, state);
-    }
+    const before = chainState(group.states, event.before, false);
+    const after = chainState(group.states, event.after, true);
     if (event.before === null) group.absentBaseline = true;
-    if (!undoneTargets.has(event.eventId)) group.active.push(event);
+    if (!undoneTargets.has(event.eventId)) group.active.push({ before, after, repetitions: event.after.fsrs.reps as number });
   }
   for (const [id, group] of groups) {
     // Each forward edge increments reps, so this graph is acyclic. A single
     // root also requires discarded undo/redo branches to share one baseline.
     // The baseline may already be reviewed: legacy exports need not start at New.
-    const roots = [...group.states].filter(([, state]) => !state.incoming);
+    const roots = [...group.states.values()].filter((state) => !state.incoming);
     if (roots.length !== 1) invalid();
-    let terminal = roots[0][0];
+    let terminal = roots[0];
     // Timestamps can tie or move backwards and getAll() exports key order.
     // Repetitions, unlike those orderings, advance on every committed review.
-    group.active.sort((a, b) => (a.after.fsrs.reps as number) - (b.after.fsrs.reps as number));
-    for (const event of group.active) {
-      if (reviewState(event.before) !== terminal) invalid();
-      terminal = reviewState(event.after);
+    group.active.sort((a, b) => a.repetitions - b.repetitions);
+    for (const edge of group.active) {
+      if (edge.before !== terminal) invalid();
+      terminal = edge.after;
     }
     const current = cards.get(id);
-    if (current ? reviewState(current) !== terminal : group.active.length > 0 || !group.absentBaseline) invalid();
-    const terminalStatus = group.states.get(terminal)!.status ?? "paused";
+    if (current ? group.states.get(reviewState(current)) !== terminal : group.active.length > 0 || !group.absentBaseline) invalid();
+    const terminalStatus = terminal.status ?? "paused";
     if (current && current.status !== terminalStatus && current.status !== "paused") invalid();
   }
 }

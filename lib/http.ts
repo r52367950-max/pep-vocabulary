@@ -92,7 +92,8 @@ export function rateLimitWindow(now: number, lengthMs: number) {
 /**
  * Atomically counts one request in a D1 bucket. Every private limiter shares
  * the `ai_rate_limits` table through key prefixes, so no new migration is
- * needed. Returns the seconds to wait when the bucket is over its limit, or
+ * needed. A full bucket returns no row and incurs no write. Returns the
+ * seconds to wait when the bucket is full, or
  * `null` when the request may proceed.
  */
 export async function consumeRateLimit(db: RateLimitStore | undefined, bucketKey: string, expiresAt: number, limit: number, now = Date.now()): Promise<number | null> {
@@ -103,12 +104,13 @@ export async function consumeRateLimit(db: RateLimitStore | undefined, bucketKey
       `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at)
        VALUES (?, 1, ?)
        ON CONFLICT(bucket_key) DO UPDATE SET request_count = request_count + 1
+       WHERE ai_rate_limits.request_count < ?
        RETURNING request_count`,
-    ).bind(bucketKey, expiresAt).first<{ request_count: number }>();
+    ).bind(bucketKey, expiresAt, limit).first<{ request_count: number }>();
   } catch (error) {
     throw new RateLimitStoreError(error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message));
   }
-  if (Number(row?.request_count || 0) > limit) return Math.max(1, Math.ceil((expiresAt - now) / 1000));
+  if (!row) return Math.max(1, Math.ceil((expiresAt - now) / 1000));
   return null;
 }
 

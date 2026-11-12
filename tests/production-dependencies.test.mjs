@@ -6,9 +6,9 @@ import test from 'node:test';
 
 const require = createRequire(import.meta.url);
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
-// Fixed versions recommended by the 2026-10-31 production audit. This protects
-// against reintroducing these known advisories; audit:prod also checks new ones.
-const fixed = { next: [16, 4, 3], sharp: [0, 35, 5], 'source-map-js': [1, 2, 2] };
+// Fixed versions for known advisories. The RSC plugin bundles its own React
+// Server Components code, so auditing the standalone package is insufficient.
+const fixed = { next: [16, 4, 3], sharp: [0, 35, 5], 'source-map-js': [1, 2, 2], '@vitejs/plugin-rsc': [0, 5, 38] };
 function patched(version, minimum) {
   const parts = version.split('.').map(Number);
   return minimum.some((part, index) => parts[index] > part && minimum.slice(0, index).every((earlier, j) => parts[j] === earlier)) ||
@@ -27,12 +27,13 @@ function installed(name, from = require) {
   throw new Error(`Cannot locate installed ${name}`);
 }
 
-test('production framework and parser/image dependencies exclude the reported vulnerable releases', () => {
+test('production and build dependencies exclude the reported vulnerable releases', () => {
   const next = installed('next');
   const actual = {
     next: next.json.version,
     sharp: installed('sharp', next.require).json.version,
     'source-map-js': installed('source-map-js', installed('postcss', next.require).require).json.version,
+    '@vitejs/plugin-rsc': installed('@vitejs/plugin-rsc').json.version,
   };
   for (const [name, minimum] of Object.entries(fixed)) {
     assert.ok(patched(actual[name], minimum), `${name}@${actual[name]} precedes its audited fix`);
