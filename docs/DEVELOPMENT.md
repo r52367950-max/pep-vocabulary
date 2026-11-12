@@ -8,14 +8,14 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | --- | --- |
 | 类型检查 | `npm run typecheck` |
 | 静态检查 | `npm run lint` |
-| 生产依赖安全审计 | `npm run audit:prod`；high/critical 漏洞使命令失败 |
+| 全部依赖安全审计 | `npm run audit:all`，包含生产、开发和构建依赖。仅核对生产依赖可运行 `npm run audit:prod`。两者遇到 high 或 critical 公告时均失败。 |
 | 全部单元/回归测试 | `npm run test:unit` |
 | 指定回归测试 | `node --import ./tests/register.mjs --test tests/sync.test.mjs`，替换为受影响的测试文件 |
 | 生产构建及产物校验 | `npm run build` |
 | Sites 部署包 | 提交已验证源码后执行 `bash scripts/package-site.sh`；每次清除旧 `dist/` 并重建，构建失败即停止。默认输出 `outputs/site.tar.gz`，包含 Worker、完整迁移目录与托管配置 |
 | 本地 Worker/D1 检查 | 构建后执行 `npm run test:runtime` |
 | 完整验收 | `npm test`：数据审计、类型检查、ESLint、单元测试、构建、Worker 检查 |
-| 持续集成 | `.github/workflows/ci.yml` 在推送到 main 与拉取请求时运行 `npm ci`、`npm run audit:prod` 和 `npm test`；Actions 固定到已审核的提交 |
+| 持续集成 | `.github/workflows/ci.yml` 在推送到 main 与拉取请求时运行 `npm ci`、`npm run audit:all` 和 `npm test`；Actions 固定到已审核的提交 |
 | 词库数据审计 | `npm run data:audit`；会更新 `data/audit-summary.json`，留意生成差异 |
 | 阅读数据审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
 | 后端查词性能对照 | `npm run benchmark:backend`；使用已审核的 2.4.0 基线 `e2e9e25`，输出微基准中位数，不代表全站或模型延迟 |
@@ -28,7 +28,7 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 
 `npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
 
-`.npmrc` 的 `audit=false` 只关闭安装时的自动审计；安全检查显式运行 `npm run audit:prod`，开发依赖用完整的 `npm audit` 核对。依赖升级使用已审核的精确版本和锁文件，并验证生产构建与 Worker smoke；审计通过不能代替运行兼容性验证。
+`.npmrc` 的 `audit=false` 只关闭安装时的自动审计；安全检查显式运行 `npm run audit:all`，同时核对运行时和构建使用的依赖。依赖升级使用已审核的精确版本和锁文件，并验证生产构建与 Worker smoke；审计通过不能代替运行兼容性验证。
 
 ## 按影响选择验证
 

@@ -1125,7 +1125,9 @@ export async function readChatCompletionStream(response: Response, signal?: Abor
     let chunk: Record<string, unknown>;
     try { chunk = outputRecord(JSON.parse(data)); }
     catch { throw new AssistantUpstreamError("invalid_provider_response", "模型服务返回了无法识别的数据。", 502, true); }
-    if (chunk.type === "error" || chunk.type === "response.failed") throw new AssistantUpstreamError("provider_unavailable", "模型回答传输失败，请重试。", 502, true);
+    if (chunk.error != null || chunk.type === "error" || chunk.type === "response.failed" || chunk.type === "response.cancelled") {
+      throw new AssistantUpstreamError("provider_unavailable", "模型回答传输失败，请重试。", 502, true);
+    }
     if (chunk.type === "response.refusal.delta") throw new AssistantUpstreamError("model_refusal", "模型无法完成这个请求，请调整输入。", 422, false);
     if (chunk.type === "response.output_text.delta" && typeof chunk.delta === "string") content += chunk.delta;
     if (chunk.type === "response.completed" || chunk.type === "response.incomplete") {

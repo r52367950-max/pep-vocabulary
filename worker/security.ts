@@ -165,8 +165,11 @@ export function applySecurityHeaders(response: Response, url: URL, nonce: string
   if (isApiPath(url.pathname)) {
     headers.set("content-security-policy", API_CONTENT_SECURITY_POLICY);
     headers.set("cross-origin-resource-policy", "same-origin");
-    // Private responses are never stored by the browser, proxies or the service worker.
-    if (!/\bno-store\b/i.test(headers.get("cache-control") || "")) headers.set("cache-control", "no-store, max-age=0");
+    // The API policy takes precedence over any cache directives from a route.
+    headers.set("cache-control", "private, no-store, max-age=0");
+    headers.delete("cdn-cache-control");
+    headers.delete("cloudflare-cdn-cache-control");
+    headers.delete("surrogate-control");
   } else if (/^text\/html\b/i.test(headers.get("content-type") || "")) {
     if (nonce) {
       headers.set("content-security-policy", documentContentSecurityPolicy(nonce, secureTransport(url)));

@@ -317,20 +317,70 @@ try {
   assert.equal((await reentered.json()).requiresKeyReentry, false);
   assert.equal((await db.prepare('SELECT * FROM ai_configs').first()).encryption_version, 2);
   results.push({ path: '/api/ai/config owner key reentry restores scoped credential', status: 'passed' });
-  const body = JSON.stringify({ expectedIdentity: (await (await request('/api/sync', { headers })).json()).identity, schemaVersion: '1.2.0', baseRevision: 0, clientUpdatedAt: new Date().toISOString(), payload: { schemaVersion: '1.2.0', cards: [], events: [], lists: [], settings: [], writings: [] } });
-  const writes = await Promise.all([request('/api/sync', { method: 'POST', headers, body }), request('/api/sync', { method: 'POST', headers, body })]);
-  assert.deepEqual(writes.map(r => r.status).sort(), [200, 409]);
-  results.push({ path: '/api/sync concurrent first upload', statuses: [200, 409] });
-  const metadata = await request('/api/sync?metadata=1', { headers });
-  const metadataBody = await metadata.json();
-  assert.equal(metadataBody.state.revision, 1);
-  assert.equal('payload' in metadataBody.state, false);
-  results.push({ path: '/api/sync metadata-only read', status: metadata.status });
+  const readSync = async (accountHeaders, metadataOnly = false) => {
+    const response = await request(metadataOnly ? '/api/sync?metadata=1' : '/api/sync', { headers: accountHeaders });
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.match(response.headers.get('cache-control') || '', /no-store/);
+    return response.json();
+  };
+  const uploadSync = async (accountHeaders, expectedIdentity, baseRevision, listId) => {
+    const payload = { schemaVersion: '1.2.0', cards: [], events: [], lists: [{ id: listId, name: listId, wordIds: ['apple'] }], settings: [], writings: [] };
+    const body = JSON.stringify({ expectedIdentity, schemaVersion: payload.schemaVersion, baseRevision, clientUpdatedAt: new Date().toISOString(), payload });
+    const response = await request('/api/sync', { method: 'POST', headers: accountHeaders, body });
+    return { status: response.status, body: await response.json(), payload };
+  };
+  const firstAccount = await readSync(headers);
+  assert.equal(firstAccount.state, null);
+  const firstWrites = await Promise.all(['first-device', 'second-device'].map(id => uploadSync(headers, firstAccount.identity, 0, id)));
+  assert.deepEqual(firstWrites.map(write => write.status).sort(), [200, 409]);
+  const firstWinner = firstWrites.find(write => write.status === 200);
+  assert.equal(firstWinner.body.revision, 1);
+  assert.equal(firstWinner.body.identity, firstAccount.identity);
+  assert.equal(firstWrites.find(write => write.status === 409).body.code, 'revision-conflict');
+  const firstSnapshot = await readSync(headers);
+  assert.deepEqual(JSON.parse(firstSnapshot.state.payload), firstWinner.payload);
+  results.push({ path: '/api/sync concurrent first upload preserves the winning snapshot', statuses: [200, 409] });
+
+  const otherAccount = await readSync(otherHeaders);
+  assert.notEqual(otherAccount.identity, firstAccount.identity);
+  assert.equal(otherAccount.state, null);
+  const otherUpload = await uploadSync(otherHeaders, otherAccount.identity, 0, 'other-account');
+  assert.equal(otherUpload.status, 200);
+  assert.equal(otherUpload.body.revision, 1);
+  const otherSnapshot = await readSync(otherHeaders);
+  assert.deepEqual(JSON.parse(otherSnapshot.state.payload), otherUpload.payload);
+  // A delayed upload can arrive after an account switch, even when both
+  // accounts currently have the same revision.
+  const switchedUpload = await uploadSync(otherHeaders, firstAccount.identity, 1, 'before-account-switch');
+  assert.equal(switchedUpload.status, 409);
+  assert.equal(switchedUpload.body.code, 'identity-conflict');
+  assert.deepEqual(await readSync(otherHeaders), otherSnapshot);
+  assert.deepEqual(await readSync(headers), firstSnapshot);
+
+  const updateWrites = await Promise.all(['first-update', 'second-update'].map(id => uploadSync(headers, firstAccount.identity, 1, id)));
+  assert.deepEqual(updateWrites.map(write => write.status).sort(), [200, 409]);
+  const updateWinner = updateWrites.find(write => write.status === 200);
+  assert.equal(updateWinner.body.revision, 2);
+  assert.equal(updateWinner.body.identity, firstAccount.identity);
+  assert.equal(updateWrites.find(write => write.status === 409).body.code, 'revision-conflict');
+  const updatedSnapshot = await readSync(headers);
+  assert.equal(updatedSnapshot.state.revision, 2);
+  assert.deepEqual(JSON.parse(updatedSnapshot.state.payload), updateWinner.payload);
+  assert.deepEqual(await readSync(otherHeaders), otherSnapshot);
+  results.push({ path: '/api/sync account switching and concurrent updates preserve independent snapshots', status: 'passed' });
+
+  for (const [accountHeaders, snapshot] of [[headers, updatedSnapshot], [otherHeaders, otherSnapshot]]) {
+    const metadata = await readSync(accountHeaders, true);
+    assert.equal(metadata.identity, snapshot.identity);
+    assert.equal('payload' in metadata.state, false);
+    assert.deepEqual({ ...metadata.state, payload: snapshot.state.payload }, snapshot.state);
+  }
+  results.push({ path: '/api/sync metadata-only reads reflect each account revision', status: 'passed' });
   // Replaying bootstrap SQL must not reset cloud snapshots or encrypted settings.
-  const snapshotsBefore = (await db.prepare('SELECT * FROM sync_states').all()).results;
-  assert.equal(snapshotsBefore.length, 1);
+  const snapshotsBefore = (await db.prepare('SELECT * FROM sync_states ORDER BY user_key').all()).results;
+  assert.equal(snapshotsBefore.length, 2);
   await bootstrap(db);
-  assert.deepEqual((await db.prepare('SELECT * FROM sync_states').all()).results, snapshotsBefore);
+  assert.deepEqual((await db.prepare('SELECT * FROM sync_states ORDER BY user_key').all()).results, snapshotsBefore);
   const persistedConfig = await request('/api/ai/config', { headers });
   assert.equal(persistedConfig.status, 200);
   assert.equal((await persistedConfig.json()).hasApiKey, true);

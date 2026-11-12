@@ -104,6 +104,21 @@ test('equivalent timezone encodings compare by absolute time without rewriting t
   assert.deepEqual(validateBackup(backup), original);
 });
 
+test('active edges join on normalized snapshots regardless of independent legacy encodings', () => {
+  const backup = JSON.parse(JSON.stringify(payload([second.after], [second, first])));
+  const before = backup.events[0].before;
+  const dateOffset = (date) => new Date(Date.parse(date) + 8 * 3_600_000).toISOString().replace('Z', '+08:00');
+  before.due = before.fsrs.due = dateOffset(before.due);
+  before.lastReviewed = before.fsrs.last_review = dateOffset(before.lastReviewed);
+  delete before.fsrs.learning_steps;
+  before.skills = Object.fromEntries(Object.entries(before.skills).reverse());
+  before.status = 'paused';
+  const original = structuredClone(backup);
+  assert.deepEqual(validateBackup(backup), original);
+  before.skills.context = .75;
+  reject(backup);
+});
+
 test('a shape-valid terminal skill mismatch is rejected', () => {
   const card = structuredClone(second.after); card.skills.context = .75;
   reject(payload([card], [first, second]));

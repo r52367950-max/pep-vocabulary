@@ -1,6 +1,6 @@
 {
   "name": "pep-vocab-studio",
-  "version": "2.19.2",
+  "version": "2.19.3",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -22,14 +22,15 @@
     "test:runtime": "node scripts/smoke-worker.mjs",
     "benchmark": "node scripts/benchmark-core.mjs",
     "benchmark:backend": "node --import ./tests/register.mjs scripts/benchmark-backend.mjs",
-    "audit:prod": "npm audit --omit=dev --audit-level=high"
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:all": "npm audit --include=dev --audit-level=high"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
     "lucide-react": "0.468.0",
     "next": "16.4.3",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
     "ts-fsrs": "5.2.3",
     "fflate": "0.7.5"
   },
@@ -41,12 +42,12 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
-    "@vitejs/plugin-rsc": "0.5.26",
+    "@vitejs/plugin-rsc": "0.5.38",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.4.3",
     "fake-indexeddb": "6.2.5",
-    "react-server-dom-webpack": "19.2.8",
+    "react-server-dom-webpack": "19.2.9",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
