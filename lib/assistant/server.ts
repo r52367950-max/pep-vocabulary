@@ -1,7 +1,9 @@
 import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
-import { budgetDay, consumeRateLimit, RateLimitStoreError, readJsonObject, RequestBodyError, sameOriginRequest } from "@/lib/http";
+import { budgetDay, consumeRateLimit, RateLimitStoreError } from "@/lib/http";
 import { parseClassification } from "@/lib/reading-classification";
-import { decodeLexiconIndex } from "@/lib/lexicon-index-codec.mjs";
+import { loadReleaseIndex } from "./release-index";
+import { requireRequestUser, readJsonRequest, type AuthenticatedUserKey } from "./request";
+import type { LexiconIndexEntry } from "../lexicon";
 import type { D1Database } from "@cloudflare/workers-types";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
@@ -18,7 +20,6 @@ import {
   normalizeConfiguredModel,
   sameOriginMutation,
 } from "@/lib/ai-config";
-import { authenticatedUserKey } from "@/lib/server-user";
 import {
   AssistantInputError,
   AssistantUpstreamError,
@@ -38,13 +39,11 @@ import {
   upstreamPayload,
   type AiProvider,
   type AssistantTask,
-  type LexiconEvidence,
 } from "./core";
 import { parseLearnerProfile, ProfileInputError } from "./profile";
 import { chatMessages, parseChatRequest, resolveChatRoute } from "./chat-core";
 import { runChatHarness } from "./harness";
 
-const MAX_REQUEST_BYTES = 64_000;
 /** A long answer streams; the configured timeout is the longest silence, this caps the whole call. */
 const MAX_GENERATION_MS = 300_000;
 import { DEFAULT_TOKEN_BUDGET, providerRejectedBeforeGeneration, releaseOutputReservation, reserveTokens, settleTokens, TokenBudgetError } from "./usage";
@@ -80,11 +79,11 @@ export async function complete(config: UserRuntimeConfig, request: Request, payl
 
 export async function classifyImportedReading(request: Request): Promise<Response> {
   try {
-    assertSameOrigin(request);
+    const userKey = await requireRequestUser(request);
     if (request.headers.get("x-vocab-action") !== "reading-classify") throw new AssistantInputError("invalid_request", "请从文章导入界面发起分类。", 403);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const body = await readJsonRequest(request);
     if (typeof body.title !== "string" || body.title.length > 250 || typeof body.text !== "string" || body.text.length < 100 || body.text.length > 8000) throw new AssistantInputError("invalid_request", "文章分类输入无效。", 400);
-    const config = await authenticatedRuntime(request);
+    const config = await meteredRuntime(userKey);
     const { completion } = await complete(config, request, {
       model: config.model, stream: false, ...generationParameters(config.model, config.baseUrl, 160, 0),
       ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
@@ -96,10 +95,6 @@ export async function classifyImportedReading(request: Request): Promise<Respons
     return Response.json({ ok: true, ...classified }, { headers: responseHeaders() });
   } catch (error) { return assistantErrorResponse(error); }
 }
-
-type ReleaseIndexRow = LexiconEvidence & {
-  flags?: { formalReleaseEligible?: boolean };
-};
 
 type RuntimeBindings = {
   ASSETS?: { fetch: typeof fetch };
@@ -185,28 +180,7 @@ export function assistantErrorResponse(error: unknown): Response {
   );
 }
 
-export function assertSameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!sameOriginRequest(request)) throw new AssistantInputError("invalid_origin", "只允许同源请求。", 403);
-  if (!origin) return;
-  let expected: string;
-  try {
-    expected = new URL(request.url).origin;
-  } catch {
-    throw new AssistantInputError("invalid_origin", "请求来源无法验证。", 403);
-  }
-  if (origin !== expected) throw new AssistantInputError("invalid_origin", "只允许同源请求。", 403);
-}
-
-export async function readJsonRequest(request: Request): Promise<unknown> {
-  try { return await readJsonObject(request, MAX_REQUEST_BYTES); }
-  catch (error) {
-    if (error instanceof RequestBodyError) throw new AssistantInputError("invalid_request", error.message, error.status);
-    throw error;
-  }
-}
-
-async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig> {
+export async function loadUserRuntimeConfig(userKey: AuthenticatedUserKey): Promise<UserRuntimeConfig> {
   let row: typeof aiConfigs.$inferSelect | undefined;
   let preferences: typeof aiPreferences.$inferSelect | null | undefined;
   try {
@@ -261,22 +235,8 @@ async function loadUserRuntimeConfig(userKey: string): Promise<UserRuntimeConfig
   };
 }
 
-let releaseIndexPromise: Promise<ReleaseIndexRow[]> | null = null;
-
-async function releaseIndex(request: Request): Promise<ReleaseIndexRow[]> {
-  if (releaseIndexPromise) return releaseIndexPromise;
-  const assets = bindings().ASSETS;
-  if (!assets) throw new AiRuntimeConfigError("evidence_store_unavailable", "正式词库证据暂时无法读取。");
-  releaseIndexPromise = (async () => {
-    const response = await assets.fetch(new Request(new URL("/data/v1/index.json", request.url)));
-    if (!response.ok) throw new AiRuntimeConfigError("evidence_store_unavailable", "正式词库证据暂时无法读取。");
-    try { return decodeLexiconIndex(await response.json()) as ReleaseIndexRow[]; }
-    catch { throw new AiRuntimeConfigError("evidence_store_unavailable", "正式词库证据格式异常。"); }
-  })().catch((error) => {
-    releaseIndexPromise = null;
-    throw error;
-  });
-  return releaseIndexPromise;
+function releaseIndex(request: Request) {
+  return loadReleaseIndex(bindings().ASSETS, request, "evidence_store_unavailable");
 }
 
 const DAILY_REQUESTS_EXHAUSTED = "今天的 AI 请求次数已用完，北京时间 0 点重置；本地学习不受影响。";
@@ -319,16 +279,8 @@ async function enforceConnectionTestRateLimit(userKey: string) {
   await incrementBucket(`connection-test:day:${userKey}:${day.start}`, day.expiresAt, 30, "今天的连接测试次数已用完，北京时间 0 点重置。");
 }
 
-export async function authenticatedConfig(request: Request) {
-  assertSameOrigin(request);
-  const userKey = await authenticatedUserKey();
-  if (!userKey) throw new AssistantInputError("authentication_required", "AI 助手需要经过站点身份验证。", 401);
+export async function meteredRuntime(userKey: AuthenticatedUserKey) {
   const config = await loadUserRuntimeConfig(userKey);
-  return { config, userKey };
-}
-
-export async function authenticatedRuntime(request: Request) {
-  const { config, userKey } = await authenticatedConfig(request);
   await enforceRateLimit(userKey, config.dailyLimit);
   return config;
 }
@@ -443,8 +395,8 @@ function logConnectionTest(
 
 export async function handleAssistantRequest(request: Request, task: AssistantTask): Promise<Response> {
   try {
-    assertSameOrigin(request);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const userKey = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     const parsed = parseAssistantRequest(task, body);
     // Warm public evidence while private configuration and rate checks run.
     // Catch here so authentication errors keep priority over an asset failure.
@@ -452,7 +404,7 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
       rows => ({ ok: true as const, rows }),
       error => ({ ok: false as const, error }),
     );
-    const config = await authenticatedRuntime(request);
+    const config = await meteredRuntime(userKey);
     const release = await evidenceRead;
     if (!release.ok) throw release.error;
     const rows = release.rows;
@@ -490,10 +442,10 @@ export async function handleAssistantRequest(request: Request, task: AssistantTa
 /** Conversational UI shares the same authenticated, metered provider boundary as every learning tool. */
 export async function handleChatRequest(request: Request): Promise<Response> {
   try {
-    assertSameOrigin(request);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const userKey = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     const parsed = parseChatRequest(body);
-    const config = await authenticatedRuntime(request);
+    const config = await meteredRuntime(userKey);
     const contextInput = { ...body, temporary: parsed.temporary || !parsed.includeRecords };
     const context = await resolveLearningContext(config.userKey, contextInput);
     const rows = parsed.wordIds.length || (context.enabled && body.profile) ? await releaseIndex(request) : [];
@@ -519,7 +471,7 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     const verifyContext = async () => {
       await resolveLearningContext(config.userKey, { ...contextInput, accountScope: context.accountScope, contextRevision: context.revision, contextVersion: context.contextVersion });
     };
-    let toolRows: Promise<ReleaseIndexRow[]> | undefined;
+    let toolRows: Promise<LexiconIndexEntry[]> | undefined;
     const { result, usage, today, trace } = await runChatHarness({
       messages: chatMessages(parsed, evidence, profile, learningContextData(context.memory)), evidence,
       context: {
@@ -540,8 +492,8 @@ export async function handleChatRequest(request: Request): Promise<Response> {
   } catch (error) { return assistantErrorResponse(error); }
 }
 
-let releaseWordsCache: { rows: ReleaseIndexRow[]; words: Map<string, { headword: string }> } | null = null;
-function releaseWords(rows: ReleaseIndexRow[]) {
+let releaseWordsCache: { rows: LexiconIndexEntry[]; words: Map<string, { headword: string }> } | null = null;
+function releaseWords(rows: LexiconIndexEntry[]) {
   if (releaseWordsCache?.rows !== rows) {
     releaseWordsCache = { rows, words: new Map(rows.filter((row) => row.flags?.formalReleaseEligible === true).map((row) => [row.id, { headword: row.headword }])) };
   }
@@ -558,10 +510,10 @@ export async function testAssistantConnection(request: Request): Promise<Respons
     if (!sameOriginMutation(request)) {
       throw new AssistantInputError("invalid_origin", "连接测试只能从设置页面发起。", 403);
     }
+    const userKey = await requireRequestUser(request);
     await readJsonRequest(request);
-    const authenticated = await authenticatedConfig(request);
-    config = authenticated.config;
-    await enforceConnectionTestRateLimit(authenticated.userKey);
+    config = await loadUserRuntimeConfig(userKey);
+    await enforceConnectionTestRateLimit(userKey);
 
     const endpoint = await probeConnectionEndpoint(
       fetchAiProvider,

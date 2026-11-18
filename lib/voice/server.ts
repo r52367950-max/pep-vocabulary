@@ -1,9 +1,9 @@
 import { PREPARE_DICTATION_TOOL, LIVE_LEARNING_POLICY, VOICE_REASONING_MODEL } from "./live-learning-tools";
 import { resolveLearningContext, contextMetadata, learningContextData } from "@/lib/learning-memory/context";
 import { env } from "cloudflare:workers";
-import { authenticatedUserKey } from "@/lib/server-user";
+import { readJsonRequest, requireRequestUser, type AuthenticatedUserKey } from "@/lib/assistant/request";
 import { budgetDay, consumeRateLimit, privateJson, readBucket } from "@/lib/http";
-import { assistantErrorResponse, assertSameOrigin, authenticatedConfig, authenticatedRuntime, complete, readJsonRequest, type UserRuntimeConfig } from "@/lib/assistant/server";
+import { assistantErrorResponse, loadUserRuntimeConfig, meteredRuntime, complete, type UserRuntimeConfig } from "@/lib/assistant/server";
 import { AssistantInputError, AssistantUpstreamError, parseUsage, usesOpenAIResponses } from "@/lib/assistant/core";
 import { reserveTokens, settleTokens } from "@/lib/assistant/usage";
 import { buildTutorInstructions, VOICE_TOPICS, type VoiceLevel } from "./curriculum";
@@ -18,12 +18,6 @@ function database() { if (!env.DB) throw unavailable(); return env.DB; }
 const secondsKey = (userKey: string, start: number) => `voice-seconds:day:${userKey}:${start}`;
 const sessionKey = (userKey: string, id: string) => `voice-session:${userKey}:${id}`;
 const activeKey = (userKey: string) => `voice-active:${userKey}`;
-async function voiceIdentity(request: Request) {
-  assertSameOrigin(request);
-  const userKey = await authenticatedUserKey();
-  if (!userKey) throw new AssistantInputError("authentication_required", "请先登录站点。", 401);
-  return userKey;
-}
 function invalid(message: string): never { throw new AssistantInputError("invalid_request", message); }
 function text(value: unknown, name: string, maximum: number, minimum = 1): string {
   if (typeof value !== "string") return invalid(`${name} 格式无效。`);
@@ -40,8 +34,8 @@ function topicInput(body: Record<string, unknown>) {
   const targetWords = [...new Set((body.targetWords as unknown[] | undefined ?? []).map((value) => text(value, "目标词", 60)))];
   return { topicId, level: level as VoiceLevel, targetWords };
 }
-async function officialConfig(request: Request, paid = false) {
-  const config = paid ? await authenticatedRuntime(request) : (await authenticatedConfig(request)).config;
+async function officialConfig(userKey: AuthenticatedUserKey, paid = false) {
+  const config = paid ? await meteredRuntime(userKey) : await loadUserRuntimeConfig(userKey);
   if (!usesOpenAIResponses(config.baseUrl)) throw new AssistantInputError("voice_requires_openai", "实时口语和 AI 听写需要在设置中保存 OpenAI 官方接口与密钥。", 409);
   return config;
 }
@@ -83,9 +77,7 @@ async function releaseActive(userKey: string, until: number) {
 export async function voiceStatus(request: Request) {
   let stage = "identity";
   try {
-    assertSameOrigin(request);
-    const userKey = await authenticatedUserKey();
-    if (!userKey) throw new AssistantInputError("authentication_required", "请先登录站点。", 401);
+    const userKey = await requireRequestUser(request);
     stage = "usage-read";
     const day = budgetDay();
     const usedSeconds = await readBucket(database(), secondsKey(userKey, day.start));
@@ -100,7 +92,7 @@ export async function voiceStatus(request: Request) {
     const common = { pendingCreation: Boolean(pendingCreation), models: { voice: VOICE_MODEL, speech: SPEECH_MODEL, text: VOICE_REASONING_MODEL }, readiness: "configuration-only", activeSession, dailySecondsLimit: VOICE_DAILY_SECONDS, usedSeconds, remainingSeconds: Math.max(0, VOICE_DAILY_SECONDS - usedSeconds), resetsAt: new Date(day.expiresAt).toISOString(), timeLimitNotice: "会话按选定时长预留预算；提前结束不退还。到时由服务端持久化闹钟请求关闭；关闭未确认时保留单活限制并持续重试。" };
     try {
       stage = "configuration-read";
-      await officialConfig(request);
+      await officialConfig(userKey);
       requireVoiceDeadlines();
       return privateJson({ configured: true, ready: usedSeconds < VOICE_DAILY_SECONDS && !pendingCreation, ...common, models: { ...common.models, text: VOICE_REASONING_MODEL }, ...(pendingCreation ? { reason: "上次语音连接的创建结果尚未确认，已暂停新会话。请联系站点管理员核查服务商会话。", reasonCode: "voice_creation_unconfirmed" } : usedSeconds >= VOICE_DAILY_SECONDS ? { reason: "今天的语音时长预算已用完，次日北京时间 0 点重置。", reasonCode: "voice_budget_exhausted" } : {}) });
     } catch (error) {
@@ -120,8 +112,8 @@ export async function createVoiceSession(request: Request) {
   let deadlineArmed = false;
   const creation = { submitted: false, rejected: false };
   try {
-    await voiceIdentity(request);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const userKey = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     const input = topicInput(body);
     const custom = voiceCustomContext(body);
     const purpose = body.purpose ?? "conversation";
@@ -133,7 +125,7 @@ export async function createVoiceSession(request: Request) {
     if (![5, 10, 15, 20].includes(Number(body.minutes)) || typeof body.minutes !== "number") return invalid("请选择 5、10、15 或 20 分钟。");
     if (body.diagnostic !== undefined && typeof body.diagnostic !== "boolean") return invalid("连接测试参数无效。");
     const maxSeconds = body.diagnostic === true ? 20 : Number(body.minutes) * 60;
-    config = await officialConfig(request, true);
+    config = await officialConfig(userKey, true);
     requireVoiceDeadlines();
     // Both checks must succeed before reserving time or opening a paid session.
     // They read independent state, so avoid an extra database round trip of wait.
@@ -189,8 +181,8 @@ export async function createVoiceSession(request: Request) {
 
 export async function closeVoiceSession(request: Request) {
   try {
-    const userKey = await voiceIdentity(request);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const userKey = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     const id = text(body.sessionId, "sessionId", 200);
     if (!SESSION_ID.test(id)) return invalid("sessionId 无效。");
     await voiceLimit(userKey, "close", 12);
@@ -199,7 +191,7 @@ export async function closeVoiceSession(request: Request) {
     if (row.request_count === 0) return privateJson({ ok: true });
     if (env.VOICE_DEADLINES && await closeVoiceDeadline(userKey, id)) return privateJson({ ok: true });
     // Existing sessions from before durable deadlines still support owned close.
-    const config = await officialConfig(request);
+    const config = await officialConfig(userKey);
     try { await closeOpenAISession(request, config.apiKey, id); }
     catch (error) { if (!(error instanceof AssistantUpstreamError) || error.providerStatus !== 404) throw error; }
     await database().batch([
@@ -212,13 +204,13 @@ export async function closeVoiceSession(request: Request) {
 
 export async function createVoiceSpeech(request: Request) {
   try {
-    await voiceIdentity(request);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const userKey = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     const original = text(body.text, "听写原文", 600);
     if (!/^[\p{L}\p{N}\p{P}\p{Z}\r\n]+$/u.test(original) || !/[A-Za-z]/.test(original)) return invalid("请输入英文单词或句子。");
     const rate = body.rate ?? 1;
     if (typeof rate !== "number" || !Number.isFinite(rate) || rate < 0.5 || rate > 1.5) return invalid("语速应为 0.5–1.5。");
-    const config = await officialConfig(request, true);
+    const config = await officialConfig(userKey, true);
     await voiceLimit(config.userKey, "speech", 8);
     const reservedSeconds = estimatedSpeechSeconds(original, rate);
     const day = budgetDay();
@@ -251,8 +243,8 @@ export async function createVoiceSpeech(request: Request) {
 
 export async function voiceFeedback(request: Request) {
   try {
-    await voiceIdentity(request);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const userKey = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     const input = topicInput(body);
     if (!Array.isArray(body.transcript) || body.transcript.length < 1 || body.transcript.length > 100) return invalid("请提供有效的会话记录。");
     let total = 0;
@@ -265,7 +257,7 @@ export async function voiceFeedback(request: Request) {
       return { role: turn.role, text: content };
     });
     if (total > 20_000 || !transcript.some((turn) => turn.role === "user")) return invalid("会话记录过长或没有学习者发言。");
-    const config = await authenticatedRuntime(request);
+    const config = await meteredRuntime(userKey);
     const context = await resolveLearningContext(config.userKey, body);
     const { completion, today } = await complete(config, request, {
       model: config.model, stream: false, max_tokens: 2400, response_format: { type: "json_object" },

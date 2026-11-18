@@ -8,7 +8,7 @@ import { benchmarkBaseline } from './benchmark-baseline.mjs';
 // Benchmark the exact old resolver, independently of unrelated module changes.
 const approved = benchmarkBaseline('backend', process.argv[2]);
 const baseline = approved.revision;
-const source = approved.source('lib/assistant/core.ts');
+const source = await approved.source('lib/assistant/core.ts');
 const start = source.indexOf('export function resolveLexiconEvidence');
 const end = source.indexOf('\nfunction privateIpv4', start);
 if (start < 0 || end < 0) throw new Error('Baseline resolver not found');

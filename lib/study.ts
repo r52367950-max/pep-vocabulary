@@ -168,15 +168,32 @@ export function getBookUnits(
   entries: readonly LexiconIndexEntry[],
   bookId = "all",
 ): string[] {
-  return [
-    ...new Set(
-      entries.flatMap((entry) =>
-        entry.sources
-          .filter((source) => bookId === "all" || source.bookId === bookId)
-          .map((source) => source.unit),
-      ),
-    ),
-  ].sort(compareUnits);
+  const units = new Set<string>();
+  for (const entry of entries)
+    for (const source of entry.sources)
+      if (bookId === "all" || source.bookId === bookId) units.add(source.unit);
+  return [...units].sort(compareUnits);
+}
+
+const bookOrder = new Map(BOOKS.map((book, index) => [book.id, index]));
+
+/** Match the same source as the filter. Daily study prioritizes high-value words on a page. */
+export function textbookOrder(selection: StudySelection, prioritizeHighValue = false) {
+  const books = bookFilter(selection);
+  const unit = selection.unit && selection.unit !== "all" ? selection.unit : null;
+  const position = (entry: LexiconIndexEntry) =>
+    entry.sources.find(source => (!books || books.has(source.bookId)) && (!unit || source.unit === unit));
+  return (a: LexiconIndexEntry, b: LexiconIndexEntry) => {
+    const left = position(a), right = position(b);
+    return (
+      (bookOrder.get(left?.bookId ?? "") ?? 99) - (bookOrder.get(right?.bookId ?? "") ?? 99) ||
+      (!prioritizeHighValue && (!left || !right) ? Number(!left) - Number(!right) : 0) ||
+      (left?.unit === right?.unit ? 0 : compareUnits(left?.unit ?? "", right?.unit ?? "")) ||
+      (left?.printedPage ?? Infinity) - (right?.printedPage ?? Infinity) ||
+      (prioritizeHighValue ? Number(b.flags.highValue) - Number(a.flags.highValue) : 0) ||
+      unitCollator.compare(a.headword, b.headword)
+    );
+  };
 }
 
 function asCardMap(cards: CardCollection): ReadonlyMap<string, StoredCard> {
@@ -225,28 +242,7 @@ export function buildStudyQueue(
         Boolean(findOriginalExample(entry.headword)) ||
         options.contextIds?.has(entry.id)),
   );
-  const selectedBooks = bookFilter(options);
-  const position = (entry: LexiconIndexEntry) =>
-    entry.sources.find(
-      (source) =>
-        (!selectedBooks || selectedBooks.has(source.bookId)) &&
-        (!options.unit ||
-          options.unit === "all" ||
-          options.unit === source.unit),
-    );
-  const bookOrder = new Map(BOOKS.map((book, index) => [book.id, index]));
-  const sourceOrder = (a: LexiconIndexEntry, b: LexiconIndexEntry) => {
-    const left = position(a),
-      right = position(b);
-    return (
-      (bookOrder.get(left?.bookId || "") ?? 99) -
-        (bookOrder.get(right?.bookId || "") ?? 99) ||
-      compareUnits(left?.unit || "", right?.unit || "") ||
-      (left?.printedPage ?? Infinity) - (right?.printedPage ?? Infinity) ||
-      Number(b.flags.highValue) - Number(a.flags.highValue) ||
-      unitCollator.compare(a.headword, b.headword)
-    );
-  };
+  const sourceOrder = textbookOrder(options, true);
   const dueOrder = (a: LexiconIndexEntry, b: LexiconIndexEntry) =>
     Date.parse(cardMap.get(a.id)!.due) - Date.parse(cardMap.get(b.id)!.due) ||
     sourceOrder(a, b);

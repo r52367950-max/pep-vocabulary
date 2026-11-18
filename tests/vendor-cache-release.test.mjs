@@ -14,6 +14,7 @@ async function fixture(t) {
   }
   await put('dist/client/assets/app-hash.js', 'app');
   await put('public/data/v1/index.json', '{}');
+  await put('public/manifest.webmanifest', '{}');
   await put('public/sw.js', 'const VERSION = "vocab-shell-v2";');
   const plugin = sites();
   plugin.configResolved({ root });
@@ -49,4 +50,15 @@ test('vendor additions, removals and equal-content path changes rotate the worke
   assert.notEqual(renamed, added, 'equal bytes at a new URL cannot reuse the old cache');
   await rm(join(root, 'public/vendor/nested/b.js'));
   assert.equal(await build(), original, 'empty directories contain no cached executable content');
+});
+
+test('renaming a lexicon chunk and editing the installed web manifest rotate the release cache', async t => {
+  const { root, put, build } = await fixture(t);
+  await put('public/data/v1/chunks/a.json', '[]');
+  const first = await build();
+  await rename(join(root, 'public/data/v1/chunks/a.json'), join(root, 'public/data/v1/chunks/b.json'));
+  const renamed = await build();
+  assert.notEqual(renamed, first);
+  await put('public/manifest.webmanifest', '{"name":"词迹"}');
+  assert.notEqual(await build(), renamed);
 });

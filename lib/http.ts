@@ -24,29 +24,45 @@ export async function readJsonObject(request: Request, maximumBytes: number, tim
     void request.body?.cancel().catch(() => undefined);
     throw new RequestBodyError("请求读取已取消，请重试。", 408);
   }
-  const reader = request.body?.getReader();
+  if (!request.body) throw new RequestBodyError("请求不是有效 JSON。");
+  const reader = request.body.getReader();
   const decoder = new TextDecoder("utf-8", { fatal: true });
-  let text = "", total = 0;
-  let onAbort: (() => void) | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const interrupted = new Promise<never>((_resolve, reject) => {
-    onAbort = () => reject(new RequestBodyError("请求读取已取消，请重试。", 408));
-    request.signal.addEventListener("abort", onAbort, { once: true });
-    timer = setTimeout(() => reject(new RequestBodyError("请求读取超时，请重试。", 408)), timeoutMs);
-  });
+  // Decode normally sized network chunks directly. Coalesce tiny chunks to
+  // bound decoder calls and intermediate strings without buffering the body.
+  const blockSize = 4096;
+  let block: Uint8Array<ArrayBuffer> | undefined;
+  let buffered = 0, total = 0, text = "";
+  function flushBlock() {
+    if (block && buffered) text += decoder.decode(block.subarray(0, buffered), { stream: true });
+    buffered = 0;
+  }
+  let interruption: RequestBodyError | undefined;
+  // Cancelling resolves the outstanding read even if the producer never
+  // finishes its own cancellation. Keep just one deadline for the whole body.
+  function interrupt(message: string) {
+    interruption = new RequestBodyError(message, 408);
+    void reader.cancel().catch(() => undefined);
+  }
+  const onAbort = () => interrupt("请求读取已取消，请重试。");
+  request.signal.addEventListener("abort", onAbort, { once: true });
+  const timer = setTimeout(() => interrupt("请求读取超时，请重试。"), timeoutMs);
   try {
-    if (reader) {
-      while (true) {
-        const { done, value } = await Promise.race([reader.read(), interrupted]);
-        if (done) break;
-        total += value.byteLength;
-        if (total > maximumBytes) {
-          void reader.cancel().catch(() => undefined);
-          throw new RequestBodyError("请求内容过大。", 413);
-        }
+    while (true) {
+      const { done, value } = await reader.read();
+      if (interruption) throw interruption;
+      if (done) break;
+      total += value.byteLength;
+      if (total > maximumBytes) throw new RequestBodyError("请求内容过大。", 413);
+      if (buffered + value.length > blockSize) flushBlock();
+      if (value.length >= blockSize) {
         text += decoder.decode(value, { stream: true });
+      } else {
+        block ??= new Uint8Array(blockSize);
+        block.set(value, buffered);
+        buffered += value.length;
       }
     }
+    flushBlock();
     const body: unknown = JSON.parse(text + decoder.decode());
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       throw new RequestBodyError("请求必须是 JSON 对象。");
@@ -54,13 +70,13 @@ export async function readJsonObject(request: Request, maximumBytes: number, tim
     return body as Record<string, unknown>;
   } catch (error) {
     // Cancellation itself can stall on a broken producer, so never await it.
-    void reader?.cancel().catch(() => undefined);
+    if (!interruption) void reader.cancel().catch(() => undefined);
     if (error instanceof RequestBodyError) throw error;
     throw new RequestBodyError("请求不是有效 JSON。");
   } finally {
     clearTimeout(timer);
-    if (onAbort) request.signal.removeEventListener("abort", onAbort);
-    reader?.releaseLock();
+    request.signal.removeEventListener("abort", onAbort);
+    reader.releaseLock();
   }
 }
 
@@ -108,31 +124,18 @@ export async function consumeRateLimit(db: RateLimitStore | undefined, bucketKey
   } catch (error) {
     throw new RateLimitStoreError(error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message));
   }
-  if (Number(row?.request_count || 0) > limit) return Math.max(1, Math.ceil((expiresAt - now) / 1000));
+  if (!row || !Number.isSafeInteger(row.request_count) || row.request_count < 1) throw new RateLimitStoreError(false);
+  if (row.request_count > limit) return Math.max(1, Math.ceil((expiresAt - now) / 1000));
   return null;
-}
-
-/** Adds `amount` to a usage bucket in the same table and returns the new total. */
-export async function addToBucket(db: RateLimitStore | undefined, bucketKey: string, expiresAt: number, amount: number): Promise<number> {
-  if (!db) throw new RateLimitStoreError(false);
-  try {
-    const row = await db.prepare(
-      `INSERT INTO ai_rate_limits (bucket_key, request_count, expires_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(bucket_key) DO UPDATE SET request_count = request_count + excluded.request_count
-       RETURNING request_count`,
-    ).bind(bucketKey, Math.max(0, Math.round(amount)), expiresAt).first<{ request_count: number }>();
-    return Number(row?.request_count || 0);
-  } catch (error) {
-    throw new RateLimitStoreError(error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message));
-  }
 }
 
 export async function readBucket(db: RateLimitStore | undefined, bucketKey: string): Promise<number> {
   if (!db) throw new RateLimitStoreError(false);
   try {
     const row = await db.prepare("SELECT request_count FROM ai_rate_limits WHERE bucket_key = ?").bind(bucketKey).first<{ request_count: number }>();
-    return Number(row?.request_count || 0);
+    if (row === null) return 0;
+    if (!Number.isSafeInteger(row.request_count) || row.request_count < 0) throw new RateLimitStoreError(false);
+    return row.request_count;
   } catch (error) {
     throw new RateLimitStoreError(error instanceof Error && /no such table|SQLITE_ERROR.*ai_rate_limits/i.test(error.message));
   }

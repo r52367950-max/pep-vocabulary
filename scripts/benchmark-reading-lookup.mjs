@@ -6,7 +6,7 @@ import { decodeLexiconIndex } from '../lib/lexicon-index-codec.mjs';
 import { benchmarkBaseline } from './benchmark-baseline.mjs';
 const approved = benchmarkBaseline('reading', process.argv[2]);
 const baseline = approved.revision;
-const source = approved.source('lib/reading-library.ts');
+const source = await approved.source('lib/reading-library.ts');
 const js = ts.transpileModule(source.slice(source.indexOf('const common =')), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const before = (await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)).matchReadingWords;
 const index = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.json', 'utf8')));

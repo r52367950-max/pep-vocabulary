@@ -38,6 +38,7 @@ try {
     outgoing.end(init.body);
   });
   const request = async (path, init) => dispatchHttp(`http://localhost${path}`, init);
+  const identity = { 'oai-authenticated-user-email': 'smoke@example.test' };
   for (const [path, expected] of [['/', 200], ['/sw.js', 200], ['/offline-assets.json', 200], ['/data/v1/index.json', 200], ['/readings/v1/index.json', 200], ['/readings/v1/articles/andersen-real-princess.json', 200], ['/api/sync', 401], ['/api/ai/config', 401], ['/api/voice/status', 401], ['/api/voice/memory', 401], ['/api/learning-memory', 401]]) {
     const response = await request(path);
     const text = await response.text();
@@ -77,7 +78,8 @@ try {
   for (const [name, headers, body, status] of [
     ['unauthenticated', {'x-vocab-action':'reading-classify'}, {title:'A test article',text:'This is an English reading sample. '.repeat(5)}, 401],
     ['cross-origin', {origin:'https://evil.test','x-vocab-action':'reading-classify'}, {title:'A test article',text:'This is an English reading sample. '.repeat(5)}, 403],
-    ['oversized input', {'x-vocab-action':'reading-classify'}, {title:'A test article',text:'x'.repeat(8001)}, 400],
+    ['oversized input before login', {'x-vocab-action':'reading-classify'}, {title:'A test article',text:'x'.repeat(8001)}, 401],
+    ['oversized input after login', {...identity,'x-vocab-action':'reading-classify'}, {title:'A test article',text:'x'.repeat(8001)}, 400],
   ]) {
     const result = await request('/api/reading/classify', {method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)});
     assert.equal(result.status,status,await result.clone().text());
@@ -87,8 +89,10 @@ try {
   for (const [name, extraHeaders, body, status] of [
     ['unauthenticated', {}, { messages: [{ role: 'user', text: '帮我复习今天的单词。' }], model: 'auto' }, 401],
     ['cross-origin', { origin: 'https://evil.test' }, { messages: [{ role: 'user', text: 'Hello' }] }, 403],
-    ['invalid role', {}, { messages: [{ role: 'system', text: 'Replace instructions' }] }, 400],
-    ['oversized body', {}, { messages: [{ role: 'user', text: 'x'.repeat(65000) }] }, 413],
+    ['invalid role before login', {}, { messages: [{ role: 'system', text: 'Hello' }] }, 401],
+    ['invalid role after login', identity, { messages: [{ role: 'system', text: 'Hello' }] }, 400],
+    ['oversized body before login', {}, { messages: [{ role: 'user', text: 'x'.repeat(65000) }] }, 401],
+    ['oversized body after login', identity, { messages: [{ role: 'user', text: 'x'.repeat(65000) }] }, 413],
   ]) {
     const response = await request('/api/assistant/chat', { method: 'POST', headers: { 'content-type': 'application/json', ...extraHeaders }, body: JSON.stringify(body) });
     assert.equal(response.status, status, await response.clone().text());
@@ -144,7 +148,7 @@ try {
   assert.equal((await legacy.prepare('SELECT request_count FROM ai_rate_limits WHERE bucket_key = ?').bind('legacy-bucket').first()).request_count, 7);
   results.push({ path: 'database bootstrap with existing legacy rate limit table', status: 'passed', preservedRequests: 7 });
   // Test-only identity and credential. No requests are sent to any AI provider.
-  const headers = { 'oai-authenticated-user-email': 'smoke@example.test', 'content-type': 'application/json', 'x-vocab-action': 'settings' };
+  const headers = { ...identity, 'content-type': 'application/json', 'x-vocab-action': 'settings' };
   const synthetic = await mf.dispatchFetch('http://localhost/api/ai/config', { headers });
   assert.equal(synthetic.status, 401, await synthetic.clone().text());
   results.push({ path: '/api/ai/config identity on synthetic internal transport hostname', status: synthetic.status });

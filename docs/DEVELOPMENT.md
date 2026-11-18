@@ -20,11 +20,15 @@ Node.js 要求见 `package.json#engines`，依赖以 `package-lock.json` 为准�
 | 阅读数据审计 | `node --import ./tests/register.mjs scripts/audit-readings.mjs` |
 | 后端查词性能对照 | `npm run benchmark:backend`；使用已审核的 2.4.0 基线 `e2e9e25`，输出微基准中位数，不代表全站或模型延迟 |
 | 性能对照 | `npm run benchmark`；使用已审核历史基线 `3b12529`，本地需有相应提交 |
+| 学习日志与上下文 | `node --import ./tests/register.mjs scripts/benchmark-journal.mjs`，输出 SQLite 耗时、D1 调用和返回行字节数 |
+| JSON 请求读取 | `node --import ./tests/register.mjs scripts/benchmark-request.mjs`，对照 128 B 和 16 KiB 两种分块，包含完整解码和解析 |
+| 教材词池与单元选择器 | 在两个版本分别运行同一份 `node --import ./tests/register.mjs scripts/benchmark-study-scope.mjs`，按输出摘要核对词序 |
+| 浏览器验收 | 在本地生产预览上运行 `node artifacts/qa/refactor-browser.mjs <预览地址>` 和 `node artifacts/qa/offline-lexicon-browser.mjs <预览地址>`。使用 Playwright Chromium，可通过 `PLAYWRIGHT_MODULE` 和 `CHROMIUM_PATH` 指定本机安装 |
 | 词库索引解析对照 | `node artifacts/qa/lexicon-index-parse.mjs <baseline-ref>`；在 Chromium 中比较基线索引与当前行编码的解析耗时（含 4 倍 CPU 降速） |
 
 `test:runtime` 使用本地临时 D1 和测试凭据，不调用真实 AI 服务；不验证生产认证网关、真实服务商或物理设备行为。
 
-三个比较脚本只执行 `scripts/benchmark-baseline.mjs` 中审核过的完整提交对应模块或切片；可传入解析到相同提交的短引用。阅读匹配基线保留 `0b8610b`（默认）和 `3eb1875`。其他引用在读取和执行历史代码前拒绝；新增基线须先审查其全部执行代码，再更新允许列表。Git replacement refs 不参与读取。
+从 Git 加载基线的比较脚本只执行 `scripts/benchmark-baseline.mjs` 中审核过的完整提交对应模块或切片；可传入解析到相同提交的短引用。阅读匹配基线保留 `0b8610b`（默认）和 `3eb1875`。其他引用在读取和执行历史代码前拒绝；新增基线须先审查其全部执行代码，再更新允许列表。Git replacement refs 不参与读取。
 
 `npm run install:ci` 使用项目写锁和有界超时执行 `npm ci`；不修改 HOME，不重复下载预检包，所有依赖依照锁文件校验完整性。测试文件并发数限制为 2，避免共享运行环境中的 CPU 争用使性能阈值测试失真。
 

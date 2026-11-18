@@ -254,14 +254,6 @@ export const fetchAiProvider: typeof fetch = (input, init) => {
   return fetch(input, init);
 };
 
-export function securityHeaders() {
-  return {
-    "cache-control": "no-store, max-age=0",
-    "content-type": "application/json; charset=utf-8",
-    "x-content-type-options": "nosniff",
-  };
-}
-
 export function sameOriginMutation(request: Request) {
   return sameOriginRequest(request) && request.headers.get("x-vocab-action") === "settings";
 }

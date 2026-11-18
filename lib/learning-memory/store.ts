@@ -49,9 +49,11 @@ export async function saveLearningMemory(userKey: string, raw: unknown): Promise
   if (body.temporary === true) throw new AssistantInputError("temporary_memory_write", "临时会话不保存学习记忆。", 409);
   const input = parseMemory(body), current = await readLearningMemory(userKey), now = new Date().toISOString();
   if (input.revision !== current.revision) throw new AssistantInputError("voice_memory_conflict", "学习记忆已在别处更新。请重新载入后再保存。", 409);
-  input.notes = input.notes.map(note => {
-    const old = current.notes.find(n => n.id === note.id);
-    const supplied = (body.notes as Record<string, unknown>[]).find(n => n.id === note.id)!;
+  const existing = new Map(current.notes.map(note => [note.id, note]));
+  const suppliedNotes = body.notes as Record<string, unknown>[];
+  input.notes = input.notes.map((note, index) => {
+    const old = existing.get(note.id);
+    const supplied = suppliedNotes[index];
     // Legacy clients send only id/text: retain provenance instead of dropping it.
     const source = supplied.source === undefined ? old?.source ?? "manual" : note.source;
     const kind = supplied.kind === undefined ? old?.kind ?? "learning_note" : note.kind;

@@ -1,4 +1,4 @@
-import { consumeRateLimit, rateLimitWindow, readJsonObject, RequestBodyError } from "@/lib/http";
+import { consumeRateLimit, privateJson as json, rateLimitWindow, readJsonObject, RequestBodyError } from "@/lib/http";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -14,19 +14,12 @@ import {
   normalizeApiKey,
   reencryptApiKey,
   sameOriginMutation,
-  securityHeaders,
 } from "@/lib/ai-config";
 import { knownOutputLimit, OUTPUT_TOKEN_TARGET, resolveMaxOutputTokens, sameAiCredentialScope, type AiProvider } from "@/lib/assistant/core";
 import { DEFAULT_TOKEN_BUDGET, readTokenUsage } from "@/lib/assistant/usage";
 import { authenticatedUserKey } from "@/lib/server-user";
 
 const DEFAULT_LIMITS = { dailyLimit: 30, timeoutSeconds: 25 };
-
-function json(body: unknown, status = 200, extra?: HeadersInit) {
-  const headers = new Headers(securityHeaders());
-  new Headers(extra).forEach((value, name) => headers.set(name, value));
-  return new Response(JSON.stringify(body), { status, headers });
-}
 
 function safeProvider(value: string | undefined): AiProvider {
   return isAiProvider(value) ? value : "openai-compatible";

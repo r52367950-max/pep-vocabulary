@@ -45,6 +45,28 @@ test('aborted requests and malformed UTF-8 cannot become accepted backup data', 
   await assert.rejects(readJsonObject(new Request('https://app.test/api', { method: 'POST', headers: { 'content-type': 'application/json' }, body: bytes }), 4096), error => error.status === 400);
 });
 
+test('request reader preserves split UTF-8 and rejects mid-read cancellation without waiting for the producer', async () => {
+  const object = { note: '词迹 📝' };
+  const bytes = new TextEncoder().encode(JSON.stringify(object));
+  const init = { method: 'POST', duplex: 'half', headers: { 'content-type': 'application/json' } };
+  const body = new ReadableStream({
+    start(controller) {
+      for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
+      controller.close();
+    },
+  });
+  assert.deepEqual(await readJsonObject(new Request('https://app.test/api', { ...init, body }), bytes.length), object);
+  const abort = new AbortController();
+  let cancelled = false;
+  const stalled = new ReadableStream({ cancel() { cancelled = true; return new Promise(() => {}); } });
+  const request = new Request('https://app.test/api', { ...init, body: stalled, signal: abort.signal });
+  const reading = readJsonObject(request, 4096);
+  abort.abort();
+  await assert.rejects(bounded(reading), error => error.status === 408);
+  assert.equal(cancelled, true);
+  assert.equal(stalled.locked, false);
+});
+
 test('provider errors and oversized declared bodies release their streams without exposing contents', async () => {
   for (const [status, headers, code] of [[401, {}, 'provider_auth_failed'], [200, { 'content-length': '300001' }, 'model_response_too_large']]) {
     let cancelled = false;

@@ -134,21 +134,11 @@ function isJson(response: Response) {
  * framework text or stack traces.
  */
 function normalizeApiResponse(response: Response, pathname: string): Response {
-  if (response.status === 404 && !isJson(response)) {
-    void response.body?.cancel().catch(() => undefined);
-    return apiErrorResponse(404);
-  }
-  if (response.status === 405 && !isJson(response)) {
-    void response.body?.cancel().catch(() => undefined);
-    const methods = PRIVATE_API_ROUTES[pathname.replace(/\/$/, "")];
-    return apiErrorResponse(405, methods ? { allow: [...methods, "OPTIONS"].join(", ") } : undefined);
-  }
-  if (response.status >= 500 && !isJson(response)) {
-    void response.body?.cancel().catch(() => undefined);
-    // Keep the status (502/503/504 tell clients to retry); drop the body.
-    return apiErrorResponse(response.status);
-  }
-  return response;
+  const { status } = response;
+  if (isJson(response) || (status !== 404 && status !== 405 && status < 500)) return response;
+  void response.body?.cancel().catch(() => undefined);
+  const methods = status === 405 && PRIVATE_API_ROUTES[pathname.replace(/\/$/, "")];
+  return apiErrorResponse(status, methods ? { allow: [...methods, "OPTIONS"].join(", ") } : undefined);
 }
 
 
@@ -201,7 +191,7 @@ export function createSecureHandler<Env>(inner: WorkerHandler<Env>, options: Sec
         headers.set("content-security-policy", documentContentSecurityPolicy(nonce, secureTransport(url)));
         headers.delete("content-security-policy-report-only");
         forwarded = new Request(request, { headers });
-      } else if (request.headers.has("content-security-policy")) {
+      } else if (request.headers.has("content-security-policy") || request.headers.has("content-security-policy-report-only")) {
         // A client-supplied value must never choose the nonce for rendered HTML.
         const headers = new Headers(request.headers);
         headers.delete("content-security-policy");

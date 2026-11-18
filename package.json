@@ -1,6 +1,6 @@
 {
   "name": "pep-vocab-studio",
-  "version": "2.19.2",
+  "version": "2.19.3",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -26,12 +26,13 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
+    "fflate": "0.7.5",
     "lucide-react": "0.468.0",
-    "next": "16.4.3",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "ts-fsrs": "5.2.3",
-    "fflate": "0.7.5"
+    "next": "16.4.6",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "react-server-dom-webpack": "19.2.9",
+    "ts-fsrs": "5.2.3"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.54.9",
@@ -44,9 +45,8 @@
     "@vitejs/plugin-rsc": "0.5.26",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "fake-indexeddb": "6.2.5",
-    "react-server-dom-webpack": "19.2.8",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",

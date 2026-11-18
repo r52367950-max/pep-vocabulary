@@ -3,18 +3,37 @@ import { memoryDatabase, readLearningMemory } from "./store";
 import { CONTEXT_VERSION, type LearningMemory } from "./types";
 import { journalContext, journalMetadata } from "@/lib/learning-journal/store";
 
-export async function accountScope(userKey: string) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`learning-context:${userKey}`));
-  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+async function digestText(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+export function accountScope(userKey: string) {
+  return digestText(`learning-context:${userKey}`);
 }
 export async function memoryMetadata(userKey: string) {
-  const row = await memoryDatabase().prepare("SELECT revision, enabled FROM voice_learning_memories WHERE user_key = ?").bind(userKey).first<{ revision: number; enabled: number }>();
-  // Configuration identity only: never load/decrypt an API key for memory management.
-  const config = await memoryDatabase().prepare("SELECT c.provider, c.base_url, c.model, c.updated_at, p.updated_at AS preferences_updated_at FROM ai_configs c LEFT JOIN ai_preferences p ON p.user_key = c.user_key WHERE c.user_key = ?").bind(userKey).first();
-  const configHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(config ?? "unconfigured")));
-  const version = [...new Uint8Array(configHash)].map(b => b.toString(16).padStart(2, "0")).join("");
-  const journal=await journalMetadata(userKey);
-  return { accountScope: await accountScope(userKey), revision: row?.revision ?? 0, enabled: row ? row.enabled === 1 : true, contextVersion: `${CONTEXT_VERSION}:${version}:journal-${journal.privacyRevision}`, journalRevision: journal.revision };
+  // Start from the requested key so new accounts get a row even before any settings are saved.
+  const row = await memoryDatabase().prepare(`SELECT m.revision,m.enabled,
+    j.revision AS journal_revision,j.privacy_revision,
+    c.provider,c.base_url,c.model,c.updated_at,p.updated_at AS preferences_updated_at
+    FROM (SELECT ? AS user_key) u
+    LEFT JOIN voice_learning_memories m ON m.user_key=u.user_key
+    LEFT JOIN learning_journal_settings j ON j.user_key=u.user_key
+    LEFT JOIN ai_configs c ON c.user_key=u.user_key
+    LEFT JOIN ai_preferences p ON p.user_key=c.user_key`).bind(userKey).first<{
+      revision: number | null; enabled: number | null; journal_revision: number | null; privacy_revision: number | null;
+      provider: string | null; base_url: string | null; model: string | null; updated_at: string | null; preferences_updated_at: string | null;
+    }>();
+  if (!row) throw new Error("Learning metadata unavailable");
+  const { revision, enabled, journal_revision, privacy_revision, ...config } = row;
+  // Preserve the exact configuration identity issued to existing clients.
+  const [scope, version] = await Promise.all([
+    accountScope(userKey), digestText(JSON.stringify(config.provider === null ? "unconfigured" : config)),
+  ]);
+  return {
+    accountScope: scope, revision: revision ?? 0, enabled: enabled !== 0,
+    contextVersion: `${CONTEXT_VERSION}:${version}:journal-${privacy_revision ?? 0}`,
+    journalRevision: journal_revision ?? 0,
+  };
 }
 export async function resolveLearningContext(userKey: string, body: Record<string, unknown>) {
   if (body.temporary !== undefined && typeof body.temporary !== "boolean") throw new AssistantInputError("invalid_request", "临时会话参数无效。");

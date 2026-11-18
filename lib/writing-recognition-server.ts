@@ -1,8 +1,8 @@
 import { env } from 'cloudflare:workers';
-import { authenticatedUserKey } from './server-user';
-import { consumeRateLimit, privateJson, readJsonObject, RequestBodyError } from './http';
+import { readJsonRequest, requireRequestUser } from "./assistant/request";
+import { consumeRateLimit, privateJson } from './http';
 import { AssistantInputError, AssistantUpstreamError, usesOpenAIResponses, fetchCompletion } from './assistant/core';
-import { assistantErrorResponse, assertSameOrigin, authenticatedRuntime } from './assistant/server';
+import { assistantErrorResponse, meteredRuntime } from './assistant/server';
 import { fetchAiProvider } from './ai-config';
 import { reserveTokens, settleTokens } from './assistant/usage';
 import { contextMetadata, resolveLearningContext } from './learning-memory/context';
@@ -13,12 +13,6 @@ export const WRITING_VISION_INSTRUCTIONS = `Transcribe the handwritten English c
 Separately assess visible handwriting with our practice-v1 rubric, NOT an official examination mark. Return Chinese feedback with concrete observable evidence and a short actionable suggestion per dimension. Four dimensions, exactly once each: legibility (letter distinguishability), size-spacing (consistent letter size and word gaps), baseline-lines (alignment and separation of lines), layout-neatness (readable paragraph layout and corrections). Each gets an integer 0..5: 5 consistently readable and controlled; 4 minor local issues; 3 repeated issues but readable; 2 frequent interference; 1 extensive interference; 0 no usable formation in this dimension. Judge readability rather than beauty; do not prefer cursive, print, British/American or calligraphic styles. Do not infer handwriting defects from OCR uncertainty alone. Spelling and grammar are not handwriting defects. Readable strike-throughs and corrections are acceptable; do not deduct merely because a legible draft has been revised. No personality, disability, age or identity inferences.
 First assess photoQuality separately: usable, limited or unusable. Issues include blur, glare, crop, rotation, low resolution; these are photograph limitations, never handwriting faults. If insufficient visible handwriting, no handwriting, or image quality prevents fair evaluation, use unusable, explain in issues and set ALL dimension scores null. For limited photos only score if each dimension is observable; never penalize photo defects as handwriting. For usable/limited photos each dimension needs actual visual evidence; no invented locations or examples. Summary must identify this as independent practice reference, not official score and not a composition deduction. Return only the JSON schema.`;
 
-async function identity(request: Request) {
-  assertSameOrigin(request);
-  const user = await authenticatedUserKey();
-  if (!user) throw new AssistantInputError('authentication_required', '请先登录。', 401);
-  return user;
-}
 /** Durable admission, never retry an ambiguous paid operation automatically. No photos/text persisted. */
 async function claim(user: string, lane: string, id: string) {
   if (!env.DB) throw new AssistantInputError('unavailable', '用量服务暂时不可用。', 503);
@@ -29,12 +23,10 @@ async function claim(user: string, lane: string, id: string) {
 }
 export async function recognizeWriting(request: Request): Promise<Response> {
   try {
-    const user = await identity(request);
-    let body: Record<string, unknown>;
-    try { body = await readJsonObject(request, 4 * 1024 * 1024); }
-    catch (error) { if (error instanceof RequestBodyError) throw new AssistantInputError('invalid_request', error.message, error.status); throw error; }
+    const user = await requireRequestUser(request);
+    const body = await readJsonRequest(request, 4 * 1024 * 1024);
     const id = operationId(body.operationId), image = parseDictationImage(body.image);
-    const configured = await authenticatedRuntime(request), context = await resolveLearningContext(user, body);
+    const configured = await meteredRuntime(user), context = await resolveLearningContext(user, body);
     // This feature uses Terra explicitly; general text settings remain unchanged.
     if (!usesOpenAIResponses(configured.baseUrl)) throw new AssistantInputError('official_openai_required', '拍照识别需要官方 OpenAI API 配置。', 400);
     const config = { ...configured, model: 'gpt-6.1-terra' };

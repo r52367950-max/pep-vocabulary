@@ -21,6 +21,8 @@ import {
   loadLearningState,
   INITIAL_DATA_GENERATION,
   DataReplacedError,
+  NoteConflictError,
+  type CardMetadataPatch,
   updateCardMetadata,
   type AppSettings,
   type ReviewEvent,
@@ -146,9 +148,15 @@ export function useVocabulary() {
     await writes.current;
   }, [generation]);
 
+  // Built once per lexicon load and shared, so views do not rescan the 4,681 entries.
+  const byId = useMemo(
+    () => new Map(index.map((entry) => [entry.id, entry])),
+    [index],
+  );
+
   const saveReview = useCallback(async (event: ReviewEvent, expectedGeneration = generation) => {
     const activityScope = learningContextStore.get().memory?.accountScope;
-    const learnedEntry = index.find((entry) => entry.id === event.cardId);
+    const learnedEntry = byId.get(event.cardId);
     await commitReview(event, expectedGeneration);
     if (activityScope) void recordLearningActivity({ eventId: event.eventId, kind: "vocabulary", title: `${event.eventType === "undo" ? "撤销词汇作答" : "词汇复习"} · ${learnedEntry?.headword || event.cardId}`.slice(0, 160), summary: `${event.questionType} · ${event.eventType === "undo" ? "已撤销" : event.hints ? "使用提示" : event.correct ? "独立答对" : "待再练"}`, refIds: [event.cardId], counts: { reviewed: event.eventType === "undo" ? 0 : 1, correct: event.correct && !event.hints && event.eventType !== "undo" ? 1 : 0, assisted: event.hints ? 1 : 0 }, occurredAt: event.timestampUtc, timezone: event.timezone }, { accountScope: activityScope });
     setCards((previous) => {
@@ -166,27 +174,21 @@ export function useVocabulary() {
       persistAsked.current = true;
       void requestPersistentStorage();
     }
-  }, [generation, index]);
+  }, [generation, byId]);
 
   const metadata = useCallback(
-    async (id: string, patch: { note?: string; toggleFavorite?: boolean }, expectedGeneration = generation) => {
+    async (id: string, patch: CardMetadataPatch, expectedGeneration = generation) => {
       try {
         const card = await updateCardMetadata(newStoredCard(id), patch, expectedGeneration);
         setCards((previous) => new Map(previous).set(id, card));
         channel.current?.postMessage("metadata");
         return true;
       } catch (cause) {
-        notify(cause instanceof DataReplacedError ? cause.message : "未能保存，请重试。");
+        notify(cause instanceof DataReplacedError || cause instanceof NoteConflictError ? cause.message : "未能保存，请重试。");
         return false;
       }
     },
     [generation],
-  );
-
-  // Built once per lexicon load and shared, so views do not rescan the 4,681 entries.
-  const byId = useMemo(
-    () => new Map(index.map((entry) => [entry.id, entry])),
-    [index],
   );
 
   // A stable object: consumers that depend on `data` re-run only when the data itself changes.

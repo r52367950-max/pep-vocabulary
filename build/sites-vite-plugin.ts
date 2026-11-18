@@ -15,19 +15,18 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-async function hashVendorFiles(fingerprint: ReturnType<typeof createHash>, root: string, prefix = "") {
-  const entries = (await readdir(resolve(root, prefix), { withFileTypes: true }))
-    .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
-  for (const entry of entries) {
-    const file = `${prefix}${entry.name}`;
-    if (entry.isDirectory()) await hashVendorFiles(fingerprint, root, `${file}/`);
-    else if (entry.isFile()) {
-      const bytes = await readFile(resolve(root, file));
-      // Include file boundaries and paths as well as bytes: additions, removals
-      // and renames must invalidate the cache just like same-path parser fixes.
-      fingerprint.update(JSON.stringify([`vendor/${file}`, bytes.length]));
-      fingerprint.update(bytes);
-    }
+async function hashPublicFile(hash: ReturnType<typeof createHash>, publicRoot: string, path: string) {
+  const bytes = await readFile(resolve(publicRoot, path));
+  hash.update(JSON.stringify([path, bytes.length]));
+  hash.update(bytes);
+}
+
+async function hashPublicTree(hash: ReturnType<typeof createHash>, publicRoot: string, directory: string, jsonOnly = false) {
+  const entries = await readdir(resolve(publicRoot, directory), { withFileTypes: true });
+  for (const entry of entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+    const path = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) await hashPublicTree(hash, publicRoot, path, jsonOnly);
+    else if (entry.isFile() && (!jsonOnly || path.endsWith(".json"))) await hashPublicFile(hash, publicRoot, path);
   }
 }
 
@@ -63,22 +62,14 @@ export function sites(): Plugin {
         const files = (await readdir(assets)).filter((file) => /\.(?:js|css|woff2?)$/.test(file)).sort();
         await writeFile(resolve(root, "dist", "client", "offline-assets.json"), JSON.stringify(files.map((file) => `/assets/${file}`)));
         const fingerprint = createHash("sha256").update(files.join("\n"));
-        const dataRoot = resolve(root, "public", "data", "v1");
-        for (const file of (await readdir(dataRoot, { recursive: true })).filter((file) => file.endsWith(".json")).sort()) {
-          fingerprint.update(await readFile(resolve(dataRoot, file)));
-        }
-        const readingRoot = resolve(root, "public", "readings", "v1");
-        if (await exists(readingRoot)) for (const file of (await readdir(readingRoot, { recursive: true })).filter(file => file.endsWith(".json")).sort()) {
-          fingerprint.update(await readFile(resolve(readingRoot, file)));
-        }
-        for (const directory of ["icons", "images"]) {
-          const staticRoot = resolve(root, "public", directory);
-          if (await exists(staticRoot)) for (const file of (await readdir(staticRoot)).sort()) {
-            fingerprint.update(await readFile(resolve(staticRoot, file)));
+        const publicRoot = resolve(root, "public");
+        await hashPublicTree(fingerprint, publicRoot, "data/v1", true);
+        for (const directory of ["readings/v1", "icons", "images", "vendor"]) {
+          if (await exists(resolve(publicRoot, directory))) {
+            await hashPublicTree(fingerprint, publicRoot, directory, directory === "readings/v1");
           }
         }
-        const vendorRoot = resolve(root, "public", "vendor");
-        if (await exists(vendorRoot)) await hashVendorFiles(fingerprint, vendorRoot);
+        await hashPublicFile(fingerprint, publicRoot, "manifest.webmanifest");
         const worker = await readFile(resolve(root, "public", "sw.js"), "utf8");
         fingerprint.update(worker);
         await writeFile(resolve(root, "dist", "client", "sw.js"), worker.replace('"vocab-shell-v2"', `"vocab-shell-v2-${fingerprint.digest("hex").slice(0, 16)}"`));

@@ -394,25 +394,6 @@ a:hover {
   line-height: 1.7;
   font-weight: 400;
 }
-.activity-metrics {
-  gap: 0;
-  margin: 35px 0;
-}
-.activity-metrics > div {
-  border: 0;
-  border-radius: 0;
-  background: none;
-  padding: 0 25px 0 0;
-}
-.activity-metrics > div + div {
-  border-left: 0;
-}
-.activity-metrics > div > svg {
-  display: none;
-}
-.activity-metrics strong {
-  font-size: 2.25rem;
-}
 .activity-chart,
 .forecast-panel,
 .review-log {
@@ -869,14 +850,6 @@ html[data-theme="dark"] {
   }
   .answer-en {
     font-size: 2.375rem;
-  }
-  .activity-metrics {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 25px 0;
-  }
-  .activity-metrics > div {
-    padding: 0 16px 0 0;
   }
   .settings-layout {
     gap: 18px;

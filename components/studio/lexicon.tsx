@@ -24,7 +24,7 @@ export default function Lexicon({
   bookId,
   unit,
   onCourse,
-  initialQuery,
+  searchInputRef,
   onDetail,
   onStart,
 }: {
@@ -32,15 +32,13 @@ export default function Lexicon({
   bookId: string;
   unit: string;
   onCourse: (book: string, unit: string) => void;
-  initialQuery: string;
+  searchInputRef: (node: HTMLInputElement | null) => void;
   onDetail: (entry: LexiconIndexEntry) => void;
   onStart: (mode: StudyMode, entries: LexiconIndexEntry[]) => void;
 }) {
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState("");
   const search = useDeferredValue(query);
-  const [scope, setScope] = useState<"book" | "all">(
-    initialQuery ? "all" : "book",
-  );
+  const [scope, setScope] = useState<"book" | "all">("book");
   const [status, setStatus] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
@@ -121,6 +119,7 @@ export default function Lexicon({
         <div className="search-field">
           <Search size={19} aria-hidden="true" />
           <input
+            ref={searchInputRef}
             id="lexicon-search"
             name="word-search"
             type="search"

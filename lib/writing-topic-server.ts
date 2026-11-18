@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
-import { authenticatedUserKey } from './server-user';
+import { readJsonRequest, requireRequestUser } from "./assistant/request";
 import { consumeRateLimit,privateJson } from './http';
-import { assistantErrorResponse,assertSameOrigin,authenticatedRuntime,complete,readJsonRequest } from './assistant/server';
+import { assistantErrorResponse,meteredRuntime,complete } from './assistant/server';
 import { AssistantInputError,AssistantUpstreamError,usesOpenAIResponses } from './assistant/core';
 import { resolveLearningContext,contextMetadata,learningContextData } from './learning-memory/context';
 import { operationId } from './voice/dictation-planner';
@@ -9,10 +9,10 @@ import { WRITING_TOPIC_RULES } from './writing-topic-rules';
 import { WRITING_TOPICS,validWritingTopic,type WritingTopic } from './writing-topics';
 export async function generateWritingTopic(request:Request) {
  try {
-  assertSameOrigin(request);const user=await authenticatedUserKey();if(!user)throw new AssistantInputError('authentication_required','请先登录。',401);
-  const body=await readJsonRequest(request) as Record<string,unknown>,id=operationId(body.operationId);
+  const user = await requireRequestUser(request);
+  const body=await readJsonRequest(request),id=operationId(body.operationId);
   if(!['free','practical','continuation'].includes(String(body.kind))||(body.theme!==undefined&&(typeof body.theme!=='string'||body.theme.length>500)))throw new AssistantInputError('invalid_request','写作题型或主题无效。');
-  const config=await authenticatedRuntime(request),context=await resolveLearningContext(user,body);
+  const config=await meteredRuntime(user),context=await resolveLearningContext(user,body);
   if(!usesOpenAIResponses(config.baseUrl))throw new AssistantInputError('unsupported_provider','AI出题需要官方 OpenAI 配置。',400);
   if(!env.DB)throw new AssistantInputError('unavailable','用量服务暂不可用。',503);
   const now=Date.now(),minute=Math.floor(now/60000);

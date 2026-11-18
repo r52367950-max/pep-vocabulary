@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { env } from './worker-env.mjs';
 import { requestHeaders } from './request-headers.mjs';
 import { sqliteD1 } from './sqlite-d1.mjs';
@@ -56,8 +57,10 @@ test('unified memory preserves provenance through legacy clients, rejects accoun
   let current = await added.json();
   assert.equal(current.notes[0].source, 'confirmed_suggestion');
   assert.ok(current.notes[0].confirmedAt);
-  const legacy = await putVoiceMemory(req('memory', { revision: current.revision, enabled: true, notes: [note], recentTopics: [] }, 'PUT'));
+  const legacy = await putVoiceMemory(req('memory', { revision: current.revision, enabled: true, notes: [{ ...note, id: " note_test " }], recentTopics: [] }, 'PUT'));
+  assert.equal(legacy.status, 200);
   current = await legacy.json();
+  assert.equal(current.notes[0].id, note.id);
   assert.equal(current.notes[0].source, 'confirmed_suggestion');
   assert.equal(current.notes[0].kind, 'expression');
   const temporary = await (await GET(unified(undefined, '?temporary=1'))).json();
@@ -84,11 +87,20 @@ test('legacy provenance is not assigned invented historical confirmation dates',
 });
 
 test('temporary or paused context is empty and config changes invalidate context metadata', async () => {
-  setup();
+  const db = setup();
   const { resolveLearningContext, memoryMetadata } = await import('../lib/learning-memory/context.ts');
   const key = await authenticatedUserKey(), before = await memoryMetadata(key);
+  const legacyVersion = () => {
+    const config = db.prepare(`SELECT c.provider,c.base_url,c.model,c.updated_at,p.updated_at AS preferences_updated_at
+      FROM ai_configs c LEFT JOIN ai_preferences p ON p.user_key=c.user_key WHERE c.user_key=?`).get(key);
+    const identity = createHash('sha256').update(JSON.stringify(config ?? 'unconfigured')).digest('hex');
+    return `learning-memory-v1:${identity}:journal-0`;
+  };
+  assert.equal(before.contextVersion, legacyVersion());
   await configure();
-  assert.notEqual((await memoryMetadata(key)).contextVersion, before.contextVersion);
+  const configured = await memoryMetadata(key);
+  assert.equal(configured.contextVersion, legacyVersion());
+  assert.notEqual(configured.contextVersion, before.contextVersion);
   await putVoiceMemory(req('memory', { ...empty, notes: [note] }, 'PUT'));
   const current = await readVoiceMemory(key);
   assert.deepEqual((await resolveLearningContext(key, { temporary: true })).memory.notes, []);

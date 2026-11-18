@@ -165,3 +165,17 @@ test('CSV and TSV neutralize formulas and keep one row per record', () => {
   assert.equal(delimitedCell('a\tb\nc', 'tsv'), 'a b c');
   assert.equal(delimitedCell('苹果', 'csv'), '"苹果"');
 });
+
+test('independent note drafts keep the first committed edit and allow an identical retry', async () => {
+  await clearUserData();
+  const card = newStoredCard('apple', now);
+  const draft = note => updateCardMetadata(card, { note, expectedNote: '' });
+  const edits = await Promise.allSettled([draft('草稿甲'), draft('草稿乙')]);
+  assert.equal(edits.filter(edit => edit.status === 'fulfilled').length, 1);
+  assert.match(edits.find(edit => edit.status === 'rejected').reason.message, /另一页面已修改/);
+  const saved = await getOne('cards', card.id);
+  assert.equal((await draft(saved.note)).note, saved.note);
+  await updateCardMetadata(card, { toggleFavorite: true });
+  assert.equal((await updateCardMetadata(card, { note: '', expectedNote: saved.note })).favorite, true);
+  assert.equal((await getOne('cards', card.id)).note, '');
+});

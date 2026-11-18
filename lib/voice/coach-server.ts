@@ -1,9 +1,9 @@
 import { resolveLearningContext, contextMetadata } from "@/lib/learning-memory/context";
 import { env } from "cloudflare:workers";
-import { authenticatedUserKey } from "@/lib/server-user";
+import { readJsonRequest, requireRequestUser } from "@/lib/assistant/request";
 import { consumeRateLimit, privateJson } from "@/lib/http";
 import { AssistantInputError, AssistantUpstreamError } from "@/lib/assistant/core";
-import { assistantErrorResponse, assertSameOrigin, authenticatedRuntime, complete, readJsonRequest } from "@/lib/assistant/server";
+import { assistantErrorResponse, meteredRuntime, complete } from "@/lib/assistant/server";
 import { VOICE_TOPICS, type VoiceLevel, type VoiceTopicId } from "./curriculum";
 import { type VoiceMemory, type VoicePlan, type VoiceDiscussionMessage } from "./coaching";
 
@@ -11,12 +11,6 @@ function invalid(message: string): never { throw new AssistantInputError("invali
 function database() {
   if (!env.DB) throw new AssistantInputError("voice_memory_unavailable", "暂时无法读取学习记忆，请稍后重试。", 503);
   return env.DB;
-}
-async function identity(request: Request) {
-  assertSameOrigin(request);
-  const userKey = await authenticatedUserKey();
-  if (!userKey) throw new AssistantInputError("authentication_required", "请先登录站点。", 401);
-  return userKey;
 }
 async function rateLimit(userKey: string, lane: string, limit: number) {
   const start = Math.floor(Date.now() / 60_000) * 60_000;
@@ -90,10 +84,10 @@ export function sanitizeRecommendations(content: string): VoicePlan[] {
 }
 export async function recommendVoicePractice(request: Request) {
   try {
-    const userKey = await identity(request), body = object(await readJsonRequest(request));
+    const userKey = await requireRequestUser(request), body = await readJsonRequest(request);
     const input = { topicId: topic(body.topicId), level: level(body.level), minutes: minutes(body.minutes), customTopic: body.customTopic === undefined ? "" : text(body.customTopic, "练习想法", 600, true), recentTopics: body.recentTopics === undefined ? [] : recentTopics(body.recentTopics) };
     await rateLimit(userKey, "recommend", 6);
-    const context = await resolveLearningContext(userKey, body), memory = context.memory, config = await authenticatedRuntime(request);
+    const context = await resolveLearningContext(userKey, body), memory = context.memory, config = await meteredRuntime(userKey);
     const { completion } = await complete(config, request, {
       model: config.model, stream: false, max_tokens: 2200, response_format: { type: "json_object" },
       ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
@@ -124,12 +118,12 @@ export function sanitizeDiscussion(content: string) {
 }
 export async function discussVoicePractice(request: Request) {
   try {
-    const userKey = await identity(request), body = object(await readJsonRequest(request));
+    const userKey = await requireRequestUser(request), body = await readJsonRequest(request);
     const input = { topicId: topic(body.topicId), level: level(body.level), transcript: turns(body.transcript, "练习转写", 100, 18000), messages: turns(body.messages, "复盘对话", 20, 12000) };
     if (!input.transcript.some((turn) => turn.role === "user")) return invalid("请先完成一次有发言的口语练习。");
     if (input.messages.length && input.messages.at(-1)?.role !== "user") return invalid("请提交你的复盘问题。");
     await rateLimit(userKey, "discuss", 10);
-    const context = await resolveLearningContext(userKey, body), memory = context.memory, config = await authenticatedRuntime(request);
+    const context = await resolveLearningContext(userKey, body), memory = context.memory, config = await meteredRuntime(userKey);
     const { completion } = await complete(config, request, {
       model: config.model, stream: false, max_tokens: 1800, response_format: { type: "json_object" },
       ...(config.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),

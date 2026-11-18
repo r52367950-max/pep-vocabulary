@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useEffectEvent } from "react";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { LearnMode } from "@/lib/learn";
+import { PracticeOption } from "./practice-option";
 import { CoursePicker } from "./shared";
 import { StudioSymbol, type SymbolName } from "./symbol";
 
@@ -45,17 +46,11 @@ export default function VocabularyPractice({ data, bookId, unit, weak, onCourse,
       </section>
       <div className="practice-grid">
         {ways.map(way => (
-          <button key={way.id} className="practice-option" onClick={() => onLearn(way.id)}>
-            <StudioSymbol name={way.symbol} size={28} />
-            <span><strong>{way.title}</strong><small>{way.detail}</small></span>
-            <ChevronRight size={17} aria-hidden="true" />
-          </button>
+          <PracticeOption key={way.id} symbol={way.symbol} title={way.title} detail={way.detail}
+            onClick={() => onLearn(way.id)} />
         ))}
-        <button className="practice-option" onClick={onMistakes}>
-          <StudioSymbol name="review" size={28} />
-          <span><strong>错词重练</strong><small>{weak ? `${weak} 个词待巩固` : "当前范围暂无待巩固词"}</small></span>
-          <ChevronRight size={17} aria-hidden="true" />
-        </button>
+        <PracticeOption symbol="review" title="错词重练" detail={weak ? `${weak} 个词待巩固` : "当前范围暂无待巩固词"}
+          onClick={onMistakes} />
       </div>
     </div>
   );

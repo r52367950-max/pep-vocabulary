@@ -14,6 +14,7 @@
 | 发布记录 | [CHANGELOG](../CHANGELOG.md)；[2.19.2](RELEASE_2.19.2.md)、[2.19.1](RELEASE_2.19.1.md)、[2.19.0](RELEASE_2.19.0.md)、[2.18.1](RELEASE_2.18.1.md)、[2.18.0](RELEASE_2.18.0.md)、[2.17.0](RELEASE_2.17.0.md)、[2.16.0](RELEASE_2.16.0.md)、[2.10.0](RELEASE_2.10.0.md)、[2.9.0](RELEASE_2.9.0.md)、[2.4.0](RELEASE_2.4.0.md)、[2.3.0](RELEASE_2.3.0.md)、[2.2.1](RELEASE_2.2.1.md)、[2.2.0](RELEASE_2.2.0.md)、[2.1.1](RELEASE_2.1.1.md)、[2.1.0](RELEASE_2.1.0.md) |
 | 性能、精简与安全架构的交接 | [OPTIMIZATION_HANDOFF.md](OPTIMIZATION_HANDOFF.md)；结果见 [2.3.0 优化报告](OPTIMIZATION_REPORT_2.3.0.md)，待确认方案见 [SECURITY_PLAN.md](SECURITY_PLAN.md) |
 | 2.4.0 升级（AI、写作、性能、安全） | [UPGRADE_REPORT_2.4.0.md](UPGRADE_REPORT_2.4.0.md)；作文评分依据见 [ESSAY_RUBRIC.md](ESSAY_RUBRIC.md)；AI 提示词评测见 `scripts/ai-harness.mjs` |
+| 2026-11-18 重构与验证 | [可视化报告](refactor-2026-11-18/report.html) · [PDF](refactor-2026-11-18/report.pdf) · [可复核数据](refactor-2026-11-18/evidence.json) |
 | 安全、性能与设计报告 | [2.15.0 优化报告](OPTIMIZATION_REPORT_2.15.0.md) · [三页图文版](OPTIMIZATION_REPORT_2.15.0.pdf) |
 | 2026-11-09 Security Cloud 修复 | [三页报告](SECURITY_FIX_2026-11-09.pdf) · [HTML 设计源](SECURITY_FIX_2026-11-09.html) · [PNG 与验证证据](../artifacts/qa/security-20261109/) |
 | 体验与性能报告 | [2.14.0 优化报告](OPTIMIZATION_REPORT_2.14.0.md) · [两页图文版](OPTIMIZATION_REPORT_2.14.0.pdf) |

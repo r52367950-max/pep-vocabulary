@@ -12,7 +12,7 @@ const index = decodeLexiconIndex(JSON.parse(readFileSync('public/data/v1/index.j
 const manifest = JSON.parse(readFileSync('public/data/v1/manifest.json', 'utf8'));
 async function load(path, previous) {
   if (!previous) return import(pathToFileURL(resolve(path)).href);
-  const source = baseline.source(path);
+  const source = await baseline.source(path);
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   return import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 }

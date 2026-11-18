@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Bookmark, Check, ChevronRight, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import {
@@ -28,17 +28,24 @@ export default function WordDetail({
   const [detail, setDetail] = useState<LexiconDetail>();
   const [failure, setFailure] = useState("");
   const savedNote = data.cards.get(entry.id)?.note || "";
-  const [note, setNote] = useState(savedNote);
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [draft, setDraft] = useState<{ base: string; value: string } | null>(null);
+  const note = draft?.value ?? savedNote;
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const generation = useRef(data.generation).current;
   const { metadata } = data;
-  // Closing keeps an unsaved note rather than discarding it.
-  const close = useCallback(async () => {
-    if (note !== savedNote && !await metadata(entry.id, { note }, generation)) { setSaveFailed(true); return false; }
+  const saveNote = async () => {
+    if (saveState === "saving") return false;
+    if (!draft) return true;
+    setSaveState("saving");
+    const ok = await metadata(entry.id, { note: draft.value, expectedNote: draft.base }, generation);
+    if (ok) setDraft(null);
+    setSaveState(ok ? "saved" : "failed");
+    return ok;
+  };
+  const { dialog, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(async () => {
+    if (!await saveNote()) return false;
     onClose();
-  }, [note, savedNote, metadata, entry.id, generation, onClose]);
-  const { dialog, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(close);
-  const [saved, setSaved] = useState(false);
+  });
   useEffect(() => {
     let active = true;
     loadDetails([entry.id])
@@ -124,21 +131,21 @@ export default function WordDetail({
           <textarea
             maxLength={2000}
             value={note}
+            readOnly={closing || saveState === "saving"}
             onChange={(e) => {
-              setNote(e.target.value);
-              setSaved(false);
+              const base = draft?.base ?? savedNote;
+              const value = e.target.value;
+              setDraft(value === base ? null : { base, value });
+              setSaveState("idle");
             }}
             placeholder="记下容易混淆的地方，或写一个自己的句子。"
           />
           <button
             className="text-button"
-            onClick={async () => {
-              const ok = await data.metadata(entry.id, { note }, generation);
-              setSaved(ok);
-              setSaveFailed(!ok);
-            }}
+            disabled={closing || saveState === "saving" || !draft}
+            onClick={() => void saveNote()}
           >
-            {saved ? (
+            {saveState === "saved" ? (
               <>
                 <Check size={15} aria-hidden="true" />
                 已保存
@@ -147,7 +154,7 @@ export default function WordDetail({
               "保存笔记"
             )}
           </button>
-          {saveFailed && <>
+          {saveState === "failed" && <>
             <small role="status">笔记未保存，文字仍保留在这里。关闭前请先复制保留。</small>
             <button className="text-button" onClick={() => {
               if (window.confirm("笔记尚未保存。请先复制保留；仍要放弃未保存的修改并关闭？")) onClose();
@@ -161,7 +168,8 @@ export default function WordDetail({
         )}
         <button
           className="primary detail-practice"
-          onClick={() => onPractice(entry)}
+          disabled={closing || saveState === "saving"}
+          onClick={async () => { if (await saveNote()) onPractice(entry); }}
         >
           练习这个词 <ChevronRight size={17} aria-hidden="true" />
         </button>

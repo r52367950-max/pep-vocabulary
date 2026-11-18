@@ -93,6 +93,29 @@ test('missing or malformed identity headers are rejected with 401 on every priva
   }
 });
 
+test('every private mutation authenticates before consuming the request body', async () => {
+  asIdentity(null);
+  for (const [path, method] of endpoints().filter(([, method]) => method !== 'GET')) {
+    const request = new Request(`https://app.test${path}`, {
+      method, body: '{}', headers: {
+        'content-type': 'application/json',
+        ...(actions[path] ? { 'x-vocab-action': actions[path] } : {}),
+      },
+    });
+    await assertPrivateError(await modules[path][method](request), 401);
+    assert.equal(request.bodyUsed, false, `${method} ${path}`);
+  }
+});
+
+test('rate limit admission needs a confirmed positive count from storage', async () => {
+  const store = result => ({ prepare: () => ({ bind: () => ({ first: async () => result }) }) });
+  for (const row of [null, {}, { request_count: 0 }, { request_count: '1' }]) {
+    await assert.rejects(consumeRateLimit(store(row), 'test', 60000, 2, 1000), RateLimitStoreError);
+  }
+  assert.equal(await consumeRateLimit(store({ request_count: 1 }), 'test', 60000, 2, 1000), null);
+  assert.equal(await consumeRateLimit(store({ request_count: 3 }), 'test', 60000, 2, 1000), 59);
+});
+
 test('cross-site requests are rejected with 403 before identity or body are used', async () => {
   asIdentity(OWNER);
   for (const [path, method] of endpoints().filter(([, method]) => method !== 'GET')) {
@@ -288,4 +311,17 @@ test('framework API errors become private JSON: 404, 405 with Allow, and 500 wit
   const thrownPage = await secure(async () => { throw new Error('secret stack'); }).fetch(new Request('https://app.test/'));
   assert.equal(thrownPage.status, 500);
   assert.doesNotMatch(await thrownPage.text(), /secret stack/);
+});
+
+test('the Worker strips a standalone report-only policy before forwarding', async () => {
+  for (const [path, enforce] of [['/api/sync', true], ['/', false], ['/', true]]) {
+    const handler = secure(request => {
+      assert.equal(request.headers.has('content-security-policy-report-only'), false);
+      return new Response(null, { status: 204 });
+    }, enforce);
+    const response = await handler.fetch(new Request(`https://app.test${path}`, {
+      headers: { 'content-security-policy-report-only': "default-src 'self'" },
+    }));
+    assert.equal(response.status, 204);
+  }
 });

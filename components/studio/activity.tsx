@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Check, Clock3, Leaf, Play, Target } from "lucide-react";
+import { Play } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { StudyStats } from "@/lib/progress";
 import { forecastDueLoad } from "@/lib/scheduler";
@@ -64,32 +64,19 @@ function ActivityRecord({ data, stats, onPractice, onWord }: {
   const forecast = useMemo(() => forecastDueLoad(data.cards.values(), 7), [data.cards]);
   return (
     <>
-      <div className="activity-metrics">
+      <dl className="activity-metrics">
         {[
-          {
-            Icon: BookIcon,
-            value: history.learnedWords,
-            label: "累计学习词数",
-          },
-          { Icon: Leaf, value: `${stats.streak} 天`, label: "连续学习" },
-          {
-            Icon: Clock3,
-            value: `${stats.todayMinutes} 分钟`,
-            label: "今日作答用时",
-          },
-          {
-            Icon: Check,
-            value: stats.accuracy === null ? "—" : `${stats.accuracy}%`,
-            label: "今日作答正确率",
-          },
-        ].map(({ Icon, value, label }) => (
+          ["累计学习词数", history.learnedWords],
+          ["连续学习", `${stats.streak} 天`],
+          ["今日作答用时", `${stats.todayMinutes} 分钟`],
+          ["今日作答正确率", stats.accuracy === null ? "—" : `${stats.accuracy}%`],
+        ].map(([label, value]) => (
           <div key={label}>
-            <Icon size={20} />
-            <strong>{value}</strong>
-            <span>{label}</span>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
           </div>
         ))}
-      </div>
+      </dl>
       <div className="activity-panels">
         <section className="activity-chart">
           <div className="section-heading">
@@ -166,7 +153,7 @@ function ActivityRecord({ data, stats, onPractice, onWord }: {
                       ` · 正确答案：${event.expectedAnswer}`}
                   </p>
                 </div>
-                <time>
+                <time dateTime={event.timestampUtc}>
                   {new Date(event.timestampUtc).toLocaleDateString("zh-CN", {
                     month: "short",
                     day: "numeric",
@@ -183,4 +170,3 @@ function ActivityRecord({ data, stats, onPractice, onWord }: {
     </>
   );
 }
-const BookIcon = Target;

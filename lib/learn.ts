@@ -6,7 +6,7 @@ import {
   normalizeAnswer,
   type Question,
 } from "./questions";
-import { BOOKS, getBookUnits, selectEntries } from "./study";
+import { selectEntries, textbookOrder } from "./study";
 
 /**
  * Exposure, game and self-test tools. Nothing here writes a review or moves the
@@ -52,41 +52,6 @@ export function shuffle<T>(items: readonly T[], random: () => number): T[] {
 // ---------------------------------------------------------------------------
 // The shared word pool: the textbook selection, in the order the book prints it.
 
-const bookOrder = new Map(BOOKS.map((book, index) => [book.id, index]));
-const headwordCollator = new Intl.Collator("en", {
-  numeric: true,
-  sensitivity: "base",
-});
-
-function textbookOrder(
-  entries: readonly LexiconIndexEntry[],
-  selection: LearnSelection,
-) {
-  const book = selection.bookId || "all";
-  const unit = selection.unit || "all";
-  const unitRank = new Map(
-    getBookUnits(entries, book).map((value, index) => [value, index]),
-  );
-  const place = (entry: LexiconIndexEntry) =>
-    entry.sources.find(
-      (source) =>
-        (book === "all" || source.bookId === book) &&
-        (unit === "all" || source.unit === unit),
-    );
-  return (a: LexiconIndexEntry, b: LexiconIndexEntry) => {
-    const left = place(a);
-    const right = place(b);
-    return (
-      (bookOrder.get(left?.bookId ?? "") ?? 99) -
-        (bookOrder.get(right?.bookId ?? "") ?? 99) ||
-      (unitRank.get(left?.unit ?? "") ?? 999) -
-        (unitRank.get(right?.unit ?? "") ?? 999) ||
-      (left?.printedPage ?? Infinity) - (right?.printedPage ?? Infinity) ||
-      headwordCollator.compare(a.headword, b.headword)
-    );
-  };
-}
-
 /** Selection minus paused cards and proper names, exactly like buildStudyQueue. */
 export function learnPool(
   entries: readonly LexiconIndexEntry[],
@@ -98,7 +63,7 @@ export function learnPool(
       (entry) =>
         cards.get(entry.id)?.status !== "paused" && !entry.flags.properName,
     )
-    .sort(textbookOrder(entries, selection));
+    .sort(textbookOrder(selection));
 }
 
 export function isUnseen(card: StoredCard | undefined) {

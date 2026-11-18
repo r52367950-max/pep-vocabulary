@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronRight, Mic, Play } from "lucide-react";
+import { ChevronRight, Play } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import type { StudyMode } from "@/lib/study";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
 import { timeOfDay } from "@/lib/art";
+import { PracticeOption } from "./practice-option";
 import { CoursePicker } from "./shared";
 import { StudioSymbol } from "./symbol";
 import { Artwork, useDarkAppearance } from "./art";
@@ -67,26 +68,14 @@ export default function Today({ data, bookId, unit, onCourse, due, newCount, wea
       <section className="practice-section home-practice" aria-labelledby="practice-title">
         <div className="section-heading"><h2 id="practice-title">自主练习</h2></div>
         <div className="practice-grid">
-          <button className="practice-option" onClick={onPractice} onPointerEnter={() => preparePractice("vocabulary")} onFocus={() => preparePractice("vocabulary")}>
-            <StudioSymbol name="cards" size={26} />
-            <span><strong>词汇练习</strong><small>{weak ? `词卡、配对、自测 · ${weak} 词待巩固` : "词卡、配对、自测"}</small></span>
-            <ChevronRight size={17} aria-hidden="true" />
-          </button>
-          <button className="practice-option" onClick={() => onVoice("speaking")} onPointerEnter={() => preparePractice("voice")} onFocus={() => preparePractice("voice")}>
-            <span className="practice-entry-symbol"><Mic size={26} strokeWidth={1.6} aria-hidden="true" /></span>
-            <span><strong>口语对话</strong><small>用学过的词聊一聊</small></span>
-            <ChevronRight size={17} aria-hidden="true" />
-          </button>
-          <button className="practice-option" onClick={() => onVoice("dictation")} onPointerEnter={() => preparePractice("voice")} onFocus={() => preparePractice("voice")}>
-            <StudioSymbol name="listen" size={26} />
-            <span><strong>单词听写</strong><small>听单词，也听句子</small></span>
-            <ChevronRight size={17} aria-hidden="true" />
-          </button>
-          <button className="practice-option" onClick={() => onWrite({ targets: [] })} onPointerEnter={() => preparePractice("writing")} onFocus={() => preparePractice("writing")}>
-            <StudioSymbol name="write" size={26} />
-            <span><strong>写作练习</strong><small>用学过的词写一段</small></span>
-            <ChevronRight size={17} aria-hidden="true" />
-          </button>
+          <PracticeOption symbol="cards" title="词汇练习" detail={weak ? `词卡、配对、自测 · ${weak} 词待巩固` : "词卡、配对、自测"}
+            onClick={onPractice} onPrepare={() => preparePractice("vocabulary")} />
+          <PracticeOption symbol="mic" title="口语对话" detail="用学过的词聊一聊"
+            onClick={() => onVoice("speaking")} onPrepare={() => preparePractice("voice")} />
+          <PracticeOption symbol="listen" title="单词听写" detail="听单词，也听句子"
+            onClick={() => onVoice("dictation")} onPrepare={() => preparePractice("voice")} />
+          <PracticeOption symbol="write" title="写作练习" detail="用学过的词写一段"
+            onClick={() => onWrite({ targets: [] })} onPrepare={() => preparePractice("writing")} />
         </div>
       </section>
     </div>

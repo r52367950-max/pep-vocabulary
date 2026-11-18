@@ -316,37 +316,38 @@ export default function VocabApp() {
     observedGeneration.current = data.generation;
     if (previous !== null && previous !== data.generation) discardReplacedSession();
   }, [data.loading, data.generation]);
+  const searchInput = useRef<HTMLInputElement | null>(null);
+  const searchPending = useRef(false);
+  const connectSearchInput = useCallback((node: HTMLInputElement | null) => {
+    searchInput.current = node;
+    if (node && searchPending.current) {
+      node.focus();
+      searchPending.current = false;
+    }
+  }, []);
+  const openSearch = () => {
+    if (view === "lexicon" && searchInput.current) searchInput.current.focus();
+    else {
+      searchPending.current = true;
+      setView("lexicon");
+    }
+  };
   useEffect(() => {
     if (offscreen) return;
     window.scrollTo(0, 0);
+    if (view === "lexicon" && (searchPending.current || document.activeElement === searchInput.current)) return;
+    searchPending.current = false;
     heading.current?.focus({ preventScroll: true });
   }, [view, offscreen]);
   // Reads the latest state when a key arrives, so practice checkpoints do not rebind the listener.
   const onSearchKey = useEffectEvent((event: KeyboardEvent) => {
-    const editing = (event.target as HTMLElement)?.closest(
-      "input, textarea, select, [contenteditable]",
-    );
-    if (
-      !session &&
-      !learn &&
-      !writing &&
-      !voiceOpen &&
-      !selected &&
-      !settingsOpen &&
-      (((event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "k") ||
-        (!editing && event.key === "/"))
-    ) {
-      event.preventDefault();
-      setView("lexicon");
-      setTimeout(
-        () =>
-          document
-            .querySelector<HTMLInputElement>("#lexicon-search")
-            ?.focus(),
-        150,
-      );
-    }
+    if (offscreen || selected || settingsOpen || event.defaultPrevented || event.isComposing || event.repeat || event.altKey) return;
+    const modified = event.metaKey || event.ctrlKey;
+    if (modified ? event.key.toLowerCase() !== "k" || event.shiftKey : event.key !== "/") return;
+    if (!modified && (event.target as HTMLElement)?.closest?.("input, textarea, select, [contenteditable]")) return;
+    if (document.querySelector("dialog[open]")) return;
+    event.preventDefault();
+    openSearch();
   });
   useEffect(() => {
     const key = (event: KeyboardEvent) => onSearchKey(event);
@@ -501,8 +502,12 @@ export default function VocabApp() {
   useBackGuard(
     !!(selected || settingsOpen || session || learn || writing || voiceOpen || view !== "today"),
     () => {
-      if (selected) setSelected(null);
-      else if (settingsOpen) setSettingsOpen(false);
+      if (selected) {
+        const dialog = document.querySelector<HTMLDialogElement>("dialog.word-dialog[open]");
+        // The word dialog saves a draft before allowing any exit, including mobile Back.
+        if (dialog) dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
+        else setSelected(null);
+      } else if (settingsOpen) setSettingsOpen(false);
       else if (session) closeSession();
       else if (learn) setLearn(null);
       else if (writing) setWriting(null);
@@ -543,6 +548,31 @@ export default function VocabApp() {
     }
   };
 
+  const desktopNavButton = ({ id, label, symbol }: (typeof navigation)[number]) => (
+    <button
+      key={id}
+      aria-label={label}
+      title={label}
+      aria-current={navigationView === id ? "page" : undefined}
+      onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
+      onPointerEnter={() => prepareSurface(id)}
+      onFocus={() => prepareSurface(id)}
+    >
+      {id === "chat" ? <CompanionGlyph size={21} /> : <StudioSymbol name={symbol} size={21} />}
+      <span className="nav-label">{label}</span>
+    </button>
+  );
+  const settingsDialog = settingsOpen && (
+    <Suspense fallback={null}>
+      <SettingsDialog
+        initialSection={settingsSection}
+        data={data}
+        onClose={() => { setSettingsOpen(false); setSettingsSection("general"); }}
+        onClear={clear}
+        onReplaced={onReplaced}
+      />
+    </Suspense>
+  );
   const renderContent = () => {
   if (data.loading)
     return (
@@ -636,7 +666,7 @@ export default function VocabApp() {
       <Suspense fallback={<Pending />}>
         <VoiceWorkspace initialTab={voiceInitialTab} entries={scope} onClose={() => setVoiceOpen(false)} onOpenSettings={() => { setSettingsSection("ai"); setSettingsOpen(true); }} />
       </Suspense>
-      {settingsOpen && <Suspense fallback={null}><SettingsDialog initialSection={settingsSection} data={data} onClose={() => { setSettingsOpen(false); setSettingsSection("general"); }} onClear={clear} onReplaced={onReplaced} /></Suspense>}
+      {settingsDialog}
       {toast}
     </>;
   return (
@@ -653,28 +683,12 @@ export default function VocabApp() {
           <Brand />
         </button>
         <nav className="desktop-nav" aria-label="主要导航">
-          {navigation.slice(0, 4).map(({ id, label, symbol }) => (
-            <button
-              key={id}
-              aria-label={label}
-              title={label}
-              aria-current={
-                navigationView === id
-                  ? "page"
-                  : undefined
-              }
-              onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
-              onPointerEnter={() => prepareSurface(id)}
-              onFocus={() => prepareSurface(id)}
-            >
-              {id === "chat" ? <CompanionGlyph size={21} /> : <StudioSymbol name={symbol} size={21} />}
-              <span className="nav-label">{label}</span>
-            </button>
-          ))}
+          {navigation.slice(0, 4).map(desktopNavButton)}
         </nav>
         <div className="sidebar-bottom">
           <button
             className="sidebar-progress"
+            aria-label={`查看学习记录，今天已学习 ${stats.todayWords} 词`}
             onClick={() => setView("activity")}
           >
             <span
@@ -691,24 +705,7 @@ export default function VocabApp() {
             </span>
           </button>
           <nav className="desktop-nav" aria-label="个人导航">
-            {navigation.slice(4).map(({ id, label, symbol }) => (
-              <button
-                key={id}
-                aria-label={label}
-                title={label}
-                aria-current={
-                  navigationView === id
-                    ? "page"
-                    : undefined
-                }
-                onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
-                onPointerEnter={() => prepareSurface(id)}
-                onFocus={() => prepareSurface(id)}
-              >
-                {id === "chat" ? <CompanionGlyph size={21} /> : <StudioSymbol name={symbol} size={21} />}
-                <span className="nav-label">{label}</span>
-              </button>
-            ))}
+            {navigation.slice(4).map(desktopNavButton)}
           </nav>
         </div>
       </aside>
@@ -723,7 +720,7 @@ export default function VocabApp() {
         <div className="mobile-header-actions"><button className="icon-button" aria-label="设置" onClick={() => setSettingsOpen(true)}><StudioSymbol name="settings" size={21} /></button><button
           className="icon-button"
           aria-label="搜索词库"
-          onClick={() => setView("lexicon")}
+          onClick={openSearch}
         >
           <Search size={21} aria-hidden="true" />
         </button></div>
@@ -788,7 +785,7 @@ export default function VocabApp() {
                 bookId={bookId}
                 unit={unit}
                 onCourse={onCourse}
-                initialQuery=""
+                searchInputRef={connectSearchInput}
                 onDetail={setSelected}
                 onStart={startSession}
               />
@@ -830,7 +827,7 @@ export default function VocabApp() {
           </button>
         ))}
       </nav>
-      {settingsOpen && <Suspense fallback={null}><SettingsDialog initialSection={settingsSection} data={data} onClose={() => { setSettingsOpen(false); setSettingsSection("general"); }} onClear={clear} onReplaced={onReplaced} /></Suspense>}
+      {settingsDialog}
       {selected && (
         <Suspense fallback={null}>
           <WordDetail

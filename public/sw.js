@@ -7,6 +7,15 @@ function cacheable(request, response) {
     (!response.url || new URL(response.url).origin === new URL(request.url).origin);
 }
 
+// CORS preloads include the site's Origin. Install and download requests omit it.
+// Both read the same published assets; preserve every other Vary header in the key.
+function assetCacheKey(request) {
+  if (request.headers.get("origin") !== self.location.origin) return request;
+  const headers = new Headers(request.headers);
+  headers.delete("origin");
+  return new Request(request.url, { headers });
+}
+
 async function putSafely(cache, request, response) {
   if (cache && cacheable(request, response)) {
     try { await cache.put(request, response.clone()); } catch { /* A full cache must not break online learning. */ }
@@ -51,33 +60,42 @@ function sameOriginClient(source) {
   catch { return false; }
 }
 
+async function prepareLexicon() {
+  const cache = await caches.open(VERSION);
+  const requestFor = (path) => new Request(new URL(`/data/v1/${path}`, self.location.origin));
+  const manifest = await cache.match(requestFor("manifest.json"));
+  if (!manifest) throw new Error("Missing lexicon manifest");
+  const { chunks } = await manifest.json();
+  if (!Array.isArray(chunks) || !chunks.length || chunks.length > 500 ||
+      chunks.some((chunk) => typeof chunk?.file !== "string" || !/^chunks\/[a-zA-Z0-9_-]+\.json$/.test(chunk.file))) {
+    throw new Error("Invalid lexicon manifest");
+  }
+  const requests = chunks.map((chunk) => requestFor(chunk.file));
+  for (let start = 0; start < requests.length; start += 4) {
+    const batch = await Promise.allSettled(requests.slice(start, start + 4).map(async (request) => {
+      if (await cache.match(request)) return;
+      const response = await fetch(request, { signal: AbortSignal.timeout(20_000) });
+      if (!cacheable(request, response)) throw new Error("Unavailable lexicon chunk");
+      await cache.put(request, response);
+    }));
+    if (batch.some((result) => result.status === "rejected")) throw new Error("Offline download failed");
+  }
+  for (const request of requests) {
+    if (!await cache.match(request)) throw new Error("Incomplete lexicon cache");
+  }
+  return requests.length;
+}
+
+let pendingLexicon;
 self.addEventListener("message", (event) => {
-  // Only pages of this origin may start a download; anything else is ignored silently.
-  if (!sameOriginClient(event.source)) return;
-  if (event.data?.type !== "PREPARE_LEXICON" || !event.ports?.[0]) return;
-  const port = event.ports[0];
-  event.waitUntil((async () => {
-    try {
-      const cache = await caches.open(VERSION);
-      const manifest = await cache.match(new Request(new URL("/data/v1/manifest.json", self.location.origin)));
-      if (!manifest) throw new Error("Missing lexicon manifest");
-      const { chunks } = await manifest.json();
-      if (!Array.isArray(chunks) || !chunks.length || chunks.length > 500 || chunks.some((chunk) => !/^chunks\/[a-zA-Z0-9_-]+\.json$/.test(chunk.file))) throw new Error("Invalid lexicon manifest");
-      for (let start = 0; start < chunks.length; start += 4) {
-        await Promise.all(chunks.slice(start, start + 4).map(async (chunk) => {
-          const request = new Request(new URL(`/data/v1/${chunk.file}`, self.location.origin));
-          if (await cache.match(request)) return;
-          const response = await fetch(request, { signal: AbortSignal.timeout(20_000) });
-          if (!cacheable(request, response)) throw new Error("Unavailable lexicon chunk");
-          await cache.put(request, response);
-        }));
-      }
-      for (const chunk of chunks) {
-        if (!await cache.match(new Request(new URL(`/data/v1/${chunk.file}`, self.location.origin)))) throw new Error("Incomplete lexicon cache");
-      }
-      port.postMessage({ ok: true, files: chunks.length });
-    } catch { port.postMessage({ ok: false }); }
-  })());
+  const port = event.ports?.[0];
+  if (!port || event.data?.type !== "PREPARE_LEXICON" || !sameOriginClient(event.source)) return;
+  // Multiple tabs share the work. A later request can retry after a failed download.
+  pendingLexicon ??= prepareLexicon().finally(() => { pendingLexicon = undefined; });
+  event.waitUntil(pendingLexicon.then(
+    (files) => port.postMessage({ ok: true, files }),
+    () => port.postMessage({ ok: false }),
+  ));
 });
 
 self.addEventListener("fetch", (event) => {
@@ -95,7 +113,7 @@ self.addEventListener("fetch", (event) => {
     // Storage may become unavailable after installation (quota, private mode,
     // browser cleanup). A failed cache lookup must not block a working network.
     const cache = await caches.open(VERSION).catch(() => null);
-    const key = navigation ? new Request(new URL("/", self.location.origin)) : event.request;
+    const key = navigation ? new Request(new URL("/", self.location.origin)) : assetCacheKey(event.request);
     if (!navigation) {
       const cached = await matchSafely(cache, key);
       if (cached) return cached;

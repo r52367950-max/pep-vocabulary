@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -61,8 +62,7 @@ export default function StudySession({
   onRetry: (ids: string[]) => void;
 }) {
   const [details, setDetails] = useState(new Map<string, LexiconDetail>());
-  const [detailError, setDetailError] = useState(false);
-  const [readyStep, setReadyStep] = useState("");
+  const [loadedStep, setLoadedStep] = useState<{ id: string; failed: boolean } | null>(null);
   const [answer, setAnswer] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [correct, setCorrect] = useState<boolean | null>(null);
@@ -92,7 +92,8 @@ export default function StudySession({
   const stepId = sessionEventId(session);
   // Details for the next five words are prefetched, so a cached card is ready at once
   // and the question stays on screen between cards instead of flashing the loader.
-  const ready = readyStep === stepId || detailError || (entry ? details.has(entry.id) : false);
+  const detailError = loadedStep?.id === stepId && loadedStep.failed;
+  const ready = loadedStep?.id === stepId || (entry ? details.has(entry.id) : false);
   // A ready question is a checkpoint: optional output and cross-tab reviews may
   // change its card, while the displayed prompt and grading remain the same.
   const nextQuestionSnapshot = useMemo(
@@ -113,7 +114,6 @@ export default function StudySession({
     setRevealed(false);
     setCorrect(null);
     setHints(0);
-    start.current = Date.now();
     answerTime.current = 0;
     setAudioFailed(false);
     setSpeaking(false);
@@ -132,22 +132,20 @@ export default function StudySession({
                 ...rows.map((row) => [row.id, row] as const),
               ]),
           );
-          setDetailError(false);
-          setReadyStep(stepId);
-          start.current = Date.now();
+          setLoadedStep({ id: stepId, failed: false });
         }
       })
       .catch(() => {
-        if (active) {
-          setDetailError(true);
-          setReadyStep(stepId);
-          start.current = Date.now();
-        }
+        if (active) setLoadedStep({ id: stepId, failed: true });
       });
     return () => {
       active = false;
     };
   }, [session.queue, session.position, stepId]);
+  // A cached prompt is answerable while the next words are loading.
+  useLayoutEffect(() => {
+    if (ready) start.current = performance.now();
+  }, [ready, stepId]);
   const controls = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (entry && !revealed) input.current?.focus();
@@ -198,7 +196,7 @@ export default function StudySession({
       }
       answerTime.current = Math.min(
         300_000,
-        Math.max(0, Date.now() - start.current),
+        Math.max(0, Math.round(performance.now() - start.current)),
       );
       setCorrect(forgot ? false : gradeQuestion(question, answer));
       setRevealed(true);

@@ -103,18 +103,31 @@ export const getOne = <T>(store: StoreName, key: IDBValidKey) => transaction<T |
 export const getAll = <T>(store: StoreName) => transaction<T[]>(store, "readonly", (target) => target.getAll());
 export const putOne = <T>(store: StoreName, value: T) => transaction<IDBValidKey>(store, "readwrite", (target) => target.put(value));
 
-export function updateCardMetadata(fallback: StoredCard, patch: { note?: string; toggleFavorite?: boolean }, generation?: string) {
-  return generationTransaction<StoredCard>(["cards"], "readwrite", generation, (tx, result) => {
+export type CardMetadataPatch = { note?: string; expectedNote?: string; toggleFavorite?: boolean };
+
+export class NoteConflictError extends Error {
+  constructor() { super("另一页面已修改这条笔记，请先复制草稿，再打开最新笔记。"); }
+}
+
+export async function updateCardMetadata(fallback: StoredCard, patch: CardMetadataPatch, generation?: string) {
+  const updated = await generationTransaction<StoredCard | null>(["cards"], "readwrite", generation, (tx, result) => {
     const store = tx.objectStore("cards");
     const request = store.get(fallback.id);
     request.onsuccess = () => {
       const current: StoredCard = request.result || fallback;
+      if (patch.note !== undefined && patch.expectedNote !== undefined &&
+          (current.note || "") !== patch.expectedNote && current.note !== patch.note) {
+        result(null);
+        return;
+      }
       const next = { ...current, ...(patch.note === undefined ? {} : { note: patch.note }),
         ...(patch.toggleFavorite ? { favorite: !current.favorite } : {}), updatedAt: new Date().toISOString() };
       store.put(next);
       result(next);
     };
   });
+  if (!updated) throw new NoteConflictError();
+  return updated;
 }
 
 export async function commitReview(event: ReviewEvent, generation?: string) {

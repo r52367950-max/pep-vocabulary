@@ -137,3 +137,43 @@ test('browser client normalizes optional fields against real journal routes and 
   await recordLearningActivity({eventId:'reading:daily',kind:'reading',title:'阅读练习'});
   assert.equal((await view()).days[0].eventCount,1);
 });
+
+test('ignored offline activity preserves the visible day and its timestamp after recording resumes', async () => {
+  const db = setup();
+  const initial = await view();
+  const oldEvent = event(initial);
+  const saved = await ok(await POST(req('POST', oldEvent)));
+  const toggle = (state, enabled) => PUT(req('PUT', { accountScope: state.accountScope, revision: state.revision, enabled })).then(ok);
+  const resumed = await toggle(await toggle(saved, false), true);
+  db.prepare('UPDATE learning_journal_days SET updated_at=?').run('2026-01-01T00:00:00Z');
+  const current = await view();
+  const replay = await ok(await POST(req('POST', { ...oldEvent, privacyRevision: resumed.privacyRevision, eventId: 'offline:delayed' })));
+  assert.equal(replay.ignored, 'excluded');
+  assert.deepEqual(replay.days, current.days);
+  assert.equal(replay.revision, current.revision);
+});
+
+test('day previews and assistant sources preserve ordering, full-day references and account isolation', async () => {
+  setup();
+  const initial = await view();
+  const occurredAt = new Date(Date.now() - 60_000).toISOString();
+  const activity = (i, meta = initial) => event(meta, {
+    eventId: 'event:' + String(i).padStart(2, '0'), occurredAt, refIds: ['ref-' + i],
+  });
+  for (let i = 0; i < 24; i++) await ok(await POST(req('POST', activity(i))));
+  const beforeDelete = await view();
+  await ok(await DELETE(req('DELETE', { accountScope: initial.accountScope, revision: beforeDelete.revision, eventId: 'event:22' })));
+  requestHeaders.set('oai-authenticated-user-email', 'second-journal@example.test');
+  const other = await view();
+  await ok(await POST(req('POST', { ...activity(23, other), title: '其他账号', refIds: ['other-ref'] })));
+  requestHeaders.set('oai-authenticated-user-email', 'journal-owner@example.test');
+  const [day] = (await view()).days;
+  const orderedIds = Array.from({ length: 24 }, (_, i) => activity(23 - i).eventId).filter(id => id !== 'event:22');
+  assert.deepEqual(day.events.map(e => e.eventId), orderedIds.slice(0, 20));
+  assert.equal(day.eventCount, 23);
+  assert.equal(day.eventsTruncated, true);
+  assert.ok(day.events.every(e => e.title !== '其他账号'));
+  const [context] = (await resolveLearningContext(await authenticatedUserKey(), {})).memory.learningJournal;
+  assert.deepEqual(context.sourceEventIds, orderedIds.slice(0, 8));
+  assert.deepEqual(context.refIds, Array.from({ length: 24 }, (_, i) => 'ref-' + i).filter(id => id !== 'ref-22').sort());
+});

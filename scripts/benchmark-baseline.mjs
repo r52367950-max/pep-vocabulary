@@ -1,8 +1,15 @@
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const runGit = promisify(execFile);
 
 // These exact historical implementations were reviewed for the comparisons
 // below. Adding a baseline requires reviewing every executed module/slice here.
 const reviewed = {
+  request: {
+    revisions: ['f10737e675cf5e55352f0a9d2808600eb19e664d'],
+    paths: ['lib/http.ts'],
+  },
   core: {
     revisions: ['3b12529a574addbb3064df865a1849e43a3600fb'],
     paths: ['lib/questions.ts', 'lib/lexicon.ts'],
@@ -10,6 +17,10 @@ const reviewed = {
   backend: {
     revisions: ['e2e9e25b350e9cbaf7b2fa6c5da4063cc26d2a70'],
     paths: ['lib/assistant/core.ts'],
+  },
+  journal: {
+    revisions: ['f10737e675cf5e55352f0a9d2808600eb19e664d'],
+    paths: ['lib/learning-journal/store.ts'],
   },
   reading: {
     revisions: ['0b8610b1375b2e165aa785df974af78962a78962', '3eb187535a9d5c678d9a4116d5012fd4c87f9007'],
@@ -32,11 +43,12 @@ export function benchmarkBaseline(kind, requested) {
   }
   return {
     revision,
-    source(path) {
+    async source(path) {
       if (!policy.paths.includes(path)) throw new Error('Unreviewed benchmark source path');
       // Disable replacement refs too: approved commit IDs must resolve to their
       // original content, never a locally substituted tree or blob.
-      return execFileSync('git', ['--no-replace-objects', 'show', `${revision}:${path}`], { encoding: 'utf8' });
+      const { stdout } = await runGit('git', ['--no-replace-objects', 'show', `${revision}:${path}`], { encoding: 'utf8' });
+      return stdout;
     },
   };
 }

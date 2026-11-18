@@ -1,23 +1,16 @@
 import { env } from 'cloudflare:workers';
-import { authenticatedUserKey } from '../server-user';
-import { consumeRateLimit, privateJson, readJsonObject, RequestBodyError } from '../http';
+import { readJsonRequest, requireRequestUser } from "../assistant/request";
+import { consumeRateLimit, privateJson } from '../http';
 import { AssistantInputError, AssistantUpstreamError, usesOpenAIResponses, fetchCompletion } from '../assistant/core';
-import { assistantErrorResponse, assertSameOrigin, authenticatedRuntime, complete, readJsonRequest } from '../assistant/server';
+import { assistantErrorResponse, meteredRuntime, complete } from '../assistant/server';
 import { fetchAiProvider } from '../ai-config';
 import { reserveTokens, settleTokens } from '../assistant/usage';
 import { contextMetadata, resolveLearningContext, learningContextData } from '../learning-memory/context';
 import { retrieveReadingDictationCandidates } from './reading-candidates';
 import { journalDays, journalMetadata } from '../learning-journal/store';
-import type { LexiconIndexEntry } from '../lexicon';
-import { decodeLexiconIndex } from '../lexicon-index-codec.mjs';
+import { loadReleaseIndex } from '../assistant/release-index';
 import { operationId, parsePlanInput, allowsTopicWords, retrieveDictationCandidates, parseDictationPlan, parseDictationImage, parseRecognizedRows } from './dictation-planner';
 
-async function identity(request: Request) {
-  assertSameOrigin(request);
-  const user = await authenticatedUserKey();
-  if (!user) throw new AssistantInputError('authentication_required', '请先登录。', 401);
-  return user;
-}
 /** Durable admission, never retry an ambiguous paid operation automatically. No photos/text persisted. */
 async function claim(user: string, lane: string, id: string) {
   if (!env.DB) throw new AssistantInputError('unavailable', '用量服务暂时不可用。', 503);
@@ -29,18 +22,13 @@ async function claim(user: string, lane: string, id: string) {
 function upstreamInvalid(): never { throw new AssistantUpstreamError('invalid_dictation_result', '模型未返回完整有效的结果，请重新确认输入。', 502, true); }
 export async function planDictation(request: Request): Promise<Response> {
   try {
-    const user = await identity(request), body = await readJsonRequest(request) as Record<string, unknown>;
+    const user = await requireRequestUser(request), body = await readJsonRequest(request);
     const id = operationId(body.operationId), input = parsePlanInput(body);
-    const configured = await authenticatedRuntime(request), context = await resolveLearningContext(user, body);
+    const configured = await meteredRuntime(user), context = await resolveLearningContext(user, body);
     if (!usesOpenAIResponses(configured.baseUrl)) throw new AssistantInputError('official_openai_required', '此听写功能需要官方 OpenAI API 配置。', 400);
     const config = { ...configured, model: 'gpt-6.1-terra' };
     const assets = (env as unknown as { ASSETS?: { fetch: typeof fetch } }).ASSETS;
     if (!assets) throw new AssistantInputError('unavailable', '正式词库暂时不可用。', 503);
-    const response = await assets.fetch(new Request(new URL('/data/v1/index.json', request.url)));
-    if (!response.ok) throw new AssistantInputError('unavailable', '正式词库暂时不可用。', 503);
-    let rows: LexiconIndexEntry[];
-    try { rows = decodeLexiconIndex(await response.json()) as LexiconIndexEntry[]; }
-    catch { throw new AssistantInputError('unavailable', '正式词库格式无效。', 503); }
     const journal = context.enabled && (await journalMetadata(user)).enabled ? await journalDays(user, 7) : [];
     await resolveLearningContext(user, { ...body, ...contextMetadata(context) });
     const recentRefs = journal.flatMap(day => day.events.slice(0, 8).flatMap(event => event.refIds)).slice(0, 80);
@@ -48,6 +36,7 @@ export async function planDictation(request: Request): Promise<Response> {
       query: input.text || input.messages.filter(message => message.role === 'user').at(-1)?.text || input.topic,
       recentRefs,
     });
+    const rows = reading.articleRequested ? [] : await loadReleaseIndex(assets, request);
     await resolveLearningContext(user, { ...body, ...contextMetadata(context) });
     if (request.signal.aborted) throw new AssistantInputError('request_aborted', '请求已取消。', 499);
     // An explicit unavailable article must not silently turn into unrelated vocabulary.
@@ -80,12 +69,10 @@ export async function planDictation(request: Request): Promise<Response> {
 }
 export async function recognizeDictation(request: Request): Promise<Response> {
   try {
-    const user = await identity(request);
-    let body: Record<string, unknown>;
-    try { body = await readJsonObject(request, 4 * 1024 * 1024); }
-    catch (error) { if (error instanceof RequestBodyError) throw new AssistantInputError('invalid_request', error.message, error.status); throw error; }
+    const user = await requireRequestUser(request);
+    const body = await readJsonRequest(request, 4 * 1024 * 1024);
     const id = operationId(body.operationId), image = parseDictationImage(body.image);
-    const configured = await authenticatedRuntime(request), context = await resolveLearningContext(user, body);
+    const configured = await meteredRuntime(user), context = await resolveLearningContext(user, body);
     // This feature uses Terra explicitly; general text settings remain unchanged.
     if (!usesOpenAIResponses(configured.baseUrl)) throw new AssistantInputError('official_openai_required', '拍照识别需要官方 OpenAI API 配置。', 400);
     const config = { ...configured, model: 'gpt-6.1-terra' };

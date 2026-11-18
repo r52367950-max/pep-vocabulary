@@ -1,12 +1,11 @@
 import { env } from 'cloudflare:workers';
-import { authenticatedUserKey } from '../server-user';
+import { readJsonRequest, requireRequestUser } from "../assistant/request";
 import { consumeRateLimit, privateJson } from '../http';
 import { AssistantInputError } from '../assistant/core';
-import { assistantErrorResponse, assertSameOrigin, readJsonRequest } from '../assistant/server';
+import { assistantErrorResponse } from '../assistant/server';
 import { journalDays, journalMetadata } from '../learning-journal/store';
 import { contextMetadata, resolveLearningContext } from '../learning-memory/context';
-import type { LexiconIndexEntry } from '../lexicon';
-import { decodeLexiconIndex } from '../lexicon-index-codec.mjs';
+import { loadReleaseIndex } from '../assistant/release-index';
 import { retrieveReadingDictationCandidates } from './reading-candidates';
 import { parsePlanInput, retrieveDictationCandidates } from './dictation-planner';
 
@@ -45,10 +44,8 @@ export function parseLiveDictationArguments(value: unknown) {
 /** This read-only tool uses the backend's query, never a browser-selected account or invented answer. */
 export async function prepareLiveDictation(request: Request): Promise<Response> {
   try {
-    assertSameOrigin(request);
-    const user = await authenticatedUserKey();
-    if (!user) throw new AssistantInputError('authentication_required', '请先登录。', 401);
-    const body = await readJsonRequest(request) as Record<string, unknown>;
+    const user = await requireRequestUser(request);
+    const body = await readJsonRequest(request);
     if (body.name !== 'prepare_dictation' || typeof body.callId !== 'string' || !/^[A-Za-z0-9_-]{1,200}$/.test(body.callId) || typeof body.sessionId !== 'string' || !/^[A-Za-z0-9_-]{4,200}$/.test(body.sessionId)) throw new AssistantInputError('invalid_request', '学习工具请求无效。');
     const args = parseLiveDictationArguments(body.arguments);
     const context = await resolveLearningContext(user, body);
@@ -60,19 +57,13 @@ export async function prepareLiveDictation(request: Request): Promise<Response> 
     if (await consumeRateLimit(env.DB, `voice-learning-tool:${user}:${minute}`, (minute + 1) * 60_000, 20) !== null) throw new AssistantInputError('rate_limited', '学习检索过于频繁，请稍后再试。', 429);
     const assets = (env as unknown as { ASSETS?: { fetch: typeof fetch } }).ASSETS;
     if (!assets) throw new AssistantInputError('unavailable', '正式词库暂不可用。', 503);
-    const response = await assets.fetch(new Request(new URL('/data/v1/index.json', request.url)));
-    if (!response.ok) throw new AssistantInputError('unavailable', '正式词库暂不可用。', 503);
-    let rows: LexiconIndexEntry[];
-    try { rows = decodeLexiconIndex(await response.json()) as LexiconIndexEntry[]; }
-    catch { throw new AssistantInputError('unavailable', '正式词库格式无效。', 503); }
     const journal = context.enabled && (await journalMetadata(user)).enabled ? await journalDays(user, 7) : [];
     const recentRefs = journal.flatMap(day => day.events.slice(0, 8).flatMap(event => event.refIds)).slice(0, 80);
     const reading = await retrieveReadingDictationCandidates(assets, request, { query: args.query, recentRefs });
-    const vocabulary = retrieveDictationCandidates(rows, parsePlanInput({ text: args.query }), {
+    const candidates = reading.articleRequested ? reading.items : retrieveDictationCandidates(await loadReleaseIndex(assets, request), parsePlanInput({ text: args.query }), {
       recentRefs,
       recentSummaries: journal.map(day => day.summary.slice(0, 1200)), allowDefault: true,
-    });
-    const candidates = reading.articleRequested ? reading.items : vocabulary.filter(item => item.mode === args.mode);
+    }).filter(item => item.mode === args.mode);
     const items = candidates.slice(0, args.count);
     // Content may have changed while reading the asset; do not attach stale account context.
     await resolveLearningContext(user, body);

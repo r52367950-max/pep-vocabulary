@@ -33,7 +33,7 @@ test('article request retrieves real library sentences and unavailable article n
  const catalog=JSON.parse(readFileSync(new URL('../public/readings/v1/index.json',import.meta.url),'utf8'));const article=catalog[0];
  const original=globalThis.fetch;let chosen,calls=0;
  globalThis.fetch=async(_url,init)=>{calls++;const payload=JSON.parse(init.body);const supplied=JSON.parse(payload.input[1].content);chosen=supplied.candidates[0];assert.match(chosen.id,/^reading:/);return Response.json({id:'resp_article',object:'response',status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({itemIds:[chosen.id]})}]}],usage:{input_tokens:100,output_tokens:20,total_tokens:120}});};
- try{const result=await planDictation(json({operationId:'article-test-1234',text:`听写文章《${article.title}》`}));assert.equal(result.status,200,await result.clone().text());assert.equal((await result.json()).items[0].text,chosen.text);assert.ok(paths.some(path=>path.includes('/articles/')));
+ try{const result=await planDictation(json({operationId:'article-test-1234',text:`听写文章《${article.title}》`}));assert.equal(result.status,200,await result.clone().text());assert.equal((await result.json()).items[0].text,chosen.text);assert.ok(paths.some(path=>path.includes('/articles/')));assert.ok(!paths.includes('/data/v1/index.json'), 'article dictation does not read the vocabulary index');
  const missing=await planDictation(json({operationId:'article-test-missing',text:'听写文章《This Article Definitely Does Not Exist 938294》'}));assert.equal(missing.status,200,await missing.clone().text());assert.deepEqual((await missing.json()).items,[]);assert.equal(calls,1);
  }finally{globalThis.fetch=original;}
 });
@@ -56,4 +56,19 @@ test('unavailable explicit textbooks and articles still clarify without a paid c
  try{for(const [i,text] of ['未知教材第九册','听写文章《No Such Article 938294》','和冬天意象有关的单词'].entries()){
   const response=await planDictation(json({operationId:`unavailable-scope-${i}`,text,allowTopicWords:i!==2}));assert.equal(response.status,200,await response.clone().text());const result=await response.json();assert.deepEqual(result.items,[]);assert.ok(result.clarification);
  }assert.equal(calls,0);}finally{globalThis.fetch=original;}
+});
+
+test('decoded release rows are reused per deployment and failed reads can retry', async () => {
+  const { loadReleaseIndex } = await import('../lib/assistant/release-index.ts');
+  const request = json({});
+  const bytes = readFileSync(new URL('../public/data/v1/index.json', import.meta.url));
+  let reads = 0;
+  const binding = { fetch: async () => ++reads === 1 ? new Response(null, { status: 503 }) : new Response(bytes) };
+  await assert.rejects(loadReleaseIndex(binding, request), error => error.status === 503);
+  const rows = await loadReleaseIndex(binding, request);
+  assert.ok(rows.length > 1000);
+  for (let i = 0; i < 10; i++) assert.equal(await loadReleaseIndex(binding, request), rows);
+  assert.equal(reads, 2);
+  const nextRelease = { fetch: async () => Response.json([]) };
+  assert.deepEqual(await loadReleaseIndex(nextRelease, request), []);
 });
