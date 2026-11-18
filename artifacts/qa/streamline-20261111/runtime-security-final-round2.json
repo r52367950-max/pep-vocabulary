@@ -1,0 +1,1237 @@
+{
+  "timestamp": "2026-11-11T07:53:59.199Z",
+  "routes": 28,
+  "checks": [
+    {
+      "path": "/api/sync",
+      "method": "GET",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/sync",
+      "method": "GET",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "GET",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "GET",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "DELETE",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "DELETE",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "DELETE",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "DELETE",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "DELETE",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/test",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/ai/test",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/test",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/test",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/ai/test",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/chat",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/chat",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/chat",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/chat",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/chat",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/check-sentence",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/check-sentence",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/check-sentence",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/check-sentence",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/check-sentence",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/contrast-words",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/contrast-words",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/contrast-words",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/contrast-words",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/contrast-words",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/explain",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/explain",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/explain",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/explain",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/explain",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/generate-practice",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/generate-practice",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/generate-practice",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/generate-practice",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/generate-practice",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/review-essay",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/review-essay",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/review-essay",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/review-essay",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/review-essay",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/mnemonic",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/mnemonic",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/mnemonic",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/mnemonic",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/mnemonic",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/story",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/story",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/story",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/story",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/story",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/diagnose",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/assistant/diagnose",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/diagnose",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/diagnose",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/assistant/diagnose",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/writing/recognize",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/writing/recognize",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/writing/recognize",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/writing/recognize",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/writing/recognize",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/writing/generate-topic",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/writing/generate-topic",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/writing/generate-topic",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/writing/generate-topic",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/writing/generate-topic",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/reading/classify",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/reading/classify",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/reading/classify",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/status",
+      "method": "GET",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/status",
+      "method": "GET",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/status",
+      "method": "GET",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/status",
+      "method": "GET",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/status",
+      "method": "GET",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/learning-tool",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/learning-tool",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/learning-tool",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/learning-tool",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/learning-tool",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/session",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/session",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/session",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/session",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/session",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/close",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/close",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/close",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/close",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/close",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/speech",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/speech",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/speech",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/speech",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/speech",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/feedback",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/feedback",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/feedback",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/feedback",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/feedback",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "GET",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "GET",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "GET",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "GET",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "GET",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "PUT",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "PUT",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "PUT",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "PUT",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "PUT",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "GET",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "GET",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "GET",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "GET",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "GET",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "PUT",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "PUT",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "PUT",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "PUT",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "PUT",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "GET",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "GET",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "GET",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "GET",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "GET",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "PUT",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "PUT",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "PUT",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "PUT",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "PUT",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "DELETE",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "DELETE",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "DELETE",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "DELETE",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "DELETE",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/recommend",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/recommend",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/recommend",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/recommend",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/recommend",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/dictation-plan",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/dictation-plan",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/dictation-plan",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/dictation-plan",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/dictation-plan",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/dictation-recognize",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/dictation-recognize",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/dictation-recognize",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/dictation-recognize",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/dictation-recognize",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/discuss",
+      "method": "POST",
+      "label": "missing identity",
+      "status": 401
+    },
+    {
+      "path": "/api/voice/discuss",
+      "method": "POST",
+      "label": "foreign origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/discuss",
+      "method": "POST",
+      "label": "opaque origin",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/discuss",
+      "method": "POST",
+      "label": "cross-site fetch",
+      "status": 403
+    },
+    {
+      "path": "/api/voice/discuss",
+      "method": "POST",
+      "label": "untrusted ingress",
+      "status": 401
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "GET",
+      "label": "authenticated normal control",
+      "status": 200
+    },
+    {
+      "path": "/api/learning-memory",
+      "method": "GET",
+      "label": "authenticated normal control",
+      "status": 200
+    },
+    {
+      "path": "/api/voice/memory",
+      "method": "GET",
+      "label": "authenticated normal control",
+      "status": 200
+    },
+    {
+      "path": "/api/sync",
+      "method": "GET",
+      "label": "authenticated normal control",
+      "status": 200
+    },
+    {
+      "path": "/api/ai/config",
+      "method": "GET",
+      "label": "authenticated normal control",
+      "status": 200
+    },
+    {
+      "path": "/api/learning-journal/",
+      "label": "private path variant",
+      "status": 200
+    },
+    {
+      "path": "/api/learning-journal?test=1",
+      "label": "private path variant",
+      "status": 200
+    },
+    {
+      "path": "/api/learning-journal",
+      "method": "POST",
+      "label": "normal JSON mutation control",
+      "status": 200
+    },
+    {
+      "path": "/",
+      "method": "GET",
+      "label": "normal HTML control",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "path": "/.rsc",
+      "method": "GET",
+      "label": "normal RSC control",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "label": "unsupported ordinary form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "label": "unsupported malformed action form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "label": "unsupported unknown action form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "label": "unsupported cross-site form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "label": "unsupported x-rsc-action",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "path": "/",
+      "method": "POST",
+      "label": "unsupported next-action",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "path": "/.rsc",
+      "method": "POST",
+      "label": "unsupported ordinary form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/.rsc",
+      "method": "POST",
+      "label": "unsupported malformed action form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/.rsc",
+      "method": "POST",
+      "label": "unsupported unknown action form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/.rsc",
+      "method": "POST",
+      "label": "unsupported cross-site form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/.rsc",
+      "method": "POST",
+      "label": "unsupported x-rsc-action",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "path": "/.rsc",
+      "method": "POST",
+      "label": "unsupported next-action",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "unsupported ordinary form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "unsupported malformed action form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "unsupported unknown action form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "unsupported cross-site form",
+      "status": 415,
+      "expected": 415
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "unsupported x-rsc-action",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "path": "/api/sync",
+      "method": "POST",
+      "label": "unsupported next-action",
+      "status": 404,
+      "expected": 404
+    }
+  ],
+  "failures": []
+}

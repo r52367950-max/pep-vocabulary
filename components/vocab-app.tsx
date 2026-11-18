@@ -30,6 +30,8 @@ import {
 import { clearUserData, createLocalId } from "@/lib/storage";
 import { clearLocalPracticeData } from "@/lib/local-practice-data";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
+import { shuffleWords } from "@/lib/word-order";
+import type { WordDetailHandle } from "./studio/word-detail";
 import type { LearnMode } from "@/lib/learn";
 import Today from "./studio/today";
 import { Brand } from "./studio/shared";
@@ -170,6 +172,18 @@ export default function VocabApp() {
   const [voiceInitialTab, setVoiceInitialTab] = useState<"speaking" | "dictation">("speaking");
   const [unit, setUnit] = useState("all");
   const [selected, setSelected] = useState<LexiconIndexEntry | null>(null);
+  const detailHandle = useRef<WordDetailHandle>(null);
+  const detailTransition = useRef(false);
+  const selectWord = useCallback(async (entry: LexiconIndexEntry | null) => {
+    if (detailTransition.current) return false;
+    detailTransition.current = true;
+    try {
+      if (detailHandle.current && !await detailHandle.current.save()) return false;
+      if (observedGeneration.current !== data.generation) return false;
+      setSelected(entry);
+      return true;
+    } finally { detailTransition.current = false; }
+  }, [data.generation]);
   const [session, setSession] = useState<StudySessionState | null>(null);
   const [companionSessionId, setCompanionSessionId] = useState<string | null>(null);
   const companionPractice = useRef<{ sessionId: string; generation: string; mode: "dictation" | "review"; title: string; rounds: RoundAnswer[][]; onResult: (result: PracticeResult) => void } | null>(null);
@@ -325,7 +339,8 @@ export default function VocabApp() {
       searchPending.current = false;
     }
   }, []);
-  const openSearch = () => {
+  const openSearch = async () => {
+    if (selected && !await selectWord(null)) return;
     if (view === "lexicon" && searchInput.current) searchInput.current.focus();
     else {
       searchPending.current = true;
@@ -341,13 +356,13 @@ export default function VocabApp() {
   }, [view, offscreen]);
   // Reads the latest state when a key arrives, so practice checkpoints do not rebind the listener.
   const onSearchKey = useEffectEvent((event: KeyboardEvent) => {
-    if (offscreen || selected || settingsOpen || event.defaultPrevented || event.isComposing || event.repeat || event.altKey) return;
+    if (offscreen || settingsOpen || event.defaultPrevented || event.isComposing || event.repeat || event.altKey) return;
     const modified = event.metaKey || event.ctrlKey;
     if (modified ? event.key.toLowerCase() !== "k" || event.shiftKey : event.key !== "/") return;
     if (!modified && (event.target as HTMLElement)?.closest?.("input, textarea, select, [contenteditable]")) return;
     if (document.querySelector("dialog[open]")) return;
     event.preventDefault();
-    openSearch();
+    void openSearch();
   });
   useEffect(() => {
     const key = (event: KeyboardEvent) => onSearchKey(event);
@@ -372,7 +387,8 @@ export default function VocabApp() {
   );
   // Stable between data changes, so views kept mounted in the background are not re-rendered
   // by every shell render.
-  const startSession = useCallback((mode: StudyMode, custom?: LexiconIndexEntry[]) => {
+  const startSession = useCallback(async (mode: StudyMode, custom?: LexiconIndexEntry[]) => {
+    if (!await selectWord(null)) return;
     const queue = custom?.length
       ? custom
           .filter((entry) => data.cards.get(entry.id)?.status !== "paused")
@@ -399,7 +415,7 @@ export default function VocabApp() {
       id: createLocalId(),
       mode,
       title: custom?.length && mode === "daily" ? "单词练习" : modeTitle[mode],
-      queue: [...new Set(queue.map((entry) => entry.id))],
+      queue: [...new Set((mode === "dictation" ? shuffleWords(queue) : queue).map((entry) => entry.id))],
       position: 0,
       startedAt: Date.now(),
       results: [],
@@ -409,7 +425,7 @@ export default function VocabApp() {
     setResume(null);
     checkpoint(next);
     return next;
-  }, [data.cards, data.index, dailyQueue, bookId, unit, scope, checkpoint]);
+  }, [data.cards, data.index, dailyQueue, bookId, unit, scope, checkpoint, selectWord]);
   const { updateSettings } = data;
   const onCourse = useCallback((book: string, nextUnit: string) => {
     setUnit(nextUnit);
@@ -424,28 +440,30 @@ export default function VocabApp() {
     [startSession],
   );
   // Stable Today props, so switching tabs does not re-render the Today view behind them.
-  const onLearn = useCallback((mode: LearnMode) => {
-    setSelected(null);
+  const onLearn = useCallback(async (mode: LearnMode) => {
+    if (!await selectWord(null)) return;
     setLearn(mode);
-  }, []);
-  const onWrite = useCallback((options: { targets?: string[]; openId?: string | null }) => {
-    setSelected(null);
+  }, [selectWord]);
+  const onWrite = useCallback(async (options: { targets?: string[]; openId?: string | null }) => {
+    if (!await selectWord(null)) return;
     setWriting(options);
-  }, []);
-  const showLexicon = useCallback(() => setView("lexicon"), []);
-  const navigateCompanion = useCallback((next: CompanionView) => setView(productView[next]), []);
-  const showPractice = useCallback(() => setView("practice"), []);
-  const showToday = useCallback(() => setView("today"), []);
-  const showVoice = useCallback((tab: "speaking" | "dictation" = "speaking") => { setVoiceInitialTab(tab); setVoiceOpen(true); }, []);
+  }, [selectWord]);
+  const navigateView = useCallback(async (next: View) => { if (await selectWord(null)) setView(next); }, [selectWord]);
+  const showLexicon = useCallback(() => { void navigateView("lexicon"); }, [navigateView]);
+  const navigateCompanion = useCallback((next: CompanionView) => { void navigateView(productView[next]); }, [navigateView]);
+  const showPractice = useCallback(() => { void navigateView("practice"); }, [navigateView]);
+  const showToday = useCallback(() => { void navigateView("today"); }, [navigateView]);
+  const showVoice = useCallback(async (tab: "speaking" | "dictation" = "speaking") => { if (!await selectWord(null)) return; setVoiceInitialTab(tab); setVoiceOpen(true); }, [selectWord]);
   const resumeSession = useMemo(
     () =>
       resume
-        ? () => {
+        ? async () => {
+            if (!await selectWord(null)) return;
             checkpoint(resume);
             setResume(null);
           }
         : null,
-    [resume, checkpoint],
+    [resume, checkpoint, selectWord],
   );
   // The record page's first-run action matches the Today feature: continue, else start today's plan.
   const startToday = useCallback(() => {
@@ -481,11 +499,11 @@ export default function VocabApp() {
       setView("chat");
     } else setView(current => current === "practice" ? "practice" : "today");
   };
-  const retrySession = (ids: string[]) => {
+  const retrySession = async (ids: string[]) => {
     const wanted = new Set(ids);
     const origin = companionPractice.current;
     const samePractice = Boolean(origin && session && origin.sessionId === session.id && origin.generation === data.generation);
-    const next = startSession(samePractice && origin ? origin.mode : "mistakes", data.index.filter((entry) => wanted.has(entry.id)));
+    const next = await startSession(samePractice && origin ? origin.mode : "mistakes", data.index.filter((entry) => wanted.has(entry.id)));
     if (samePractice && origin && session && next) {
       companionPractice.current = { ...origin, sessionId: next.id, rounds: [...origin.rounds, ...resultRounds(session)] };
       setCompanionSessionId(next.id);
@@ -502,12 +520,8 @@ export default function VocabApp() {
   useBackGuard(
     !!(selected || settingsOpen || session || learn || writing || voiceOpen || view !== "today"),
     () => {
-      if (selected) {
-        const dialog = document.querySelector<HTMLDialogElement>("dialog.word-dialog[open]");
-        // The word dialog saves a draft before allowing any exit, including mobile Back.
-        if (dialog) dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
-        else setSelected(null);
-      } else if (settingsOpen) setSettingsOpen(false);
+      if (settingsOpen) setSettingsOpen(false);
+      else if (selected) void selectWord(null);
       else if (session) closeSession();
       else if (learn) setLearn(null);
       else if (writing) setWriting(null);
@@ -516,10 +530,10 @@ export default function VocabApp() {
     },
   );
   const openCompanionSettings = useCallback(() => { setSettingsSection("ai"); setSettingsOpen(true); }, []);
-  const practiceCompanion = useCallback((ids: string[], mode: "dictation" | "review" = "dictation", title?: string, onResult?: (result: PracticeResult) => void) => {
+  const practiceCompanion = useCallback(async (ids: string[], mode: "dictation" | "review" = "dictation", title?: string, onResult?: (result: PracticeResult) => void) => {
     const wanted = new Set(ids);
     const entries = ids.length ? data.index.filter((entry) => wanted.has(entry.id)) : undefined;
-    const next = startSession(mode, entries);
+    const next = await startSession(mode, entries);
     if (next && onResult) {
       companionPractice.current = { sessionId: next.id, generation: data.generation, mode, title: title || next.title, rounds: [], onResult };
       setCompanionSessionId(next.id);
@@ -554,7 +568,7 @@ export default function VocabApp() {
       aria-label={label}
       title={label}
       aria-current={navigationView === id ? "page" : undefined}
-      onClick={() => id === "settings" ? setSettingsOpen(true) : setView(id)}
+      onClick={() => id === "settings" ? setSettingsOpen(true) : void navigateView(id)}
       onPointerEnter={() => prepareSurface(id)}
       onFocus={() => prepareSurface(id)}
     >
@@ -640,21 +654,21 @@ export default function VocabApp() {
             initialTargets={writing.targets}
             openId={writing.openId}
             onExit={() => setWriting(null)}
-            onWord={setSelected}
-            onPractice={(entries) => {
-              setWriting(null);
-              startSession("mistakes", entries);
+            onWord={selectWord}
+            onPractice={async (entries) => {
+              if (await startSession("mistakes", entries)) setWriting(null);
             }}
           />
         </Suspense>
         {selected && (
           <Suspense fallback={null}>
             <WordDetail
+              ref={detailHandle}
               key={selected.id}
               entry={selected}
               data={data}
               onClose={() => setSelected(null)}
-              onPractice={(entry) => { setWriting(null); startSession("daily", [entry]); }}
+              onPractice={async (entry) => { if (await startSession("daily", [entry])) setWriting(null); }}
             />
           </Suspense>
         )}
@@ -670,14 +684,14 @@ export default function VocabApp() {
       {toast}
     </>;
   return (
-    <div className={`vocab-studio${view === "chat" ? " companion-chat" : ""}${view === "chat" || companionMini ? " companion-compact" : ""}${companionMini ? " companion-mini-open" : ""}`}>
+    <div className={`vocab-studio${view === "chat" ? " companion-chat" : ""}${view === "chat" || companionMini || selected ? " companion-compact" : ""}${companionMini && !selected ? " companion-mini-open" : ""}${selected ? " word-inspector-open" : ""}`}>
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
       <aside className="app-sidebar" aria-label="应用侧栏">
         <button
           className="brand-home"
-          onClick={() => setView("today")}
+          onClick={() => void navigateView("today")}
           aria-label="词迹首页"
         >
           <Brand />
@@ -689,7 +703,7 @@ export default function VocabApp() {
           <button
             className="sidebar-progress"
             aria-label={`查看学习记录，今天已学习 ${stats.todayWords} 词`}
-            onClick={() => setView("activity")}
+            onClick={() => void navigateView("activity")}
           >
             <span
               className="daily-ring"
@@ -712,7 +726,7 @@ export default function VocabApp() {
       <header className="mobile-header">
         <button
           className="brand-home"
-          onClick={() => setView("today")}
+          onClick={() => void navigateView("today")}
           aria-label="词迹首页"
         >
           <Brand />
@@ -786,7 +800,7 @@ export default function VocabApp() {
                 unit={unit}
                 onCourse={onCourse}
                 searchInputRef={connectSearchInput}
-                onDetail={setSelected}
+                onDetail={selectWord}
                 onStart={startSession}
               />
             </ViewPane>
@@ -795,7 +809,7 @@ export default function VocabApp() {
             <ViewPane active={view === "reading"}>
               <Reading
                 data={data}
-                onDetail={setSelected}
+                onDetail={selectWord}
                 onPractice={practiseReading}
               />
             </ViewPane>
@@ -803,7 +817,7 @@ export default function VocabApp() {
           {visited.has("activity") && (
             <ViewPane active={view === "activity"}>
               {/* Keyed by date: the record counts "today" and the last seven days, as a fresh visit did. */}
-              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={setSelected} onStart={startToday} />
+              <ActivityView key={new Date(clock).toLocaleDateString("sv-SE")} data={data} stats={stats} onPractice={practiseMistakes} onWord={selectWord} onStart={startToday} />
             </ViewPane>
           )}
         </main>
@@ -818,7 +832,7 @@ export default function VocabApp() {
                 ? "page"
                 : undefined
             }
-            onClick={() => setView(id)}
+            onClick={() => void navigateView(id)}
             onPointerEnter={() => prepareSurface(id)}
             onFocus={() => prepareSurface(id)}
           >
@@ -831,6 +845,7 @@ export default function VocabApp() {
       {selected && (
         <Suspense fallback={null}>
           <WordDetail
+            ref={detailHandle}
             key={selected.id}
             entry={selected}
             data={data}
@@ -844,7 +859,7 @@ export default function VocabApp() {
   );
   };
   const companionActive = companionLoaded || view === "chat";
-  const companionVisible = !data.loading && !data.error && !session && !learn && !writing && !voiceOpen;
+  const companionVisible = !data.loading && !data.error && !session && !learn && !writing && !voiceOpen && !selected;
   return <>
     {renderContent()}
     {companionActive && <Suspense fallback={null}><CompanionHost

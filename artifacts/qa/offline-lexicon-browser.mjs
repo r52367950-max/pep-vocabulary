@@ -51,7 +51,7 @@ try {
   await first.getByRole("searchbox", { name: "搜索单词或中文释义" }).fill("apple");
   await first.waitForFunction(() => document.querySelector(".word-row .word-en strong")?.textContent === "apple");
   await first.locator(".word-open").first().click();
-  await first.locator(".word-dialog .english-definition").waitFor();
+  await first.locator(".word-inspector .english-definition").waitFor();
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ tabs: 2, ...counts, offlineReload: true, offlineWordDetails: true, errors }));
 } finally {

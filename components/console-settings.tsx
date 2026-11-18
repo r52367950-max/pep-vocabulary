@@ -791,6 +791,9 @@ function ConversationSettings() {
           <option value="enter">Enter 发送</option><option value="mod-enter">⌘ / Ctrl + Enter 发送</option>
         </select>
       </label>
+      <label className="settings-row toggle-row"><div><strong>逐字显示回答</strong><small>关闭后直接显示完整回答；跟随系统减少动态效果</small></div>
+        <input type="checkbox" role="switch" aria-label="逐字显示回答" checked={preferences.animateReplies} onChange={(event) => updateCompanionPreferences({ animateReplies: event.target.checked })} /><span className="switch" aria-hidden="true" />
+      </label>
     </section>
     <section className="settings-card">
       <header><Eye size={20} aria-hidden="true" /><div><h2>默认来源</h2><p>也可在每段对话的「来源」中调整。</p></div></header>

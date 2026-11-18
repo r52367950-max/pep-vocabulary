@@ -1,4 +1,5 @@
 import { invalidateLearningContext, learningContextStore, refreshLearningContext } from "./learning-context-client";
+import { isPrivateReadingEvent, learningFacts } from "./learning-journal/facts";
 
 export type LearningActivity = { eventId: string; kind: "vocabulary" | "dictation" | "writing" | "reading" | "assistant" | "voice" | "study"; title: string; summary?: string; refIds?: string[]; counts?: Record<string, number>; occurredAt?: string; timezone?: string };
 export type JournalEvent = LearningActivity & { occurredAt: string; timezone: string; date: string; source: "learning_activity" };
@@ -52,7 +53,8 @@ export async function refreshLearningJournal(): Promise<LearningJournal> {
 /** Learning facts only. Never pass raw conversations, audio, images or inferred permanent weaknesses. */
 export async function recordLearningActivity(event: LearningActivity, options: { accountScope?: string } = {}): Promise<boolean> {
   connect();
-  if (learningContextStore.get().temporary || !event.eventId || !event.title) return false;
+  if (learningContextStore.get().temporary || !event.eventId || !event.title || isPrivateReadingEvent(event)) return false;
+  event = learningFacts(event);
   const startedGeneration = generation;
   const occurredAt = event.occurredAt || new Date().toISOString();
   try {
@@ -111,4 +113,4 @@ async function mutate(method: "PUT" | "DELETE", change: Record<string, unknown>)
   return refreshLearningJournal();
 }
 export const updateLearningJournal = (change: { enabled?: boolean; date?: string; summary?: string; eventId?: string; title?: string }) => mutate("PUT", change);
-export const deleteLearningJournal = (change: { eventId?: string; date?: string }) => mutate("DELETE", change);
+export const deleteLearningJournal = (change: { eventId?: string; date?: string; all?: boolean }) => mutate("DELETE", change);

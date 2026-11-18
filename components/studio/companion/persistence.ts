@@ -1,5 +1,6 @@
 import { isModelChoice, type RequestPayload } from "./routing";
 import type { Action, Block, Conversation, Message } from "./types";
+import { parseChatProvenance } from "@/lib/assistant/chat-contract";
 import { parseChatToolSteps } from "@/lib/assistant/tool-trace";
 
 export const COMPANION_HISTORY_PREFIX = "vocab-companion-history-v1:";
@@ -23,7 +24,7 @@ function blocks(value: unknown): Block[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, 8).flatMap((item): Block[] => {
     const b = record(item);
-    if (b.type === "text") return [{ type: "text", text: text(b.text, 24000) }];
+    if (b.type === "text") return [{ type: "text", text: text(b.text, 30000) }];
     if (b.type === "notice") return [{ type: "notice", tone: b.tone === "warn" ? "warn" : "info", text: text(b.text, 1000) }];
     if (b.type === "actions" && Array.isArray(b.actions)) return [{ type: "actions", actions: b.actions.slice(0, 3).map(action).filter((a): a is Action => a !== null) }];
     return [];
@@ -44,7 +45,8 @@ function message(value: unknown): Message | null {
   if (m.role === "assistant") return {
     id, at, role: "assistant", status: m.status === "done" ? "done" : m.status === "error" ? "error" : "stopped",
     blocks: blocks(m.blocks), revealed: Number.MAX_SAFE_INTEGER, request: request(m.request), routeReason: "",
-    toolSteps: parseChatToolSteps(m.toolSteps),
+    toolSteps: parseChatToolSteps(m.toolSteps), provenance: parseChatProvenance(m.provenance),
+    ...(typeof m.reasoningSummary === "string" && m.reasoningSummary.length <= 6000 ? { reasoningSummary: m.reasoningSummary } : {}),
   };
   if (m.role === "result") {
     const r = record(m.result);

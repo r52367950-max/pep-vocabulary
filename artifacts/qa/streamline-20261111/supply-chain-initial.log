@@ -1,0 +1,15 @@
+✖ tests/skill-supply-chain.test.mjs (312.954526ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 320.083933
+
+✖ failing tests:
+
+test at tests/skill-supply-chain.test.mjs:1:1
+✖ tests/skill-supply-chain.test.mjs (312.954526ms)
+  'test failed'

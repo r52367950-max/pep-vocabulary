@@ -1,0 +1,20 @@
+✔ published word lookup distinguishes exact, normalized and possible inflections without altering evidence (167.821093ms)
+✔ lookup checks exact heads before inflection candidates, bounds batches and excludes unreleased suggestions (4.606164ms)
+✔ published textbook and unit filters match a single source, support codes and numbers, and retain query compatibility (36.829773ms)
+✔ invalid textbook selections return bounded published names and units without broadening the search (4.125182ms)
+✔ calculator obeys arithmetic precedence, bounded exponentiation and unary signs (7.846675ms)
+✔ calculator rejects executable text, malformed expressions and unbounded work/results (6.660055ms)
+✔ search prioritizes exact heads then prefixes, excludes unreleased rows and retains evidence provenance (3.831674ms)
+✔ bounded search preserves exact and prefix rank, full counts and original order in large result sets (13.580276ms)
+✔ cached unit matching normalizes names while keeping book and unit on the same source (2.049864ms)
+✔ source reader reads only selected bounded slices and returns continuation offsets (5.00698ms)
+✔ text statistics count English apostrophes, hyphens and Unicode characters without interpreting instructions (9.497214ms)
+✔ tool errors are bounded and redact exceptions; non-lexicon tools never load vocabulary (15.94799ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3927.903589

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Bookmark, Check, ChevronRight, X } from "lucide-react";
 import type { Vocabulary } from "@/hooks/use-vocabulary";
 import {
@@ -9,21 +9,23 @@ import {
   type LexiconIndexEntry,
 } from "@/lib/lexicon";
 import { getEntryExample } from "@/lib/questions";
-import { useModal } from "@/hooks/use-modal";
 import { Pronounce } from "./shared";
 import { WordAi } from "./surfaces";
 
+export type WordDetailHandle = { save: () => Promise<boolean> };
 
 export default function WordDetail({
   entry,
   data,
   onClose,
   onPractice,
+  ref,
 }: {
   entry: LexiconIndexEntry;
   data: Vocabulary;
   onClose: () => void;
   onPractice: (entry: LexiconIndexEntry) => void;
+  ref?: Ref<WordDetailHandle>;
 }) {
   const [detail, setDetail] = useState<LexiconDetail>();
   const [failure, setFailure] = useState("");
@@ -33,19 +35,42 @@ export default function WordDetail({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const generation = useRef(data.generation).current;
   const { metadata } = data;
-  const saveNote = async () => {
-    if (saveState === "saving") return false;
+  const saving = saveState === "saving";
+  const savingRef = useRef<Promise<boolean> | null>(null);
+  const save = useCallback(async () => {
+    if (savingRef.current) return savingRef.current;
     if (!draft) return true;
     setSaveState("saving");
-    const ok = await metadata(entry.id, { note: draft.value, expectedNote: draft.base }, generation);
-    if (ok) setDraft(null);
-    setSaveState(ok ? "saved" : "failed");
-    return ok;
+    const task = metadata(entry.id, { note: draft.value, expectedNote: draft.base }, generation);
+    savingRef.current = task;
+    try {
+      const ok = await task;
+      if (ok) setDraft(null);
+      setSaveState(ok ? "saved" : "failed");
+      return ok;
+    } finally {
+      savingRef.current = null;
+    }
+  }, [draft, entry.id, generation, metadata]);
+  useImperativeHandle(ref, () => ({ save }), [save]);
+  const [leaving, setLeaving] = useState(false);
+  const pending = useRef(false);
+  const leave = async (action: () => void) => {
+    if (pending.current) return;
+    pending.current = true; setLeaving(true);
+    try { if (await save()) action(); }
+    finally { pending.current = false; setLeaving(false); }
   };
-  const { dialog, closing, requestClose, onCancel, onPointerDown, onClick } = useModal(async () => {
-    if (!await saveNote()) return false;
-    onClose();
-  });
+  const panel = useRef<HTMLElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const node = panel.current;
+    closeButton.current?.focus({ preventScroll: true });
+    return () => {
+      if (node?.contains(document.activeElement) || document.activeElement === document.body) trigger?.focus({ preventScroll: true });
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     loadDetails([entry.id])
@@ -62,21 +87,20 @@ export default function WordDetail({
   }, [entry.id]);
   const example = getEntryExample(entry, detail);
   return (
-    <dialog
-      className="word-dialog"
-      ref={dialog}
-      data-closing={closing}
-      onCancel={onCancel}
-      onPointerDown={onPointerDown}
-      onClick={onClick}
+    <aside
+      className="word-inspector"
+      ref={panel}
+      onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); void leave(onClose); } }}
       aria-labelledby="detail-title"
     >
       <div className="detail-content">
         <div className="detail-top">
           <span>词条详情</span>
           <button
+            ref={closeButton}
             className="icon-button"
-            onClick={requestClose}
+            onClick={() => void leave(onClose)}
+            disabled={leaving || saving}
             aria-label="关闭词条"
           >
             <X size={22} aria-hidden="true" />
@@ -129,9 +153,9 @@ export default function WordDetail({
         <label className="note-field">
           <span>我的笔记</span>
           <textarea
+            disabled={leaving || saving}
             maxLength={2000}
             value={note}
-            readOnly={closing || saveState === "saving"}
             onChange={(e) => {
               const base = draft?.base ?? savedNote;
               const value = e.target.value;
@@ -142,8 +166,8 @@ export default function WordDetail({
           />
           <button
             className="text-button"
-            disabled={closing || saveState === "saving" || !draft}
-            onClick={() => void saveNote()}
+            disabled={leaving || saving || !draft}
+            onClick={() => void save()}
           >
             {saveState === "saved" ? (
               <>
@@ -168,12 +192,12 @@ export default function WordDetail({
         )}
         <button
           className="primary detail-practice"
-          disabled={closing || saveState === "saving"}
-          onClick={async () => { if (await saveNote()) onPractice(entry); }}
+          disabled={leaving || saving}
+          onClick={() => void leave(() => onPractice(entry))}
         >
           练习这个词 <ChevronRight size={17} aria-hidden="true" />
         </button>
       </div>
-    </dialog>
+    </aside>
   );
 }

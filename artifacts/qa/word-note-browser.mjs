@@ -5,7 +5,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright")
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 const base = process.argv[2] || "http://127.0.0.1:5173";
 const errors = [];
-const field = page => page.locator(".word-dialog textarea");
+const field = page => page.locator(".word-inspector textarea");
 const save = page => page.getByRole("button", { name: "保存笔记", exact: true });
 
 async function openFirstWord(page) {
@@ -49,18 +49,26 @@ try {
   await field(writer).fill("开始练习时保存");
   await writer.getByRole("button", { name: "练习这个词" }).click();
   await writer.getByRole("button", { name: "保存进度并退出" }).waitFor();
-  await reader.waitForFunction(() => document.querySelector(".word-dialog textarea").value === "开始练习时保存");
+  await reader.waitForFunction(() => document.querySelector(".word-inspector textarea").value === "开始练习时保存");
   await reader.keyboard.press("Escape");
+  await reader.locator(".word-inspector").waitFor({ state: "detached" });
   await reader.locator(".word-open").first().click();
   assert.equal(await field(reader).inputValue(), "开始练习时保存");
 
   await field(reader).fill("系统返回保存");
   await reader.evaluate(() => history.back());
-  await reader.locator("dialog[open]").waitFor({ state: "detached" });
+  await reader.locator(".word-inspector").waitFor({ state: "detached" });
   await reader.locator(".word-open").first().click();
   assert.equal(await field(reader).inputValue(), "系统返回保存");
+  const firstWord = await reader.locator("#detail-title").innerText();
+  await field(reader).fill("切换词条前保存");
+  await reader.locator(".word-open").nth(1).click();
+  await reader.waitForFunction(previous => document.getElementById("detail-title")?.textContent !== previous, firstWord);
+  await reader.locator(".word-open").first().click();
+  await reader.waitForFunction(previous => document.getElementById("detail-title")?.textContent === previous, firstWord);
+  assert.equal(await field(reader).inputValue(), "切换词条前保存");
   assert.deepEqual(errors, []);
-  console.log("通过：搜索焦点、跨标签草稿冲突、练习前保存、跨页读取、系统返回保存。");
+  console.log("通过：搜索焦点、跨标签草稿冲突、练习前保存、跨页读取、系统返回保存、侧栏切词保存。");
 } finally {
   await browser.close();
 }

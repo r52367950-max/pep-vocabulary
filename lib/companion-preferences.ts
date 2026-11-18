@@ -2,12 +2,13 @@
 
 export type CompanionPreferences = {
   sendMode: "enter" | "mod-enter";
+  animateReplies: boolean;
   includeRecords: boolean;
   includeArticle: boolean;
   routePreference: "auto" | "gpt-6.1-sol" | "gpt-6.1-terra";
 };
 const KEY = "vocab-companion-preferences-v1";
-const INITIAL: CompanionPreferences = { sendMode: "enter", includeRecords: true, includeArticle: true, routePreference: "auto" };
+const INITIAL: CompanionPreferences = { sendMode: "enter", animateReplies: true, includeRecords: true, includeArticle: true, routePreference: "auto" };
 let value = INITIAL;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -17,6 +18,7 @@ export function parseCompanionPreferences(raw: string | null): CompanionPreferen
   if (!input || typeof input !== "object") input = {};
   return {
     sendMode: input.sendMode === "mod-enter" ? "mod-enter" : "enter",
+    animateReplies: typeof input.animateReplies === "boolean" ? input.animateReplies : true,
     includeRecords: typeof input.includeRecords === "boolean" ? input.includeRecords : true,
     includeArticle: typeof input.includeArticle === "boolean" ? input.includeArticle : true,
     routePreference: input.routePreference === "gpt-6.1-sol" || input.routePreference === "gpt-6.1-terra" ? input.routePreference : "auto",

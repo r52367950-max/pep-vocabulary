@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { ChevronDown, Maximize2, SquarePen } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ArrowDown, ChevronDown, Maximize2, SquarePen } from "lucide-react";
 import { useStore } from "../store";
 import { Composer } from "./composer";
 import { TemporaryIcon, TraceGlyph } from "./icons";
@@ -35,14 +35,27 @@ export function Launcher() {
 export function MiniPanel() {
   const { state, active, dispatch, newConversation, openChat, send, currentArticle } = useStore();
   const scroller = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
+  const scrollConversation = useRef(active.id);
+  const [awayFromLatest, setAwayFromLatest] = useState<string | null>(null);
   const panel = useRef<HTMLElement>(null);
   const empty = active.messages.length === 0;
   const last = active.messages.at(-1);
   const progress = last?.role === "assistant" ? last.revealed + last.blocks.length : 0;
   useLayoutEffect(() => {
     const element = scroller.current;
-    if (element) element.scrollTop = element.scrollHeight;
+    if (scrollConversation.current !== active.id) {
+      scrollConversation.current = active.id;
+      stick.current = true;
+    }
+    if (element && stick.current) element.scrollTop = element.scrollHeight;
   }, [active.id, active.messages.length, progress]);
+  const latest = () => {
+    stick.current = true;
+    setAwayFromLatest(null);
+    const element = scroller.current;
+    if (element) element.scrollTo({ top: element.scrollHeight, behavior: "instant" });
+  };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !panel.current?.contains(document.activeElement) || document.querySelector(".popover, dialog[open]")) return;
@@ -66,7 +79,11 @@ export function MiniPanel() {
         <button type="button" className="icon-button small" aria-label="展开为完整对话" title="展开" onClick={() => openChat()}><Maximize2 size={16} aria-hidden="true" /></button>
         <button type="button" className="icon-button small" aria-label="收起小窗" title="收起" onClick={() => { dispatch({ type: "mini", open: false }); document.querySelector<HTMLElement>(".launcher")?.focus(); }}><ChevronDown size={18} aria-hidden="true" /></button>
       </header>
-      <div className="mini-scroll" ref={scroller}>
+      <div className="mini-scroll" ref={scroller} onScroll={(event) => {
+        const element = event.currentTarget;
+        stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+        setAwayFromLatest(stick.current ? null : active.id);
+      }}>
         {empty ? (
           <div className="mini-empty">
             <p className="mini-greeting">{context ?? "在这一页问点什么"}</p>
@@ -79,6 +96,7 @@ export function MiniPanel() {
         )}
       </div>
       <div className="mini-dock">
+        {awayFromLatest === active.id && <button type="button" className="jump-latest" onClick={latest}><ArrowDown size={16} aria-hidden="true" /><span>回到最新</span></button>}
         <Composer conversationId={active.id} variant="mini" />
       </div>
     </section>

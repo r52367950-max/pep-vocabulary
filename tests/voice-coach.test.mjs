@@ -91,7 +91,7 @@ test('temporary or paused context is empty and config changes invalidate context
   const { resolveLearningContext, memoryMetadata } = await import('../lib/learning-memory/context.ts');
   const key = await authenticatedUserKey(), before = await memoryMetadata(key);
   const legacyVersion = () => {
-    const config = db.prepare(`SELECT c.provider,c.base_url,c.model,c.updated_at,p.updated_at AS preferences_updated_at
+    const config = db.prepare(`SELECT c.provider,c.base_url,c.model,c.write_token,p.updated_at AS preferences_updated_at
       FROM ai_configs c LEFT JOIN ai_preferences p ON p.user_key=c.user_key WHERE c.user_key=?`).get(key);
     const identity = createHash('sha256').update(JSON.stringify(config ?? 'unconfigured')).digest('hex');
     return `learning-memory-v1:${identity}:journal-0`;

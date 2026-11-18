@@ -1,0 +1,4 @@
+
+> pep-vocab-studio@2.19.3 lint
+> bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next
+

@@ -1,0 +1,27 @@
+{
+  "total": 60,
+  "originalRetained": 6,
+  "netNew": 54,
+  "distribution": {
+    "category": {
+      "fiction": 26,
+      "essay": 18,
+      "science": 10
+    },
+    "difficulty": {
+      "B1": 20,
+      "B2": 25,
+      "C1": 7,
+      "A2": 2
+    },
+    "length": {
+      "250–499": 12,
+      "500–899": 15,
+      "<250": 13,
+      "900+": 14
+    }
+  },
+  "minWords": 106,
+  "maxWords": 2228,
+  "errors": []
+}

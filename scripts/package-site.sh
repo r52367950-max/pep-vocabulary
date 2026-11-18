@@ -9,28 +9,33 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 65
 fi
 source_commit="$(git rev-parse HEAD)"
-# dist is ignored and can outlive a checkout. Always replace it with a fresh
-# build of the reviewed source before trusting any executable archive content.
-bash scripts/sites-env.sh -- bash scripts/build-verified.sh
+archive_path="${1:-${project_root}/outputs/site.tar.gz}"
+archive_path="$(realpath -m "${archive_path}")"
+command -v python3 >/dev/null || { echo "Site packaging requires Python 3." >&2; exit 69; }
+python3 scripts/release-archive.py check-source "${project_root}" "${source_commit}"
+
+# Neither ignored files nor the developer's installed executables enter this
+# private exact-commit checkout. npm verifies the lockfile in a new dependency tree.
+staging_path="$(mktemp -d -t ciji-release.XXXXXX)"
+trap 'rm -rf -- "${staging_path}"' EXIT
+mkdir "${staging_path}/source"
+git --no-replace-objects archive "${source_commit}" | tar -x -C "${staging_path}/source"
+release_root="${staging_path}/source"
+unset SITES_ENV_READY SITES_PROJECT_ROOT SITES_RUNTIME_ROOT
+bash "${release_root}/scripts/sites-env.sh" -- bash scripts/install-ci.sh
+bash "${release_root}/scripts/sites-env.sh" -- bash scripts/build-verified.sh
+
+python3 "${release_root}/scripts/release-archive.py" package "${release_root}" "${staging_path}/site.tar.gz"
 if [[ "$(git rev-parse HEAD)" != "${source_commit}" || -n "$(git status --porcelain)" ]]; then
   echo "Reviewed source changed during the build; commit and package it again." >&2
   exit 65
 fi
-
-archive_path="${1:-${project_root}/outputs/site.tar.gz}"
-mkdir -p "$(dirname "${archive_path}")" "${project_root}/outputs"
-archive_path="$(realpath -m "${archive_path}")"
-staging_path="$(mktemp -d "${project_root}/outputs/.sites-package.XXXXXX")"
-trap 'rm -rf -- "${staging_path}"' EXIT
-
-# Wrangler resolves ../../migrations from dist/server. Keep the reviewed source
-# tree and build metadata as well, including Drizzle's immutable journal.
-mkdir -p "${staging_path}/migrations"
-cp -a drizzle/. "${staging_path}/migrations/"
-# Tar otherwise coalesces the identical migration files into hardlink entries,
-# which the Sites archive validator rejects.
-tar --hard-dereference -czf "${archive_path}" \
-  -C "${project_root}" dist .openai/hosting.json drizzle \
-  -C "${staging_path}" migrations
+python3 scripts/release-archive.py check-source "${project_root}" "${source_commit}"
+# Publish only the archive whose complete contents were read back and verified.
+mkdir -p "$(dirname "${archive_path}")"
+archive_temp="$(mktemp "${archive_path}.XXXXXX")"
+trap 'rm -rf -- "${staging_path}"; rm -f -- "${archive_temp}"' EXIT
+cp "${staging_path}/site.tar.gz" "${archive_temp}"
+mv -f -- "${archive_temp}" "${archive_path}"
 
 echo "Packaged freshly built committed source ${source_commit} into ${archive_path}"

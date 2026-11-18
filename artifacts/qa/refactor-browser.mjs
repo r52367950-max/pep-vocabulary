@@ -50,13 +50,25 @@ try {
       }
       result.checks.push(label);
     };
+    const inspector = page.locator(".word-inspector");
+    const note = inspector.locator("textarea");
     const openWord = async () => {
       await navigate("词库");
       await page.locator(".scope-switch").getByRole("button", { name: "全部", exact: true }).click();
       await page.getByRole("searchbox", { name: "搜索单词或中文释义" }).fill("apple");
       await page.waitForFunction(() => document.querySelector(".word-row .word-en strong")?.textContent === "apple");
       await page.locator(".word-open").first().click();
-      await page.locator("dialog[open] textarea").waitFor();
+      await note.waitFor();
+      const panel = await inspector.boundingBox();
+      const list = await page.locator(".word-list").boundingBox();
+      assert.ok(panel && list);
+      assert.ok(panel.x >= 0 && panel.x + panel.width <= width, "inspector fits viewport");
+      if (width > 760) {
+        assert.ok(list.x + list.width <= panel.x + 1, "wide inspector leaves word list accessible");
+      } else {
+        const navigation = await page.locator(".mobile-nav").boundingBox();
+        assert.ok(navigation && panel.y + panel.height <= navigation.y + 1, "phone inspector leaves navigation accessible");
+      }
     };
     try {
       await page.goto(url);
@@ -65,12 +77,12 @@ try {
       await openWord();
       await button("收藏单词").click();
       await button("取消收藏").waitFor();
-      await page.locator("dialog textarea").fill("apple 笔记");
+      await note.fill("apple 笔记");
       await page.keyboard.press("Escape");
-      await page.locator("dialog[open]").waitFor({ state: "detached" });
+      await inspector.waitFor({ state: "detached" });
       await page.reload();
       await openWord();
-      assert.equal(await page.locator("dialog textarea").inputValue(), "apple 笔记");
+      assert.equal(await note.inputValue(), "apple 笔记");
       assert.equal(await button("取消收藏").getAttribute("aria-pressed"), "true");
       await check("搜索 / 收藏与笔记跨重载");
       await page.keyboard.press("Escape");
@@ -98,7 +110,7 @@ try {
       assert.ok((await prose.innerText()).length > 100);
       await button("查词").click();
       await prose.locator(".reader-inline-word").first().click();
-      await page.locator("dialog[open] .detail-meaning").waitFor();
+      await inspector.locator(".detail-meaning").waitFor();
       await page.keyboard.press("Escape");
       await page.locator(".reader-back").click();
       await page.locator(".reading-card").first().waitFor();

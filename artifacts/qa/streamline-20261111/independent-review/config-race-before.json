@@ -1,0 +1,27 @@
+{
+  "stage": "before runtime write-token guard",
+  "environment": "in-memory SQLite; real application handlers; all provider fetch calls stubbed locally",
+  "observed": [
+    {
+      "change": "model",
+      "mutation": "direct database model update after runtime SELECT snapshot",
+      "changed": true,
+      "calls": 1,
+      "usedModel": "gpt-6.1-sol",
+      "status": 200,
+      "responseModel": "gpt-6.1-sol",
+      "current": "new-model"
+    },
+    {
+      "change": "delete",
+      "mutation": "normal account-scoped config DELETE handler, returned 200",
+      "changed": true,
+      "calls": 1,
+      "usedModel": "gpt-6.1-sol",
+      "status": 200,
+      "responseModel": "gpt-6.1-sol",
+      "current": null
+    }
+  ],
+  "capture_note": "These are the exact results observed before applying the patch; they were first returned by the tool and are preserved here for the report. No real provider was contacted."
+}

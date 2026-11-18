@@ -1,0 +1,56 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "react-server-dom-webpack": {
+      "name": "react-server-dom-webpack",
+      "severity": "critical",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1246055,
+          "name": "react-server-dom-webpack",
+          "dependency": "react-server-dom-webpack",
+          "title": "React: Unauthenticated Remote Code Execution in React Server Components",
+          "url": "https://github.com/advisories/GHSA-xqc2-xf4c-x3h3",
+          "severity": "critical",
+          "cwe": [
+            "CWE-502"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=19.2.0 <19.2.9"
+        }
+      ],
+      "effects": [],
+      "range": "19.2.0 - 19.2.8",
+      "nodes": [
+        "node_modules/react-server-dom-webpack"
+      ],
+      "fixAvailable": {
+        "name": "react-server-dom-webpack",
+        "version": "19.3.1",
+        "isSemVerMajor": false
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 1,
+      "total": 1
+    },
+    "dependencies": {
+      "prod": 25,
+      "dev": 606,
+      "optional": 145,
+      "peer": 45,
+      "peerOptional": 0,
+      "total": 638
+    }
+  }
+}

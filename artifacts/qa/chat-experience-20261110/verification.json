@@ -1,0 +1,32 @@
+{
+  "version": "2.19.3",
+  "status": "passed",
+  "sourceStatus": "uncommitted candidate; not deployed",
+  "command": "npm test",
+  "exitCode": 0,
+  "unitTests": {
+    "total": 700,
+    "passed": 700,
+    "failed": 0,
+    "skipped": 0
+  },
+  "checks": [
+    "data audit with declared existing gaps",
+    "TypeScript",
+    "ESLint",
+    "production build",
+    "artifact validation",
+    "workerd with local ephemeral D1"
+  ],
+  "runtimeChecks": 55,
+  "browserChecks": 19,
+  "browserScope": "Real Chromium/client parser/React/storage; phased Web ReadableStream API fixtures; no paid provider or production calls",
+  "securityReview": "independent diff review completed; persistence checkpoint and mini-window scrolling regressions fixed and browser-verified",
+  "paidProviderTests": false,
+  "dataGaps": {
+    "definitions": 333,
+    "phonetics": 153,
+    "units": 7
+  },
+  "versionPolicy": "All changes before the PR push share one candidate version."
+}

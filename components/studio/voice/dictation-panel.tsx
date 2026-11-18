@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Headphones, Mic, RotateCcw, Square, Volume2 } from "lucide-react";
 import type { LexiconIndexEntry } from "@/lib/lexicon";
+import { shuffleWords } from "@/lib/word-order";
 import { compareDictation, DICTATION_SENTENCES, readLocalDictationHistory, saveLocalDictationAttempt, selectDictationRound, wordDictationItems, type DictationHistory, type DictationItem, type DictationMode } from "@/lib/voice/dictation";
 import { localPracticeGeneration, practiceGenerationCurrent, type PracticeGeneration } from "@/lib/local-practice-generation";
 import { DictationLiveInput, dictationVoiceCommand, canSubmitDictation, newDictationAttempt, reduceDictationAttempt, spellingDraft, type DictationAttemptEvent, type DictationLearningPreferences, type SpellingCaptureAdapter, type DictationVoiceCommand } from "@/lib/voice/dictation-session";
@@ -165,6 +166,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
   };
   const start = async (items: DictationItem[]) => {
     if (!items.length) return;
+    if (items.every(item => item.mode === "words")) items = shuffleWords(items);
     planAbort.current?.abort();
     setPlanBusy(false); setPlanError("");
     adjustment.current?.removeAttribute("open");
@@ -286,7 +288,7 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
     stop();
     const correct = compareDictation(item.text, accepted.answer).correct;
     onAttempt?.({ item, answer: accepted.answer, correct, assisted: accepted.assisted });
-    if (!temporary && accountScope) void recordLearningActivity({ eventId: `dictation-${accepted.id}`, kind: "dictation", title: `听写练习 · ${item.text}`.slice(0, 160), summary: accepted.assisted ? "使用过提示，作为辅助练习" : correct ? "独立答对" : "需要再练", refIds: [item.wordId || item.id], counts: { total: 1, correct: correct && !accepted.assisted ? 1 : 0, assisted: accepted.assisted ? 1 : 0 } }, { accountScope });
+    if (!temporary && accountScope) void recordLearningActivity({ eventId: `dictation-${accepted.id}`, kind: "dictation", title: "听写练习", counts: { total: 1, correct: correct && !accepted.assisted ? 1 : 0, assisted: accepted.assisted ? 1 : 0 } }, { accountScope });
     setRoundResults((previous) => ({ ...previous, [item.id]: correct && !accepted.assisted }));
     // Assisted answers can be reviewed, but never resolve a mistake or count as independent mastery.
     if (accepted.assisted || temporary || !accountScope) return;
@@ -383,8 +385,6 @@ export function DictationPanel({ entries, active = true, temporary = false, lear
       eventId: `paper-${attemptRef.current.id}`,
       kind: "dictation",
       title: "纸上听写批改",
-      summary: "识字经你确认；纸上批改作为辅助练习",
-      refIds: queue.filter((row) => heardItemIds.includes(row.id)).map((row) => row.wordId || row.id),
       counts: { total, correct, assisted: total },
     }, { accountScope });
   };

@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-11-10T06:01:55.225Z",
+  "site": "https://pep-vocab.namizore.chatgpt.site",
+  "cause": "Current site hostname was absent from IDENTITY_TRUSTED_HOSTS; authenticated routes returned 401.",
+  "runtimeChange": {
+    "IDENTITY_TRUSTED_HOSTS": [
+      "pep-vocab-studio.namizore.chatgpt.site",
+      "pep-vocab.namizore.chatgpt.site"
+    ],
+    "SITE_CANONICAL_ORIGIN": "https://pep-vocab.namizore.chatgpt.site"
+  },
+  "deployment": {
+    "id": "appgdep_6af2b1f3365c81919d31e5a6998cd0c8",
+    "status": "succeeded",
+    "savedVersion": 50,
+    "sourceCommit": "51cae7a50ae41346cfbe909e7001ebc9536c8a34",
+    "environmentRevision": 4,
+    "updatedAt": "2026-11-10T05:56:23.564020+00:00"
+  },
+  "postDeploymentRequests": [
+    {
+      "timestamp": "2026-11-10T05:57:22.147Z",
+      "route": "/api/learning-memory",
+      "status": 200,
+      "outcome": "ok",
+      "identityHeaderPresent": true
+    },
+    {
+      "timestamp": "2026-11-10T05:57:19.807Z",
+      "route": "/api/learning-memory",
+      "status": 200,
+      "outcome": "ok",
+      "identityHeaderPresent": true
+    },
+    {
+      "timestamp": "2026-11-10T05:57:12.776Z",
+      "route": "/api/learning-memory",
+      "status": 200,
+      "outcome": "ok",
+      "identityHeaderPresent": true
+    },
+    {
+      "timestamp": "2026-11-10T05:57:02.342Z",
+      "route": "/api/learning-memory",
+      "status": 200,
+      "outcome": "ok",
+      "identityHeaderPresent": true
+    }
+  ],
+  "scope": "Runtime configuration and redeployment of existing saved production source only. Local 2.19.3 source and migration 0010 not deployed."
+}

@@ -1,0 +1,35 @@
+{
+  "baselineRevision": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+  "baseline": {
+    "eventId": "voice-reproduction",
+    "kind": "voice",
+    "title": "PRIVATE_GOAL",
+    "summary": "PRIVATE_TRANSCRIPT",
+    "refIds": [
+      "personal-private-source"
+    ],
+    "counts": {
+      "seconds": 42,
+      "turns": 3
+    },
+    "occurredAt": "2026-11-10T05:37:12.516Z",
+    "timezone": "UTC",
+    "date": "2026-11-10",
+    "source": "learning_activity"
+  },
+  "fixed": {
+    "eventId": "voice-reproduction",
+    "kind": "voice",
+    "title": "口语练习",
+    "summary": "",
+    "refIds": [],
+    "counts": {
+      "seconds": 42,
+      "turns": 3
+    },
+    "occurredAt": "2026-11-10T05:37:12.516Z",
+    "timezone": "UTC",
+    "date": "2026-11-10",
+    "source": "learning_activity"
+  }
+}

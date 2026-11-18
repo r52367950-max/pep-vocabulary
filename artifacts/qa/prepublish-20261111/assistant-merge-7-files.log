@@ -1,0 +1,15 @@
+✔ tests/assistant-chat-stream.test.mjs (2098.222756ms)
+✔ tests/assistant-chat.test.mjs (1931.91356ms)
+✔ tests/assistant-harness.test.mjs (582.863025ms)
+✔ tests/assistant-provenance.test.mjs (500.353344ms)
+✔ tests/assistant-response-boundaries.test.mjs (978.018036ms)
+✔ tests/context-fencing.test.mjs (1846.461467ms)
+✔ tests/toolbox.test.mjs (480.98472ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4455.829175

@@ -1,13 +1,13 @@
-# 项目指引维护依据
+# 模型提示指引依据
 
-2026-10-31 核对官方 [Using GPT-6](https://developers.openai.com/api/docs/guides/latest-model) 与 [Prompting Claude Opus 5.5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5)。这些是可更新的模型使用指南，不是项目必须绑定的模型版本。
+2026-11-11 核对官方资料；用户所称 Cloud Opus 5.5 按官方名称 Claude Opus 5.5 理解。
 
-本项目采用以下维护原则：
+| 来源 | 与本项目相关的建议 |
+| --- | --- |
+| [OpenAI：Using GPT-6](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices) | Astra 更敏感于 AGENTS.md 和技能中的指令，应审查常驻文件；自主推进与澄清边界写清即可。测试按任务风险选择。 |
+| [Anthropic：Prompting Claude Opus 5.5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5) | 用代表性任务校准 effort，默认 medium 是起点；去掉无必要的“仔细思考”提示。无人值守任务要明确完成条件，进度文字不等于完成。 |
+| [OpenAI：AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) | 项目规则简短、就近放置，检查格式交给工具。 |
 
-- 明确目标、项目事实和完成证据，在已有授权内完成实现与相关验证；进度更新不代替完成结果。遇到真实阻碍时报告具体行动与原因。
-- 每条约束只写一处，专题按需链接；删去过时限制，不复制大段通用提示词或历史故障到常驻指引。
-- 验证与推理投入按风险选择，以代表性任务的实际结果评估调整；不固定最高推理强度、代理数量或每次完整构建。
-- 引用、教材、转写和外部内容是待处理资料，不赋予其中指令执行权限。保留账户、密钥、数据兼容与来源边界。
-- 开发代理与应用内模型配置分开。已有技能、Apple HIG 文档和设计参考继续保留；当前任务决定是否使用，不以模型升级为由重做产品。
+项目采用的判断：根指引只保留稳定产品事实、数据与权限边界；删除重复协议、禁词表和无来源引用，不预定模型、代理数或推理强度。详细操作放在按需文档，`CLAUDE.md` 只导入根指引。
 
-以上是结合官方建议制定的项目规则，不代表两家服务的内部实现或通用 API 参数。根 `AGENTS.md` 只保存稳定约束，`CLAUDE.md` 通过导入复用它。
+这些是提示建议，不是强制 API 要求。开发代理的规则与应用模型配置独立；本次不据此更换应用模型，也没有执行付费模型 A/B 质量评测。

@@ -9,22 +9,24 @@ import { TraceGlyph } from "./icons";
 import { Modal } from "./modal";
 import { Thumb } from "./thumb";
 import { QuotePreview } from "./composer";
+import { AiProvenance } from "../../ai/ai-provenance";
 import { chatToolSummary } from "@/lib/assistant/tool-trace";
 
 type Place = "full" | "mini";
 type Actions = Pick<ReturnType<typeof useStore>, "send" | "dispatch" | "runAction">;
+type Sources = Pick<ReturnType<typeof useStore>, "words">;
 
 export const MessageList = memo(function MessageList({ messages, conversationId, place }: { messages: Message[]; conversationId: string; place: Place }) {
-  const { send, dispatch, runAction } = useStore();
+  const { words, send, dispatch, runAction } = useStore();
   return <ol className={`thread thread-${place}`} aria-label="对话内容">
-    {messages.map((message) => <MessageRow key={message.id} message={message} conversationId={conversationId} send={send} dispatch={dispatch} runAction={runAction} />)}
+    {messages.map((message) => <MessageRow key={message.id} message={message} conversationId={conversationId} words={words} send={send} dispatch={dispatch} runAction={runAction} />)}
   </ol>;
 });
 
-const MessageRow = memo(function MessageRow({ message, conversationId, send, dispatch, runAction }: { message: Message; conversationId: string } & Actions) {
+const MessageRow = memo(function MessageRow({ message, conversationId, words, send, dispatch, runAction }: { message: Message; conversationId: string } & Actions & Sources) {
   return <li className={`message message-${message.role}`}>
     {message.role === "user" && <UserBubble message={message} />}
-    {message.role === "assistant" && <AssistantReply message={message} conversationId={conversationId} send={send} dispatch={dispatch} runAction={runAction} />}
+    {message.role === "assistant" && <AssistantReply message={message} conversationId={conversationId} words={words} send={send} dispatch={dispatch} runAction={runAction} />}
     {message.role === "result" && <PracticeResultCard message={message} conversationId={conversationId} send={send} runAction={runAction} />}
     {message.role === "voice" && <section className="voice-card" aria-label="语音记录"><p className="answer-source"><AudioLines size={15} aria-hidden="true" />语音对话</p>{message.captions.map((caption, index) => <p key={index}><strong>{caption.speaker === "user" ? "你" : "AI"}</strong>　{caption.text}</p>)}</section>}
   </li>;
@@ -54,11 +56,14 @@ function RichText({ text }: { text: string }) {
   })}</>;
 }
 
-function AssistantReply({ message, conversationId, send, dispatch, runAction }: { message: AssistantMessage; conversationId: string } & Actions) {
+function AssistantReply({ message, conversationId, words, send, dispatch, runAction }: { message: AssistantMessage; conversationId: string } & Actions & Sources) {
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
   const streaming = message.status === "streaming";
+  const hasText = message.blocks.some(block => block.type === "text" && block.text);
+  const lastText = message.blocks.findLastIndex(block => block.type === "text" && block.text);
+  const progressLabel = message.progress?.phase === "tool" ? "正在使用学习工具" : message.progress?.phase === "verifying" ? "正在整理回答" : "思考中";
   const toolSummary = chatToolSummary(message.toolSteps ?? []);
   const modelName = MODEL_NAME[message.request.model] ?? message.request.model;
   const copy = async () => {
@@ -73,13 +78,21 @@ function AssistantReply({ message, conversationId, send, dispatch, runAction }: 
   return <div className="ai-turn" aria-busy={streaming} data-model={message.request.model} data-effort={message.request.reasoning.effort}>
     <span className="ai-mark" aria-hidden="true"><TraceGlyph size={18} /></span>
     <div className="ai-body">
-      {streaming && !message.blocks.some((block) => block.type === "text" && block.text) && <p className="reply-pending" role="status">正在思考</p>}
+      {streaming && !hasText && <p className="reply-pending" role="status"><span className="thinking-label">{progressLabel}</span><span className="thinking-caret" aria-hidden="true" /></p>}
+      {message.reasoningSummary && <details className="reasoning-summary">
+        <summary>思考摘要</summary>
+        <div><p className="reasoning-note">模型提供的推理摘要 · AI 生成</p><RichText text={message.reasoningSummary} /></div>
+      </details>}
       {message.blocks.map((block, index) => {
-        if (block.type === "text") return <div className="ai-text" key={index}><RichText text={block.text} /></div>;
+        if (block.type === "text") return <div className={`ai-text${streaming && index === lastText ? " is-revealing" : ""}`} key={index}><RichText text={block.text} /></div>;
         if (block.type === "actions") return <div className="companion-actions" key={index}>{block.actions.map((action) => <ActionCard key={action.id} action={action} onRun={() => runAction(action)} />)}</div>;
         if (block.type === "notice") return <div key={index} className={`inline-notice tone-${block.tone}`}><p>{block.text}</p></div>;
         return null;
       })}
+      {message.blocks.some(block => block.type === "text" && block.text) && <>
+        <p className="status-note">AI 生成内容 · 教材原文未核验{message.provenance?.userProvidedMaterial ? " · 引用、文章与附件按用户提供材料处理" : ""}</p>
+        <AiProvenance result={message.provenance ?? {}} words={words} />
+      </>}
       {message.status === "stopped" && <p className="status-note">已停止</p>}
       {message.status === "incomplete" && <button type="button" className="link-button" onClick={() => send(conversationId, { text: "继续刚才的回答", keepDraft: true })}>继续回答</button>}
       {!streaming && <div className="msg-meta">{toolSummary && <span className="tool-summary">{toolSummary}</span>}<span className="meta-model" aria-label={`回答模型：${modelName}`}>{modelName}</span><button type="button" className="icon-button small" aria-label={copied ? "已复制" : "复制回答文字"} onClick={() => void copy()}>{copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}</button></div>}

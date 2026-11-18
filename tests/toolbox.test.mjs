@@ -27,7 +27,9 @@ test('published word lookup distinguishes exact, normalized and possible inflect
     const source = published.find(item => item.id === evidence.id);
     assert.equal(source.flags.formalReleaseEligible, true);
     assert.equal(source.headword, evidence.headword);
-    assert.ok(evidence.sources.every(item => source.sources.some(candidate => JSON.stringify(candidate) === JSON.stringify(item))));
+    const publicSources = source.sources.map(({ bookId, volume, unit, printedPage }) => ({ bookId, volume, unit, printedPage }));
+    assert.ok(evidence.sources.every(item => publicSources.some(candidate => JSON.stringify(candidate) === JSON.stringify(item))));
+    assert.ok(evidence.sources.every(item => !('sequence' in item)), 'UI ordering metadata stays outside the tool evidence contract');
   }
 });
 
@@ -115,6 +117,33 @@ test('search prioritizes exact heads then prefixes, excludes unreleased rows and
   assert.equal((await run('search_lexicon', { query: '测试' })).data.totalMatches, 3);
   for (const args of [{ query: 'app', limit: 9 }, { query: 'app', limit: 0 }, { query: 'app', limit: 1.5 }, { query: 'a'.repeat(101) }, { query: '   ' }, { query: 'app', userKey: 'someone-else' }]) {
     assert.equal((await run('search_lexicon', args)).error.code, 'invalid_arguments');
+  }
+});
+
+test('bounded search preserves exact and prefix rank, full counts and original order in large result sets', async () => {
+  const entries = [
+    ...Array.from({ length: 90 }, (_, i) => row(`contains-${i}`, `xapp ${i}`)),
+    ...Array.from({ length: 90 }, (_, i) => row(`prefix-${i}`, `apple ${i}`)),
+    row('exact', 'app'), row('unreleased', 'app', '隐藏', false),
+  ];
+  const result = await run('search_lexicon', { query: 'app', limit: 8 }, { sources, loadLexicon: async () => entries });
+  assert.equal(result.data.totalMatches, 181);
+  assert.equal(result.data.hasMore, true);
+  assert.deepEqual(result.evidence.map(item => item.id), ['exact', ...Array.from({ length: 7 }, (_, i) => `prefix-${i}`)]);
+  const broad = await run('search_lexicon', { meaning: '测试', limit: 3 }, { sources, loadLexicon: async () => entries });
+  assert.equal(broad.data.totalMatches, 181);
+  assert.deepEqual(broad.evidence.map(item => item.id), ['contains-0', 'contains-1', 'contains-2']);
+});
+
+test('cached unit matching normalizes names while keeping book and unit on the same source', async () => {
+  const entries = [{ ...row('normalized', 'entry'), sources: [{ bookId: 'B1', volume: '册一', unit: 'ＵＮＩＴ　２', printedPage: 2 }] },
+    { ...row('wrong-pair', 'other'), sources: [{ bookId: 'B1', volume: '册一', unit: 'Unit 1', printedPage: 1 }, { bookId: 'B2', volume: '册二', unit: 'Unit 2', printedPage: 2 }] }];
+  const ctx = { sources, loadLexicon: async () => entries };
+  for (const unit of ['2', ' Unit  2 ', 'ＵＮＩＴ　２']) {
+    const result = await run('search_lexicon', { book: 'B1', unit }, ctx);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.evidence.map(item => item.id), ['normalized']);
+    assert.equal(result.evidence[0].sources[0].unit, 'ＵＮＩＴ　２');
   }
 });
 

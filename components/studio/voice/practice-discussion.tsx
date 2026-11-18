@@ -34,7 +34,7 @@ export function PracticeDiscussion({ sessionKey, topicId, level, transcript, mes
       await refreshLearningContext(abort.signal);
       if (abort.signal.aborted || !contextStillCurrent(memory, temporary)) return;
       onChange([...next, { role: "assistant", text: result.reply }]);
-      if (!temporary) void recordLearningActivity({ eventId: `discussion-${sessionKey}-${next.length}`, kind: "assistant", title: "口语复盘与学习安排", summary: question.trim().slice(0, 400), counts: { discussions: 1 } }, { accountScope: memory.accountScope });
+      if (!temporary) void recordLearningActivity({ eventId: `discussion-${sessionKey}-${next.length}`, kind: "assistant", title: "口语复盘与学习安排", counts: { discussions: 1 } }, { accountScope: memory.accountScope });
       setSuggestions(temporary ? [] : result.memorySuggestions || []); setDraft("");
       requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "auto", block: "nearest" }));
     } catch (cause) { if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : "暂时无法回复，请重试。"); }

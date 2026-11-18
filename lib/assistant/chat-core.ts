@@ -1,4 +1,4 @@
-import { AssistantInputError, AssistantUpstreamError, usesOpenAIResponses, type AiProvider, type LexiconEvidence } from "./core";
+import { AssistantInputError, AssistantUpstreamError, assertEvidenceClaims, usesOpenAIResponses, type AiProvider, type LexiconEvidence } from "./core";
 import { CHAT_LIMITS, type ChatAction, type ChatActivityAction, type ChatEffort, type ChatFile, type ChatModelChoice, type ChatQuote, type ChatResult, type ChatTurn } from "./chat-contract";
 
 export type ParsedChatRequest = {
@@ -114,7 +114,7 @@ export function chatMessages(input: ParsedChatRequest, evidence: LexiconEvidence
 }
 
 /** Model actions only describe the app's existing activities; they carry no executable content. */
-export function sanitizeChatResult(content: string, evidence: LexiconEvidence[]): ChatResult {
+export function sanitizeChatResult(content: string, evidence: LexiconEvidence[], materials: string[] = [], userText = ""): ChatResult {
   if (content.length > 300000) throw new AssistantUpstreamError("model_response_too_large", "模型返回内容过大。", 502, true);
   let trimmed = content.trim().replace(/^```(?:json)?\s*/i, "");
   if (trimmed.endsWith("```")) trimmed = trimmed.slice(0, -3).trimEnd();
@@ -138,5 +138,9 @@ export function sanitizeChatResult(content: string, evidence: LexiconEvidence[])
       actions.push({ type: row.type, title: title || (row.type === "start-dictation" ? "开始听写" : "开始复习"), wordIds: [...new Set(ids)], minutes: typeof row.minutes === "number" && Number.isFinite(row.minutes) ? Math.max(5, Math.min(60, Math.round(row.minutes))) : 15 });
     }
   }
-  return { text: result.text.trim(), actions };
+  const answer = { text: result.text.trim(), actions };
+  assertEvidenceClaims(answer, evidence, [userText, ...materials].join("\n"));
+  // Model metadata and user attachments never authenticate textbook quotations.
+  return { ...answer, provenance: { origin: "model-generated", textbookQuotes: "unverified",
+    evidenceIds: [...known], userProvidedMaterial: materials.length > 0 } };
 }

@@ -1,0 +1,14 @@
+
+> pep-vocab-studio@2.19.3 data:audit
+> node scripts/audit-data.mjs
+
+{
+  "targetTextbooks": 12,
+  "sourceManifestEntries": 19,
+  "curriculumHeadwordRows": 2997,
+  "releasedEntries": 4681,
+  "missingEnglishDefinitions": 333,
+  "missingCompleteIpa": 153,
+  "unitRowsWithUnresolvedFields": 7
+}
+audit status: release-candidate-with-declared-gaps

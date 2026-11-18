@@ -6,6 +6,10 @@ const runGit = promisify(execFile);
 // These exact historical implementations were reviewed for the comparisons
 // below. Adding a baseline requires reviewing every executed module/slice here.
 const reviewed = {
+  toolbox: {
+    revisions: ['f10737e675cf5e55352f0a9d2808600eb19e664d'],
+    paths: ['lib/assistant/toolbox.ts'],
+  },
   request: {
     revisions: ['f10737e675cf5e55352f0a9d2808600eb19e664d'],
     paths: ['lib/http.ts'],

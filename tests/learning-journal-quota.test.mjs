@@ -12,7 +12,7 @@ const migrations = readdirSync('drizzle').filter(f => f.endsWith('.sql')).sort()
 const quotaMigration = '0009_learning_journal_quota.sql';
 function setup({ beforeQuota = false } = {}) {
   const db = new DatabaseSync(':memory:');
-  for (const file of migrations) if (!beforeQuota || file !== quotaMigration) db.exec(readFileSync(`drizzle/${file}`, 'utf8'));
+  for (const file of migrations) if (!beforeQuota || file < quotaMigration) db.exec(readFileSync(`drizzle/${file}`, 'utf8'));
   env.DB = sqliteD1(db);
   requestHeaders.set('oai-authenticated-user-email', 'journal-quota@example.test');
   return db;

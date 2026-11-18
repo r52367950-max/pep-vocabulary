@@ -25,7 +25,7 @@ function harness(outputs, overrides = {}) {
 
 test('direct answers use one generation and never load the lexicon', async () => {
   const h = harness([final]); const result = await h.run();
-  assert.deepEqual(result.result, final);
+  assert.deepEqual(result.result, { ...final, provenance: { origin: 'model-generated', textbookQuotes: 'unverified', evidenceIds: [], userProvidedMaterial: false } });
   assert.deepEqual(result.usage, usage);
   assert.deepEqual(result.trace, { modelCalls: 1, tools: [] });
   assert.equal(h.checks(), 1);

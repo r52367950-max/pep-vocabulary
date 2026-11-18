@@ -103,7 +103,7 @@ export default function VoiceWorkspace({ entries, onClose, onOpenSettings, initi
     if (!policy || policy.temporary || privacy.temporary || !privacy.memory || policy.scope !== privacy.memory.accountScope || !["ended", "error"].includes(snapshot.phase) || !recordMeta || !transcript.length || saved) return;
     const record: VoiceRecord = { ...recordMeta, contextRevision: policy.revision, seconds: snapshot.seconds, transcript, discussion, ...(feedback ? { feedback } : {}) };
     setSaved(true);
-    void recordLearningActivity({ eventId: `voice-${record.id}`, kind: "voice", title: record.customTopic || getVoiceTopic(record.topicId).title, summary: [record.goal, ...record.transcript.filter((turn) => turn.role === "user").slice(-3).map((turn) => turn.text.slice(0, 100))].filter(Boolean).join(" · ").slice(0, 400), refIds: [], counts: { seconds: record.seconds, turns: record.transcript.filter((turn) => turn.role === "user").length } }, { accountScope: policy.scope });
+    void recordLearningActivity({ eventId: `voice-${record.id}`, kind: "voice", title: "口语练习", counts: { seconds: record.seconds, turns: record.transcript.filter((turn) => turn.role === "user").length } }, { accountScope: policy.scope });
     void saveLocalVoiceRecord(policy, record, () => {
       const current = learningContextStore.get();
       return sessionPolicy.current === policy && !current.temporary && current.memory?.accountScope === policy.scope;

@@ -1,0 +1,165 @@
+{
+  "baseline": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+  "version": "2.19.3",
+  "checks": {
+    "unitRounds": [
+      {
+        "tests": 714,
+        "pass": 714,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      {
+        "tests": 714,
+        "pass": 714,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    ],
+    "testFiles": 92,
+    "runtimeMatrixRounds": [
+      202,
+      202
+    ],
+    "routes": 28,
+    "runtimeSmokeRounds": [
+      54,
+      54
+    ],
+    "browser": 19
+  },
+  "audit": {
+    "before": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 1,
+      "total": 1
+    },
+    "after": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "production": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "dependencies": {
+      "prod": 25,
+      "dev": 579,
+      "optional": 145,
+      "peer": 45,
+      "peerOptional": 0,
+      "total": 638
+    }
+  },
+  "sustained": {
+    "seconds": 120,
+    "requests": 12749,
+    "errors": 0,
+    "p50": 106.38937499999884,
+    "p95": 223.69665699999314,
+    "p99": 302.5217679999987,
+    "segments": [
+      {
+        "start": 0,
+        "p95": 227.8115140000009
+      },
+      {
+        "start": 30,
+        "p95": 217.0539009999993
+      },
+      {
+        "start": 60,
+        "p95": 243.92755399999442
+      },
+      {
+        "start": 90,
+        "p95": 213.8051429999905
+      }
+    ]
+  },
+  "blocked": {
+    "deepSecurityScan": "Codex Security coordinator unavailable; scoped independent reviews and broad local tests performed."
+  },
+  "notPerformed": [
+    "production deployment",
+    "production gateway validation",
+    "paid provider calls",
+    "physical device measurements",
+    "RCE exploitation"
+  ],
+  "evidence": [
+    "unit-final-round1.log",
+    "unit-final-round2.log",
+    "runtime-final-round1.log",
+    "runtime-final-round2.log",
+    "runtime-security-final-round1.json",
+    "runtime-security-final-round2.json",
+    "workload-before.json",
+    "workload-final.json",
+    "browser-performance.json",
+    "integration-browser.json",
+    "dependencies-before.json",
+    "dependencies-after.json",
+    "dependencies-prod.json",
+    "independent-review/review-summary.json",
+    "data-audit-final.log",
+    "reading-audit-final.log",
+    "typecheck-final2.log",
+    "lint-final2.log",
+    "build-final2.log"
+  ],
+  "sourceSha256": {
+    ".github/workflows/ci.yml": "24f7df5ed880de93c2ee4fd4177086990b243a24426bc983ce457203251e1db9",
+    "AGENTS.md": "96be91468d27314a6bf6c6be86a4d0cff6082ebfe77a6a18d73cdce2a78558e1",
+    "CHANGELOG.md": "22b6b281743018aa8e67d483afc4f7c3a5f75971fcac820686a85f19701df8d7",
+    "PROJECT_STATE.md": "a645570e36ce81ef8e8ba2fbdc2093308a9d5205776099048976556f5fb0c49f",
+    "README.md": "6b9d3b49567325732d6873c16a0f41bc2d4397b01b5367fce61147f597248335",
+    "data/audit-summary.json": "028034b75c466793eba0dd33407da87d571e7708ed1afc9de62669692567fbdf",
+    "docs/DEVELOPMENT.md": "c4947bc4df6e2a2ccb8ee8d820bb998f8af4c0f4809628998eb4805ba1027037",
+    "docs/prompt-guidance.md": "0d5ab359e50eeb5303eea8792ae88e7dd964cbc0c6dbd9b200bcd70aebd73ba5",
+    "lib/assistant/server.ts": "8b2948f0ffb000254f40e499af3e5e36d2d18a23b0a747c0835a2908c3cf8d8b",
+    "lib/assistant/usage.ts": "b6cd01ac675d2484b4d95f9a47b5016c6259a0faf9bc1fa1a640bb571d1a6fb0",
+    "lib/http.ts": "e68dee42dd99263b35740a4e4574ae241b7318262161380e8fce835dbeb55ec4",
+    "lib/learning-journal/store.ts": "06238d5203ffedf6f22c746679fb0c8edc7ca8367f409b60a3a941002765cdec",
+    "lib/learning-memory/context.ts": "52d234e2eb37d4594a13af77307b2e0ddfea92b4b4eb787096aed53a472b8650",
+    "lib/voice/coach-server.ts": "ab586e544aa8aba6fee12a7165de53bd8628e1e7ec7b47a5401d30bafea4a2c1",
+    "lib/voice/dictation-server.ts": "0625ce085a25b862f6a0bae83c80e433099dee65eb518dc766ab17143f205e4c",
+    "lib/voice/server.ts": "d9e453a05078670f778d9fa66de5506ce58952f7c903d7baa41b9181f52d6c0d",
+    "lib/writing-topic-server.ts": "25f96ace0f3c1323415e2442619a1ead8ffde598cb57a01326c659e683a94c58",
+    "package-lock.json": "f32eeb1916625a9ab515a5e5d2885c62df04429b359f8da1e5639b4b562f761c",
+    "package.json": "9d8d78fdf16fe693ed527c1a0ea854d5970776d6c6363c4dbc6d5d0570bef399",
+    "scripts/benchmark-workload.mjs": "efe024a9a42fe0df31ba8001fc21e8bad8fcb5f9d875719801118ff3cbe8da64",
+    "scripts/check-runtime-security.mjs": "822af98bb6dfcdce7678d3afaabfc9435f8c0fe551acc9f601904a0eea3c620e",
+    "scripts/local-worker.mjs": "494661349034de59d98c63ad722036b333656c07b82097b96eccdb66cc6bf50f",
+    "scripts/serve-qa.mjs": "5ecb135b89c128078b7f84a3cb46bf893b72ff12c13fe3036885c70204fc0673",
+    "tests/backend-security.test.mjs": "48bddf2d0c2456a76413715eca94887179cb3bc717b42eae8f314f161a64bde2",
+    "tests/context-fencing.test.mjs": "fa3d6143dff870c3de4bac6dea8f38b34f3982e7310b7ef614b7b0326a5c7a1c",
+    "tests/merge-ai-server.test.mjs": "a61ad2390ebd9e4527533ae1d6d637e6024ba2f40d0a6e7b090225521af37afa",
+    "tests/private-api-fixtures.mjs": "0f2cdc675c11c35b57b182260b0ecae65f098c6f0997dc564db907ea6c6c9749",
+    "tests/production-dependencies.test.mjs": "c5d875c8428dc6d8cbcb58e1659a96a244890bc57f76db2482c73069157f5e54",
+    "tests/security-hardening.test.mjs": "339a8a60300bbb41ccb522ef58433b1c197f5af72210d3f2f56255fbbdee7cdc",
+    "worker/security.ts": "00c84e15a4fbda47f5a603f5bd8ed803abb987ef8b4ae6212cbc6ab219b2d59b"
+  },
+  "reportPages": [
+    "report-page-1.png",
+    "report-page-2.png",
+    "report-page-3.png",
+    "report-page-4.png",
+    "report-page-5.png",
+    "report-page-6.png",
+    "report-page-7.png"
+  ]
+}

@@ -3,6 +3,7 @@ import type { Attachment } from "./sources";
 import type { RequestPayload, SelectionAction, ModelChoice, ComplexPlanTier } from "./routing";
 import type { PracticeItem, Score } from "./practice";
 import type { CompanionPreferences } from "@/lib/companion-preferences";
+import type { ChatProgress, ChatProvenance } from "@/lib/assistant/chat-contract";
 import type { ChatToolStep } from "@/lib/assistant/tool-trace";
 
 export type Action =
@@ -22,6 +23,9 @@ export type AssistantMessage = {
   id: string; role: "assistant"; at: number; status: "streaming" | "done" | "stopped" | "incomplete" | "error";
   blocks: Block[]; revealed: number; request: RequestPayload; routeReason: string;
   toolSteps?: ChatToolStep[];
+  provenance?: ChatProvenance;
+  progress?: ChatProgress;
+  reasoningSummary?: string;
 };
 export type RoundAnswer = { item: PracticeItem; answer: string; score: Score };
 export type PracticeResult = { mode?: "dictation" | "review"; title: string; source: string; rounds: RoundAnswer[][] };
@@ -43,7 +47,7 @@ export type Settings = CompanionPreferences & {
 export type SettingsSection = "general" | "learning" | "chat" | "model" | "privacy" | "about";
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system", motion: "system", dailyMinutes: 15, sendMode: "enter", includeRecords: true,
-  includeArticle: true, routePreference: "auto", complexPlanTier: "sol-high",
+  includeArticle: true, routePreference: "auto", complexPlanTier: "sol-high", animateReplies: true,
 };
 export type LearnView = "today" | "words" | "reading" | "records" | "dictation";
 export type View = LearnView | "chat";

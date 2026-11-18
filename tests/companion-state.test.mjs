@@ -58,8 +58,10 @@ test('attachment controls reject empty/oversize/active markup types and strictly
 });
 
 test('settings parser rejects unsupported model and malformed options with stable defaults', () => {
-  assert.deepEqual(parseCompanionPreferences('{"routePreference":"bad","sendMode":42,"includeRecords":"false"}'), { routePreference: 'auto', sendMode: 'enter', includeRecords: true, includeArticle: true });
+  assert.deepEqual(parseCompanionPreferences('{"routePreference":"bad","sendMode":42,"includeRecords":"false"}'), { routePreference: 'auto', sendMode: 'enter', animateReplies: true, includeRecords: true, includeArticle: true });
   assert.equal(parseCompanionPreferences('{"routePreference":"gpt-6.1-sol","includeRecords":false}').includeRecords, false);
+  assert.equal(parseCompanionPreferences('{"animateReplies":false}').animateReplies, false);
+  assert.equal(parseCompanionPreferences('{"animateReplies":"false"}').animateReplies, true);
 });
 
 test('typed follow-up includes real voice captions and exercise evidence within endpoint history limits', async () => {

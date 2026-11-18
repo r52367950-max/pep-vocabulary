@@ -12,7 +12,7 @@ for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter((
   db.exec(readFileSync(new URL(`../drizzle/${file}`, import.meta.url), 'utf8'));
 }
 const config = {
-  userKey: 'merge-responses', provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1',
+  userKey: 'merge-responses', writeToken: 'merge-responses-config', provider: 'openai-compatible', baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-6.1-terra', apiKey: 'test-only-key-never-sent-to-a-real-provider',
   dailyTokenBudget: 10_000, maxOutputTokens: 256, timeoutMs: 1000, dailyLimit: 30,
 };
@@ -20,7 +20,9 @@ const messages = [{ role: 'system', content: 'Return JSON.' }, { role: 'user', c
 const request = () => new Request('https://app.test/api/assistant/explain');
 const payload = { model: config.model, messages, max_tokens: 256, temperature: 0.3, response_format: { type: 'json_object' }, stream: false };
 beforeEach(() => {
-  db.exec('DELETE FROM ai_rate_limits;');
+  db.exec('DELETE FROM ai_rate_limits; DELETE FROM ai_configs;');
+  db.prepare('INSERT INTO ai_configs (user_key,write_token,provider,base_url,model,encrypted_api_key,key_iv) VALUES (?,?,?,?,?,?,?)')
+    .run(config.userKey,config.writeToken,config.provider,config.baseUrl,config.model,'unused-test-ciphertext','unused-test-iv');
   env.DB = sqliteD1(db);
   delete env.AI_ALLOWED_PROVIDER_ORIGINS;
 });

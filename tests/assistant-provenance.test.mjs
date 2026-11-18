@@ -106,3 +106,10 @@ test('generated examples and ordinary numerical prose retain normal behavior', (
   assert.equal(result.summary, '练习 45 次有助于记忆。');
   assert.equal(result.examples[0].origin, 'model-generated');
 });
+
+
+test('shared attribution guard preserves explicit disclaimers and rejects affirmative neighbors', () => {
+  const summary = '这是我编写的例句，并非教材原文：They abandoned their plan.';
+  assert.equal(sanitizeModelResult('explain', JSON.stringify(explain({ summary })), evidence).summary, summary);
+  assert.throws(() => sanitizeModelResult('explain', JSON.stringify(explain({ summary: `${summary} 课本原句是：They abandoned their plan.` })), evidence), violation);
+});

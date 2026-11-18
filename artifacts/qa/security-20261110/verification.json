@@ -1,0 +1,154 @@
+{
+  "outcome": "fixed",
+  "date": "2026-11-10",
+  "version": "2.19.3",
+  "baseline": "f10737e675cf5e55352f0a9d2808600eb19e664d",
+  "delivery": "local working tree; no push or production deployment",
+  "scan": {
+    "runId": "wfr_0a65ec78a9d913cb0695eb0925ea97184c2a2a6b52ff00ef35747795fe924179",
+    "completedAt": "2026-11-10T05:20:29.900927Z",
+    "findings": 4,
+    "severity": {
+      "high": 2,
+      "medium": 2
+    },
+    "cloudStatusChanged": false
+  },
+  "changedFiles": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "PRIVACY.md",
+    "PROJECT_STATE.md",
+    "components/studio/companion/chat-client.ts",
+    "components/studio/companion/components/messages.tsx",
+    "components/studio/companion/persistence.ts",
+    "components/studio/companion/store.tsx",
+    "components/studio/companion/types.ts",
+    "components/studio/reading.tsx",
+    "components/studio/voice-workspace.tsx",
+    "components/studio/voice/dictation-panel.tsx",
+    "components/studio/voice/learning-memory.tsx",
+    "components/studio/voice/practice-discussion.tsx",
+    "docs/DEVELOPMENT.md",
+    "docs/README.md",
+    "drizzle/meta/_journal.json",
+    "lib/assistant/chat-contract.ts",
+    "lib/assistant/chat-core.ts",
+    "lib/assistant/core.ts",
+    "lib/assistant/harness.ts",
+    "lib/assistant/server.ts",
+    "lib/assistant/toolbox.ts",
+    "lib/learning-journal-client.ts",
+    "lib/learning-journal/input.ts",
+    "lib/learning-journal/store.ts",
+    "package-lock.json",
+    "package.json",
+    "scripts/benchmark-baseline.mjs",
+    "scripts/package-site.sh",
+    "scripts/smoke-worker.mjs",
+    "tests/assistant-chat.test.mjs",
+    "tests/assistant-harness.test.mjs",
+    "tests/assistant-provenance.test.mjs",
+    "tests/release-tool-security.test.mjs",
+    "tests/toolbox.test.mjs",
+    "drizzle/0010_learning_journal_privacy.sql",
+    "lib/learning-journal/facts.ts",
+    "scripts/benchmark-toolbox.mjs",
+    "scripts/release-archive.py",
+    "tests/companion-provenance.test.mjs",
+    "tests/learning-journal-privacy.test.mjs"
+  ],
+  "findings": [
+    {
+      "title": "Ignored private release files",
+      "outcome": "fixed",
+      "boundary": "tracked regular source files → isolated exact-commit build → exact archive members",
+      "trigger": "ignored .env/.pem and symlink fixtures rejected before packaging",
+      "control": "fresh lockfile install, production build and 552-member archive verified"
+    },
+    {
+      "title": "Persistent ignored dependency executable",
+      "outcome": "fixed",
+      "boundary": "fresh npm ci in private exported source; developer node_modules excluded",
+      "trigger": "decoy vinext never executed; corrupt package integrity and build failures stop packaging",
+      "control": "real 513-package install and valid build pass"
+    },
+    {
+      "title": "Chat textbook authenticity",
+      "outcome": "fixed",
+      "boundary": "shared server prose/action claim validation, server-authored provenance and current lexicon display",
+      "trigger": "original fabricated quote reproduced on baseline; direct and endpoint/attachment variants now rejected",
+      "control": "normal explanation, authentic word location, personal diary page translation and explicit generated disclaimer pass; restored UI remains unverified"
+    },
+    {
+      "title": "Automatic journal private content",
+      "outcome": "fixed",
+      "boundary": "shared client/server structural projection, historical event and summary scrub, privacy CAS",
+      "trigger": "baseline raw marker reproduction; current requests/storage/context omit markers; private reading blocked; late writes after clear rejected",
+      "control": "allowed counters, vocabulary references and explicit manual edits preserved; new activity accepted"
+    }
+  ],
+  "verificationGates": {
+    "syntaxAndStatic": {
+      "commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "bash -n scripts/package-site.sh",
+        "git diff --check"
+      ],
+      "result": "pass"
+    },
+    "securityAndControls": {
+      "commands": [
+        "node --import ./tests/register.mjs tests/learning-journal-privacy.test.mjs",
+        "npm run test:unit",
+        "node artifacts/qa/security-20261110/browser-check.mjs",
+        "node artifacts/qa/security-20261110/journal-browser-check.mjs"
+      ],
+      "result": "pass",
+      "coverage": [
+        "original triggers and alternate malicious inputs",
+        "normal content and historical compatibility",
+        "migration old-schema fixtures",
+        "paused in-flight append vs clear",
+        "clock-skew replay across settings toggles",
+        "cross-account and temporary mode"
+      ]
+    },
+    "completeAcceptance": {
+      "command": "npm test",
+      "result": "pass",
+      "unitTests": 684,
+      "failed": 0,
+      "skipped": 0,
+      "runtimeCases": 55,
+      "browserScenarios": 12,
+      "journalUiAssertions": 10
+    },
+    "dependencies": {
+      "command": "npm run audit:prod",
+      "result": "pass",
+      "knownProductionVulnerabilities": 0
+    },
+    "isolatedRelease": {
+      "command": "bash scripts/package-site.sh <archive> (temporary committed candidate)",
+      "result": "pass",
+      "verifiedMembers": 552,
+      "archive": "outputs/site-security-2.19.3.tar.gz",
+      "details": "release-verification.json"
+    }
+  },
+  "independentReview": {
+    "cycles": 1,
+    "confirmedRegression": "legitimate translated personal-page reference and generated-content disclaimer rejected",
+    "resolution": "narrow matching adjustment and adjacent malicious controls added; final suite passes"
+  },
+  "performance": "toolbox-benchmark.json",
+  "limitations": [
+    "No production deployment, migration, gateway or paid-provider calls.",
+    "Browser API responses are intercepted fixtures; local Worker/D1 executes actual built code independently.",
+    "Cloud finding status left unchanged.",
+    "Existing vocabulary content gaps remain: 333 English definitions, 153 phonetics, 7 units with unresolved source records."
+  ],
+  "reportPreference": "Opus compact gray-white technical report persisted in AGENTS.md"
+}

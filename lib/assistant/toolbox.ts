@@ -134,6 +134,7 @@ type LexiconIndex = {
   entries: { row: ToolLexiconRow; headword: string; meaning: string }[];
   exact: Map<string, ToolLexiconRow[]>;
   aliases: Map<string, ToolLexiconRow[]>;
+  units: Map<string, string>;
   books: { bookId: string; volume: string; units: string[] }[];
 };
 const searchIndexes = new WeakMap<ToolLexiconRow[], LexiconIndex>();
@@ -144,6 +145,7 @@ function lexiconIndex(rows: ToolLexiconRow[]): LexiconIndex {
   const entries = rows.filter(row => row.flags?.formalReleaseEligible === true).map(row => ({ row, headword: normalized(row.headword), meaning: normalized(row.chineseCore) }));
   const exact = new Map<string, ToolLexiconRow[]>();
   const aliases = new Map<string, ToolLexiconRow[]>();
+  const units = new Map<string, string>();
   const books = new Map<string, { bookId: string; volume: string; units: Set<string> }>();
   const add = (map: Map<string, ToolLexiconRow[]>, key: string, row: ToolLexiconRow) => {
     if (!key) return;
@@ -158,12 +160,13 @@ function lexiconIndex(rows: ToolLexiconRow[]): LexiconIndex {
       if (key !== headword) add(aliases, key, row);
     }
     for (const source of row.sources) {
+      if (!units.has(source.unit)) units.set(source.unit, normalized(source.unit));
       let book = books.get(source.bookId);
       if (!book) { book = { bookId: source.bookId, volume: source.volume, units: new Set() }; books.set(source.bookId, book); }
       book.units.add(source.unit);
     }
   }
-  index = { entries, exact, aliases, books: [...books.values()].map(book => ({ ...book, units: [...book.units].sort((a, b) => a.localeCompare(b, "en", { numeric: true })) })) };
+  index = { entries, exact, aliases, units, books: [...books.values()].map(book => ({ ...book, units: [...book.units].sort((a, b) => a.localeCompare(b, "en", { numeric: true })) })) };
   searchIndexes.set(rows, index);
   return index;
 }
@@ -259,8 +262,11 @@ export async function executeTool(call: ToolCall, context: ToolContext): Promise
           const rows = [...new Map((exact ?? alias ?? candidates).map(row => [row.id, row])).values()];
           const match = exact ? "exact" : alias ? "normalized" : candidates.length ? "possible_inflection" : "not_found";
           const stem = query.slice(0, Math.min(4, query.length - 1));
-          const suggestions = !rows.length && stem.length >= 3
-            ? index.entries.filter(item => item.headword.startsWith(stem)).slice(0, 4).map(item => item.row.headword.slice(0, 128)) : [];
+          const suggestions: string[] = [];
+          if (!rows.length && stem.length >= 3) for (const item of index.entries) {
+            if (item.headword.startsWith(stem)) suggestions.push(item.row.headword.slice(0, 128));
+            if (suggestions.length === 4) break;
+          }
           return { query, match, matches: rows.slice(0, 3).map(evidenceFor), truncated: rows.length > 3,
             ...(match === "possible_inflection" ? { note: "未匹配精确词头；这些是可能的词形候选，请结合语境核对。" } : {}),
             ...(suggestions.length ? { suggestions } : {}) };
@@ -288,23 +294,27 @@ export async function executeTool(call: ToolCall, context: ToolContext): Promise
         if (book && chosen.length !== 1) {
           return { ...base, ok: false, error: { code: chosen.length ? "ambiguous_book" : "unknown_book", message: chosen.length ? "有多本教材符合，请使用完整册名或教材代号。" : "没有这本教材，请从可用名称中选择。" }, data: { books: bookSuggestions(chosen.length ? chosen : index.books, false) }, evidence: [] };
         }
-        if (unit && !chosen.some(item => item.units.some(name => normalized(name) === unit))) {
+        if (unit && !chosen.some(item => item.units.some(name => index.units.get(name) === unit))) {
           return { ...base, ok: false, error: { code: "unknown_unit", message: "所选教材没有这个单元，请从可用名称中选择。" }, data: { books: bookSuggestions(chosen, true) }, evidence: [] };
         }
         const bookIds = new Set(chosen.map(item => item.bookId));
-        const sourceMatches = (source: ToolLexiconRow["sources"][number]) => bookIds.has(source.bookId) && (!unit || normalized(source.unit) === unit);
+        const sourceMatches = (source: ToolLexiconRow["sources"][number]) => bookIds.has(source.bookId) && (!unit || index.units.get(source.unit) === unit);
         const matches: ToolLexiconRow[][] = [[], [], []];
+        let totalMatches = 0;
         for (const item of index.entries) {
           if ((book || unit) && !item.row.sources.some(sourceMatches)) continue;
           if (prefix && !item.headword.startsWith(prefix) || meaning && !item.meaning.includes(meaning)) continue;
           const rank = !query || item.headword === query ? 0 : item.headword.startsWith(query) ? 1 : item.headword.includes(query) || item.meaning.includes(query) ? 2 : -1;
-          if (rank >= 0) matches[rank].push(item.row);
+          if (rank >= 0) {
+            totalMatches++;
+            if (matches[rank].length < limit) matches[rank].push(item.row);
+          }
         }
         const ordered = matches.flat();
         evidence = ordered.slice(0, limit).map(row => evidenceFor(book || unit
           ? { ...row, sources: [...row.sources].sort((left, right) => Number(sourceMatches(right)) - Number(sourceMatches(left))) } : row));
         while (JSON.stringify(evidence).length > MAX_TOOL_OUTPUT_CHARS - 500) evidence.pop();
-        data = { matches: evidence, totalMatches: ordered.length, hasMore: ordered.length > evidence.length };
+        data = { matches: evidence, totalMatches, hasMore: totalMatches > evidence.length };
         break;
       }
       default: return { ...base, ok: false, error: { code: "unknown_tool", message: "没有这个工具。" }, evidence: [] };

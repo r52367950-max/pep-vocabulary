@@ -1,0 +1,23 @@
+✔ every API route is inventoried with the methods it exports (2.306806ms)
+✔ missing or malformed identity headers are rejected with 401 on every private endpoint (64.124339ms)
+✔ cross-site requests are rejected with 403 according to each route contract (10.306093ms)
+✔ AI settings mutations require the settings action header (0.887191ms)
+✔ oversized bodies are refused with 413, including chunked bodies without Content-Length (34.852206ms)
+✔ sync is rate limited per identity with 429 and Retry-After (18.82772ms)
+✔ sync writes have a daily budget; no storage answers 503, a missing limiter table fails closed (3.938261ms)
+✔ sync keeps identity and revision conflicts after the hardening (3.578899ms)
+✔ gateway identity values are validated without changing existing user keys (0.624854ms)
+✔ the required trusted-host guard fails closed and rejects identities on other hosts (7.670551ms)
+✔ unused action transports are rejected before routing or reading a body on every path (2.982978ms)
+✔ transport guard preserves JSON mutations and HTML/RSC GET routing (1.023416ms)
+✔ HTML documents carry a per-request nonce CSP that matches the one handed to vinext (0.883275ms)
+✔ development skips script CSP but keeps framing and sniffing protection (0.273514ms)
+✔ framework API errors become private JSON: 404, 405 with Allow, and 500 without internals (1.309919ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.197796

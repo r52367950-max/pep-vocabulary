@@ -1,0 +1,65 @@
+✔ personalized explain completion fences none changes during generation (33.14326ms)
+✖ personalized explain completion fences memory changes during generation (12.246252ms)
+✖ personalized explain completion fences journal changes during generation (7.853153ms)
+✖ personalized explain completion fences configuration changes during generation (7.516137ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 1
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1737.371607
+
+✖ failing tests:
+
+test at tests/.context-fencing-baseline.mjs:28:3
+✖ personalized explain completion fences memory changes during generation (12.246252ms)
+  AssertionError [ERR_ASSERTION]: {"ok":true,"task":"explain","provider":"openai-compatible","model":"gpt-6.1-sol","evidence":[{"id":"pep-1e3e7e41accdc5f7","headword":"abandon","chineseCore":"放弃","partsOfSpeech":["v."],"scopes":[],"sources":[]}],"result":{"kind":"explain","summary":"private generated result","meaning":[],"grammar":[],"collocations":[],"examples":[],"personalNote":null,"evidenceIds":["pep-1e3e7e41accdc5f7"],"limitations":[],"origin":"model-generated","provenance":{"textbookQuotes":"unverified","sourceKind":"lexicon-entry-locations","evidence":[{"wordId":"pep-1e3e7e41accdc5f7","headword":"abandon","sources":[]}]}},"accountScope":"29042f34b45ff60e6f1069d574c16f50fec8953da58fa021af29e784426c73d8","contextRevision":0,"contextVersion":"learning-memory-v1:71f389fdeef6a9d96813a29db8e663b76521db6dd0c2f6ff2e1cd52161db3148:journal-0","journalRevision":0,"temporary":false,"usage":{"prompt":1500,"completion":100,"cacheHit":0,"total":5521,"estimated":true,"today":5521,"budget":200000}}
+  
+  200 !== 409
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/.context-fencing-baseline.mjs:39:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 409,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/.context-fencing-baseline.mjs:28:3
+✖ personalized explain completion fences journal changes during generation (7.853153ms)
+  AssertionError [ERR_ASSERTION]: {"ok":true,"task":"explain","provider":"openai-compatible","model":"gpt-6.1-sol","evidence":[{"id":"pep-1e3e7e41accdc5f7","headword":"abandon","chineseCore":"放弃","partsOfSpeech":["v."],"scopes":[],"sources":[]}],"result":{"kind":"explain","summary":"private generated result","meaning":[],"grammar":[],"collocations":[],"examples":[],"personalNote":null,"evidenceIds":["pep-1e3e7e41accdc5f7"],"limitations":[],"origin":"model-generated","provenance":{"textbookQuotes":"unverified","sourceKind":"lexicon-entry-locations","evidence":[{"wordId":"pep-1e3e7e41accdc5f7","headword":"abandon","sources":[]}]}},"accountScope":"29042f34b45ff60e6f1069d574c16f50fec8953da58fa021af29e784426c73d8","contextRevision":0,"contextVersion":"learning-memory-v1:71f389fdeef6a9d96813a29db8e663b76521db6dd0c2f6ff2e1cd52161db3148:journal-0","journalRevision":0,"temporary":false,"usage":{"prompt":1500,"completion":100,"cacheHit":0,"total":5521,"estimated":true,"today":5521,"budget":200000}}
+  
+  200 !== 409
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/.context-fencing-baseline.mjs:39:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 409,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/.context-fencing-baseline.mjs:28:3
+✖ personalized explain completion fences configuration changes during generation (7.516137ms)
+  AssertionError [ERR_ASSERTION]: {"ok":true,"task":"explain","provider":"openai-compatible","model":"gpt-6.1-sol","evidence":[{"id":"pep-1e3e7e41accdc5f7","headword":"abandon","chineseCore":"放弃","partsOfSpeech":["v."],"scopes":[],"sources":[]}],"result":{"kind":"explain","summary":"private generated result","meaning":[],"grammar":[],"collocations":[],"examples":[],"personalNote":null,"evidenceIds":["pep-1e3e7e41accdc5f7"],"limitations":[],"origin":"model-generated","provenance":{"textbookQuotes":"unverified","sourceKind":"lexicon-entry-locations","evidence":[{"wordId":"pep-1e3e7e41accdc5f7","headword":"abandon","sources":[]}]}},"accountScope":"29042f34b45ff60e6f1069d574c16f50fec8953da58fa021af29e784426c73d8","contextRevision":0,"contextVersion":"learning-memory-v1:71f389fdeef6a9d96813a29db8e663b76521db6dd0c2f6ff2e1cd52161db3148:journal-0","journalRevision":0,"temporary":false,"usage":{"prompt":1500,"completion":100,"cacheHit":0,"total":5521,"estimated":true,"today":5521,"budget":200000}}
+  
+  200 !== 409
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/.context-fencing-baseline.mjs:39:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 409,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -28,7 +28,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Audit production dependencies
-        run: npm run audit:prod
-      - name: Data audit, typecheck, lint, unit tests, build and Worker smoke
+      # Build dependencies such as RSC are bundled into the production Worker.
+      - name: Audit runtime and build dependencies
+        run: npm run audit:deps
+      - name: Data audit, types, lint, regression, build, Worker and security matrix
         run: npm test

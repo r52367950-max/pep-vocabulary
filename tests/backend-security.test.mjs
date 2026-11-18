@@ -46,7 +46,7 @@ test('aborted requests and malformed UTF-8 cannot become accepted backup data', 
 });
 
 test('request reader preserves split UTF-8 and rejects mid-read cancellation without waiting for the producer', async () => {
-  const object = { note: '词迹 📝' };
+  const object = { note: '词迹 📝'.repeat(1000) };
   const bytes = new TextEncoder().encode(JSON.stringify(object));
   const init = { method: 'POST', duplex: 'half', headers: { 'content-type': 'application/json' } };
   const body = new ReadableStream({
@@ -58,9 +58,16 @@ test('request reader preserves split UTF-8 and rejects mid-read cancellation wit
   assert.deepEqual(await readJsonObject(new Request('https://app.test/api', { ...init, body }), bytes.length), object);
   const abort = new AbortController();
   let cancelled = false;
-  const stalled = new ReadableStream({ cancel() { cancelled = true; return new Promise(() => {}); } });
+  let finishPartialRead;
+  const partialRead = new Promise(resolve => { finishPartialRead = resolve; });
+  const stalled = new ReadableStream({
+    start(controller) { controller.enqueue(bytes.subarray(0, 8)); },
+    pull() { finishPartialRead(); },
+    cancel() { cancelled = true; return new Promise(() => {}); },
+  }, { highWaterMark: 0 });
   const request = new Request('https://app.test/api', { ...init, body: stalled, signal: abort.signal });
   const reading = readJsonObject(request, 4096);
+  await bounded(partialRead);
   abort.abort();
   await assert.rejects(bounded(reading), error => error.status === 408);
   assert.equal(cancelled, true);

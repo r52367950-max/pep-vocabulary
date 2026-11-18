@@ -1,10 +1,10 @@
-# 词迹 2.19.2
+# 词迹 2.19.6
 
-2.19.2 吸收 Fable 交接方案中的批量核词、教材筛选和真实工具摘要，修复对话列表样式串入并减少输入时重复计算。沿用现有有界循环、取消和计费保护。详见[版本说明](docs/RELEASE_2.19.2.md)；历次摘要见 [CHANGELOG](CHANGELOG.md)。
+词库支持课本顺序、字母顺序和随机打乱，可在右侧面板查看词义、编辑笔记并进入练习。首页与自主练习统一排版；复习计时、跨页笔记及断网查词均已更新。账户日志批量读取，沿用已发布的隐私清理迁移与备份格式。[2.19.6 版本说明](docs/RELEASE_2.19.6.md)
 
 面向人教版初高中英语学习者的本地优先 PWA。用回忆、拼写、听写建立记忆，再通过短文理解词语的用法。
 
-[打开应用](https://pep-vocab-studio.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
+[打开应用](https://pep-vocab.namizore.chatgpt.site) · [开发指引](AGENTS.md) · [文档索引](docs/README.md) · [后端与数据架构](docs/BACKEND_ARCHITECTURE.md)
 
 ## 功能
 

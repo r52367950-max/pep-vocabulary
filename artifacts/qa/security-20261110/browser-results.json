@@ -1,0 +1,80 @@
+{
+  "status": "passed",
+  "base": "http://127.0.0.1:5173/",
+  "generatedAt": "2026-11-10T05:36:40.568Z",
+  "provider": "intercepted local chat response; no real provider or production data",
+  "results": [
+    {
+      "width": 1440,
+      "check": "lexicon search, details, Escape dismiss",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "practice grading, IndexedDB checkpoint and reload resume",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "reading catalog, article load and return",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "personal article imported/reopened, no private title/body/id in journal POSTs",
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "check": "generated provenance, inert HTML, persisted/reloaded chat, no horizontal overflow",
+      "status": "passed",
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      },
+      "screenshot": "chat-1440.png"
+    },
+    {
+      "width": 1440,
+      "check": "no uncaught browser errors",
+      "status": "passed",
+      "journalPosts": 2
+    },
+    {
+      "width": 390,
+      "check": "lexicon search, details, Escape dismiss",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "practice grading, IndexedDB checkpoint and reload resume",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "reading catalog, article load and return",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "personal article imported/reopened, no private title/body/id in journal POSTs",
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "check": "generated provenance, inert HTML, persisted/reloaded chat, no horizontal overflow",
+      "status": "passed",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390
+      },
+      "screenshot": "chat-390.png"
+    },
+    {
+      "width": 390,
+      "check": "no uncaught browser errors",
+      "status": "passed",
+      "journalPosts": 2
+    }
+  ]
+}

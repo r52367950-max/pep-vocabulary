@@ -78,14 +78,23 @@ export function providerRejectedBeforeGeneration(status: number | null) {
   return status !== null && status >= 300 && status < 500 && status !== 408;
 }
 
-/** Returns the reserved output tokens; the prompt estimate stays charged. Never throws. */
-export async function releaseOutputReservation(reservation: TokenReservation) {
+async function releaseReservedTokens(reservation: TokenReservation, amount: number) {
   try {
     await database().prepare("UPDATE ai_rate_limits SET request_count = MAX(0, request_count - ?) WHERE bucket_key = ?")
-      .bind(reservation.maxOutputTokens, reservation.keys.total).run();
+      .bind(amount, reservation.keys.total).run();
   } catch {
     // Accounting failure keeps the whole reservation, as for any other failed call.
   }
+}
+
+/** Returns the reserved output tokens; the prompt estimate stays charged. Never throws. */
+export function releaseOutputReservation(reservation: TokenReservation) {
+  return releaseReservedTokens(reservation, reservation.maxOutputTokens);
+}
+
+/** Only for a failed local preflight: no request reached the provider. Never throws. */
+export function releaseUnusedReservation(reservation: TokenReservation) {
+  return releaseReservedTokens(reservation, reservation.amount);
 }
 
 /** Provider reports cannot refund below independently estimated prompt and actual output. */

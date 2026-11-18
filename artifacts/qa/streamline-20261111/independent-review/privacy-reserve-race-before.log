@@ -1,0 +1,107 @@
+✔ personalized explain completion fences none changes during generation (34.518931ms)
+✔ personalized explain completion fences memory changes during generation (11.151688ms)
+✔ personalized explain completion fences journal changes during generation (7.714435ms)
+✔ personalized explain completion fences configuration changes during generation (6.693873ms)
+✔ metadata-only verification never reads note/event content and permits new activity (3.000002ms)
+✔ memory/config changes while journal content is loading cannot label stale content as current (2.543162ms)
+✔ batched history retains ordering, truncation, deleted exclusions, old references and owner isolation (74.070235ms)
+✔ explain rejects delete after runtime snapshot before context without dispatch or token charge (15.584996ms)
+✔ explain rejects model after runtime snapshot before context without dispatch or token charge (9.339901ms)
+✔ explain rejects credential after runtime snapshot before context without dispatch or token charge (9.068441ms)
+✔ explain rejects budget after runtime snapshot before context without dispatch or token charge (9.786805ms)
+✔ chat rejects delete after runtime snapshot before context without dispatch or token charge (11.819662ms)
+✔ chat rejects model after runtime snapshot before context without dispatch or token charge (11.405541ms)
+✔ chat rejects credential after runtime snapshot before context without dispatch or token charge (8.786094ms)
+✔ chat rejects budget after runtime snapshot before context without dispatch or token charge (8.81978ms)
+✔ a settings deletion during token reservation is checked at dispatch and refunded exactly once (8.483066ms)
+✔ dispatch configuration read failure is closed and refunds its unused reservation (7.967548ms)
+✔ ambiguous budget storage failure never dispatches and retains its reservation (6.248781ms)
+✔ exhausted budget never dispatches or refunds already consumed tokens (6.13617ms)
+✔ chat second-round dispatch fences none changes during reservation (8.72383ms)
+✔ chat second-round dispatch fences credential changes during reservation (10.625357ms)
+✔ same-timestamp credential replacement during generation invalidates the completed context (10.927079ms)
+✔ lazy master-key rotation preserves the runtime settings identity and normal generation (7.292928ms)
+✔ explain dispatch checks none privacy changes after reservation (7.326809ms)
+✖ explain dispatch checks memory privacy changes after reservation (6.938002ms)
+✖ explain dispatch checks journal privacy changes after reservation (7.092461ms)
+✔ chat dispatch checks none privacy changes after reservation (6.853715ms)
+✖ chat dispatch checks memory privacy changes after reservation (7.503166ms)
+✖ chat dispatch checks journal privacy changes after reservation (5.898271ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 25
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 341.600801
+
+✖ failing tests:
+
+test at tests/context-fencing.test.mjs:242:3
+✖ explain dispatch checks memory privacy changes after reservation (6.938002ms)
+  AssertionError [ERR_ASSERTION]: calls=1; sent private material=true
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/context-fencing.test.mjs:258:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/context-fencing.test.mjs:242:3
+✖ explain dispatch checks journal privacy changes after reservation (7.092461ms)
+  AssertionError [ERR_ASSERTION]: {"ok":false,"error":{"code":"assistant_unavailable","message":"AI 助手暂时不可用；本地学习数据没有受到影响。","retryable":true}}
+  
+  503 !== 409
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/context-fencing.test.mjs:257:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 409,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/context-fencing.test.mjs:242:3
+✖ chat dispatch checks memory privacy changes after reservation (7.503166ms)
+  AssertionError [ERR_ASSERTION]: calls=1; sent private material=true
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/context-fencing.test.mjs:258:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/context-fencing.test.mjs:242:3
+✖ chat dispatch checks journal privacy changes after reservation (5.898271ms)
+  AssertionError [ERR_ASSERTION]: {"ok":false,"error":{"code":"assistant_unavailable","message":"AI 助手暂时不可用；本地学习数据没有受到影响。","retryable":true}}
+  
+  503 !== 409
+  
+      at TestContext.<anonymous> (file:///workspace/pep-vocabulary/tests/context-fencing.test.mjs:257:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 409,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

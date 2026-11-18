@@ -1,6 +1,6 @@
 {
   "name": "pep-vocab-studio",
-  "version": "2.19.3",
+  "version": "2.19.6",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -14,15 +14,17 @@
     "data:build": "node scripts/build-lexicon.mjs",
     "data:audit": "node scripts/audit-data.mjs",
     "test:unit": "node --import ./tests/register.mjs --test --test-concurrency=2 tests/*.test.mjs",
-    "test": "npm run data:audit && npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:runtime",
+    "test": "npm run data:audit && npm run typecheck && npm run lint && npm run test:unit && npm run build && npm run test:runtime && npm run test:security",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "typecheck": "tsc --noEmit",
     "test:runtime": "node scripts/smoke-worker.mjs",
+    "test:security": "node --import ./tests/register.mjs scripts/check-runtime-security.mjs",
     "benchmark": "node scripts/benchmark-core.mjs",
     "benchmark:backend": "node --import ./tests/register.mjs scripts/benchmark-backend.mjs",
-    "audit:prod": "npm audit --omit=dev --audit-level=high"
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:deps": "npm audit --audit-level=high"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

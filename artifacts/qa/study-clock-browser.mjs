@@ -25,6 +25,9 @@ try {
   await button("开始学习").waitFor();
   await page.keyboard.press("Control+k");
   await button("全部").click();
+  await button("筛选").click();
+  await page.getByLabel("单词顺序").selectOption("az");
+  await button("筛选").click();
   await button("词库选项").click();
   await page.getByText("选择词语", { exact: true }).click();
 
